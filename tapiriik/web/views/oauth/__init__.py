@@ -1,14 +1,10 @@
 from django.shortcuts import redirect
 from tapiriik.services import Service
-from tapiriik.database import db
 from tapiriik.auth import User
 def authreturn(req, service):
     svc = Service.FromID(service)
-    token = svc.RetrieveAuthenticationToken(req)
-    serviceRecord = db.connections.find_one({"AuthorizationToken":token, "Service":service})
-    if serviceRecord is None:
-        db.connections.insert({"AuthorizationToken":token, "Service":service})
-        serviceRecord = db.connections.find_one({"AuthorizationToken":token, "Service":service})
+    authRecord = svc.RetrieveAuthenticationToken(req)
+    serviceRecord = Service.GetServiceRecord(svc, authRecord)
     # auth by this service connection
     existingUser = User.AuthByService(serviceRecord)
     if existingUser is not None:

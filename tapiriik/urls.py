@@ -6,8 +6,9 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 # admin.autodiscover()
 
 urlpatterns = patterns('',
-	url(r'^$', 'tapiriik.web.views.dashboard', name='dashboard'),
-	url(r'^auth/return/(?P<service>.+)$', 'tapiriik.web.views.oauth.authreturn', {}, name='oauth_return', )
+    url(r'^$', 'tapiriik.web.views.dashboard', name='dashboard'),
+    url(r'^auth/return/(?P<service>.+)$', 'tapiriik.web.views.oauth.authreturn', {}, name='oauth_return', ),
+    url(r'^auth/login/(?P<service>.+)$', 'tapiriik.web.views.auth_login', {}, name='auth_simple', )
     # Examples:
     # url(r'^$', 'tapiriik.views.home', name='home'),
     # url(r'^tapiriik/', include('tapiriik.foo.urls')),

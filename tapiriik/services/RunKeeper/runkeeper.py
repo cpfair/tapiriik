@@ -21,5 +21,4 @@ class RunKeeperService():
         resp, data = wc.request("https://runkeeper.com/apps/token",method="POST",body=urllib.parse.urlencode(params), headers={"Content-Type":"application/x-www-form-urlencoded"})
         if resp.status != 200:
             raise ValueError("Invalid code")
-        return json.loads(data.decode('utf-8'))["access_token"]
-
+        return {"AuthenticationToken": json.loads(data.decode('utf-8'))["access_token"]}
