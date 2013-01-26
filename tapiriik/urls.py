@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 # admin.autodiscover()
 
 urlpatterns = patterns('',
-	url(r'^$', 'tapiriik.web.views.dashboard', name='home'),
+	url(r'^$', 'tapiriik.web.views.dashboard', name='dashboard'),
 	url(r'^auth/return/(?P<service>.+)$', 'tapiriik.web.views.oauth.authreturn', {}, name='oauth_return', )
     # Examples:
     # url(r'^$', 'tapiriik.views.home', name='home'),

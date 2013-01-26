@@ -79,6 +79,7 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
+# and yes, this is overriden in local_settings.py
 SECRET_KEY = 'vag26gs^t+_y0msoemqo%_5gb*th(i!v$l6##bq9tu2ggcsn13'
 
 # List of callables that know how to import templates from various sources.
@@ -94,10 +95,13 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'tapiriik.web.startup.ServiceWebStartup'
+    'tapiriik.web.startup.ServiceWebStartup',
+    'tapiriik.auth.SessionAuth'
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
+
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"  # file-based sessions on windows are terrible
 
 ROOT_URLCONF = 'tapiriik.urls'
 
