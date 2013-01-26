@@ -1,0 +1,10 @@
+{% extends "site.html" %}
+{% block content %}
+You're logging into {{ serviceid }}
+<form action="{% url 'auth_simple' service=serviceid %}" method="post">
+<input name="username"/>
+<input name="password" type="password"/>
+<input type="submit"/>
+{% csrf_token %}
+</form>
+{% endblock %}
