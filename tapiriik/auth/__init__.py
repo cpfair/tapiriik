@@ -1,4 +1,5 @@
 from tapiriik.database import db
+from tapiriik.sync import Sync
 from datetime import datetime
 from bson.objectid import ObjectId
 
@@ -20,20 +21,22 @@ class User:
         existingUser = db.users.find_one({"_id": {'$ne': user["_id"]}, "ConnectedServices": {'$in': [serviceRecord["_id"]]}})
         if "ConnectedServices" not in user:
             user["ConnectedServices"] = []
+        delta = False
         if existingUser is not None:
             # merge merge merge
             user["ConnectedServices"] += existingUser.ConnectedServices
+            delta = True
             db.users.delete({"_id": existingUser["_id"]})
         else:
             if serviceRecord["_id"] not in user["ConnectedServices"]:
                 user["ConnectedServices"].append(serviceRecord["_id"])
-        db.users.update({"_id": user["_id"]}, {"$set":{"ConnectedServices": user["ConnectedServices"]}})
+                delta = True
+        db.users.update({"_id": user["_id"]}, {"$set": {"ConnectedServices": user["ConnectedServices"]}})
+        if delta:
+            Sync.ScheduleImmediateSync(user)
 
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices": {'$in': [serviceRecord["_id"]]}})
-
-
-
 
 
 class SessionAuth:
