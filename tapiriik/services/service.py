@@ -5,20 +5,13 @@ class Service:
     def FromID(id):
         if id=="runkeeper":
             return RunKeeper
+        elif id=="strava":
+            return Strava
         raise ValueError
     def List():
-        return [RunKeeper]
+        return [RunKeeper, Strava]
     def WebInit():
         global UserAuthorizationURL
         for itm in Service.List():
             itm.WebInit()
             print("post" + itm.UserAuthorizationURL)
-
-
-class ServiceAuthenticationType:
-    OAuth = 1
-    UsernamePassword = 666  # it is, believe me
-
-
-class OAuthService:
-    AuthenticationType = ServiceAuthenticationType.OAuth

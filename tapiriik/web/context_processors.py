@@ -1,3 +1,3 @@
-from tapiriik.services import RunKeeper
+from tapiriik.services import Service
 def providers(req):
-	return {"service_providers":[RunKeeper]}
+	return {"service_providers":Service.List()}
