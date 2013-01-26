@@ -1,0 +1,9 @@
+<h1>Tapiriik</h1>
+
+<h2>Providers</h2>
+{% for provider in service_providers %}
+{{ provider.ID }}
+<a href="{{ provider.UserAuthorizationURL }}">Login</a>
+{% endfor %}
+
+{{ STATIC_URL }}
