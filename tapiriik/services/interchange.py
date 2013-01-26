@@ -24,3 +24,4 @@ class Location:
     def __init__(self, lat, lon):
         self.Latitude = lat
         self.Longitude = lon
+        self.Datum = "WGS84"  # might eventually need to make this... better
