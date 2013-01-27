@@ -6,6 +6,33 @@
 </head>
 
 <body>
-    {% block content %}{% endblock %}
+
+	<!-- I blame centre-aligning -->
+	<div class="contentOuter">
+		<div class="contentWrap">
+			<div class="logo">
+				tapiriik
+			</div>
+			<div class="contentOuterBorder">
+				<div class="content">
+	    			{% block content %}{% endblock %}
+	    		</div>
+    		</div>
+    		<div class="footers">
+    			FOOTER FOOTER FOOTER
+    		</div>
+    	</div>
+    </div>
+
+    <!-- I should procedurally generate these -->
+    <div class="environsWrap">
+	    <div class="environs">
+	    	<div class="mountains">
+	    		<div id="a"></div><div id="b"></div><div id="c"></div><div id="e"></div>
+	    	</div>
+	    	<div class="sun"></div>
+	    </div>
+	</div>
+
 </body>
 </html>

@@ -1,10 +1,8 @@
 {% extends "site.html" %}
 {% block content %}
-<h1>Tapiriik</h1>
-
 <h2>Providers</h2>
 {% for provider in service_providers %}
-<div>
+<div style="display:inline-block;">
 	<h3>{{ provider.ID }}</h3>
 	{% if provider.ID in user.ConnectedServiceIDs %} Connected {% endif %}
 	<a href="{{ provider.UserAuthorizationURL }}">Login</a>

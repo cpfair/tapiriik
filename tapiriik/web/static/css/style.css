@@ -1,3 +1,108 @@
+@import url(http://fonts.googleapis.com/css?family=Economica:400,700);
+
 body {
 	font-family:Arial;
+	background-color:#c0deed;
+	height:100%;
+	width:100%;
+	margin:0;
+	padding:0;
+}
+
+.contentOuter {
+	z-index:100;
+	display:table;
+	position:absolute;
+	height:100%;
+	width:100%;
+}
+
+.contentWrap {
+	display:table-cell;
+	text-align:center;
+	width:100%;
+	vertical-align:middle;
+}
+
+.contentOuterBorder {
+	position:relative;
+	margin-left:-480px;
+	left:50%;
+	width:960px;
+	border-radius:10px;
+	padding:1px 0;
+	background-color:rgba(255,255,255,0.35);
+}
+
+.content {
+	text-align:left;
+	margin:14px 15px;
+	background-color:white;
+	border-radius: 10px;
+	border:1px solid transparent;
+	font-family:Economica;
+	font-size:130%; /* damn font is unreadable */
+	padding:10px;
+}
+
+.logo {
+	width:100%;
+	position:absolute;
+	text-align: center;
+	font-size:500%;
+	color:white;
+	font-family:Economica;
+	font-weight:bold;
+	margin-top:-110px;
+}
+.footers {
+	margin-top:5px;
+	font-family:Economica;
+	color:white;
+}
+.environsWrap {
+	position:static;
+}
+
+.environs {
+	position:absolute;
+	height:100%;
+	width:100%;
+	overflow:hidden;
+}
+
+.mountains div {
+	position:absolute;
+	bottom:0;
+
+	width:0;
+	height:0;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+}
+.mountains #a {
+	left:-200px;
+	border-width:300px;
+	border-bottom: 500px solid #8ec1da;
+}
+.mountains #c {
+	left:0;
+	border-width:200px;
+	border-bottom: 600px solid #a6cfe3;
+}
+.mountains #b {
+	left:70px;
+	border-width:300px;
+	border-bottom: 225px solid #95cbe5;
+}
+
+.sun {
+	position:absolute;
+	right:-120px;
+	top:-120px;
+	width:0;
+	height:0;
+	border-radius:100px;
+	border:100px solid #FFF;
+
 }
