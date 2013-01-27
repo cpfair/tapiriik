@@ -30,11 +30,11 @@ tapiriik.Init = function(){
 
 tapiriik.AddressChanged=function(){
 	var components = $.address.pathNames();
-	if (components[0] == undefined){
-		tapiriik.DismissServiceDialog();
-	} else if (components[0]=="auth") {
+	if (components[0]=="auth") {
 		tapiriik.OpenAuthDialog(components[1]);
+		return;
 	}
+	tapiriik.DismissServiceDialog();
 };
 
 tapiriik.AuthDialogLinkClicked = function(e){
@@ -42,8 +42,15 @@ tapiriik.AuthDialogLinkClicked = function(e){
 	return false;
 };
 
+tapiriik.IFrameOAuthReturn=function(){
+	$.address.value("/");
+	window.location.reload();
+};
+
 tapiriik.OpenAuthDialog = function(svcId){
 	var authLink = $(".service#"+svcId+" a.authDialog");
+	if (authLink.length == 0) return;
+
 	var mode = authLink.attr("mode");
 	var contents;
 	if (mode == "oauth"){

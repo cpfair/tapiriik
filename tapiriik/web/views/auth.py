@@ -22,7 +22,8 @@ def auth_do(req, service):
         serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData)
         # auth by this service connection
         existingUser = User.AuthByService(serviceRecord)
-        if existingUser is not None:
+        # only log us in as this different user in the case that we don't already have an account
+        if existingUser is not None and req.user is None:
             User.Login(existingUser, req)
         else:
             User.Ensure(req)
