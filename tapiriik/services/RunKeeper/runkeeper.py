@@ -7,6 +7,7 @@ import json
 
 class RunKeeperService():
     ID = "runkeeper"
+    DisplayName = "RunKeeper"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserAuthorizationURL = None
     def WebInit(self):

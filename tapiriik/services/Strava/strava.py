@@ -7,6 +7,7 @@ import json
 
 class StravaService:
     ID = "strava"
+    DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
     def WebInit(self):
@@ -18,6 +19,6 @@ class StravaService:
         params = {"email": email, "password": password}
         resp, data = wc.request("https://www.strava.com/api/v2/authentication/login", method="POST", body=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if resp.status != 200:
-            return None
+            return (None, None)  # maybe raise an exception instead?
         data = json.loads(data.decode('utf-8'))
         return (data["athlete"]["id"], {"Token": data["token"]})

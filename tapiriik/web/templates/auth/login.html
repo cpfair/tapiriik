@@ -1,5 +1,8 @@
 {% extends "site.html" %}
 {% block content %}
+{% if res == false %}
+<div class="error">There was a problem logging you into {{ service.DisplayName }}</div>
+{% endif %}
 You're logging into {{ serviceid }}
 <form action="{% url 'auth_simple' service=serviceid %}" method="post">
 <input name="username"/>

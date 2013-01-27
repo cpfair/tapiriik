@@ -9,7 +9,6 @@ def auth_login(req, service):
         res = auth_do(req, service)
         if res:
             return redirect("dashboard")
-
     return render(req,"auth/login.html",{"serviceid":service,"service":Service.FromID(service)});
 
 def auth_do(req, service):
