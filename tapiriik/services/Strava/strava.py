@@ -20,4 +20,4 @@ class StravaService:
         if resp.status != 200:
             return None
         data = json.loads(data.decode('utf-8'))
-        return {"ID": data["athlete"]["id"], "AuthorizationToken": data["token"]}
+        return (data["athlete"]["id"], {"Token": data["token"]})

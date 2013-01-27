@@ -3,8 +3,8 @@ from tapiriik.services import Service
 from tapiriik.auth import User
 def authreturn(req, service):
     svc = Service.FromID(service)
-    authRecord = svc.RetrieveAuthenticationToken(req)
-    serviceRecord = Service.GetServiceRecord(svc, authRecord)
+    uid, authData = svc.RetrieveAuthenticationToken(req)
+    serviceRecord = Service.EnsureServiceRecordWithAuthDetails(svc, uid, authData)
     # auth by this service connection
     existingUser = User.AuthByService(serviceRecord)
     if existingUser is not None:

@@ -14,9 +14,9 @@ def auth_login(req, service):
 
 def auth_do(req, service):
     svc = Service.FromID(service)
-    authRecord = svc.Authorize(req.POST["username"], req.POST["password"])
-    if authRecord is not None:
-        serviceRecord = Service.GetServiceRecord(svc, authRecord)
+    uid, authData = svc.Authorize(req.POST["username"], req.POST["password"])
+    if authData is not None:
+        serviceRecord = Service.EnsureServiceRecordWithAuthDetails(svc, uid, authData)
         # auth by this service connection
         existingUser = User.AuthByService(serviceRecord)
         if existingUser is not None:

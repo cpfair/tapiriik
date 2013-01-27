@@ -17,12 +17,10 @@ class Service:
         global UserAuthorizationURL
         for itm in Service.List():
             itm.WebInit()
-            print("post" + itm.UserAuthorizationURL)
 
-    def GetServiceRecord(service, authRecord):
-        authRecord["Service"] = service.ID
-        serviceRecord = db.connections.find_one(authRecord)
+    def EnsureServiceRecordWithAuthDetails(service, uid, authDetails):
+        serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
         if serviceRecord is None:
-            db.connections.insert(authRecord)
-            serviceRecord = db.connections.find_one(authRecord)
+            db.connections.insert({"ExternalID": uid, "Service": service.ID, "Authorization": authDetails})
+            serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
         return serviceRecord

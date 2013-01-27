@@ -8,6 +8,7 @@ class User:
         if req.user == None:
             req.user = User.Create()
             User.Login(req.user, req)
+        return req.user
 
     def Login(user, req):
         req.session["userid"] = str(user["_id"])
