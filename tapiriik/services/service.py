@@ -1,4 +1,3 @@
-#reinventing the interface here
 from tapiriik.services import *
 from tapiriik.database import db
 
@@ -18,9 +17,12 @@ class Service:
         for itm in Service.List():
             itm.WebInit()
 
-    def EnsureServiceRecordWithAuthDetails(service, uid, authDetails):
+    def GetServiceRecordWithAuthDetails(service, authDetails):
+        return db.connections.find_one({"Service": service.ID, "Authorization": authDetails})
+
+    def EnsureServiceRecordWithAuth(service, uid, authDetails):
         serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
         if serviceRecord is None:
-            db.connections.insert({"ExternalID": uid, "Service": service.ID, "Authorization": authDetails})
+            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails})
             serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
         return serviceRecord

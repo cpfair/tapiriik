@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 
 
 class Activity:
@@ -6,6 +7,12 @@ class Activity:
         self.StartTime = startTime
         self.EndTime = endTime
         self.Waypoints = waypointList
+
+    def CalculateUID(self):
+        csp = hashlib.new("md5")
+        csp.update(str(self.StartTime).encode('utf-8'))
+        csp.update(str(self.EndTime).encode('utf-8'))
+        self.UID = csp.hexdigest()
 
 
 class UploadedActivity (Activity):

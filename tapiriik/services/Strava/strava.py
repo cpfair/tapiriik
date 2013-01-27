@@ -22,3 +22,6 @@ class StravaService:
             return (None, None)  # maybe raise an exception instead?
         data = json.loads(data.decode('utf-8'))
         return (data["athlete"]["id"], {"Token": data["token"]})
+
+    def DownloadActivityList(self, svcRecord):
+        return []
