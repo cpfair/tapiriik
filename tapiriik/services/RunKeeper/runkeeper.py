@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SE
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.services.interchange import UploadedActivity
 from django.core.urlresolvers import reverse
-from datetime import datetime
+from datetime import datetime, timedelta
 import httplib2
 import urllib.parse
 import json
@@ -70,7 +70,7 @@ class RunKeeperService():
         for act in data["items"]:
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(act["start_time"], "%a, %d %b %Y %H:%M:%S")
-            activity.EndTime = datetime.strptime(act["start_time"], "%a, %d %b %Y %H:%M:%S")
+            activity.EndTime = activity.StartTime + timedelta(0, round(act["duration"]))  # this is inaccurate with pauses - excluded from hash
             activity.UploadedTo = [serviceRecord]
             activity.CalculateUID()
             activities.append(activity)

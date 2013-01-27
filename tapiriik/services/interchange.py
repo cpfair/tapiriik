@@ -11,8 +11,12 @@ class Activity:
     def CalculateUID(self):
         csp = hashlib.new("md5")
         csp.update(str(self.StartTime).encode('utf-8'))
-        csp.update(str(self.EndTime).encode('utf-8'))
+        # csp.update(str(self.EndTime).encode('utf-8'))
         self.UID = csp.hexdigest()
+
+    def __str__(self):
+        return "Activity Start "+str(self.StartTime)+" End " + str(self.EndTime)
+    __repr__ = __str__
 
 
 class UploadedActivity (Activity):
