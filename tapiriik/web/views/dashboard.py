@@ -1,7 +1,12 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import ensure_csrf_cookie
+from tapiriik.services import Service
 
+
+@ensure_csrf_cookie
 def dashboard(req):
-    if req.user is not None:
-        req.user["ConnectedServiceIDs"]=[x["Service"] for x in req.user["ConnectedServices"]] if "ConnectedServices" in req.user else []
-    return render(req,"dashboard.html",{"user": req.user})
+    user = req.user
+    
+
+    return render(req,"dashboard.html",{"user": user})

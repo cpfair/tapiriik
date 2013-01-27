@@ -1,13 +1,24 @@
 {% extends "site.html" %}
+{% load services %}
 {% block content %}
-<h2>Providers</h2>
-{% for provider in service_providers %}
-<div style="display:inline-block;">
-	<h3>{{ provider.ID }}</h3>
-	{% if provider.ID in user.ConnectedServiceIDs %} Connected {% endif %}
-	<a href="{{ provider.UserAuthorizationURL }}">Login</a>
-</div>
-{% endfor %}
+
+{% if user != none %}
+	{% for provider in user.ConnectedServices|svc_providers %}
+	{% include "servicebutton.html" with service=provider %}
+	{% endfor %}
+	{% if user.ConnectedServices|svc_providers|svc_except|length != 0 %}
+		<hr>
+		{% for provider in user.ConnectedServices|svc_providers|svc_except %}
+			{% include "servicebutton.html" with service=provider inactive=True %}
+		{% endfor %}
+	{% endif %}
+{% else %}
+	{% for provider in service_providers %}
+	{% include "servicebutton.html" with service=provider %}
+	{% endfor %}
+{% endif %}
+
+
 
 <h2>User</h2>
 {{ user }}

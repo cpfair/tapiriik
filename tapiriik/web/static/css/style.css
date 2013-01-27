@@ -15,6 +15,7 @@ body {
 	position:absolute;
 	height:100%;
 	width:100%;
+	padding:10px 0;
 }
 
 .contentWrap {
@@ -24,26 +25,74 @@ body {
 	vertical-align:middle;
 }
 
-.contentOuterBorder {
-	position:relative;
-	margin-left:-480px;
-	left:50%;
-	width:960px;
+.contentOuterBorder, .popoverOuterBorder {
 	border-radius:10px;
 	padding:1px 0;
 	background-color:rgba(255,255,255,0.35);
 }
 
-.content {
-	text-align:left;
+.content, .popoverInner {
 	margin:14px 15px;
 	background-color:white;
 	border-radius: 10px;
 	border:1px solid transparent;
-	font-family:Economica;
-	font-size:130%; /* damn font is unreadable */
 	padding:10px;
+	font-family:Economica;
 }
+
+.contentOuterBorder {
+	position:relative;
+	margin-left:-480px;
+	left:50%;
+	width:960px;
+}
+
+.content {
+	font-size:130%; /* damn font is unreadable */
+	color:white;
+}
+
+.popover {
+	z-index:101;
+	position:absolute;
+	display:inline-block;
+	left:0;
+	top:0;
+	margin-top:20px;
+	min-width:200px;
+}
+
+.popoverArrow {
+	top:-20px;
+	left:50%;
+	margin-left: -20px;
+	width:0;
+	height:0;
+	position:absolute;
+	border-bottom:20px solid rgba(255,255,255,0.35);
+	border-left:20px solid transparent;
+	border-right:20px solid transparent;
+}
+.popoverArrowInner {
+	position: absolute;
+	
+	margin-top:15px;
+	left:-20px;
+	border-bottom:20px solid white;
+	border-right:20px solid transparent;
+	border-left:20px solid transparent;
+}
+
+.popover iframe {
+	border:0;
+}
+
+.popover iframe#runkeeper {
+	width:400px;
+	height:550px;
+}
+
+
 
 .logo {
 	width:100%;
@@ -53,15 +102,23 @@ body {
 	color:white;
 	font-family:Economica;
 	font-weight:bold;
-	margin-top:-110px;
+	margin-top:-130px;
+}
+.logo .sub {
+	font-size:30%;
 }
 .footers {
 	margin-top:5px;
 	font-family:Economica;
 	color:white;
 }
+
 .environsWrap {
-	position:static;
+	position:fixed;
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
 }
 
 .environs {
@@ -105,4 +162,113 @@ body {
 	border-radius:100px;
 	border:100px solid #FFF;
 
+}
+
+hr {
+	border:0;
+	border-bottom:1px dashed #8ec1da;
+}
+
+form {
+	text-align:left;
+}
+
+form label {
+	display:block;
+	font-size:140%;
+}
+form input {
+	font-size:120%;
+}
+
+form button {
+	font-family: Economica;
+	font-weight:bold;
+	font-size:150%;
+	text-align: center;
+	display:inline-block;
+	border:0;
+	padding:10px;
+	border-radius:5px;
+	background-color:#c0deed;
+	color:white;
+	margin:10px;
+	margin-bottom:0;
+	cursor:pointer;
+}
+
+form button.disabled {
+	background-color:#eee;
+	cursor:not-allowed;
+}
+form .error {
+	display:none;
+	color:#900;
+	border-bottom:1px dotted #900;
+	font-size:120%;
+}
+.service {
+	width:175px;
+	position:relative;
+	display:inline-block;
+	margin:10px;
+}
+
+.service.inactive {
+	opacity:0.7;
+}
+
+.service .button {
+	position: relative;
+	background-color:#c0deed;
+	text-align: center;
+	border-radius:5px;
+	z-index:2;
+	cursor:pointer;
+}
+
+.service .controls {
+	z-index:1;
+	margin-top:-5px;
+	padding: 3px 5px;
+	padding-top:5px;
+	color:white;
+	background-color:#8ec1da;
+	border-bottom-left-radius:5px;
+	border-bottom-right-radius:5px;
+}
+
+.service .icon {
+	position: relative;
+	padding:5px;
+	height:40px;
+	line-height:35px;
+	vertical-align: middle;
+}
+
+.service .icon img {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.service .control {
+	text-decoration: none;
+	color:white;
+	padding-left:19px;
+	background-repeat:no-repeat;
+	background-position: center left;
+}
+
+.service .control#login {
+	background-image:url('../img/link.png');
+}
+
+.service .control#sync-ok {
+	background-image:url('../img/sync-ok.png');	
+	padding-left:17px;
+	background-position: 0% 65%;
+}
+
+.service .control#sync-fail {
+	background-image:url('../img/sync-fail.png');	
 }

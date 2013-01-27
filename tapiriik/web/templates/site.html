@@ -2,6 +2,9 @@
 <html>
 <head>
     <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css" />
+    <script src="//code.jquery.com/jquery-1.8.0.min.js"></script>
+    <script src="{{ STATIC_URL }}js/jquery.address-1.5.min.js"></script>
+    <script src="{{ STATIC_URL }}js/tapiriik.js"></script>
     <title>{% block title %}{% endblock %} &bull; tapariik </title>
 </head>
 
@@ -10,20 +13,23 @@
 	<!-- I blame centre-aligning -->
 	<div class="contentOuter">
 		<div class="contentWrap">
-			<div class="logo">
-				tapiriik
-			</div>
-			<div class="contentOuterBorder">
-				<div class="content">
-	    			{% block content %}{% endblock %}
+			<div class="mainBlock">
+				<div class="logo">
+					tapiriik
+					<div class="sub">keeps your fitness in sync</div>
+				</div>
+				<div class="contentOuterBorder">
+					<div class="content">
+		    			{% block content %}{% endblock %}
+		    		</div>
 	    		</div>
-    		</div>
-    		<div class="footers">
-    			FOOTER FOOTER FOOTER
-    		</div>
+	    		<div class="footers">
+	    			FOOTER FOOTER FOOTER
+	    		</div>
+	    	</div>
     	</div>
     </div>
-
+    
     <!-- I should procedurally generate these -->
     <div class="environsWrap">
 	    <div class="environs">
@@ -33,6 +39,8 @@
 	    	<div class="sun"></div>
 	    </div>
 	</div>
+
+	
 
 </body>
 </html>
