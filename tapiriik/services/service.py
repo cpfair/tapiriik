@@ -25,4 +25,6 @@ class Service:
         if serviceRecord is None:
             db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails})
             serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
+        if serviceRecord["Authorization"] != authDetails:
+            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails}})
         return serviceRecord
