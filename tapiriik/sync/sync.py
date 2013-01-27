@@ -8,7 +8,7 @@ class Sync:
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
 
     def PerformUserSync(user):
-        connectedServiceIds = user["ConnectedServices"]
+        connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
         activities = []
 

@@ -19,7 +19,7 @@ class User:
         return db.users.find_one({"_id": uid})
 
     def ConnectService(user, serviceRecord):
-        existingUser = db.users.find_one({"_id": {'$ne': user["_id"]}, "ConnectedServices": {'$in': [serviceRecord["_id"]]}})
+        existingUser = db.users.find_one({"_id": {'$ne': user["_id"]}, "ConnectedServices.ID": {'$in': [serviceRecord["_id"]]}})
         if "ConnectedServices" not in user:
             user["ConnectedServices"] = []
         delta = False
@@ -29,15 +29,15 @@ class User:
             delta = True
             db.users.delete({"_id": existingUser["_id"]})
         else:
-            if serviceRecord["_id"] not in user["ConnectedServices"]:
-                user["ConnectedServices"].append(serviceRecord["_id"])
+            if serviceRecord["_id"] not in [x["ID"] for x in user["ConnectedServices"]]:
+                user["ConnectedServices"].append({"Service": serviceRecord["Service"], "ID": serviceRecord["_id"]})
                 delta = True
         db.users.update({"_id": user["_id"]}, {"$set": {"ConnectedServices": user["ConnectedServices"]}})
         if delta:
             Sync.ScheduleImmediateSync(user)
 
     def AuthByService(serviceRecord):
-        return db.users.find_one({"ConnectedServices": {'$in': [serviceRecord["_id"]]}})
+        return db.users.find_one({"ConnectedServices.ID": {'$in': [serviceRecord["_id"]]}})
 
 
 class SessionAuth:
