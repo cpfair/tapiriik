@@ -4,9 +4,13 @@
 
 <h2>Providers</h2>
 {% for provider in service_providers %}
-{{ provider.ID }}
-<a href="{{ provider.UserAuthorizationURL }}">Login</a>
+<div>
+	<h3>{{ provider.ID }}</h3>
+	{% if provider.ID in user.ConnectedServiceIDs %} Connected {% endif %}
+	<a href="{{ provider.UserAuthorizationURL }}">Login</a>
+</div>
 {% endfor %}
 
-YOU ARE USER {{ user }}
+<h2>User</h2>
+{{ user }}
 {% endblock %}
