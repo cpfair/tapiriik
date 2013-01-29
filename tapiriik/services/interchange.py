@@ -11,7 +11,6 @@ class Activity:
     def CalculateUID(self):
         csp = hashlib.new("md5")
         csp.update(str(self.StartTime).encode('utf-8'))
-        # csp.update(str(self.EndTime).encode('utf-8'))
         self.UID = csp.hexdigest()
 
     def __str__(self):
@@ -20,7 +19,15 @@ class Activity:
 
 
 class UploadedActivity (Activity):
-    pass  # will contain list of which service instances contain this activity
+    pass  # will contain list of which service instances contain this activity - not really merited
+
+
+class WaypointType:
+    Start = 0
+    Regular = 1
+    Pause = 11
+    Resume = 12
+    End = 100
 
 
 class WaypointType:
