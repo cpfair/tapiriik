@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
 from tapiriik.services.service_authentication import ServiceAuthenticationType
-from tapiriik.services.interchange import UploadedActivity, WaypointType, Waypoint, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import db
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -14,6 +14,22 @@ class RunKeeperService():
     DisplayName = "RunKeeper"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserAuthorizationURL = None
+
+    _activityMappings = {"Running": ActivityType.Running,
+                         "Cycling": ActivityType.Cycling,
+                         "Mountain Biking": ActivityType.MountainBiking,
+                         "Walking": ActivityType.Walking,
+                         "Hiking": ActivityType.Hiking,
+                         "Downhill Skiing": ActivityType.DownhillSkiing,
+                         "Cross-Country Skiing": ActivityType.CrossCountrySkiing,
+                         "Snowboarding": ActivityType.Snowboarding,
+                         "Skating": ActivityType.Skating,
+                         "Swimming": ActivityType.Swimming,
+                         "Wheelchair": ActivityType.Wheelchair,
+                         "Rowing": ActivityType.Rowing,
+                         "Elliptical": ActivityType.Elliptical,
+                         "Other": ActivityType.Other}
+    SupportedActivities = [x for x in _activityMappings]
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
@@ -72,6 +88,9 @@ class RunKeeperService():
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(act["start_time"], "%a, %d %b %Y %H:%M:%S")
             activity.EndTime = activity.StartTime + timedelta(0, round(act["duration"]))  # this is inaccurate with pauses - excluded from hash
+            if act["type"] in self._activityMappings:
+                activity.Type = self._activityMappings[act["type"]]
+
             activity.UploadedTo = [{"Connection":serviceRecord, "RideID":act["uri"]}]
             activity.CalculateUID()
             activities.append(activity)

@@ -1,17 +1,20 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.database import db
-from tapiriik.services.interchange import UploadedActivity
+from tapiriik.services.interchange import UploadedActivity, ActivityType
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import httplib2
 import urllib.parse
 import json
 
+
 class StravaService:
     ID = "strava"
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
+
+    SupportedActivities = [ActivityType.Running, ActivityType.Cycling]
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})

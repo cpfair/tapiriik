@@ -32,12 +32,13 @@ class Sync:
                 multi=True)
             # python really needs LINQ
             recipientServices = serviceConnections
+            recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities]
             recipientServices = [conn for conn in recipientServices if "SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"]]
-            if len(recipientServices)==0:
+
+            if len(recipientServices) == 0:
                 continue
             # download the full activity record
-            print("Activity "+str(activity.UID)+" to "+str([x["Service"] for x in recipientServices]))
-            dlSvcRecord = activity.UploadedTo[0]["Connection"] # I guess in the future we could smartly chose which for >1
+            print("Activity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
+            dlSvcRecord = activity.UploadedTo[0]["Connection"]  # I guess in the future we could smartly choose which for >1
             dlSvc = Service.FromID(dlSvcRecord["Service"])
             dlSvc.DownloadActivity(dlSvcRecord, activity)
-            

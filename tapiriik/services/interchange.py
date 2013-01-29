@@ -2,10 +2,28 @@ from datetime import datetime
 import hashlib
 
 
+class ActivityType:  # taken from RK API docs. The text values have no meaning except for debugging
+    Running = "Running"
+    Cycling = "Cycling"
+    MountainBiking = "MtnBiking"
+    Walking = "Walking"
+    Hiking = "Hiking"
+    DownhillSkiing = "DownhillSkiing"
+    CrossCountrySkiing = "XCSkiing"
+    Snowboarding = "Snowboarding"
+    Skating = "Skating"
+    Swimming = "Swimming"
+    Wheelchair = "Wheelchair"
+    Rowing = "Rowing"
+    Elliptical = "Elliptical"
+    Other = "Other"
+
+
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, waypointList=[]):
+    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, waypointList=[]):
         self.StartTime = startTime
         self.EndTime = endTime
+        self.Type = actType
         self.Waypoints = waypointList
 
     def CalculateUID(self):
@@ -14,7 +32,7 @@ class Activity:
         self.UID = csp.hexdigest()
 
     def __str__(self):
-        return "Activity Start " + str(self.StartTime) + " End " + str(self.EndTime)
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__
 
 
@@ -30,21 +48,13 @@ class WaypointType:
     End = 100
 
 
-class WaypointType:
-    Start = 0
-    Regular = 1
-    Pause = 11
-    Resume = 12
-    End = 100
-
-
 class Waypoint:
-    def __init__(self, timestamp=None, type=None, location=None, hr=None, power=None):
-        self.Timestamp = timestamp or datetime.min
+    def __init__(self, timestamp=datetime.min, ptType=WaypointType.Regular, location=None, hr=None, power=None):
+        self.Timestamp = timestamp
         self.Location = location
         self.HR = hr
         self.Power = power  # I doubt there will ever be more parameters than this in terms of interchange
-        self.Type = type or WaypointType.Regular
+        self.Type = ptType
 
     def __str__(self):
         return "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + " HR " + str(self.HR)
