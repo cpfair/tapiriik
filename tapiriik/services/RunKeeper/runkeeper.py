@@ -1,6 +1,7 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.services.interchange import UploadedActivity
+from tapiriik.database import db
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import httplib2
@@ -71,7 +72,18 @@ class RunKeeperService():
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(act["start_time"], "%a, %d %b %Y %H:%M:%S")
             activity.EndTime = activity.StartTime + timedelta(0, round(act["duration"]))  # this is inaccurate with pauses - excluded from hash
-            activity.UploadedTo = [serviceRecord]
+            activity.UploadedTo = [{"Connection":serviceRecord, "RideID":act["uri"]}]
             activity.CalculateUID()
             activities.append(activity)
         return activities
+
+    def DownloadActivity(self, serviceRecord, activity):
+        rideId = [x["RideID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        ridedata = db.rk_data_cache.find_one({"uri":rideId});
+        if ridedata is None:
+            wc = httplib2.Http()
+            resp, ridedata = wc.request("https://api.runkeeper.com"+rideId, headers=self._apiHeaders(serviceRecord))
+            ridedata = json.loads(ridedata.decode('utf-8'))
+            db.rk_data_cache.insert(ridedata)
+        
+        
