@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
 from tapiriik.services.service_authentication import ServiceAuthenticationType
-from tapiriik.services.interchange import UploadedActivity
+from tapiriik.services.interchange import UploadedActivity, WaypointType, Waypoint, Location
 from tapiriik.database import db
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -79,11 +79,34 @@ class RunKeeperService():
 
     def DownloadActivity(self, serviceRecord, activity):
         rideId = [x["RideID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        ridedata = db.rk_data_cache.find_one({"uri":rideId});
+        ridedata = db.rk_activity_cache.find_one({"uri": rideId})
         if ridedata is None:
             wc = httplib2.Http()
-            resp, ridedata = wc.request("https://api.runkeeper.com"+rideId, headers=self._apiHeaders(serviceRecord))
+            resp, ridedata = wc.request("https://api.runkeeper.com" + rideId, headers=self._apiHeaders(serviceRecord))
             ridedata = json.loads(ridedata.decode('utf-8'))
-            db.rk_data_cache.insert(ridedata)
-        
-        
+            db.rk_activity_cache.insert(ridedata)
+
+        activity.Waypoints = []
+
+        #  path is the primary stream, HR/power/etc must have fewer pts
+        hasHR = "heart_rate" in ridedata and len(ridedata["heart_rate"]) > 0
+        for pathpoint in ridedata["path"]:
+            waypoint = Waypoint(activity.StartTime + timedelta(0, pathpoint["timestamp"]))
+            waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"])
+
+            if pathpoint["type"] == "start":
+                waypoint.Type = WaypointType.Start
+            elif pathpoint["type"] == "pause":
+                waypoint.Type = WaypointType.Pause
+            elif pathpoint["type"] == "resume":
+                waypoint.Type = WaypointType.Resume
+            elif pathpoint["type"] == "end":
+                waypoint.Type = WaypointType.End
+
+            if hasHR:
+                hrpoint = [x for x in ridedata["heart_rate"] if x["timestamp"] == pathpoint["timestamp"]]
+                if len(hrpoint) > 0:
+                    waypoint.HR = hrpoint[0]["heart_rate"]
+            activity.Waypoints.append(waypoint)
+
+        return activity
