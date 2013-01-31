@@ -15,6 +15,9 @@ class StravaService:
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
     SupportedActivities = [ActivityType.Running, ActivityType.Cycling]
+    SupportsHR = True
+    SupportsPower = True
+    SupportsCalories = False  # don't think it does
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})

@@ -31,6 +31,11 @@ class RunKeeperService():
                          "Other": ActivityType.Other}
     SupportedActivities = [x for x in _activityMappings]
 
+    SupportsHR = True
+    SupportsPower = False
+    SupportsCalories = True
+
+
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
 

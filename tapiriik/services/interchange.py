@@ -51,10 +51,11 @@ class WaypointType:
 
 
 class Waypoint:
-    def __init__(self, timestamp=datetime.min, ptType=WaypointType.Regular, location=None, hr=None, power=None):
+    def __init__(self, timestamp=datetime.min, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None):
         self.Timestamp = timestamp
         self.Location = location
         self.HR = hr
+        self.Calories = calories
         self.Power = power  # I doubt there will ever be more parameters than this in terms of interchange
         self.Type = ptType
 
