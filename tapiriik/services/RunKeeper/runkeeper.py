@@ -91,17 +91,17 @@ class RunKeeperService():
             if act["type"] in self._activityMappings:
                 activity.Type = self._activityMappings[act["type"]]
 
-            activity.UploadedTo = [{"Connection":serviceRecord, "RideID":act["uri"]}]
+            activity.UploadedTo = [{"Connection":serviceRecord, "ActivityID":act["uri"]}]
             activity.CalculateUID()
             activities.append(activity)
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
-        rideId = [x["RideID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        ridedata = db.rk_activity_cache.find_one({"uri": rideId})
+        ActivityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        ridedata = db.rk_activity_cache.find_one({"uri": ActivityID})
         if ridedata is None:
             wc = httplib2.Http()
-            resp, ridedata = wc.request("https://api.runkeeper.com" + rideId, headers=self._apiHeaders(serviceRecord))
+            resp, ridedata = wc.request("https://api.runkeeper.com" + ActivityID, headers=self._apiHeaders(serviceRecord))
             ridedata = json.loads(ridedata.decode('utf-8'))
             db.rk_activity_cache.insert(ridedata)
 

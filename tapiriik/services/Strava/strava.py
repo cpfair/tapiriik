@@ -51,7 +51,7 @@ class StravaService:
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
             activity.EndTime = activity.StartTime + timedelta(0, ridedata["elapsed_time"])
-            activity.UploadedTo = [{"Connection": svcRecord, "RideID": ride["id"]}]
+            activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
             activity.CalculateUID()
             activities.append(activity)
 
