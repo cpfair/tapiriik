@@ -9,17 +9,6 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': '',                      # Or path to database file if using sqlite3.
-        # The following settings are not used with sqlite3:
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-        'PORT': '',                      # Set to empty string for default.
-    }
-}
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -93,7 +82,6 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'tapiriik.web.startup.ServiceWebStartup',
     'tapiriik.auth.SessionAuth'
@@ -115,13 +103,10 @@ TEMPLATE_DIRS = (
     "I:/wamp/www/tapiriik/tapiriik/web/templates",
 )
 
-TEMPLATE_CONTEXT_PROCESSORS = ('tapiriik.web.context_processors.providers','django.core.context_processors.static',)
+TEMPLATE_CONTEXT_PROCESSORS = ('tapiriik.web.context_processors.providers', 'django.core.context_processors.static',)
 
 INSTALLED_APPS = (
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tapiriik.web',
@@ -159,6 +144,8 @@ LOGGING = {
         },
     }
 }
+
+TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
 WEB_ROOT = 'http://localhost:8000'
 

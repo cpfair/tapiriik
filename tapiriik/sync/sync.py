@@ -9,11 +9,12 @@ class Sync:
 
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
-        recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities]
-        recipientServices = [conn for conn in recipientServices if "SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"]]
+        recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities
+                                                                    and ("SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"])
+                                                                    and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
-    def _accumulateActivitiesToSync(svc, svcActivities, activityList):
+    def _accumulateActivities(svc, svcActivities, activityList):
         for act in svcActivities:
                 existElsewhere = [x for x in activityList if x.UID == act.UID]
                 if len(existElsewhere) > 0:
@@ -29,7 +30,7 @@ class Sync:
         for conn in serviceConnections:
             svc = Service.FromID(conn["Service"])
             svcActivities = svc.DownloadActivityList(conn)
-            Sync._accumulateActivitiesToSync(svc, svcActivities, activities)
+            Sync._accumulateActivities(svc, svcActivities, activities)
 
         for activity in activities:
             print (str(activity) + " from " + activity.UploadedTo[0]["Connection"]["Service"] + " ct " + str(len(activity.UploadedTo)))

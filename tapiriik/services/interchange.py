@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 
 
@@ -28,7 +28,9 @@ class Activity:
 
     def CalculateUID(self):
         csp = hashlib.new("md5")
-        csp.update(str(self.StartTime).encode('utf-8'))
+        roundedStartTime = self.StartTime
+        roundedStartTime = roundedStartTime - timedelta(microseconds=roundedStartTime.microsecond)
+        csp.update(str(roundedStartTime).encode('utf-8'))
         self.UID = csp.hexdigest()
 
     def __str__(self):

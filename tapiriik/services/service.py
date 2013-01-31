@@ -1,12 +1,14 @@
 from tapiriik.services import *
 from tapiriik.database import db
 
+
 class Service:
+    _serviceMappings = {"runkeeper": RunKeeper,
+                        "strava": Strava}
+
     def FromID(id):
-        if id=="runkeeper":
-            return RunKeeper
-        elif id=="strava":
-            return Strava
+        if id in Service._serviceMappings:
+            return Service._serviceMappings[id]
         raise ValueError
 
     def List():
