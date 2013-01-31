@@ -18,7 +18,7 @@ class InterchangeTests(TestCase):
         actA = Activity()
         actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
         actB = Activity()
-        actB.StartTime = datetime(1, 2, 3, 4, 5, 6, 7) + timedelta(0, random.random() / 2)
+        actB.StartTime = datetime(1, 2, 3, 4, 5, 6, 7) + timedelta(0, 0.1337)
 
         actA.CalculateUID()
         actB.CalculateUID()
