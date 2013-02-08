@@ -3,13 +3,19 @@
 {% block content %}
 
 {% if user != none %}
-	{% for provider in user.ConnectedServices|svc_providers %}
-	{% include "servicebutton.html" with service=provider %}
-	{% endfor %}
+	<div class="sync-connector"></div>
+	<div class="sync-inter">
+		{% for provider in user.ConnectedServices|svc_providers %}
+		{% include "servicebutton.html" with service=provider %}
+		{% if provider != user.ConnectedServices|svc_providers|last %}
+		<div class="sync-interdot"></div>
+		{% endif %}
+		{% endfor %}
+	</div>
 	{% if user.ConnectedServices|svc_providers|svc_except|length != 0 %}
 		<hr>
 		{% for provider in user.ConnectedServices|svc_providers|svc_except %}
-			{% include "servicebutton.html" with service=provider inactive=True %}
+			{% include "servicebutton.html" with service=provider inactive=True %} 
 		{% endfor %}
 	{% endif %}
 {% else %}
@@ -20,6 +26,5 @@
 
 
 
-<h2>User</h2>
-{{ user }}
+
 {% endblock %}

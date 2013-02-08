@@ -207,11 +207,34 @@ form .error {
 	border-bottom:1px dotted #900;
 	font-size:120%;
 }
+
+.sync-connector {
+	position:absolute;
+	left:15px;
+	right:15px;
+	top:55px;
+	height:32px;
+	background-image:url("../img/connector-dot.png");
+	background-position: -15px 0;
+}
+.sync-inter {
+	position: relative;
+	display:inline-block;
+	background-color:white;
+}
+.sync-interdot {
+	display:inline-block;
+	background-image:url("../img/connector-dot.png");
+	width:96px;
+	height:32px;
+	vertical-align: 65%;
+}
 .service {
 	width:175px;
 	position:relative;
 	display:inline-block;
 	margin:10px;
+	line-height:100%;
 }
 
 .service.inactive {
