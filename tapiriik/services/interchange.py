@@ -37,6 +37,11 @@ class Activity:
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__
 
+    def __eq__(self, other):
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
@@ -61,6 +66,12 @@ class Waypoint:
         self.Cadence = cadence  # dammit this better be the last one
         self.Type = ptType
 
+    def __eq__(self, other):
+        return self.Timestamp == other.Timestamp and self.Location == other.Location and self.HR == other.HR and self.Calories == other.Calories and self.Temp == other.Temp and self.Cadence == other.Cadence and self.Type == other.Type and self.Power == other.Power
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __str__(self):
         return "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + " HR " + str(self.HR)
     __repr__ = __str__
@@ -72,3 +83,9 @@ class Location:
         self.Longitude = lon
         self.Altitude = alt
         self.Datum = "WGS84"  # might eventually need to make this... better
+
+    def __eq__(self, other):
+        return self.Latitude == other.Latitude and self.Longitude == other.Longitude and self.Altitude == other.Altitude and self.Datum == other.Datum
+
+    def __ne__(self, other):
+        return not self.__eq__(other)

@@ -1,3 +1,5 @@
+from unittest import TestCase
+
 from tapiriik.services import Service
 from tapiriik.services.interchange import Activity, ActivityType, Waypoint, WaypointType, Location
 
@@ -15,6 +17,33 @@ class MockServiceB:
     SupportedActivities = [ActivityType.Rowing, ActivityType.Wheelchair]
 
 
+class TapiriikTestCase(TestCase):
+    def assertActivitiesEqual(self, a, b):
+        ''' compare activity records with more granular asserts '''
+        if a == b:
+            return
+        else:
+            self.assertEqual(a.StartTime, b.StartTime)
+            self.assertEqual(a.EndTime, b.EndTime)
+            self.assertEqual(a.Type, b.Type)
+            self.assertEqual(len(a.Waypoints), len(b.Waypoints))
+            for idx in range(0, len(a.Waypoints)-1):
+                self.assertEqual(a.Waypoints[idx].Timestamp, b.Waypoints[idx].Timestamp)
+                self.assertEqual(a.Waypoints[idx].Location.Latitude, b.Waypoints[idx].Location.Latitude)
+                self.assertEqual(a.Waypoints[idx].Location.Longitude, b.Waypoints[idx].Location.Longitude)
+                self.assertEqual(a.Waypoints[idx].Location.Altitude, b.Waypoints[idx].Location.Altitude)
+                self.assertEqual(a.Waypoints[idx].Type, b.Waypoints[idx].Type)
+                self.assertEqual(a.Waypoints[idx].HR, b.Waypoints[idx].HR)
+                self.assertEqual(a.Waypoints[idx].Calories, b.Waypoints[idx].Calories)
+                self.assertEqual(a.Waypoints[idx].Power, b.Waypoints[idx].Power)
+                self.assertEqual(a.Waypoints[idx].Cadence, b.Waypoints[idx].Cadence)
+                self.assertEqual(a.Waypoints[idx].Temp, b.Waypoints[idx].Temp)
+
+                self.assertEqual(a.Waypoints[idx].Location, b.Waypoints[idx].Location)
+                self.assertEqual(a.Waypoints[idx], b.Waypoints[idx])
+            self.assertEqual(a, b)
+
+
 class TestTools:
     def create_mock_svc_record(svc):
         return {"Service": svc.ID}
@@ -22,7 +51,7 @@ class TestTools:
     def create_mock_upload_record(svc):
         return {"ActivityID": random.randint(1, 1000), "Connection": TestTools.create_mock_svc_record(svc)}
 
-    def create_random_activity(svc, actType):
+    def create_random_activity(svc, actType=ActivityType.Other):
         ''' creates completely random activity with valid waypoints and data '''
         act = Activity()
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
@@ -45,7 +74,11 @@ class TestTools:
             if svc.SupportsPower:
                 wp.Power = random.randint(0, 1000)
             if svc.SupportsCalories:
-                wp.Calories = random.randomint(0, 500)
+                wp.Calories = random.randint(0, 500)
+            if svc.SupportsCadence:
+                wp.Cadence = random.randint(0, 100)
+            if svc.SupportsTemp:
+                wp.Temp = random.randint(0, 100)
 
             if random.randint(40, 50) == 42:  # pause quite often
                 wp.Type = WaypointType.Pause
@@ -59,7 +92,6 @@ class TestTools:
             if waypointTime > act.EndTime:
                 wp.Timestamp = act.EndTime
                 wp.Type = WaypointType.End
-
             act.Waypoints.append(wp)
         return act
 

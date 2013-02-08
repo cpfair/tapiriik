@@ -29,12 +29,15 @@ class RunKeeperService():
                          "Rowing": ActivityType.Rowing,
                          "Elliptical": ActivityType.Elliptical,
                          "Other": ActivityType.Other}
-    SupportedActivities = [x for x in _activityMappings]
+    SupportedActivities = list(_activityMappings.values())
 
     SupportsHR = True
-    SupportsPower = False
     SupportsCalories = True
+    SupportsCadence = False
+    SupportsTemp = False
+    SupportsPower = False
 
+    _wayptTypeMappings = {"start": WaypointType.Start, "end": WaypointType.End, "pause": WaypointType.Pause, "resume": WaypointType.Resume}
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
@@ -90,47 +93,92 @@ class RunKeeperService():
         data = json.loads(data.decode('utf-8'))
         activities = []
         for act in data["items"]:
-            activity = UploadedActivity()
-            activity.StartTime = datetime.strptime(act["start_time"], "%a, %d %b %Y %H:%M:%S")
-            activity.EndTime = activity.StartTime + timedelta(0, round(act["duration"]))  # this is inaccurate with pauses - excluded from hash
-            if act["type"] in self._activityMappings:
-                activity.Type = self._activityMappings[act["type"]]
-
+            activity = self._populateActivity(act)
             activity.UploadedTo = [{"Connection":serviceRecord, "ActivityID":act["uri"]}]
-            activity.CalculateUID()
             activities.append(activity)
         return activities
 
+    def _populateActivity(self, rawRecord):
+        ''' Populate the 1st level of the activity object with all details required for UID from RK API data '''
+        activity = UploadedActivity()
+        activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
+        activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
+        if rawRecord["type"] in self._activityMappings:
+            activity.Type = self._activityMappings[rawRecord["type"]]
+
+        activity.CalculateUID()
+        return activity
+
     def DownloadActivity(self, serviceRecord, activity):
-        ActivityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        ridedata = db.rk_activity_cache.find_one({"uri": ActivityID})
+        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        ridedata = db.rk_activity_cache.find_one({"uri": activityID})
         if ridedata is None:
             wc = httplib2.Http()
-            resp, ridedata = wc.request("https://api.runkeeper.com" + ActivityID, headers=self._apiHeaders(serviceRecord))
+            resp, ridedata = wc.request("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             ridedata = json.loads(ridedata.decode('utf-8'))
             db.rk_activity_cache.insert(ridedata)
 
+        self._populateActivityWaypoints(ridedata, activity)
+
+        return activity
+
+    def _populateActivityWaypoints(self, rawData, activity):
+        ''' populate the Waypoints collection from RK API data '''
         activity.Waypoints = []
 
         #  path is the primary stream, HR/power/etc must have fewer pts
-        hasHR = "heart_rate" in ridedata and len(ridedata["heart_rate"]) > 0
-        for pathpoint in ridedata["path"]:
+        hasHR = "heart_rate" in rawData and len(rawData["heart_rate"]) > 0
+        hasCalories = "calories" in rawData and len(rawData["calories"]) > 0
+        for pathpoint in rawData["path"]:
             waypoint = Waypoint(activity.StartTime + timedelta(0, pathpoint["timestamp"]))
             waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"])
-
-            if pathpoint["type"] == "start":
-                waypoint.Type = WaypointType.Start
-            elif pathpoint["type"] == "pause":
-                waypoint.Type = WaypointType.Pause
-            elif pathpoint["type"] == "resume":
-                waypoint.Type = WaypointType.Resume
-            elif pathpoint["type"] == "end":
-                waypoint.Type = WaypointType.End
+            waypoint.Type = self._wayptTypeMappings[pathpoint["type"]] if pathpoint["type"] in self._wayptTypeMappings else WaypointType.Regular
 
             if hasHR:
-                hrpoint = [x for x in ridedata["heart_rate"] if x["timestamp"] == pathpoint["timestamp"]]
+                hrpoint = [x for x in rawData["heart_rate"] if x["timestamp"] == pathpoint["timestamp"]]
                 if len(hrpoint) > 0:
                     waypoint.HR = hrpoint[0]["heart_rate"]
+            if hasCalories:
+                calpoint = [x for x in rawData["calories"] if x["timestamp"] == pathpoint["timestamp"]]
+                if len(calpoint) > 0:
+                    waypoint.Calories = calpoint[0]["calories"]
+
             activity.Waypoints.append(waypoint)
 
-        return activity
+    def UploadActivity(self, serviceRecord, activity):
+        #  assembly dict to post to RK
+        pass
+
+    def _createUploadData(self, activity):
+        ''' create data dict for posting to RK API '''
+        record = {}
+
+        record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
+        record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
+        record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
+
+        record["path"] = []
+        record["heart_rate"] = []
+        record["calories"] = []
+        for waypoint in activity.Waypoints:
+            timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
+            
+            
+            if waypoint.Type in self._wayptTypeMappings.values():
+                wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
+            else:
+                wpType = "gps"  # meh
+
+            record["path"].append({"timestamp": timestamp,
+                                    "latitude": waypoint.Location.Latitude,
+                                    "longitude": waypoint.Location.Longitude,
+                                    "altitude": waypoint.Location.Altitude,
+                                    "type": wpType})
+
+            if waypoint.HR is not None:
+                record["heart_rate"].append({"timestamp": timestamp, "heart_rate": waypoint.HR})
+
+            if waypoint.Calories is not None:
+                record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+
+        return record
