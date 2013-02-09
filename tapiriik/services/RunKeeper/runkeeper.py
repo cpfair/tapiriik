@@ -1,5 +1,6 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
 from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import db
 from django.core.urlresolvers import reverse
@@ -52,7 +53,7 @@ class RunKeeperService():
         #return urllib.parse.urlencode(params)
         resp, data = wc.request("https://runkeeper.com/apps/token", method="POST", body=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if resp.status != 200:
-            raise ValueError("Invalid code")
+            raise APIAuthorizationException("Invalid code", None)
         token = json.loads(data.decode('utf-8'))["access_token"]
 
         # hacky, but also totally their fault for not giving the user id in the token req
@@ -90,6 +91,10 @@ class RunKeeperService():
         uris = self._getAPIUris(serviceRecord)
         wc = httplib2.Http()
         resp, data = wc.request(uris["fitness_activities"], headers=self._apiHeaders(serviceRecord))
+        if int(resp["status"]) != 200:
+            if int(resp["status"]) == 401:
+                raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
+            raise APIException("Unable to retrieve activity list " + str(resp), serviceRecord)
         data = json.loads(data.decode('utf-8'))
         activities = []
         for act in data["items"]:
@@ -115,6 +120,10 @@ class RunKeeperService():
         if ridedata is None:
             wc = httplib2.Http()
             resp, ridedata = wc.request("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
+            if int(resp["status"]) != 200:
+                if int(resp["status"]) == 401:
+                    raise APIAuthorizationException("No authorization to download activity" + activityID, serviceRecord)
+                raise APIException("Unable to download activity " + activityID, serviceRecord)
             ridedata = json.loads(ridedata.decode('utf-8'))
             db.rk_activity_cache.insert(ridedata)
 
@@ -153,6 +162,10 @@ class RunKeeperService():
         headers = self._apiHeaders(serviceRecord)
         headers["Content-Type"] = "application/vnd.com.runkeeper.NewFitnessActivity+json"
         resp, data = wc.request(uris["fitness_activities"], "POST", headers=headers, body=json.dumps(uploadData))
+        if int(resp["status"]) != 201:
+            if int(resp["status"]) == 401:
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID, serviceRecord)
+            raise APIException("Unable to upload activity " + activity.UID, serviceRecord)
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
@@ -164,8 +177,7 @@ class RunKeeperService():
         record["path"] = []
         for waypoint in activity.Waypoints:
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
-            
-            
+
             if waypoint.Type in self._wayptTypeMappings.values():
                 wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
             else:
