@@ -40,7 +40,6 @@ class StravaService:
         resp, data = wc.request("http://app.strava.com/api/v1/rides?athleteId=" + str(svcRecord["ExternalID"]))
         data = json.loads(data.decode('utf-8'))
 
-
         data = data["rides"]
         cachedRides = list(db.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
         for ride in data:
@@ -55,6 +54,7 @@ class StravaService:
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
             activity.EndTime = activity.StartTime + timedelta(0, ridedata["elapsed_time"])
             activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
+            activity.Type = ActivityType.Cycling  # change me once the API stops sucking
             activity.CalculateUID()
             activities.append(activity)
 
@@ -89,7 +89,7 @@ class StravaService:
 
             if idx == 0:
                 waypoint.Type = WaypointType.Start
-            elif idx == waypointCt - 1:
+            elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
             elif not moving and ridedata["moving"][idx] == True:
                 waypoint.Type = WaypointType.Resume

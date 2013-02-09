@@ -147,7 +147,12 @@ class RunKeeperService():
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
-        pass
+        uploadData = self._createUploadData(activity)
+        uris = self._getAPIUris(serviceRecord)
+        wc = httplib2.Http()
+        headers = self._apiHeaders(serviceRecord)
+        headers["Content-Type"] = "application/vnd.com.runkeeper.NewFitnessActivity+json"
+        resp, data = wc.request(uris["fitness_activities"], "POST", headers=headers, body=json.dumps(uploadData))
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
@@ -156,10 +161,7 @@ class RunKeeperService():
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
-
         record["path"] = []
-        record["heart_rate"] = []
-        record["calories"] = []
         for waypoint in activity.Waypoints:
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
             
@@ -176,9 +178,13 @@ class RunKeeperService():
                                     "type": wpType})
 
             if waypoint.HR is not None:
+                if "heart_rate" not in record:
+                    record["heart_rate"] = []
                 record["heart_rate"].append({"timestamp": timestamp, "heart_rate": waypoint.HR})
 
             if waypoint.Calories is not None:
+                if "calories" not in record:
+                    record["calories"] = []
                 record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
         return record

@@ -49,4 +49,8 @@ class Sync:
             print("Activity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
             dlSvcRecord = activity.UploadedTo[0]["Connection"]  # I guess in the future we could smartly choose which for >1
             dlSvc = Service.FromID(dlSvcRecord["Service"])
-            dlSvc.DownloadActivity(dlSvcRecord, activity)
+            act = dlSvc.DownloadActivity(dlSvcRecord, activity)
+            for destinationSvcRecord in recipientServices:
+                destSvc = Service.FromID(destinationSvcRecord["Service"])
+                destSvc.UploadActivity(destinationSvcRecord, act)
+                
