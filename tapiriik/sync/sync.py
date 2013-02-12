@@ -1,7 +1,8 @@
 from tapiriik.database import db
 from tapiriik.services import Service, APIException, APIAuthorizationException
 from datetime import datetime
-
+import sys
+import traceback
 
 class Sync:
     def ScheduleImmediateSync(user):
@@ -39,7 +40,8 @@ class Sync:
                 conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message})
                 continue
             except Exception as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": str(e)})
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
@@ -69,7 +71,8 @@ class Sync:
                 dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message})
                 continue
             except Exception as e:
-                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": str(e)})
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
                 continue
 
             for destinationSvcRecord in recipientServices:
@@ -81,7 +84,9 @@ class Sync:
                 except APIException as e:
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message})
                 except Exception as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": str(e)})
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    continue
                 else:
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord["_id"]},\
@@ -93,12 +98,12 @@ class Sync:
 
 
 class SyncStep:
-    List = 0
-    Download = 1
-    Upload = 2
+    List = "list"
+    Download = "download"
+    Upload = "upload"
 
 
 class SyncError:
-    System = -1
-    Unknown = 0
-    NotAuthorized = 1
+    System = "system"
+    Unknown = "unkown"
+    NotAuthorized = "authorization"
