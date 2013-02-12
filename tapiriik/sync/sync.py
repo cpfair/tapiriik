@@ -23,16 +23,19 @@ class Sync:
                     continue
                 activityList.append(act)
 
-    def PerformUserSync(user):
+    def PerformUserSync(user, exhaustive=False):
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
         activities = []
+
+        if len(serviceConnections) == 1:
+            return  # nothing's going anywhere anyways
 
         for conn in serviceConnections:
             conn["SyncErrors"] = []
             svc = Service.FromID(conn["Service"])
             try:
-                svcActivities = svc.DownloadActivityList(conn)
+                svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
                 conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message})
                 continue

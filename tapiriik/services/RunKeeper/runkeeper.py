@@ -90,7 +90,9 @@ class RunKeeperService():
         data = resp.json()
         return data["userID"]
 
-    def DownloadActivityList(self, serviceRecord):
+    def DownloadActivityList(self, serviceRecord, exhaustive=False):
+        if exhaustive:
+            raise NotImplementedError
         uris = self._getAPIUris(serviceRecord)
         response = requests.get(uris["fitness_activities"], headers=self._apiHeaders(serviceRecord))
 

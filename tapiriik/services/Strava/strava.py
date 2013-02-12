@@ -32,7 +32,9 @@ class StravaService:
         data = json.loads(data.decode('utf-8'))
         return (data["athlete"]["id"], {"Token": data["token"]})
 
-    def DownloadActivityList(self, svcRecord):
+    def DownloadActivityList(self, svcRecord, exhaustive=False):
+        if exhaustive:
+            raise NotImplementedError
         wc = httplib2.Http()
         # grumble grumble strava api sucks grumble grumble
         # http://app.strava.com/api/v1/rides?athleteId=id
