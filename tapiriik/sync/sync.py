@@ -1,10 +1,14 @@
 from tapiriik.database import db
 from tapiriik.services import Service, APIException, APIAuthorizationException
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 import traceback
 
+
 class Sync:
+
+    SyncInterval = timedelta(hours=1)
+
     def ScheduleImmediateSync(user):
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
 
@@ -23,13 +27,20 @@ class Sync:
                     continue
                 activityList.append(act)
 
+    def PerformGlobalSync():
+        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
+        for user in users:
+            Sync.PerformUserSync(users)
+            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval}})
+
     def PerformUserSync(user, exhaustive=False):
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
+
+        if len(connectedServiceIds) <= 1:
+            return  # nothing's going anywhere anyways
+
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
         activities = []
-
-        if len(serviceConnections) == 1:
-            return  # nothing's going anywhere anyways
 
         for conn in serviceConnections:
             conn["SyncErrors"] = []
