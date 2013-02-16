@@ -40,16 +40,19 @@ class Sync:
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
 
     def PerformUserSync(user, exhaustive=False):
+
+        connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
+
+        if len(connectedServiceIds) <= 1:
+            return  # nothing's going anywhere anyways
+
         # mark this user as in-progress
         db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid()}})
         lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid()})
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
-        connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
-
-        if len(connectedServiceIds) <= 1:
-            return  # nothing's going anywhere anyways
+        print ("Beginning sync for " + str(user["_id"]))
 
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
         activities = []
@@ -58,6 +61,7 @@ class Sync:
             conn["SyncErrors"] = []
             svc = Service.FromID(conn["Service"])
             try:
+                print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
                 conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message})
@@ -72,7 +76,7 @@ class Sync:
             Sync._accumulateActivities(svc, svcActivities, activities)
 
         for activity in activities:
-            print (str(activity) + " from " + activity.UploadedTo[0]["Connection"]["Service"] + " ct " + str(len(activity.UploadedTo)))
+            print ("\t" + str(activity) + " from " + activity.UploadedTo[0]["Connection"]["Service"] + " ct " + str(len(activity.UploadedTo)))
 
         for activity in activities:
             # we won't need this now, but maybe later
@@ -84,7 +88,7 @@ class Sync:
             if len(recipientServices) == 0:
                 continue
             # download the full activity record
-            print("Activity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
+            print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
             dlSvcRecord = activity.UploadedTo[0]["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
             dlSvc = Service.FromID(dlSvcRecord["Service"])
             try:
@@ -103,6 +107,7 @@ class Sync:
             for destinationSvcRecord in recipientServices:
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
                 try:
+                    print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message})
@@ -124,7 +129,7 @@ class Sync:
 
         # unlock the row
         db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}})
-
+        print("Finished sync for " + str(user["_id"]))
 
 class SynchronizationConcurrencyException(Exception):
     pass

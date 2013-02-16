@@ -41,6 +41,10 @@ class User:
 
     def DisconnectService(user, serviceRecord):
         db.users.update({"_id": user["_id"]}, {"$pull": {"ConnectedServices": {"ID": serviceRecord["_id"]}}})
+        if len(user["ConnectedServices"]) - 1 == 0:
+            # I guess we're done here?
+            db.users.remove({"_id": user["_id"]})
+
 
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices.ID": serviceRecord["_id"]})
