@@ -38,9 +38,13 @@ tapiriik.Init = function(){
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
 	$.address.change(tapiriik.AddressChanged);
 	tapiriik.AddressChanged();
-	setInterval(tapiriik.UpdateSyncCountdown, 60000);
-	setInterval(tapiriik.RefreshSyncCountdown, 1000);
-	tapiriik.UpdateSyncCountdown();
+	if (tapiriik.User !== undefined){
+		if (tapiriik.User.ConnectedServicesCount > 1){
+			tapiriik.UpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 60000);
+			tapiriik.RefreshCountdownTimer = setInterval(tapiriik.RefreshSyncCountdown, 1000);
+			tapiriik.UpdateSyncCountdown();
+		}
+	}
 };
 
 tapiriik.AddressChanged=function(){
@@ -164,7 +168,7 @@ tapiriik.ImmediateSyncRequested = function(){
 };
 
 tapiriik.UpdateSyncCountdown = function(){
-	$.getJSON("/sync/status", function(data){
+	$.ajax({"url":"/sync/status", success:function(data){
 		tapiriik.NextSync = new Date(data.NextSync);
 		tapiriik.LastSync = new Date(data.LastSync);
 		if (tapiriik.SyncErrorsCt != data.Errors && tapiriik.SyncErrorsCt !== undefined){
@@ -173,7 +177,10 @@ tapiriik.UpdateSyncCountdown = function(){
 		tapiriik.SyncErrorsCt = data.Errors;
 		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.RefreshSyncCountdown();
-	});
+	}, error: function(){
+		clearInterval(tapiriik.UpdateCountdownTimer);
+		clearInterval(tapiriik.RefreshCountdownTimer);
+	}});
 };
 tapiriik.FormatTimespan = function(spanMillis){
 	if (Math.abs(spanMillis/1000)>60){
@@ -194,9 +201,9 @@ tapiriik.RefreshSyncCountdown = function(){
 				$("#syncButton").removeClass("active");
 			}
 			$("#syncStatusPreamble").text("Next synchronization in ");
-			if (tapiriik.FastUpdateCountdown !== undefined){
-				clearInterval(tapiriik.FastUpdateCountdown);
-				tapiriik.FastUpdateCountdown = undefined;
+			if (tapiriik.FastUpdateCountdownTimer !== undefined){
+				clearInterval(tapiriik.FastUpdateCountdownTimer);
+				tapiriik.FastUpdateCountdownTimer = undefined;
 			}
 		} else {
 			$("#syncButton").hide();
@@ -207,8 +214,8 @@ tapiriik.RefreshSyncCountdown = function(){
 				$("#syncStatusPreamble").text("Synchronizing now");
 			}
 			
-			if (tapiriik.FastUpdateCountdown === undefined){
-				tapiriik.FastUpdateCountdown = setInterval(tapiriik.UpdateSyncCountdown, 1000);
+			if (tapiriik.FastUpdateCountdownTimer === undefined){
+				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 1000);
 			}
 		}
 		$(".syncStatus").show();
