@@ -65,6 +65,9 @@ class RunKeeperService():
         return (uid, {"Token": token})
 
     def RevokeAuthorization(self, serviceRecord):
+        resp = requests.post("https://runkeeper.com/apps/de-authorize", data={"access_token": serviceRecord["Authorization"]["Token"]})
+        if resp.status_code != 204:
+            raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text, "code")
         pass
 
     def _apiHeaders(self, serviceRecord):
@@ -132,6 +135,7 @@ class RunKeeperService():
                     raise APIAuthorizationException("No authorization to download activity" + activityID, serviceRecord)
                 raise APIException("Unable to download activity " + activityID, serviceRecord)
             ridedata = response.json()
+            ridedata["Owner"] = serviceRecord["ExternalID"]
             db.rk_activity_cache.insert(ridedata)
 
         self._populateActivityWaypoints(ridedata, activity)
@@ -209,4 +213,4 @@ class RunKeeperService():
         return record
 
     def DeleteCachedData(self, serviceRecord):
-        pass
+        db.rk_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})

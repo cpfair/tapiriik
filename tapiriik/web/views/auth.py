@@ -17,7 +17,7 @@ def auth_login(req, service):
 
 def auth_login_ajax(req, service):
     res = auth_do(req, service)
-    return HttpResponse(json.dumps({"success": res}), mimetype='application/javascript')
+    return HttpResponse(json.dumps({"success": res}), mimetype='application/json')
 
 
 def auth_do(req, service):
@@ -51,8 +51,11 @@ def auth_disconnect(req, service):
 @csrf_protect
 @require_POST  # don't want this getting called by just anything
 def auth_disconnect_ajax(req, service):
-    auth_disconnect_do(req, service)
-    return HttpResponse(json.dumps({"success": True}), mimetype='application/javascript')
+    try:
+        status = auth_disconnect_do(req, service)
+    except Exception as e:
+        return HttpResponse(json.dumps({"success": False, "error": str(e)}), mimetype='application/json', status=500)
+    return HttpResponse(json.dumps({"success": status}), mimetype='application/json')
 
 
 def auth_disconnect_do(req, service):
@@ -65,3 +68,4 @@ def auth_disconnect_do(req, service):
     svcRec = Service.GetServiceRecordByID(svcId)
     User.DisconnectService(req.user, svcRec)
     Service.DeleteServiceRecord(svcRec)
+    return True

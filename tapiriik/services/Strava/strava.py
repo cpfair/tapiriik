@@ -34,6 +34,7 @@ class StravaService:
         return (data["athlete"]["id"], {"Token": data["token"]})
 
     def RevokeAuthorization(self, serviceRecord):
+        #  you can't revoke the tokens strava distributes :\
         pass
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
@@ -52,6 +53,7 @@ class StravaService:
                 resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
                 ridedata = resp.json()
                 ridedata = ridedata["ride"]
+                ridedata["Owner"] = svcRecord["ExternalID"]
                 db.strava_cache.insert(ridedata)
             else:
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
@@ -74,6 +76,7 @@ class StravaService:
             resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
             ridedata = resp.json()
             ridedata["id"] = activityID
+            ridedata["Owner"] = svcRecord["ExternalID"]
             db.strava_activity_cache.insert(ridedata)
 
         activity.Waypoints = []
@@ -142,6 +145,6 @@ class StravaService:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text, serviceRecord)
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text, serviceRecord)
 
-
     def DeleteCachedData(self, serviceRecord):
-        pass
+        db.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        db.strava_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})

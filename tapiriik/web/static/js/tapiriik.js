@@ -85,11 +85,17 @@ tapiriik.OpenDeauthDialog = function(svcId){
 	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
 	form.bind("submit", function() {return false;});
 	$("#disconnect", form).click(function(){
-		$.post("/auth/disconnect-ajax/"+svcId, function(data){
-			$.address.value("/");
-			window.location.reload();
-		});
+		$.ajax({url:"/auth/disconnect-ajax/"+svcId,
+				type:"POST",
+				success: function(){
+					$.address.value("/");
+					window.location.reload();
+				},
+				error: function(data){
+					alert("Error in disconnection: " + $.parseJSON(data.responseText).error+"\n Please contact me ASAP");
+				}});
 	});
+	
 	$("#cancel", form).click(function(){
 		$.address.value("/");
 	});
