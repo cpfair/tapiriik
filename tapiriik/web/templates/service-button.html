@@ -19,8 +19,8 @@
 							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
 						{% endif %}
 						{% else %}
-							
-							<a class="control" id="login" href="{{ provider.UserAuthorizationURL }}">Connect</a>
+							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">
+Connect</a>
 					{% endif %}
 				</div>
 			</div>

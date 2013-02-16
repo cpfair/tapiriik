@@ -69,9 +69,13 @@ tapiriik.DeauthDialogLinkClicked = function(e){
 	return false;
 };
 
-tapiriik.IFrameOAuthReturn=function(){
-	$.address.value("/");
-	window.location.reload();
+tapiriik.IFrameOAuthReturn=function(success){
+	if (success){
+		$.address.value("/");
+		window.location.reload();
+	} else {
+		$.address.value("/");
+	}
 };
 
 tapiriik.OpenAuthDialog = function(svcId){
@@ -89,6 +93,9 @@ tapiriik.OpenDeauthDialog = function(svcId){
 	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
 	form.bind("submit", function() {return false;});
 	$("#disconnect", form).click(function(){
+		if (tapiriik.DeauthPending !== undefined) return false;
+		tapiriik.DeauthPending = true;
+		$("#disconnect", form).addClass("disabled");
 		$.ajax({url:"/auth/disconnect-ajax/"+svcId,
 				type:"POST",
 				success: function(){
@@ -97,7 +104,10 @@ tapiriik.OpenDeauthDialog = function(svcId){
 				},
 				error: function(data){
 					alert("Error in disconnection: " + $.parseJSON(data.responseText).error+"\n Please contact me ASAP");
+					tapiriik.DeauthPending = undefined;
+					$("#disconnect", form).removeClass("disabled");
 				}});
+		return false;
 	});
 	
 	$("#cancel", form).click(function(){
