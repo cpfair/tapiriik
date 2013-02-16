@@ -5,22 +5,22 @@
 {% if user != none %}
 	<div class="sync-connector"></div>
 	<div class="sync-inter">
-		{% for provider in user.ConnectedServices|svc_providers %}
-		{% include "service-button.html" with service=provider %}
-		{% if provider != user.ConnectedServices|svc_providers|last %}
+		{% for connection in user.ConnectedServices|svc_populate_conns %}
+		{% include "service-button.html" with provider=connection|svc_conn_to_provider connection=connection %}
+		{% if not forloop.last %}
 		<div class="sync-interdot"></div>
 		{% endif %}
 		{% endfor %}
 	</div>
-	{% if user.ConnectedServices|svc_providers|svc_except|length != 0 %}
+	{% if user.ConnectedServices|svc_providers_except|length != 0 %}
 		<hr>
-		{% for provider in user.ConnectedServices|svc_providers|svc_except %}
-			{% include "service-button.html" with service=provider inactive=True %} 
+		{% for provider in user.ConnectedServices|svc_providers_except %}
+			{% include "service-button.html" with provider=provider inactive=True %} 
 		{% endfor %}
 	{% endif %}
 {% else %}
 	{% for provider in service_providers %}
-	{% include "service-button.html" with service=provider %}
+	{% include "service-button.html" with provider=provider %}
 	{% endfor %}
 {% endif %}
 
