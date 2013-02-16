@@ -1,4 +1,4 @@
-@import url(http://fonts.googleapis.com/css?family=Economica:400,700);
+@import url(//fonts.googleapis.com/css?family=Economica:400,700);
 
 body {
 	font-family:Arial;
@@ -214,6 +214,11 @@ form button.disabled {
 	background-color:#eee;
 	cursor:not-allowed;
 }
+
+form button:active {
+	opacity:0.7;
+}
+
 form .error {
 	display:none;
 	color:#900;
