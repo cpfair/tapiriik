@@ -1,5 +1,6 @@
 from django.conf.urls import patterns, include, url
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.views.generic import TemplateView
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -16,6 +17,9 @@ urlpatterns = patterns('',
 
     url(r'^sync/status$', 'tapiriik.web.views.sync_status', {}, name='sync_status'),
     url(r'^sync/schedule/now$', 'tapiriik.web.views.sync_schedule_immediate', {}, name='sync_schedule_immediate'),
+
+    url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
+    url(r'^privacy$', TemplateView.as_view(template_name='static/privacy.html'), name='privacy'),
     # Examples:
     # url(r'^$', 'tapiriik.views.home', name='home'),
     # url(r'^tapiriik/', include('tapiriik.foo.urls')),

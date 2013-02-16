@@ -1,0 +1,27 @@
+{% extends "site.html" %}
+{% block content %}
+<div style="text-align:left;">
+<h1>Questions: Answered</h1>
+<h3>What do I have to do to use tapiriik?</h3>
+Just sign in to all the services you would like to sync between, then forget ever reading this sentence. Activities will automatically be synced as they are uploaded.
+<h3>Do I need to visit tapiriik.com to synchronize activities?</h3>
+No! <b>Synchronization is fully automatic</b>, the only reason you need to come back here would be to add/remove services, or check to see if any problems came up while syncing.
+<h3>How often do synchronizations occur? Can I manually trigger a sync?</h3>
+Your activities will be synchronized <b>every 60 minutes</b>, but if you're anxious you can visit tapiriik.com and click the countdown to sync immediately. Note that there is a 10 minute minimum period between synchronizations.
+<h3>What data is stored on your servers?</h3>
+Not much. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
+<h3>I already connected a few services, but I want to add more, how?</h3>
+Just sign into any one of the services you already connected, then sign into the new service (or the other way around, it doesn't matter). The new service will automatically be synchronized with all the others.
+<h3>What if I already uploaded the same activity to multiple services?</h3>
+No worries - tapiriik will see that and <b>won't create any duplicate activities</b>.
+
+<h3>But why?</h3>
+I'm indecisive, and I couldn't stand the tedium of downloading + uploading GPX files between the services I tracked activities with. One thing led to another, and, well...
+
+<h3>Free?</h3>
+Yes, 100% free. I hope it can stay that way forever.
+
+<h3></h3>
+<h3></h3>
+</div>
+{% endblock %}

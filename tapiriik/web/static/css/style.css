@@ -29,6 +29,7 @@ body {
 	border-radius:10px;
 	padding:1px 0;
 	background-color:rgba(255,255,255,0.35);
+
 }
 
 .content, .popoverInner {
@@ -36,7 +37,7 @@ body {
 	background-color:white;
 	border-radius: 10px;
 	border:1px solid transparent;
-	padding:10px;
+	padding:15px;
 	font-family:Economica;
 }
 
@@ -107,10 +108,18 @@ body {
 .logo .sub {
 	font-size:30%;
 }
+.logoPad {
+	margin-top:120px;
+}
 .footers {
+	font-size:120%;
+	font-weight:bold;
 	margin-top:5px;
 	font-family:Economica;
 	color:white;
+}
+.footers a {
+	color:inherit;
 }
 
 .environsWrap {
@@ -211,9 +220,19 @@ form .error {
 	border-bottom:1px dotted #900;
 	font-size:120%;
 }
-
+h1 {
+	margin-top:5px;
+}
 h2 {
 	color:#aaa;
+}
+
+ul {
+	list-style-position: inside;
+}
+
+a {
+	color: #444;
 }
 
 .sync-connector {
