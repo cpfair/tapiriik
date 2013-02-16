@@ -2,9 +2,11 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.database import db
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.api import APIException, APIAuthorizationException
+
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
-import httplib2
+import requests
 import urllib.parse
 import json
 
@@ -23,13 +25,12 @@ class StravaService:
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})
 
     def Authorize(self, email, password):
-        wc = httplib2.Http()
         # https://www.strava.com/api/v2/authentication/login
         params = {"email": email, "password": password}
-        resp, data = wc.request("https://www.strava.com/api/v2/authentication/login", method="POST", body=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
-        if resp.status != 200:
+        resp = requests.post("https://www.strava.com/api/v2/authentication/login", data=params)
+        if resp.status_code != 200:
             return (None, None)  # maybe raise an exception instead?
-        data = json.loads(data.decode('utf-8'))
+        data = resp.json()
         return (data["athlete"]["id"], {"Token": data["token"]})
 
     def RevokeAuthorization(self, serviceRecord):
@@ -38,19 +39,18 @@ class StravaService:
     def DownloadActivityList(self, svcRecord, exhaustive=False):
         if exhaustive:
             raise NotImplementedError
-        wc = httplib2.Http()
         # grumble grumble strava api sucks grumble grumble
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
-        resp, data = wc.request("http://app.strava.com/api/v1/rides?athleteId=" + str(svcRecord["ExternalID"]))
-        data = json.loads(data.decode('utf-8'))
+        resp = requests.get("http://app.strava.com/api/v1/rides?athleteId=" + str(svcRecord["ExternalID"]))
+        data = resp.json()
 
         data = data["rides"]
         cachedRides = list(db.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
         for ride in data:
             if ride["id"] not in [x["id"] for x in cachedRides]:
-                resp, ridedata = wc.request("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
-                ridedata = json.loads(ridedata.decode('utf-8'))
+                resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
+                ridedata = resp.json()
                 ridedata = ridedata["ride"]
                 db.strava_cache.insert(ridedata)
             else:
@@ -71,9 +71,8 @@ class StravaService:
 
         ridedata = db.strava_activity_cache.find_one({"id": activityID})
         if ridedata is None:
-            wc = httplib2.Http()
-            resp, ridedata = wc.request("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
-            ridedata = json.loads(ridedata.decode('utf-8'))
+            resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
+            ridedata = resp.json()
             ridedata["id"] = activityID
             db.strava_activity_cache.insert(ridedata)
 
@@ -114,6 +113,35 @@ class StravaService:
             activity.Waypoints.append(waypoint)
 
         return activity
+
+    def UploadActivity(self, serviceRecord, activity):
+        # http://www.strava.com/api/v2/upload
+        # POST token=asd&type=json&data_fields=[field1, field2, ...]&points=[[field1value, field2value, ...]...]&type=ride|run&name=name
+        # hasHR = hasCadence = hasPower = False does Strava care?
+        fields = ["time", "latitude", "longitude", "elevation", "cmd", "heartrate", "cadence", "watts"]
+        points = []
+        for wp in activity.Waypoints:
+            points.append([wp.Timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+                            wp.Location.Latitude,
+                            wp.Location.Longitude,
+                            wp.Location.Altitude,
+                            "pause" if wp.Type == WaypointType.Pause else None,
+                            wp.HR,
+                            wp.Cadence,
+                            wp.Power
+                            ])
+        req = {"token": serviceRecord["Authorization"]["Token"],
+                "type": "json",
+                "data_fields": fields,
+                "data": points,
+                "activity_type": "run" if activity.Type == ActivityType.Running else "ride"}
+
+        response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), proxies={"http": "127.0.0.1:8181"})
+        if response.status_code != 200:
+            if response.status_code == 401:
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text, serviceRecord)
+            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text, serviceRecord)
+
 
     def DeleteCachedData(self, serviceRecord):
         pass

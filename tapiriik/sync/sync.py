@@ -121,7 +121,7 @@ class Sync:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
 
         # unlock the row
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$set": {"SynchronizationWorker": None}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}})
 
 
 class SynchronizationConcurrencyException(Exception):

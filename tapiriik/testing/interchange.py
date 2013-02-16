@@ -35,4 +35,4 @@ class InterchangeTests(TapiriikTestCase):
 
         self.assertActivitiesEqual(returnedAct, act)
 
-
+        #  can't test Strava this way, the upload and download formats are entirely different

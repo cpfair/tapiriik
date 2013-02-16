@@ -11,9 +11,12 @@ def sync_status(req):
     conns = User.GetConnectionRecordsByUser(req.user)
     totalErrors = 0
     for conn in conns:
+        if "SyncErrors" not in conn:
+            continue
         totalErrors += len(conn["SyncErrors"])
+    print(req.user)
     return HttpResponse(json.dumps({"NextSync": req.user["NextSynchronization"].ctime() + " UTC",
-                                    "LastSync": req.user["LastSynchronization"].ctime() + " UTC",
+                                    "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user else "",
                                     "Synchronizing": "SynchronizationWorker" in req.user,
                                     "Errors": totalErrors}))
 
