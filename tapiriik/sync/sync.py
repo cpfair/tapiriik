@@ -97,7 +97,7 @@ class Sync:
                 continue
             except Exception as e:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
                 continue
 
             for destinationSvcRecord in recipientServices:
@@ -110,7 +110,7 @@ class Sync:
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message})
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
                     continue
                 else:
                     # flag as successful

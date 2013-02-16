@@ -18,7 +18,7 @@ def sync_status(req):
     return HttpResponse(json.dumps({"NextSync": req.user["NextSynchronization"].ctime() + " UTC",
                                     "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user else "",
                                     "Synchronizing": "SynchronizationWorker" in req.user,
-                                    "Errors": totalErrors}))
+                                    "Errors": totalErrors}), mimetype="application/json")
 
 def sync_schedule_immediate(req):
     if not req.user:
