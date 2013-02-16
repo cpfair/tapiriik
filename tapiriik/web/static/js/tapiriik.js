@@ -33,11 +33,14 @@ tapiriik = {};
 
 tapiriik.Init = function(){
 	// ...
-	//tapiriik.CreateServiceDialog("strava",$("<span>asddsa<br/>asddsa<br/>asddsa<br/>asddsa<br/>asddsa<br/></span>"));
+	$("#syncButton").click(tapiriik.ImmediateSyncRequested);
 	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
 	$.address.change(tapiriik.AddressChanged);
 	tapiriik.AddressChanged();
+	setInterval(tapiriik.UpdateSyncCountdown, 60000);
+	setInterval(tapiriik.RefreshSyncCountdown, 1000);
+	tapiriik.UpdateSyncCountdown();
 };
 
 tapiriik.AddressChanged=function(){
@@ -79,13 +82,13 @@ tapiriik.OpenAuthDialog = function(svcId){
 };
 
 tapiriik.OpenDeauthDialog = function(svcId){
-	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
+	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
 	form.bind("submit", function() {return false;});
 	$("#disconnect", form).click(function(){
-		$.post("/auth/disconnect-ajax/"+svcId, {success: function(data){
+		$.post("/auth/disconnect-ajax/"+svcId, function(data){
 			$.address.value("/");
 			window.location.reload();
-		}});
+		});
 	});
 	$("#cancel", form).click(function(){
 		$.address.value("/");
@@ -140,8 +143,63 @@ tapiriik.DismissServiceDialog = function(){
 tapiriik.CreatePopover = function(contents){
 	var popoverStruct = $("<div class=\"popover\"><div class=\"popoverOuterBorder\"><div class=\"popoverArrow\"><div class=\"popoverArrowInner\"></div></div><div class=\"popoverInner\"></div></div></div>");
 	$(".popoverInner", popoverStruct).append(contents);
-	return popoverStruct;	
+	return popoverStruct;
 };
 
+tapiriik.ImmediateSyncRequested = function(){
+	if (!$("#syncButton").hasClass("active")) return false;
+
+	$.get("/sync/schedule/now");
+	tapiriik.NextSync = new Date();
+	tapiriik.LastSync = new Date();
+
+	tapiriik.RefreshSyncCountdown();
+	return false;
+};
+
+tapiriik.UpdateSyncCountdown = function(){
+	$.getJSON("/sync/status", function(data){
+		tapiriik.NextSync = new Date(data.NextSync);
+		tapiriik.LastSync = new Date(data.LastSync);
+		if (tapiriik.SyncErrorsCt < data.Errors && tapiriik.SyncErrorsCt !== undefined){
+			window.location.reload(); // show them the errors
+		}
+		tapiriik.SyncErrorsCt = data.Errors;
+		tapiriik.RefreshSyncCountdown();
+	});
+};
+tapiriik.FormatTimespan = function(spanMillis){
+	if (Math.abs(spanMillis/1000)>60){
+		return Math.ceil(spanMillis/1000/60)+" minute"+(Math.ceil(spanMillis/1000/60)!=1?"s":"");
+	} else {
+		return Math.ceil(spanMillis/1000)+" second"+(Math.ceil(spanMillis/1000)!=1?"s":"");
+	}
+};
+tapiriik.RefreshSyncCountdown = function(){
+	if (tapiriik.NextSync !== undefined){
+		var delta = tapiriik.NextSync - (new Date());
+		if (delta>0){
+			$("#syncButton").show();
+			$("#syncButton").text(tapiriik.FormatTimespan(delta));
+			if (((new Date()) - tapiriik.LastSync) > tapiriik.MinimumSyncInterval*1000) {
+				$("#syncButton").addClass("active");
+			} else {
+				$("#syncButton").removeClass("active");
+			}
+			$("#syncStatusPreamble").text("Next synchronization in ");
+			if (tapiriik.FastUpdateCountdown !== undefined){
+				clearInterval(tapiriik.FastUpdateCountdown);
+				tapiriik.FastUpdateCountdown = undefined;
+			}
+		} else {
+			$("#syncButton").hide();
+			$("#syncStatusPreamble").text("Synchronizing now");
+			if (tapiriik.FastUpdateCountdown === undefined){
+				tapiriik.FastUpdateCountdown = setInterval(tapiriik.UpdateSyncCountdown, 1000);
+			}
+		}
+		$(".syncStatus").show();
+	}
+};
 
 $(window).load(tapiriik.Init);

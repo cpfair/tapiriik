@@ -4,7 +4,7 @@
 <form method="POST">
 	{% csrf_token %}
 	<center><button type="submit" name="action" value="disconnect">I'm sure</button></center>
-	<center><button type="submit" name="action" value="cancel">Nevermind</button></center>
+	<center><button type="submit" name="action" value="cancel" class="cancel">Nevermind</button></center>
 </form>
 <p>
 (no data will be deleted - just no more synchronization will happen)

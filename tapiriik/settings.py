@@ -103,7 +103,7 @@ TEMPLATE_DIRS = (
     "I:/wamp/www/tapiriik/tapiriik/web/templates",
 )
 
-TEMPLATE_CONTEXT_PROCESSORS = ('tapiriik.web.context_processors.providers', 'django.core.context_processors.static',)
+TEMPLATE_CONTEXT_PROCESSORS = ('tapiriik.web.context_processors.config', 'tapiriik.web.context_processors.providers', 'django.core.context_processors.static',)
 
 INSTALLED_APPS = (
     'django.contrib.sessions',

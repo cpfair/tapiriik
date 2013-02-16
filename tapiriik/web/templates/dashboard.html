@@ -8,14 +8,14 @@
 		{% for connection in user.ConnectedServices|svc_populate_conns %}
 		{% include "service-button.html" with provider=connection|svc_conn_to_provider connection=connection %}
 		{% if not forloop.last %}{% endif %}{% endfor %}
-	
+	<div class="syncStatus" style="display:none;">&laquo; <span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em> &raquo;</div>
 	{% if user.ConnectedServices|svc_providers_except|length != 0 %}
 		<hr>
 		{% for provider in user.ConnectedServices|svc_providers_except %}
 			{% include "service-button.html" with provider=provider inactive=True %} 
 		{% endfor %}
 	{% endif %}
-	<div class="syncStatus">This is sync status</div>
+	
 {% else %}
 	{% for provider in service_providers %}
 	{% include "service-button.html" with provider=provider %}

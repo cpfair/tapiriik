@@ -18,6 +18,9 @@ class User:
         uid = db.users.insert({"Created": datetime.utcnow()})  # will mongodb insert an almost empty doc, i.e. _id?
         return db.users.find_one({"_id": uid})
 
+    def GetConnectionRecordsByUser(user):
+        return db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})
+
     def ConnectService(user, serviceRecord):
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord["_id"])})
         if "ConnectedServices" not in user:

@@ -8,6 +8,7 @@ import traceback
 class Sync:
 
     SyncInterval = timedelta(hours=1)
+    MinimumSyncInterval = timedelta(minutes=10)
 
     def ScheduleImmediateSync(user):
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
@@ -30,8 +31,8 @@ class Sync:
     def PerformGlobalSync():
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
-            Sync.PerformUserSync(users)
-            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval}})
+            Sync.PerformUserSync(user)
+            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}})
 
     def PerformUserSync(user, exhaustive=False):
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
@@ -69,7 +70,6 @@ class Sync:
                 multi=True)
 
             recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
-
             if len(recipientServices) == 0:
                 continue
             # download the full activity record

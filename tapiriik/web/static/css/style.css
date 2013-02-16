@@ -197,6 +197,10 @@ form button {
 	cursor:pointer;
 }
 
+form button.cancel {
+	background-color:#ccc;
+}
+
 form button.disabled {
 	background-color:#eee;
 	cursor:not-allowed;
@@ -330,4 +334,20 @@ h2 {
 
 .syncStatus {
 	color:#aaa;
+}
+
+.syncStatus a {
+	text-decoration: none;
+	color:inherit;
+	cursor:default;
+}
+
+.syncStatus a.active {
+	text-decoration: none;
+	color:#a6cfe3;
+	cursor:pointer;
+}
+
+.syncStatus a.active:hover {
+	text-decoration: underline;
 }

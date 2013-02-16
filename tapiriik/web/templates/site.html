@@ -45,6 +45,7 @@
 	tapiriik.ServiceInfo = {};
 	{% for provider in service_providers %}
 	tapiriik.ServiceInfo["{{ provider.ID }}"] = {"AuthenticationType": "{{ provider.AuthenticationType }}", "AuthorizationURL": "{{ provider.UserAuthorizationURL|safe }}"};{% endfor %}
+	tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
 	</script>
 </body>
 </html>
