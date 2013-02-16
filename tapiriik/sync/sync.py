@@ -2,6 +2,7 @@ from tapiriik.database import db
 from tapiriik.services import Service, APIException, APIAuthorizationException
 from datetime import datetime, timedelta
 import sys
+import os
 import traceback
 
 
@@ -29,12 +30,22 @@ class Sync:
                 activityList.append(act)
 
     def PerformGlobalSync():
-        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
+        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
-            Sync.PerformUserSync(user)
-            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}})
+            try:
+                Sync.PerformUserSync(user)
+            except SynchronizationConcurrencyException:
+                pass  # another worker picked them
+            else:
+                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}})
 
     def PerformUserSync(user, exhaustive=False):
+        # mark this user as in-progress
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid()}})
+        lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid()})
+        if lockCheck is None:
+            raise SynchronizationConcurrencyException  # failed to get lock
+
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
         if len(connectedServiceIds) <= 1:
@@ -107,8 +118,14 @@ class Sync:
                     {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
         for conn in serviceConnections:
-            print(conn["_id"])
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
+
+        # unlock the row
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$set": {"SynchronizationWorker": None}})
+
+
+class SynchronizationConcurrencyException(Exception):
+    pass
 
 
 class SyncStep:
