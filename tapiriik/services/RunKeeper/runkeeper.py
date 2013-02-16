@@ -43,7 +43,7 @@ class RunKeeperService():
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
 
-    def RetrieveAuthenticationToken(self, req):
+    def RetrieveAuthorizationToken(self, req):
         from tapiriik.services import Service
 
         #  might consider a real OAuth client
@@ -63,6 +63,9 @@ class RunKeeperService():
             uid = existingRecord["ExternalID"]
 
         return (uid, {"Token": token})
+
+    def RevokeAuthorization(self, serviceRecord):
+        pass
 
     def _apiHeaders(self, serviceRecord):
         return {"Authorization": "Bearer " + serviceRecord["Authorization"]["Token"]}
@@ -204,3 +207,6 @@ class RunKeeperService():
                 record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
         return record
+
+    def DeleteCachedData(self, serviceRecord):
+        pass

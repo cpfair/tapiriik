@@ -49,7 +49,7 @@ body {
 
 .content {
 	font-size:130%; /* damn font is unreadable */
-	color:white;
+	color:#333;
 }
 
 .popover {
@@ -208,6 +208,10 @@ form .error {
 	font-size:120%;
 }
 
+h2 {
+	color:#aaa;
+}
+
 .sync-connector {
 	position:absolute;
 	left:15px;
@@ -229,10 +233,13 @@ form .error {
 	height:32px;
 	vertical-align: 65%;
 }
+.serviceOuter {
+	display: inline-block;
+}
 .service {
+	display:inline-block;
 	width:175px;
 	position:relative;
-	display:inline-block;
 	margin:10px;
 	line-height:100%;
 }
@@ -247,18 +254,38 @@ form .error {
 	text-align: center;
 	border-radius:5px;
 	z-index:2;
-	cursor:pointer;
 }
 
 .service .controls {
+	
 	z-index:1;
 	margin-top:-5px;
 	padding: 3px 5px;
-	padding-top:5px;
+	padding-top:6px;
 	color:white;
 	background-color:#8ec1da;
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
+	overflow:hidden;
+	max-height:20px;
+}
+
+.service .controls a {
+	text-decoration: none;
+}
+
+.service .controls a:hover {
+	text-decoration: underline;
+	color:white;
+}
+
+.service .controlsInner {
+	position: relative;
+	-webkit-transition: top 0.2s ease;
+}
+
+.service.connected:hover .controlsInner {
+	top:-1em;
 }
 
 .service .icon {
@@ -274,10 +301,11 @@ form .error {
 	vertical-align: middle;
 }
 
-.service .control {
+.service .status, .service .control {
 	text-decoration: none;
 	color:white;
 	padding-left:19px;
+	bottom:0;
 	background-repeat:no-repeat;
 	background-position: center left;
 }
@@ -286,12 +314,20 @@ form .error {
 	background-image:url('../img/link.png');
 }
 
-.service .control#sync-ok {
+.service .control#sync-dc {
+	background-image:url('../img/unlink.png');
+}
+
+.service .status#sync-ok {
 	background-image:url('../img/sync-ok.png');	
 	padding-left:17px;
 	background-position: 0% 65%;
 }
 
-.service .control#sync-fail {
+.service .status#sync-fail {
 	background-image:url('../img/sync-fail.png');	
+}
+
+.syncStatus {
+	color:#aaa;
 }

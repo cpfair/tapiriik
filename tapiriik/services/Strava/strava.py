@@ -32,6 +32,9 @@ class StravaService:
         data = json.loads(data.decode('utf-8'))
         return (data["athlete"]["id"], {"Token": data["token"]})
 
+    def RevokeAuthorization(self, serviceRecord):
+        pass
+
     def DownloadActivityList(self, svcRecord, exhaustive=False):
         if exhaustive:
             raise NotImplementedError
@@ -111,3 +114,6 @@ class StravaService:
             activity.Waypoints.append(waypoint)
 
         return activity
+
+    def DeleteCachedData(self, serviceRecord):
+        pass

@@ -16,6 +16,18 @@ function getCookie(name) {
 }
 var csrftoken = getCookie('csrftoken');
 
+function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type)) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
 
 tapiriik = {};
 
@@ -23,9 +35,9 @@ tapiriik.Init = function(){
 	// ...
 	//tapiriik.CreateServiceDialog("strava",$("<span>asddsa<br/>asddsa<br/>asddsa<br/>asddsa<br/>asddsa<br/></span>"));
 	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);
+	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
 	$.address.change(tapiriik.AddressChanged);
-	
-
+	tapiriik.AddressChanged();
 };
 
 tapiriik.AddressChanged=function(){
@@ -33,12 +45,20 @@ tapiriik.AddressChanged=function(){
 	if (components[0]=="auth") {
 		tapiriik.OpenAuthDialog(components[1]);
 		return;
+	} else if (components[0]=="disconnect") {
+		tapiriik.OpenDeauthDialog(components[1]);
+		return;
 	}
 	tapiriik.DismissServiceDialog();
 };
 
 tapiriik.AuthDialogLinkClicked = function(e){
-	$.address.value("auth/"+this.parentNode.id);
+	$.address.value("auth/"+$(this).attr("service"));
+	return false;
+};
+
+tapiriik.DeauthDialogLinkClicked = function(e){
+	$.address.value("disconnect/"+$(this).attr("service"));
 	return false;
 };
 
@@ -48,17 +68,30 @@ tapiriik.IFrameOAuthReturn=function(){
 };
 
 tapiriik.OpenAuthDialog = function(svcId){
-	var authLink = $(".service#"+svcId+" a.authDialog");
-	if (authLink.length == 0) return;
-
-	var mode = authLink.attr("mode");
+	var mode = tapiriik.ServiceInfo[svcId].AuthenticationType;
 	var contents;
 	if (mode == "oauth"){
-		contents = $("<iframe>").attr("src",authLink.attr("href")).attr("id",svcId);
+		contents = $("<iframe>").attr("src",tapiriik.ServiceInfo[svcId].AuthorizationURL).attr("id",svcId);
 	} else if (mode == "direct") {
 		contents = tapiriik.CreateDirectLoginForm(svcId);
 	}
 	tapiriik.CreateServiceDialog(svcId, contents);
+};
+
+tapiriik.OpenDeauthDialog = function(svcId){
+	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
+	form.bind("submit", function() {return false;});
+	$("#disconnect", form).click(function(){
+		$.post("/auth/disconnect-ajax/"+svcId, {success: function(data){
+			$.address.value("/");
+			window.location.reload();
+		}});
+	});
+	$("#cancel", form).click(function(){
+		$.address.value("/");
+	});
+
+	tapiriik.CreateServiceDialog(svcId, form);
 };
 
 tapiriik.CreateDirectLoginForm = function(svcId){
@@ -68,15 +101,16 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 		if (loginPending) return false;
 		loginPending=true;
 		$("button",form).addClass("disabled");
-		$.post("/auth/login-ajax/"+svcId,{csrfmiddlewaretoken:csrftoken, username:$("#email",form).val(),password:$("#password",form).val()}, function(data){
-			loginPending = false;
+		$.post("/auth/login-ajax/"+svcId,{username:$("#email",form).val(),password:$("#password",form).val()}, function(data){
+			
 			if (data.success) {
 				$.address.value("/");
 				window.location.reload();
 			} else {
 				$(".error",form).show();
+				$("button",form).removeClass("disabled");
+				loginPending = false;
 			}
-			$("button",form).removeClass("disabled");
 		}, "json");
 		return false;
 	});
@@ -84,6 +118,7 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 };
 
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
+	$(".dialogWrap").remove();
 	var origIcon = $(".service#"+serviceID+" .icon img");
 	var icon = origIcon.clone().attr("src", origIcon.attr("lgsrc")).hide();
 	popover = $("<div>").addClass("dialogPopoverWrap").append(tapiriik.CreatePopover(contents).css({"position":"relative"}));

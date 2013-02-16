@@ -4,7 +4,7 @@ from tapiriik.services import Service
 from tapiriik.auth import User
 def authreturn(req, service):
     svc = Service.FromID(service)
-    uid, authData = svc.RetrieveAuthenticationToken(req)
+    uid, authData = svc.RetrieveAuthorizationToken(req)
     serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData)
 
     # auth by this service connection

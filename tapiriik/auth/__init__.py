@@ -36,6 +36,9 @@ class User:
         if delta:
             Sync.ScheduleImmediateSync(user)
 
+    def DisconnectService(user, serviceRecord):
+        db.users.update({"_id": user["_id"]}, {"$pull": {"ConnectedServices": {"ID": serviceRecord["_id"]}}})
+
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices.ID": serviceRecord["_id"]})
 
