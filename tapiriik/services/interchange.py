@@ -22,11 +22,12 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, waypointList=[]):
+    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, waypointList=[]):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
         self.Waypoints = waypointList
+        self.Distance = distance
 
     def CalculateUID(self):
         csp = hashlib.new("md5")
@@ -52,7 +53,7 @@ class Activity:
     __repr__ = __str__
 
     def __eq__(self, other):
-        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Distance == other.Distance
 
     def __ne__(self, other):
         return not self.__eq__(other)

@@ -39,15 +39,20 @@ class StravaService:
         pass
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
-        if exhaustive:
-            raise NotImplementedError
         # grumble grumble strava api sucks grumble grumble
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
-        resp = requests.get("http://app.strava.com/api/v1/rides?athleteId=" + str(svcRecord["ExternalID"]))
-        data = resp.json()
+        data = []
+        offset = 0
+        while True:
+            resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord["ExternalID"]))
+            reqdata = resp.json()
+            reqdata = reqdata["rides"]
+            data += reqdata
+            if not exhaustive or len(data) % 50 != 0:  # api returns 50 rows at a time, so once we start getting <50 we're done
+                break
+            offset += 50
 
-        data = data["rides"]
         cachedRides = list(db.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
         for ride in data:
             if ride["id"] not in [x["id"] for x in cachedRides]:
@@ -63,6 +68,7 @@ class StravaService:
             activity.EndTime = activity.StartTime + timedelta(0, ridedata["elapsed_time"])
             activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
             activity.Type = ActivityType.Cycling  # change me once the API stops sucking
+            activity.Distance = ridedata["distance"]
             activity.CalculateUID()
             activities.append(activity)
 

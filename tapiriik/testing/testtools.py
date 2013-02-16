@@ -58,7 +58,7 @@ class TestTools:
         act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
         act.Type = actType
-
+        act.Distance = random.random() * 10000
         paused = False
 
         waypointTime = act.StartTime

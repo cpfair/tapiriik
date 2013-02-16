@@ -97,18 +97,26 @@ class RunKeeperService():
         return data["userID"]
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        if exhaustive:
-            raise NotImplementedError
         uris = self._getAPIUris(serviceRecord)
-        response = requests.get(uris["fitness_activities"], headers=self._apiHeaders(serviceRecord))
 
-        if response.status_code != 200:
-            if response.status_code == 401:
-                raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
-            raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
-        data = response.json()
+        allItems = []
+
+        pageUri = uris["fitness_activities"]
+
+        while True:
+            response = requests.get(pageUri, headers=self._apiHeaders(serviceRecord))
+            if response.status_code != 200:
+                if response.status_code == 401:
+                    raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
+                raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
+            data = response.json()
+            allItems += data["items"]
+            if not exhaustive or "next" not in data or data["next"] == "":
+                break
+            pageUri = "https://api.runkeeper.com" + data["next"]
+
         activities = []
-        for act in data["items"]:
+        for act in allItems:
             activity = self._populateActivity(act)
             activity.UploadedTo = [{"Connection":serviceRecord, "ActivityID":act["uri"]}]
             activities.append(activity)
@@ -119,6 +127,7 @@ class RunKeeperService():
         activity = UploadedActivity()
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
+        activity.Distance = rawRecord["total_distance"]
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
 
@@ -185,6 +194,7 @@ class RunKeeperService():
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
+        record["total_distance"] = activity.Distance
         record["path"] = []
         for waypoint in activity.Waypoints:
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()

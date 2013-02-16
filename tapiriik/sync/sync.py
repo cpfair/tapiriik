@@ -11,8 +11,8 @@ class Sync:
     SyncInterval = timedelta(hours=1)
     MinimumSyncInterval = timedelta(minutes=10)
 
-    def ScheduleImmediateSync(user):
-        db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
+    def ScheduleImmediateSync(user, exhaustive=False):
+        db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow(), "NextSyncIsExhaustive": exhaustive}})
 
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
@@ -33,11 +33,11 @@ class Sync:
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             try:
-                Sync.PerformUserSync(user)
+                Sync.PerformUserSync(user, "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] == True)
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
-                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}})
+                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
 
     def PerformUserSync(user, exhaustive=False):
         # mark this user as in-progress
@@ -116,6 +116,8 @@ class Sync:
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord["_id"]},\
                     {"$addToSet": {"SynchronizedActivities": activity.UID}})
+
+                    db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance}}, upsert=True)
 
         for conn in serviceConnections:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
