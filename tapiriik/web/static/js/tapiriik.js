@@ -165,6 +165,7 @@ tapiriik.UpdateSyncCountdown = function(){
 			window.location.reload(); // show them the errors
 		}
 		tapiriik.SyncErrorsCt = data.Errors;
+		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.RefreshSyncCountdown();
 	});
 };
@@ -193,7 +194,13 @@ tapiriik.RefreshSyncCountdown = function(){
 			}
 		} else {
 			$("#syncButton").hide();
-			$("#syncStatusPreamble").text("Synchronizing now");
+			
+			if (!tapiriik.Synchronizing){
+				$("#syncStatusPreamble").text("Queuing to synchronize");
+			} else {
+				$("#syncStatusPreamble").text("Synchronizing now");
+			}
+			
 			if (tapiriik.FastUpdateCountdown === undefined){
 				tapiriik.FastUpdateCountdown = setInterval(tapiriik.UpdateSyncCountdown, 1000);
 			}
