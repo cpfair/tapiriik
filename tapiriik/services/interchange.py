@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+import requests
 import hashlib
+import pytz
 
 
 class ActivityType:  # taken from RK API docs. The text values have no meaning except for debugging
@@ -32,6 +34,18 @@ class Activity:
         roundedStartTime = roundedStartTime - timedelta(microseconds=roundedStartTime.microsecond)
         csp.update(str(roundedStartTime).encode('utf-8'))
         self.UID = csp.hexdigest()
+
+    def CalculateTZ(self):
+        if len(self.Waypoints) == 0:
+            raise Exception("Can't find TZ without waypoints")
+        if hasattr(self, "TZ"):
+            return self.TZ
+        else:
+            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(self.Waypoints[0].Location.Latitude) + "&lng=" + str(self.Waypoints[0].Location.Longitude))
+            data = resp.json()
+            tz = data["timezoneId"] if "timezoneId" in data else data["rawOffset"]
+            self.TZ = pytz.timezone(tz)
+            return self.TZ
 
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)

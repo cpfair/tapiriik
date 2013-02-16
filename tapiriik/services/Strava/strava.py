@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import requests
 import urllib.parse
 import json
+import pytz
 
 
 class StravaService:
@@ -123,8 +124,10 @@ class StravaService:
         # hasHR = hasCadence = hasPower = False does Strava care?
         fields = ["time", "latitude", "longitude", "elevation", "cmd", "heartrate", "cadence", "watts"]
         points = []
+        activity.CalculateTZ()
         for wp in activity.Waypoints:
-            points.append([wp.Timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+            wpTime = wp.Timestamp - activity.TZ.utcoffset(wp.Timestamp)  # strava y u do timezones wrong??
+            points.append([wpTime.strftime("%Y-%m-%dT%H:%M:%S"),
                             wp.Location.Latitude,
                             wp.Location.Longitude,
                             wp.Location.Altitude,
@@ -139,7 +142,7 @@ class StravaService:
                 "data": points,
                 "activity_type": "run" if activity.Type == ActivityType.Running else "ride"}
 
-        response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), proxies={"http": "127.0.0.1:8181"})
+        response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), headers={"Content-Type": "application/json"})
         if response.status_code != 200:
             if response.status_code == 401:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text, serviceRecord)
