@@ -161,7 +161,7 @@ tapiriik.UpdateSyncCountdown = function(){
 	$.getJSON("/sync/status", function(data){
 		tapiriik.NextSync = new Date(data.NextSync);
 		tapiriik.LastSync = new Date(data.LastSync);
-		if (tapiriik.SyncErrorsCt < data.Errors && tapiriik.SyncErrorsCt !== undefined){
+		if (tapiriik.SyncErrorsCt != data.Errors && tapiriik.SyncErrorsCt !== undefined){
 			window.location.reload(); // show them the errors
 		}
 		tapiriik.SyncErrorsCt = data.Errors;
@@ -194,7 +194,7 @@ tapiriik.RefreshSyncCountdown = function(){
 			}
 		} else {
 			$("#syncButton").hide();
-			
+
 			if (!tapiriik.Synchronizing){
 				$("#syncStatusPreamble").text("Queuing to synchronize");
 			} else {
