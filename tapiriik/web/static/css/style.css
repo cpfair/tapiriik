@@ -108,6 +108,10 @@ body {
 .logo .sub {
 	font-size:28%;
 }
+.logo a {
+	color:inherit;
+	text-decoration: none;
+}
 .logoPad {
 	margin-top:150px;
 }
@@ -230,6 +234,9 @@ h1 {
 }
 h2 {
 	color:#aaa;
+}
+h3 {
+	margin-bottom: 5px;
 }
 
 ul {
