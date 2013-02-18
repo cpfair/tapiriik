@@ -11,9 +11,15 @@
 				<div class="controlsInner">
 					{% if provider.ID in user.ConnectedServices|svc_ids %}
 						{% if connection.SyncErrors|length > 0 %}
-							<span class="status" id="sync-fail">OH NO! AN ERROR</span>
-							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
-							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
+							{% if connection.SyncErrors.0.Type == "authorization" %}
+								<span class="status" id="sync-fail">Authorization Error</span>
+								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
+								<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
+							{% else %}
+								<span class="status" id="sync-fail">Sync Failure</span>
+								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
+							{% endif %}
+							
 						{% else %}
 							<span class="status" id="sync-ok">Connected</span>
 							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
