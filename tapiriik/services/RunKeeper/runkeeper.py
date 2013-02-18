@@ -80,7 +80,7 @@ class RunKeeperService():
             response = requests.get("https://api.runkeeper.com/user/", headers=self._apiHeaders(serviceRecord))
 
             if response.status_code != 200:
-                if response.status_code == 401:
+                if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to retrieve user URLs", serviceRecord)
                 raise APIException("Unable to retrieve user URLs" + str(response), serviceRecord)
 
@@ -106,7 +106,7 @@ class RunKeeperService():
         while True:
             response = requests.get(pageUri, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
-                if response.status_code == 401:
+                if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
                 raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
             data = response.json()
@@ -140,7 +140,7 @@ class RunKeeperService():
         if ridedata is None:
             response = requests.get("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
-                if response.status_code == 401:
+                if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to download activity" + activityID, serviceRecord)
                 raise APIException("Unable to download activity " + activityID, serviceRecord)
             ridedata = response.json()
@@ -183,7 +183,7 @@ class RunKeeperService():
         response = requests.post(uris["fitness_activities"], headers=headers, data=json.dumps(uploadData))
 
         if response.status_code != 201:
-            if response.status_code == 401:
+            if response.status_code == 401 or response.status_code == 403:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID, serviceRecord)
             raise APIException("Unable to upload activity " + activity.UID, serviceRecord)
 
