@@ -49,7 +49,7 @@ class StravaService:
             reqdata = resp.json()
             reqdata = reqdata["rides"]
             data += reqdata
-            if not exhaustive or len(data) % 50 != 0:  # api returns 50 rows at a time, so once we start getting <50 we're done
+            if not exhaustive or len(data) % 50 != 0 or len(data) == 0:  # api returns 50 rows at a time, so once we start getting <50 we're done
                 break
             offset += 50
 
