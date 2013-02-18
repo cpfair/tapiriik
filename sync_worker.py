@@ -3,9 +3,18 @@ from tapiriik.database import db
 import time
 import datetime
 import os
+import signal
+
+Run = True
+
+def sync_interrupt(signal, frame):
+    global Run
+    Run = False
+
+signal.signal(signal.SIGINT, sync_interrupt)
 
 print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
-while True:
+while Run:
     Sync.PerformGlobalSync()
     time.sleep(5)
     db.users.update({"$or": [{"SynchronizationWorker": os.getpid()},
