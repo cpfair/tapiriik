@@ -39,12 +39,16 @@ class User:
         if delta or ("SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
             Sync.ScheduleImmediateSync(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
 
-    def DisconnectService(user, serviceRecord):
-        db.users.update({"_id": user["_id"]}, {"$pull": {"ConnectedServices": {"ID": serviceRecord["_id"]}}})
-        if len(user["ConnectedServices"]) - 1 == 0:
-            # I guess we're done here?
-            db.users.remove({"_id": user["_id"]})
-
+    def DisconnectService(serviceRecord):
+        # not that >1 user should have this connection
+        activeUsers = list(db.users.find({"ConnectedServices.ID": serviceRecord["_id"]}))
+        if len(activeUsers) == 0:
+            raise Exception("No users found with service " + serviceRecord["_id"])
+        db.users.update({}, {"$pull": {"ConnectedServices": {"ID": serviceRecord["_id"]}}}, multi=True)
+        for user in activeUsers:
+            if len(user["ConnectedServices"]) - 1 == 0:
+                # I guess we're done here?
+                db.users.remove({"_id": user["_id"]})
 
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices.ID": serviceRecord["_id"]})

@@ -1,7 +1,9 @@
 from django.shortcuts import redirect, render
 from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 from tapiriik.services import Service
 from tapiriik.auth import User
+import json
 
 
 def authreturn(req, service):
@@ -24,3 +26,14 @@ def authreturn(req, service):
         success = True
 
     return render(req, "oauth-return.html", {"success": 1 if success else 0})
+
+
+@require_POST
+def deauth(req, service):
+    deauthData = json.loads(req.body)
+    token = deauthData["access_token"]
+    svc = Service.FromID(service)
+    svcRecord = Service.GetServiceRecordWithAuthDetails(svc, {"Token": token})
+    Service.DeleteServiceRecord(svcRecord)
+    User.DisconnectService(svcRecord)
+    return HttpResponse(status=200)
