@@ -99,17 +99,17 @@ body {
 	width:100%;
 	position:absolute;
 	text-align: center;
-	font-size:500%;
+	font-size:580%;
 	color:white;
 	font-family:Economica;
 	font-weight:bold;
-	margin-top:-130px;
+	margin-top:-150px;
 }
 .logo .sub {
-	font-size:30%;
+	font-size:28%;
 }
 .logoPad {
-	margin-top:120px;
+	margin-top:150px;
 }
 .footers {
 	font-size:120%;
@@ -374,4 +374,23 @@ a {
 
 .syncStatus a.active:hover {
 	text-decoration: underline;
+}
+
+@media only screen and (max-device-width: 480px) {
+	.contentOuterBorder {
+		width:90%;
+		left:5%;
+		margin-left:0;
+	}
+	.environsWrap {
+		position:static;
+	}
+	.environs .mountains {
+		display: none;
+	}
+	.environs .sun {
+		position:absolute;
+		border-width:77px;
+
+	}
 }
