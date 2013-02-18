@@ -1,4 +1,5 @@
 {% extends "site.html" %}
+{% block title %}login{% endblock %}
 {% block content %}
 {% if res != None and res == false %}
 <div class="error">There was a problem logging you into {{ service.DisplayName }}</div>

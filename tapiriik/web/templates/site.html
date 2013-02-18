@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta http-equiv="Content-Type" value="text/html; charset=UTF-8">
+	<meta name="Description" content="Automatically synchronize your fitness activities between Runkeeper, Strava and more.">
+	<meta name="Keywords" content="synchronize, sync, update, fitness, path, track, heart rate, runkeeper, strava, automatic, free, service, gpx, tcx, download, upload, health, data, service, cycling, running, swimming, what other activities can I put here?, why are you reading the SEO keywords anyways, move along, nothing to see here">
+
     <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css" />
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
     <script src="{{ STATIC_URL }}js/jquery.address-1.5.min.js"></script>
     <script src="{{ STATIC_URL }}js/tapiriik.js"></script>
-    <title>{% block title %}{% endblock %} &bull; tapiriik </title>
+    <title>{% block title %}dashboard{% endblock %} &bull; tapiriik </title>
 </head>
 
 <body>
@@ -24,8 +28,8 @@
 		    			{% block content %}{% endblock %}
 		    		</div>
 	    		</div>
-	    		<div class="footers"><a href="{% url 'faq' %}">FAQ</a> | <a href="{% url 'privacy' %}">Privacy</a><br/>
-	    			&copy; 2013 <a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="mailto:contact@tapiriik.com" target="_blank">Collin Fair</a>
+	    		<div class="footers"><a href="{% url 'faq' %}">FAQ</a> | <a href="{% url 'privacy' %}">Privacy</a><br/><span style="font-size:90%;font-weight:normal">All trademarks displayed are property of their respective owners</br>
+	    			Content &copy; 2013 <a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="mailto:contact@tapiriik.com" target="_blank">Collin Fair</a></a>
 	    		</div>
 	    	</div>
     	</div>
