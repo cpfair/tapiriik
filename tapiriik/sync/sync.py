@@ -122,7 +122,7 @@ class Sync:
                     db.connections.update({"_id": destinationSvcRecord["_id"]},\
                     {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
-                    db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance}}, upsert=True)
+                    db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
 
         for conn in serviceConnections:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
