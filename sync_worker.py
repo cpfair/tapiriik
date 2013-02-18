@@ -13,10 +13,11 @@ def sync_interrupt(signal, frame):
 
 signal.signal(signal.SIGINT, sync_interrupt)
 
-print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
+print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()), flush=True)
 while Run:
     Sync.PerformGlobalSync()
     time.sleep(5)
     db.users.update({"$or": [{"SynchronizationWorker": os.getpid()},
                             {"LastSynchronization": {"$lt": datetime.datetime.utcnow() - datetime.timedelta(minutes=30)}}]},  # auto-release after 30 minutes
                             {"$unset": {"SynchronizationWorker": None}})
+print("Sync worker shutting down cleanly", flush=True)
