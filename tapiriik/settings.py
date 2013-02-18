@@ -149,4 +149,6 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
 WEB_ROOT = 'http://localhost:8000'
 
+INVITE_KEYS = []
+
 from .local_settings import *

@@ -1,12 +1,19 @@
-from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
-from tapiriik.services import Service
+from tapiriik.settings import INVITE_KEYS
 
 
 @ensure_csrf_cookie
 def dashboard(req):
-    user = req.user
-    
 
-    return render(req,"dashboard.html",{"user": user})
+    if len(INVITE_KEYS) > 0:
+        if "invite" in req.GET:
+                req.session["invite"] = req.GET["invite"]
+
+        inviteKey = req.session.get("invite")
+        if inviteKey is None or inviteKey not in INVITE_KEYS:
+            return render(req, "site-splash.html")
+
+    user = req.user
+
+    return render(req, "dashboard.html", {"user": user})
