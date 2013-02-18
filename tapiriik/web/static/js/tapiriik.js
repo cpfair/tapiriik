@@ -90,7 +90,7 @@ tapiriik.OpenAuthDialog = function(svcId){
 };
 
 tapiriik.OpenDeauthDialog = function(svcId){
-	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Nevermind</button></center></form><h2>(nothing will be deleted)</h2>");
+	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Never mind</button></center></form><h2>(nothing will be deleted)</h2>");
 	form.bind("submit", function() {return false;});
 	$("#disconnect", form).click(function(){
 		if (tapiriik.DeauthPending !== undefined) return false;
