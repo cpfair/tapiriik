@@ -193,9 +193,6 @@ tapiriik.UpdateSyncCountdown = function(){
 		tapiriik.SyncErrorsCt = data.Errors;
 		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.RefreshSyncCountdown();
-	}, error: function(){
-		clearInterval(tapiriik.UpdateCountdownTimer);
-		clearInterval(tapiriik.RefreshCountdownTimer);
 	}});
 };
 tapiriik.FormatTimespan = function(spanMillis){
