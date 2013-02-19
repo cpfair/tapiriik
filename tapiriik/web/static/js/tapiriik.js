@@ -45,6 +45,12 @@ tapiriik.Init = function(){
 			tapiriik.UpdateSyncCountdown();
 		}
 	}
+	$(".logo").click(function(e){
+		if (e.shiftKey){
+			tapiriik.ShowDebugInfo();
+			return false;
+		}
+	});
 };
 
 tapiriik.AddressChanged=function(){
@@ -230,6 +236,15 @@ tapiriik.RefreshSyncCountdown = function(){
 		}
 		$(".syncStatus").show();
 	}
+};
+
+tapiriik.ShowDebugInfo = function(){
+	var infoPane = $("<div class=\"debugInfo\"><h3>Diagnostics</h3></div>");
+	if (tapiriik.User !== undefined) infoPane.append($("<div><b>User ID:</b> <tt>" + tapiriik.User.ID + "</tt></div>"));
+	if (tapiriik.User !== undefined) infoPane.append($("<div><b>System:</b> <tt>" + tapiriik.SiteVer + "</tt></div>"));
+	infoPane.hide();
+	$(".content").append(infoPane);
+	infoPane.slideDown();
 };
 
 $(window).load(tapiriik.Init);

@@ -51,12 +51,13 @@
 
 	
 	<script type="text/javascript">
+	tapiriik.SiteVer = "{{ config.siteVer|slice:":7" }}";
 	tapiriik.ServiceInfo = {};
 	{% for provider in service_providers %}
 	tapiriik.ServiceInfo["{{ provider.ID }}"] = {AuthenticationType: "{{ provider.AuthenticationType }}", AuthorizationURL: "{{ provider.UserAuthorizationURL|safe }}"};{% endfor %}
 	tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
 	{% if user %}
-	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}};
+	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}, ID: "{{ user.ID }}"};
 	{% endif %}
 	</script>
 </body>

@@ -83,6 +83,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'tapiriik.web.startup.Startup',
     'tapiriik.web.startup.ServiceWebStartup',
     'tapiriik.auth.SessionAuth'
     # Uncomment the next line for simple clickjacking protection:
@@ -150,5 +151,7 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 WEB_ROOT = 'http://localhost:8000'
 
 INVITE_KEYS = []
+
+SITE_VER = "unknown"
 
 from .local_settings import *

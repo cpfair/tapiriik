@@ -15,5 +15,6 @@ def dashboard(req):
             return render(req, "site-splash.html")
 
     user = req.user
+    user["ID"] = user["_id"]
 
     return render(req, "dashboard.html", {"user": user})
