@@ -239,10 +239,10 @@ tapiriik.RefreshSyncCountdown = function(){
 };
 
 tapiriik.ShowDebugInfo = function(){
-	if ($(".debugInfo").length>0 || tapiriik.SiteVer === undefined) return;
+	if ($(".debugInfo").length>0 || window.location.pathname != "/") return;
 	var infoPane = $("<div class=\"debugInfo\"><h3>Diagnostics</h3></div>");
 	if (tapiriik.User !== undefined) infoPane.append($("<div><b>User ID:</b> <tt>" + tapiriik.User.ID + "</tt></div>"));
-	if (tapiriik.User !== undefined) infoPane.append($("<div><b>System:</b> <tt>" + tapiriik.SiteVer + "</tt></div>"));
+	infoPane.append($("<div><b>System:</b> <tt>" + tapiriik.SiteVer + "</tt></div>"));
 	infoPane.hide();
 	$(".content").append(infoPane);
 	infoPane.slideDown();
