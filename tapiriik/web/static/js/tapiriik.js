@@ -239,6 +239,7 @@ tapiriik.RefreshSyncCountdown = function(){
 };
 
 tapiriik.ShowDebugInfo = function(){
+	if ($(".debugInfo").length>0) return;
 	var infoPane = $("<div class=\"debugInfo\"><h3>Diagnostics</h3></div>");
 	if (tapiriik.User !== undefined) infoPane.append($("<div><b>User ID:</b> <tt>" + tapiriik.User.ID + "</tt></div>"));
 	if (tapiriik.User !== undefined) infoPane.append($("<div><b>System:</b> <tt>" + tapiriik.SiteVer + "</tt></div>"));

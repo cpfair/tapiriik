@@ -1,5 +1,3 @@
-Django
 requests
-httplib2
 pymongo
 pytz
