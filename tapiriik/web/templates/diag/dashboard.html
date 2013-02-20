@@ -1,0 +1,19 @@
+{% extends "site.html" %}
+{% load displayutils %}
+{% block title %}diagnostics{% endblock %}
+{% block content %}
+<div style="text-align:left">
+	<h3>Stats</h3>
+	<ul style="list-style:none;margin:0;padding:0;">
+		<li><b>Aggregated distance:</b> {{ stats.TotalDistanceSynced|format_meters }}km</li>
+		<li><b>Stats update:</b> {{ stats.Updated }} UTC</li>
+	</ul>
+	<h3>Sync</h3>
+	<ul style="list-style:none;margin:0;padding:0;">
+		<li><b>Locked records:</b> {{ lockedSyncRecords }}</li>
+		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
+	</ul>
+</div>
+
+
+{% endblock %}

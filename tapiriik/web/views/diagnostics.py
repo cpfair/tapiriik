@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
+from tapiriik.database import db
+from bson.objectid import ObjectId
 import hashlib
 import onetimepass
+from datetime import datetime
 
 def diag_requireAuth(view):
     def authWrapper(req, *args, **kwargs):
@@ -13,8 +16,32 @@ def diag_requireAuth(view):
 
 
 @diag_requireAuth
-def diag_dashboard(req, user=None):
-    pass
+def diag_dashboard(req):
+    lockedSyncRecords = db.users.aggregate([
+                                            {"$match": {"SynchronizationWorker": {"$ne": None}}},
+                                            {"$group": {"_id": None, "count": {"$sum": 1}}}
+                                            ])
+    if len(lockedSyncRecords["result"]) > 0:
+        lockedSyncRecords = lockedSyncRecords["result"][0]["count"]
+    else:
+        lockedSyncRecords = 0
+
+    pendingSynchronizations = db.users.aggregate([
+                                                {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
+                                                {"$group": {"_id": None, "count": {"$sum": 1}}}
+                                                ])
+    if len(pendingSynchronizations["result"]) > 0:
+        pendingSynchronizations = pendingSynchronizations["result"][0]["count"]
+    else:
+        pendingSynchronizations = 0
+
+    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "pendingSynchronizations": pendingSynchronizations})
+
+
+@diag_requireAuth
+def diag_user(req, user):
+    userRec = db.users.find_one({"_id": ObjectId(user)})
+    return render(req, "diag/user.html", {"user": userRec})
 
 
 def diag_login(req):

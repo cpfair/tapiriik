@@ -1,0 +1,37 @@
+{% extends "site.html" %}
+{% load services %}
+{% load displayutils %}
+{% block title %}user diagnostics{% endblock %}
+{% block content %}
+<div style="text-align:left">
+	<h3>Details</h3>
+	<ul style="list-style:none;margin:0;padding:0;">
+		<li><b>Created:</b> {{ user.Created }} UTC</li>
+		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
+		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
+	</ul>
+	{% for connection in user.ConnectedServices|svc_populate_conns %}
+	<h3>{{ connection.Service }}</h3>
+	<ul style="list-style:none;margin:0;padding:0;">
+		<li><b>ID:</b> <tt>{{ connection|dict_get:'_id' }}</tt></li>
+		<li><b>Ext ID:</b> <tt>{{ connection.ExternalID }}</tt></li>
+		<li><b>Synced Activity Count:</b> <tt>{{ connection.SynchronizedActivities|length }}</tt></li>
+		<li><b>Auth:</b> <tt>{{ connection.Authorization }}</tt></li>
+		{% if connection.SyncErrors|length > 0 %}
+		<li><b>Sync Errors:</b>
+			<ul>
+				{% for err in connection.SyncErrors %}
+					<li>
+						<tt>{{ err.Type }}</tt> @ <tt>{{ err.Step }}</tt><br/>
+						{{ err.Message|linebreaks }}
+					</li>
+				{% endfor %}
+			</ul>
+
+		</li>
+		{% endif %}
+	</ul>
+	{% endfor %}
+</div>
+
+{% endblock %}
