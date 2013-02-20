@@ -1,4 +1,3 @@
 requests
 pymongo
 pytz
--e git+git://github.com/tadeck/onetimepass.git@python3.2-develop#egg=onetimepass

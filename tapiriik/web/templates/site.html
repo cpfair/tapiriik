@@ -1,3 +1,4 @@
+{% load displayutils %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -57,7 +58,7 @@
 	tapiriik.ServiceInfo["{{ provider.ID }}"] = {AuthenticationType: "{{ provider.AuthenticationType }}", AuthorizationURL: "{{ provider.UserAuthorizationURL|safe }}"};{% endfor %}
 	tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
 	{% if user %}
-	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}, ID: "{{ user.ID }}"};
+	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}, ID: "{{ user|dict_get:'_id' }}"};
 	{% endif %}
 	</script>
 </body>
