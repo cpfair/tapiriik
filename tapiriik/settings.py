@@ -150,8 +150,13 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
 WEB_ROOT = 'http://localhost:8000'
 
+# empty means no invites
 INVITE_KEYS = []
 
+# set at startup
 SITE_VER = "unknown"
+
+# Diagnostics auth, None = no auth
+DIAG_AUTH_TOTP_SECRET = DIAG_AUTH_PASSWORD = None
 
 from .local_settings import *

@@ -19,6 +19,9 @@ urlpatterns = patterns('',
     url(r'^sync/status$', 'tapiriik.web.views.sync_status', {}, name='sync_status'),
     url(r'^sync/schedule/now$', 'tapiriik.web.views.sync_schedule_immediate', {}, name='sync_schedule_immediate'),
 
+    url(r'^diagnostics/$', 'tapiriik.web.views.diag_dashboard', {}, name='diagnostics_dashboard'),
+    url(r'^diagnostics/login$', 'tapiriik.web.views.diag_login', {}, name='diagnostics_login'),
+
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
     url(r'^privacy$', TemplateView.as_view(template_name='static/privacy.html'), name='privacy'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),

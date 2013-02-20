@@ -1,0 +1,15 @@
+{% extends "site.html" %}
+{% block title %}diagnostics auth{% endblock %}
+{% block content %}
+<div style="text-align:left">
+<h3>Super seecreet diagnostics dashboard login (ooooh! aaaaah!)</h3>
+<form method="POST">
+		<input type="password" name="password"/><br/>
+		<input type="text" name="totp" maxlength="6"/></br>
+		<button type="submit">Auth</button>
+		{% csrf_token %}
+</form>
+</div>
+
+
+{% endblock %}
