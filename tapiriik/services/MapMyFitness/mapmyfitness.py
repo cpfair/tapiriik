@@ -126,6 +126,7 @@ class MapMyFitnessService():
                     raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
                 raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
             data = response.json()
+            print(data)
             allItems += data["result"]["output"]["workouts"]
             if not exhaustive or int(data["result"]["output"]["count"]) < 25:
                 break
@@ -143,3 +144,10 @@ class MapMyFitnessService():
             activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["workout_id"]}]
             activities.append(activity)
         return activities
+
+    def DownloadActivity(self, serviceRecord, activity):
+        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        print (activityID)# route id 175411456 key 2025466620
+        oauth = self._getOauthClient(serviceRecord)
+        response = requests.get("http://api.mapmyfitness.com/3.1/routes/get_routes", auth=oauth)
+        print (response.text)
