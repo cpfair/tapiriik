@@ -1,3 +1,4 @@
 requests
+requests-oauthlib
 pymongo
 pytz

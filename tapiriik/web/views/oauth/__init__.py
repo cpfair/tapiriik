@@ -6,6 +6,11 @@ from tapiriik.auth import User
 import json
 
 
+def authredirect(req, service):
+    svc = Service.FromID(service)
+    return redirect(svc.GenerateUserAuthorizationURL())
+
+
 def authreturn(req, service):
     if ("error" in req.GET):
         success = False
