@@ -22,27 +22,58 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, waypointList=[]):
+    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, name=None, tz=None, waypointList=[]):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
         self.Waypoints = waypointList
         self.Distance = distance
+        self.TZ = tz
+        self.Name = name
 
     def CalculateUID(self):
         csp = hashlib.new("md5")
         roundedStartTime = self.StartTime
         roundedStartTime = roundedStartTime - timedelta(microseconds=roundedStartTime.microsecond)
-        csp.update(str(roundedStartTime).encode('utf-8'))
+        csp.update(roundedStartTime.strftime("%Y-%m-%d %H:%M:%S").encode('utf-8'))  # exclude TZ for compat
         self.UID = csp.hexdigest()
 
-    def CalculateTZ(self):
-        if len(self.Waypoints) == 0:
-            raise Exception("Can't find TZ without waypoints")
-        if hasattr(self, "TZ"):
+    def DefineTZ(self):
+        """ run localize() on all contained dates (doesn't change values) """
+        if self.TZ is None:
+            raise ValueError("TZ not set")
+        if self.StartTime.tzinfo is None:
+            self.StartTime = self.TZ.localize(self.StartTime)
+        if self.EndTime.tzinfo is None:
+            self.EndTime = self.TZ.localize(self.EndTime)
+        for wp in self.Waypoints:
+            if wp.Timestamp.tzinfo is None:
+                wp.Timestamp = self.TZ.localize(wp.Timestamp)
+
+    def AdjustTZ(self):
+        """ run astimezone() on all contained dates (requires non-naive DTs) """
+        if self.TZ is None:
+            raise ValueError("TZ not set")
+        self.StartTime = self.StartTime.astimezone(self.TZ)
+        self.EndTime = self.EndTime.astimezone(self.TZ)
+
+        for wp in self.Waypoints:
+                wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
+
+    def CalculateTZ(self, loc=None):
+        if self.TZ is not None:
             return self.TZ
         else:
-            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(self.Waypoints[0].Location.Latitude) + "&lng=" + str(self.Waypoints[0].Location.Longitude))
+            if len(self.Waypoints) == 0 and loc is None:
+                raise Exception("Can't find TZ without waypoints")
+            if loc is None:
+                for wp in self.Waypoints:
+                    if wp.Location is not None:
+                        loc = wp.Location
+                        break
+                if loc is None:
+                    raise Exception("Can't find TZ without a waypoint with a location")
+            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
             data = resp.json()
             tz = data["timezoneId"] if "timezoneId" in data else data["rawOffset"]
             self.TZ = pytz.timezone(tz)
@@ -53,10 +84,12 @@ class Activity:
     __repr__ = __str__
 
     def __eq__(self, other):
-        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Distance == other.Distance
+        # might need to fix this for TZs?
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Distance == other.Distance and self.Name == other.Name
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
 
 class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited

@@ -125,6 +125,7 @@ class RunKeeperService():
     def _populateActivity(self, rawRecord):
         ''' Populate the 1st level of the activity object with all details required for UID from RK API data '''
         activity = UploadedActivity()
+        #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
         activity.Distance = rawRecord["total_distance"]
@@ -195,8 +196,11 @@ class RunKeeperService():
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
         record["total_distance"] = activity.Distance
+        record["notes"] = activity.Name  # not symetric, but better than nothing
         record["path"] = []
         for waypoint in activity.Waypoints:
+            if (waypoint.Location is None):
+                continue  # RK waypoints must be anchored to locations
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
             if waypoint.Type in self._wayptTypeMappings.values():

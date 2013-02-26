@@ -25,6 +25,9 @@ class Sync:
         for act in svcActivities:
                 existElsewhere = [x for x in activityList if x.UID == act.UID]
                 if len(existElsewhere) > 0:
+                    if act.TZ is not None and existElsewhere[0].TZ is None:
+                        existElsewhere[0].TZ = act.TZ
+                        existElsewhere[0].DefineTZ()
                     existElsewhere[0].UploadedTo += act.UploadedTo
                     continue
                 activityList.append(act)

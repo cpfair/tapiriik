@@ -12,6 +12,7 @@ import json
 import pytz
 import re
 import gzip
+import base64
 
 class EndomondoService:
     ID = "endomondo"
@@ -52,18 +53,78 @@ class EndomondoService:
         #  you can't revoke the tokens endomondo distributes :\
         pass
 
+    def _downloadRawTrackRecord(self, serviceRecord, trackId):
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "trackId": trackId}
+        response = requests.get("http://api.mobile.endomondo.com/mobile/readTrack", params=params)
+        return response.text
+
+
+    def _populateActivityFromTrackRecord(self, activity, recordText):
+        activity.Waypoints = []
+        ###       1ST RECORD      ###
+        # userID;
+        # timestamp - create date?;
+        # type? W=1st
+        # User name;
+        # activity name;
+        # activity type;
+        # another timestamp - start time of event?;
+        # duration.00;
+        # distance (km);
+        # kcal;
+        #;
+        # max alt;
+        # min alt;
+        # max HR;
+        # avg HR;
+
+        ###     TRACK RECORDS     ###
+        # timestamp;
+        # type (2=start, 3=end, 0=pause, 1=resume);
+        # latitude;
+        # longitude;
+        #;
+        #;
+        # alt;
+        # hr;
+
+        for row in recordText.split("\n"):
+            if row == "OK" or len(row) == 0:
+                continue
+            split = row.split(";")
+            if split[2] == "W":
+                # init record
+                activity.Distance = float(split[8]) * 1000
+                activity.Name = split[4]
+            else:
+                wp = Waypoint()
+                if split[1] == "2":
+                    wp.Type = WaypointType.Start
+                elif split[1] == "3":
+                    wp.Type = WaypointType.End
+                elif split[1] == "0":
+                    wp.Type = WaypointType.Pause
+                elif split[1] == "1":
+                    wp.Type = WaypointType.Resume
+                else:
+                    wp.Type == WaypointType.Regular
+                wp.Timestamp = pytz.utc.localize(datetime.strptime(split[0], "%Y-%m-%d %H:%M:%S UTC"))  # it's like this as opposed to %z so I know when they change things (it'll break)
+                if split[2] != "":
+                    wp.Location = Location(float(split[2]), float(split[3]), None)
+                    if split[6] != "":
+                        wp.Location.Altitude = float(split[6])  # why this is missing: who knows?
+                if split[7] != "":
+                    wp.HR = float(split[7])
+                activity.Waypoints.append(wp)
+
+        activity.CalculateTZ()
+        activity.AdjustTZ()
+
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
         allItems = []
 
-
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "compression": "gzip", "DEFLATE": True, "secureToken":serviceRecord["Authorization"]["SecureToken"], "maxResults": 45}
-
-        # get TZ
-
-        resp = requests.post("https://api.mobile.endomondo.com/mobile/api/profile/device/", params=params, data="")
-        print(gzip.decompress(resp.content))
-        return 
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45}
 
         while True:
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
@@ -81,13 +142,20 @@ class EndomondoService:
             if not act["has_points"]:
                 continue  # it'll break strava, which needs waypoints to find TZ. Meh
             activity = UploadedActivity()
-            activity.StartTime = datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC")
+            activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
             activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
-            #if act["type"] in self._activityMappings:
-            #    activity.Type = self._activityMappings[act["type"]]
 
-            activity.CalculateUID()
-            activity.UploadedTo = [{"Connection":serviceRecord, "ActivityID":act["id"]}]
+            # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
+            cachedTrackData = db.endomondo_activity_cache.find_one({"TrackID": act["id"]})
+            if cachedTrackData is None:
+                cachedTrackData = {"TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
+                db.endomondo_activity_cache.insert(cachedTrackData)
+            self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
+
+            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
             activities.append(activity)
             print(activity)
         return activities
+
+    def DownloadActivity(self, serviceRecord, activity):
+        pass # the activity is fully populated at this point, thanks to meh API design decisions
