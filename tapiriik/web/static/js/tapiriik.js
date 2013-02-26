@@ -197,7 +197,7 @@ tapiriik.UpdateSyncCountdown = function(){
 };
 tapiriik.FormatTimespan = function(spanMillis){
 	if (Math.abs(spanMillis/1000)>60){
-		return Math.ceil(spanMillis/1000/60)+" minute"+(Math.ceil(spanMillis/1000/60)!=1?"s":"");
+		return Math.round(spanMillis/1000/60)+" minute"+(Math.ceil(spanMillis/1000/60)!=1?"s":"");
 	} else {
 		return Math.ceil(spanMillis/1000)+" second"+(Math.ceil(spanMillis/1000)!=1?"s":"");
 	}
