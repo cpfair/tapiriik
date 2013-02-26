@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from tapiriik.database import db
 import requests
 import hashlib
 import pytz
@@ -73,10 +74,20 @@ class Activity:
                         break
                 if loc is None:
                     raise Exception("Can't find TZ without a waypoint with a location")
-            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
-            data = resp.json()
-            tz = data["timezoneId"] if "timezoneId" in data else data["rawOffset"]
-            self.TZ = pytz.timezone(tz)
+            cachedTzData = db.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
+            if cachedTzData is None:
+                resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
+                data = resp.json()
+                cachedTzData = {}
+                if "timezoneId" in data:
+                    cachedTzData["TZ"] = data["timezoneId"]
+                else:
+                    cachedTzData["TZ"] = data["rawOffset"]
+                cachedTzData["Latitude"] = loc.Latitude
+                cachedTzData["Longitude"] = loc.Longitude
+                db.tz_cache.insert(cachedTzData)
+
+            self.TZ = pytz.timezone(cachedTzData["TZ"])
             return self.TZ
 
     def __str__(self):
