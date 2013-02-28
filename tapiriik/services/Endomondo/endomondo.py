@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, SITE_VER
+from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.database import db
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
@@ -7,22 +7,41 @@ from tapiriik.services.api import APIException, APIAuthorizationException
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
-import urllib.parse
-import json
 import pytz
 import re
-import gzip
-import base64
+
 
 class EndomondoService:
     ID = "endomondo"
     DisplayName = "Endomondo"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
-    SupportedActivities = [ActivityType.Running, ActivityType.Cycling]
+    _activityMappings = {
+        0:  ActivityType.Running,
+        1:  ActivityType.Cycling,
+        2:  ActivityType.Cycling,
+        3:  ActivityType.MountainBiking,
+        4:  ActivityType.Skating,
+        6:  ActivityType.CrossCountrySkiing,
+        7:  ActivityType.DownhillSkiing,
+        8:  ActivityType.Snowboarding,
+        9:  ActivityType.Rowing,  # canoeing
+        11: ActivityType.Rowing,
+        14: ActivityType.Walking,  # fitness walking
+        16: ActivityType.Hiking,
+        17: ActivityType.Hiking,  # orienteering
+        18: ActivityType.Walking,
+        20: ActivityType.Swimming,
+        22: ActivityType.Other,
+        40: ActivityType.Swimming,  # scuba diving
+    }
+
+    SupportedActivities = list(_activityMappings.values())
     SupportsHR = True
-    SupportsPower = True
-    SupportsCalories = False  # don't think it does
+    SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
+    SupportsCadence = False
+    SupportsTemp = False
+    SupportsPower = False
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "endomondo"})
@@ -45,7 +64,6 @@ class EndomondoService:
         print("response: " + resp.text + str(resp.status_code))
         if resp.text.strip() == "USER_UNKNOWN" or resp.text.strip() == "USER_EXISTS_PASSWORD_WRONG":
             return (None, None)  # maybe raise an exception instead?
-        
         data = self._parseKVP(resp.text)
         return (data["userId"], {"AuthToken": data["authToken"], "SecureToken": data["secureToken"]})
 
@@ -57,7 +75,6 @@ class EndomondoService:
         params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "trackId": trackId}
         response = requests.get("http://api.mobile.endomondo.com/mobile/readTrack", params=params)
         return response.text
-
 
     def _populateActivityFromTrackRecord(self, activity, recordText):
         activity.Waypoints = []
@@ -87,8 +104,8 @@ class EndomondoService:
         #;
         # alt;
         # hr;
-
-        for row in recordText.split("\n"):
+        rows = recordText.split("\n")
+        for row in rows:
             if row == "OK" or len(row) == 0:
                 continue
             split = row.split(";")
@@ -150,12 +167,62 @@ class EndomondoService:
             if cachedTrackData is None:
                 cachedTrackData = {"TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
                 db.endomondo_activity_cache.insert(cachedTrackData)
+
             self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
+
+            if int(act["sport"]) in self._activityMappings:
+                activity.Type = self._activityMappings[int(act["sport"])]
 
             activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
             activities.append(activity)
-            print(activity)
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
-        pass # the activity is fully populated at this point, thanks to meh API design decisions
+        pass  # the activity is fully populated at this point, thanks to meh API design decisions
+
+    def UploadActivity(self, serviceRecord, activity):
+        #http://api.mobile.endomondo.com/mobile/track?authToken=token&workoutId=2013-02-27%2020:51:45%20EST&sport=18&duration=0.08&calories=0.00&hydration=0.00&goalType=BASIC&goalType=DISTANCE&goalDistance=0.000000&deflate=true&audioMessage=true
+        #...later...
+        #http://api.mobile.endomondo.com/mobile/track?authToken=token&workoutId=2013-02-27%2020:51:45%20EST&sport=18&duration=23.04&calories=0.81&hydration=0.00&goalType=BASIC&goalType=DISTANCE&goalDistance=0.000000&deflate=true&audioMessage=false
+        sportId = [k for k, v in self._activityMappings.items() if v == activity.Type]
+        if len(sportId) == 0:
+            raise ValueError("Endomondo service does not support activity type " + activity.Type)
+        else:
+            sportId = sportId[0]
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + activity.UID}
+        data = self._createUploadData(activity)
+
+        response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
+        if response.status_code != 200:
+            raise APIException("Could not upload activity " + response.text)
+
+    def _createUploadData(self, activity):
+        if activity.StartTime.tzinfo is None:
+            raise ValueError("Endomondo upload requires TZ info")
+
+        #same format as they're downloaded afaik
+        scsv = []
+        for wp in activity.Waypoints:
+            line = []
+            for x in range(9):
+                line.append("")
+
+            line[0] = wp.Timestamp.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")  # who knows that's on the other end
+            line[1] = ({
+                WaypointType.Pause: "0",
+                WaypointType.Resume: "1",
+                WaypointType.Start: "2",
+                WaypointType.End: "3",
+                WaypointType.Regular: ""
+                }[wp.Type])
+
+            if wp.Location is not None:
+                line[2] = str(wp.Location.Latitude)
+                line[3] = str(wp.Location.Longitude)
+                if wp.Location.Altitude is not None:
+                    line[6] = str(wp.Location.Altitude)
+
+            if wp.HR is not None:
+                line[7] = str(wp.HR)
+            scsv.append(";".join(line))
+        return "\n".join(scsv)
