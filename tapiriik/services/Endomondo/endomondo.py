@@ -58,7 +58,7 @@ class EndomondoService:
         return out
 
     def Authorize(self, email, password):
-        params = {"email": email, "password": password, "v": "2.4", "action": "pair", "deviceId": "TAP-SYNC", "country": "N/A"}  # note to future self: deviceId can't change otherwise we'll get different tokens back
+        params = {"email": email, "password": password, "v": "2.4", "action": "pair", "deviceId": "TAP-SYNC-" + email.lower(), "country": "N/A"}  # note to future self: deviceId can't change intra-account otherwise we'll get different tokens back
 
         resp = requests.get("https://api.mobile.endomondo.com/mobile/auth", params=params)
         print("response: " + resp.text + str(resp.status_code))
