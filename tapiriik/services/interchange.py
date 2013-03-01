@@ -3,6 +3,7 @@ from tapiriik.database import db
 import requests
 import hashlib
 import pytz
+import warnings
 
 
 class ActivityType:  # taken from RK API docs. The text values have no meaning except for debugging
@@ -23,11 +24,11 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, name=None, tz=None, waypointList=[]):
+    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, name=None, tz=None, waypointList=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
-        self.Waypoints = waypointList
+        self.Waypoints = waypointList if waypointList is not None else []
         self.Distance = distance
         self.TZ = tz
         self.Name = name
@@ -76,6 +77,8 @@ class Activity:
                     raise Exception("Can't find TZ without a waypoint with a location")
             cachedTzData = db.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
             if cachedTzData is None:
+                warnings.filterwarnings("ignore", "the 'strict' argument")
+                warnings.filterwarnings("ignore", "unclosed <socket")
                 resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
                 data = resp.json()
                 cachedTzData = {}
@@ -87,7 +90,10 @@ class Activity:
                 cachedTzData["Longitude"] = loc.Longitude
                 db.tz_cache.insert(cachedTzData)
 
-            self.TZ = pytz.timezone(cachedTzData["TZ"])
+            if type(cachedTzData["TZ"]) != str:
+                self.TZ = pytz.FixedOffset(cachedTzData["TZ"] * 60)
+            else:
+                self.TZ = pytz.timezone(cachedTzData["TZ"])
             return self.TZ
 
     def EnsureTZ(self):
@@ -137,7 +143,7 @@ class Waypoint:
         return not self.__eq__(other)
 
     def __str__(self):
-        return "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + " HR " + str(self.HR)
+        return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
     __repr__ = __str__
 
 
