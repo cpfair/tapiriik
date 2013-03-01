@@ -90,6 +90,11 @@ class Activity:
             self.TZ = pytz.timezone(cachedTzData["TZ"])
             return self.TZ
 
+    def EnsureTZ(self):
+        self.CalculateTZ()
+        if self.StartTime.tzinfo is None:
+            self.DefineTZ()
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__

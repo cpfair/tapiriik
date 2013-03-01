@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 import requests
 import pytz
 import re
-
+import zlib
+import os
 
 class EndomondoService:
     ID = "endomondo"
@@ -18,22 +19,38 @@ class EndomondoService:
 
     _activityMappings = {
         0:  ActivityType.Running,
+        2:  ActivityType.Cycling,  # the order of these matters since it picks the first match for uploads
         1:  ActivityType.Cycling,
+        3:  ActivityType.MountainBiking,
+        4:  ActivityType.Skating,
+        6:  ActivityType.CrossCountrySkiing,
+        7:  ActivityType.DownhillSkiing,
+        8:  ActivityType.Snowboarding,
+        11: ActivityType.Rowing,
+        9:  ActivityType.Rowing,  # canoeing
+        18: ActivityType.Walking,
+        14: ActivityType.Walking,  # fitness walking
+        16: ActivityType.Hiking,
+        17: ActivityType.Hiking,  # orienteering
+        20: ActivityType.Swimming,
+        40: ActivityType.Swimming,  # scuba diving
+        22: ActivityType.Other,
+        92: ActivityType.Wheelchair
+    }
+
+    _reverseActivityMappings = {  # so that ambiguous events get mapped back to reasonable types
+        0:  ActivityType.Running,
         2:  ActivityType.Cycling,
         3:  ActivityType.MountainBiking,
         4:  ActivityType.Skating,
         6:  ActivityType.CrossCountrySkiing,
         7:  ActivityType.DownhillSkiing,
         8:  ActivityType.Snowboarding,
-        9:  ActivityType.Rowing,  # canoeing
         11: ActivityType.Rowing,
-        14: ActivityType.Walking,  # fitness walking
-        16: ActivityType.Hiking,
-        17: ActivityType.Hiking,  # orienteering
         18: ActivityType.Walking,
+        16: ActivityType.Hiking,
         20: ActivityType.Swimming,
         22: ActivityType.Other,
-        40: ActivityType.Swimming,  # scuba diving
         92: ActivityType.Wheelchair
     }
 
@@ -140,66 +157,72 @@ class EndomondoService:
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
-        allItems = []
-
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45}
-
+        activities = []
+        earliestDate = None
         while True:
+            before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45, "before": before}
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
                 raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
             data = response.json()
-            allItems += data["data"]
-            if not exhaustive or data["more"] == False:
+            for act in data["data"]:
+                if not act["has_points"]:
+                    continue  # it'll break strava, which needs waypoints to find TZ. Meh
+                activity = UploadedActivity()
+                activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
+                activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
+
+                # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
+                cachedTrackData = db.endomondo_activity_cache.find_one({"TrackID": act["id"]})
+                if cachedTrackData is None:
+                    cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
+                    db.endomondo_activity_cache.insert(cachedTrackData)
+
+                self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
+
+                if int(act["sport"]) in self._activityMappings:
+                    activity.Type = self._activityMappings[int(act["sport"])]
+
+                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+                activity.CalculateUID()
+                activities.append(activity)
+
+                if earliestDate is None or activity.StartTime.astimezone(pytz.utc) < earliestDate:  # probably redundant, I would assume it works out the TZes...
+                    earliestDate = activity.StartTime.astimezone(pytz.utc)
+
+            if not exhaustive or ("more" in data and data["more"] == False):
                 break
-
-        activities = []
-        for act in allItems:
-            if not act["has_points"]:
-                continue  # it'll break strava, which needs waypoints to find TZ. Meh
-            activity = UploadedActivity()
-            activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
-            activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
-
-            # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
-            cachedTrackData = db.endomondo_activity_cache.find_one({"TrackID": act["id"]})
-            if cachedTrackData is None:
-                cachedTrackData = {"TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
-                db.endomondo_activity_cache.insert(cachedTrackData)
-
-            self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
-
-            if int(act["sport"]) in self._activityMappings:
-                activity.Type = self._activityMappings[int(act["sport"])]
-
-            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
-            activities.append(activity)
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
-        pass  # the activity is fully populated at this point, thanks to meh API design decisions
+        return activity  # the activity is fully populated at this point, thanks to meh API design decisions
 
     def UploadActivity(self, serviceRecord, activity):
         #http://api.mobile.endomondo.com/mobile/track?authToken=token&workoutId=2013-02-27%2020:51:45%20EST&sport=18&duration=0.08&calories=0.00&hydration=0.00&goalType=BASIC&goalType=DISTANCE&goalDistance=0.000000&deflate=true&audioMessage=true
         #...later...
         #http://api.mobile.endomondo.com/mobile/track?authToken=token&workoutId=2013-02-27%2020:51:45%20EST&sport=18&duration=23.04&calories=0.81&hydration=0.00&goalType=BASIC&goalType=DISTANCE&goalDistance=0.000000&deflate=true&audioMessage=false
-        sportId = [k for k, v in self._activityMappings.items() if v == activity.Type]
+        sportId = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
         if len(sportId) == 0:
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + activity.UID}
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
         data = self._createUploadData(activity)
-
+        data = zlib.compress(data.encode("ASCII"))
+        f = open("upload.dat", "wb")
+        f.write(data)
+        f.flush()
+        f.close()
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
+        print(response.text)
         if response.status_code != 200:
-            raise APIException("Could not upload activity " + response.text)
+            raise APIException("Could not upload activity " + response.text, serviceRecord)
 
     def _createUploadData(self, activity):
-        if activity.StartTime.tzinfo is None:
-            raise ValueError("Endomondo upload requires TZ info")
+        activity.EnsureTZ()
 
         #same format as they're downloaded afaik
         scsv = []
@@ -227,3 +250,6 @@ class EndomondoService:
                 line[7] = str(wp.HR)
             scsv.append(";".join(line))
         return "\n".join(scsv)
+
+    def DeleteCachedData(self, serviceRecord):
+        db.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
