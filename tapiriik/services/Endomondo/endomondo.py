@@ -34,6 +34,7 @@ class EndomondoService:
         20: ActivityType.Swimming,
         22: ActivityType.Other,
         40: ActivityType.Swimming,  # scuba diving
+        92: ActivityType.Wheelchair
     }
 
     SupportedActivities = list(_activityMappings.values())
