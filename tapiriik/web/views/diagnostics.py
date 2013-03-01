@@ -7,9 +7,10 @@ from bson.objectid import ObjectId
 import hashlib
 from datetime import datetime
 
+
 def diag_requireAuth(view):
     def authWrapper(req, *args, **kwargs):
-        if "diag_auth" not in req.session or req.session["diag_auth"] != True:
+        if DIAG_AUTH_TOTP_SECRET is not None and DIAG_AUTH_PASSWORD is not None and ("diag_auth" not in req.session or req.session["diag_auth"] != True):
             return redirect("diagnostics_login")
         return view(req, *args, **kwargs)
     return authWrapper
