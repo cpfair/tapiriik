@@ -17,7 +17,7 @@ class StravaService:
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
-    SupportedActivities = [ActivityType.Running, ActivityType.Cycling]
+    SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True
     SupportsPower = True
     SupportsCalories = False  # don't think it does
