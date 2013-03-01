@@ -17,7 +17,7 @@ class StravaService:
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
-    SupportedActivities = [ActivityType.Running, ActivityType.Cycling]
+    SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True
     SupportsPower = True
     SupportsCalories = False  # don't think it does
@@ -69,6 +69,7 @@ class StravaService:
             activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
             activity.Type = ActivityType.Cycling  # change me once the API stops sucking
             activity.Distance = ridedata["distance"]
+            activity.Name = ridedata["name"]
             activity.CalculateUID()
             activities.append(activity)
 
@@ -134,9 +135,9 @@ class StravaService:
         for wp in activity.Waypoints:
             wpTime = wp.Timestamp - activity.TZ.utcoffset(wp.Timestamp)  # strava y u do timezones wrong??
             points.append([wpTime.strftime("%Y-%m-%dT%H:%M:%S"),
-                            wp.Location.Latitude,
-                            wp.Location.Longitude,
-                            wp.Location.Altitude,
+                            wp.Location.Latitude if wp.Location is not None else "",
+                            wp.Location.Longitude if wp.Location is not None else "",
+                            wp.Location.Altitude if wp.Location is not None else "",
                             "pause" if wp.Type == WaypointType.Pause else None,
                             wp.HR,
                             wp.Cadence,
@@ -146,6 +147,7 @@ class StravaService:
                 "type": "json",
                 "data_fields": fields,
                 "data": points,
+                "activity_name": activity.Name,
                 "activity_type": "run" if activity.Type == ActivityType.Running else "ride"}
 
         response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), headers={"Content-Type": "application/json"})

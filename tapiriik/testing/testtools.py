@@ -5,6 +5,7 @@ from tapiriik.services.interchange import Activity, ActivityType, Waypoint, Wayp
 
 from datetime import datetime, timedelta
 import random
+import pytz
 
 
 class MockServiceA:
@@ -27,8 +28,8 @@ class TapiriikTestCase(TestCase):
             self.assertEqual(a.EndTime, b.EndTime)
             self.assertEqual(a.Type, b.Type)
             self.assertEqual(len(a.Waypoints), len(b.Waypoints))
-            for idx in range(0, len(a.Waypoints)-1):
-                self.assertEqual(a.Waypoints[idx].Timestamp, b.Waypoints[idx].Timestamp)
+            for idx in range(0, len(a.Waypoints) - 1):
+                self.assertEqual(a.Waypoints[idx].Timestamp.astimezone(pytz.utc), b.Waypoints[idx].Timestamp.astimezone(pytz.utc))
                 self.assertEqual(a.Waypoints[idx].Location.Latitude, b.Waypoints[idx].Location.Latitude)
                 self.assertEqual(a.Waypoints[idx].Location.Longitude, b.Waypoints[idx].Location.Longitude)
                 self.assertEqual(a.Waypoints[idx].Location.Altitude, b.Waypoints[idx].Location.Altitude)
@@ -54,13 +55,14 @@ class TestTools:
     def create_random_activity(svc, actType=ActivityType.Other):
         ''' creates completely random activity with valid waypoints and data '''
         act = Activity()
+        if len(act.Waypoints) > 0:
+            raise ValueError("Waypoint list already populated")
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
         act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
         act.Type = actType
         act.Distance = random.random() * 10000
         paused = False
-
         waypointTime = act.StartTime
         while waypointTime < act.EndTime:
             wp = Waypoint()
@@ -69,16 +71,18 @@ class TestTools:
             wp.Timestamp = waypointTime
             wp.Location = Location(random.random() * 180 - 90, random.random() * 180 - 90, random.random() * 1000)  # this is gonna be one intense activity
 
+            if not (wp.HR == wp.Cadence == wp.Calories == wp.Power == wp.Temp == None):
+                raise ValueError("Waypoint did not initialize cleanly")
             if svc.SupportsHR:
-                wp.HR = random.randint(90, 180)
+                wp.HR = float(random.randint(90, 180))
             if svc.SupportsPower:
-                wp.Power = random.randint(0, 1000)
+                wp.Power = float(random.randint(0, 1000))
             if svc.SupportsCalories:
-                wp.Calories = random.randint(0, 500)
+                wp.Calories = float(random.randint(0, 500))
             if svc.SupportsCadence:
-                wp.Cadence = random.randint(0, 100)
+                wp.Cadence = float(random.randint(0, 100))
             if svc.SupportsTemp:
-                wp.Temp = random.randint(0, 100)
+                wp.Temp = float(random.randint(0, 100))
 
             if random.randint(40, 50) == 42:  # pause quite often
                 wp.Type = WaypointType.Pause
@@ -87,12 +91,14 @@ class TestTools:
                 paused = False
                 wp.Type = WaypointType.Resume
 
-            waypointTime += timedelta(0, random.random() + 9.5)  # 10ish seconds
+            waypointTime += timedelta(0, int(random.random() + 9.5))  # 10ish seconds
 
             if waypointTime > act.EndTime:
                 wp.Timestamp = act.EndTime
                 wp.Type = WaypointType.End
             act.Waypoints.append(wp)
+        if len(act.Waypoints) == 0:
+            raise ValueError("No waypoints populated")
         return act
 
     def create_mock_services():

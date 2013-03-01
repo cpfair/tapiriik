@@ -27,12 +27,22 @@ class InterchangeTests(TapiriikTestCase):
 
     def test_constant_representation(self):
         ''' ensures that all services' API clients are consistent through a simulated download->upload cycle '''
+        #  runkeeper
         rkSvc = Service.FromID("runkeeper")
         act = TestTools.create_random_activity(rkSvc, rkSvc.SupportedActivities[0])
         record = rkSvc._createUploadData(act)
         returnedAct = rkSvc._populateActivity(record)
-        rkSvc._populateActivityWaypoints(record, act)
-
+        rkSvc._populateActivityWaypoints(record, returnedAct)
         self.assertActivitiesEqual(returnedAct, act)
 
-        #  can't test Strava this way, the upload and download formats are entirely different
+        #  can't test Strava well this way, the upload and download formats are entirely different
+
+        #  endomondo - only waypoints at this point, the activity metadata is somewhat out-of-band
+        eSvc = Service.FromID("endomondo")
+        
+        act = TestTools.create_random_activity(eSvc, eSvc.SupportedActivities[0])
+        oldWaypoints = act.Waypoints
+        self.assertEqual(oldWaypoints[0].Calories, None)
+        record = eSvc._createUploadData(act)
+        eSvc._populateActivityFromTrackRecord(act, record)
+        self.assertEqual(oldWaypoints, act.Waypoints)
