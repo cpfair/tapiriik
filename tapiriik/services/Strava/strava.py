@@ -63,6 +63,8 @@ class StravaService:
                 db.strava_cache.insert(ridedata)
             else:
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
+            if ridedata["start_latlng"] is None:
+                continue  # stationary activity - no syncing for now
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
             activity.EndTime = activity.StartTime + timedelta(0, ridedata["elapsed_time"])
