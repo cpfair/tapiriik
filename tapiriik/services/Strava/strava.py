@@ -91,7 +91,7 @@ class StravaService:
 
         hasHR = "heartrate" in ridedata and len(ridedata["heartrate"]) > 0
         hasCadence = "cadence" in ridedata and len(ridedata["cadence"]) > 0
-        hasTemp = "temp" in ridedata and len(ridedata["tmep"]) > 0
+        hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0) or ("watts_calc" in ridedata and len(ridedata["watts_calc"]) > 0)
         moving = True
         waypointCt = len(ridedata["time"])
