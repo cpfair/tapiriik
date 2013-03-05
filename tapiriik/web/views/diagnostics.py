@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from tapiriik.database import db
+from tapiriik.sync import Sync
 from tapiriik.auth.totp import TOTP
 from bson.objectid import ObjectId
 import hashlib
@@ -42,6 +43,9 @@ def diag_dashboard(req):
 @diag_requireAuth
 def diag_user(req, user):
     userRec = db.users.find_one({"_id": ObjectId(user)})
+    if "sync" in req.GET:
+        Sync.ScheduleImmediateSync(userRec, req.GET["sync"] == "full")
+        userRec = db.users.find_one({"_id": ObjectId(user)})  # reload
     return render(req, "diag/user.html", {"user": userRec})
 
 
