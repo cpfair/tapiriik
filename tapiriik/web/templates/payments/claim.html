@@ -1,0 +1,16 @@
+{% extends "site.html" %}
+{% block title %}payment claim{% endblock %}
+{% block content %}
+<h1>Claim your payment</h1>
+
+<form method="POST">
+	{% if err == True %}
+		<div class="error" style="display:block">There was a problem reclaiming your payment - please contact me</div>
+	{% endif %}
+	<p>Your payment will be reassociated with the accounts you a currently connected to.</p>
+	<label for="txn">PayPal Transaction ID:</label><input type="text" id="txn" maxlength="12" placeholder="VADE0B248932" name="txn"/><br/>
+	{% csrf_token %}
+	<button type="submit">Claim</button>
+
+</form>
+{% endblock %}

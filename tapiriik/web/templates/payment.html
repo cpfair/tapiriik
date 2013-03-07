@@ -1,11 +1,13 @@
 {% load displayutils %}
-<a href="#" style="display:none;display:block;overflow:hidden;" class="paymentButton">Automatic synchronization ($2)</a>
+<a href="#" style="display:none;display:block;overflow:hidden;" class="paymentButton">Automatic synchronization</a>
 <form action="{{ config.pp.url }}" method="post" class="paymentForm" style="text-align:center">
+	<hr/>
 	<h3>Why do I want your money?</h3>
 	<p>Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. <b>$2 a year</b> covers these costs so tapiriik will always run smoothly.</p>
 	<input type="hidden" name="cmd" value="_s-xclick">
 	<input type="hidden" name="hosted_button_id" value="{{ config.pp.buttonId }}">
 	<input type="hidden" name="custom" value="{{ user|dict_get:'_id' }}">
 	<button type="submit" name="submit">Yeah, I guess</button>
+	<p><a href="{% url 'payments_claim' %}" class="reclaimButton">I already paid / I want to transfer my payment</a></p>
 	<p><b>No auto-renewal</b>, just come back here in a year if you're so inclined. Your payment will apply to <b>all your accounts</b>, present and future, and <b>may be transferred at any time</b>.</p>
 </form>

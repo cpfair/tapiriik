@@ -9,7 +9,7 @@
 		{% for connection in user.ConnectedServices|svc_populate_conns %}
 		{% include "service-button.html" with provider=connection|svc_conn_to_provider connection=connection %}
 		{% if not forloop.last %}{% endif %}{% endfor %}
-	<div class="syncStatus" style="display:none;">&laquo; <span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em> &raquo;</div>
+	<div class="syncStatus" style="display:none;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 			Thanks for supporting tapiriik; enjoy your automatic synchronization.

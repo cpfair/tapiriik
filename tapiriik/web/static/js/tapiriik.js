@@ -59,6 +59,7 @@ tapiriik.Init = function(){
 		$(".paymentForm").slideDown();
 		return false;
 	});
+	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
 };
 
 tapiriik.AddressChanged=function(){
@@ -69,8 +70,16 @@ tapiriik.AddressChanged=function(){
 	} else if (components[0]=="disconnect") {
 		tapiriik.OpenDeauthDialog(components[1]);
 		return;
+	} else if (components[0]=="payments" && components[1]=="claim"){
+		tapiriik.OpenPaymentReclaimDialog();
+		return;
 	}
 	tapiriik.DismissServiceDialog();
+};
+
+tapiriik.PaymentReclaimDialogLinkClicked = function(){
+	$.address.value("payments/claim");
+	return false;
 };
 
 tapiriik.AuthDialogLinkClicked = function(e){
@@ -91,6 +100,7 @@ tapiriik.IFrameOAuthReturn=function(success){
 		$.address.value("/");
 	}
 };
+
 
 tapiriik.OpenAuthDialog = function(svcId){
 	var mode = tapiriik.ServiceInfo[svcId].AuthenticationType;
@@ -139,7 +149,6 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 		loginPending=true;
 		$("button",form).addClass("disabled");
 		$.post("/auth/login-ajax/"+svcId,{username:$("#email",form).val(),password:$("#password",form).val()}, function(data){
-			
 			if (data.success) {
 				$.address.value("/");
 				window.location.reload();
@@ -154,10 +163,39 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 	return form;
 };
 
+tapiriik.OpenPaymentReclaimDialog = function(){
+	var form = $("<form><center><div class=\"error\">Unknown Transaction ID</div><label for=\"txn\" style=\"margin-bottom:7px\">PayPal Transaction ID</label><input type=\"text\" style=\"width:160px;text-align:center;\" placeholder=\"VADE0B248932\" maxlength=\"12\" id=\"txn\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>Your payment will be reassociated with the accounts you a currently connected to</p></center></form>");
+	var pending = false;
+	form.bind("submit", function(){
+		if (pending) return false;
+		pending = true;
+		$("button",form).addClass("disabled");
+		$.ajax({url:"/payments/claim-ajax",
+				type:"POST",
+				data:{txn: $("#txn",form).val()},
+				success: function(){
+					$.address.value("/");
+					window.location.reload();
+				},
+				error: function(data){
+					$(".error",form).show();
+				$("button",form).removeClass("disabled");
+				pending = false;
+				}});
+		return false;
+	});
+	tapiriik.CreateServiceDialog("tapiriik",form);
+};
+
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	$(".dialogWrap").remove();
-	var origIcon = $(".service#"+serviceID+" .icon img");
-	var icon = origIcon.clone().attr("src", origIcon.attr("lgsrc")).hide();
+	var icon;
+	if (serviceID != "tapiriik"){
+		var origIcon = $(".service#"+serviceID+" .icon img");
+		icon = origIcon.clone().attr("src", origIcon.attr("lgsrc")).hide();
+	} else {
+		icon = $("<div>").hide().addClass("logo inline").text("tapiriik");
+	}
 	popover = $("<div>").addClass("dialogPopoverWrap").append(tapiriik.CreatePopover(contents).css({"position":"relative"}));
 	popover.css({"position":"relative","display":"none", "width":"100%"});
 	var dialogWrap = $("<div>").addClass("dialogWrap").append(icon).append(popover);
@@ -194,7 +232,7 @@ tapiriik.ImmediateSyncRequested = function(){
 tapiriik.UpdateSyncCountdown = function(){
 	$.ajax({"url":"/sync/status", success:function(data){
 		tapiriik.NextSync = data.NextSync !== null ? new Date(data.NextSync) : null;
-		tapiriik.LastSync = new Date(data.LastSync);
+		tapiriik.LastSync = data.LastSync !== null ? new Date(data.LastSync) : null;
 		if (tapiriik.SyncErrorsCt != data.Errors && tapiriik.SyncErrorsCt !== undefined){
 			window.location.reload(); // show them the errors
 		}
@@ -211,14 +249,15 @@ tapiriik.FormatTimespan = function(spanMillis){
 	}
 };
 tapiriik.RefreshSyncCountdown = function(){
-	if (tapiriik.NextSync !== undefined){
+	if (tapiriik.SyncErrorsCt !== undefined){
+
 		var delta = tapiriik.NextSync - (new Date());
-		if (delta>0){
+		if (delta>0 || tapiriik.NextSync == undefined){
 			$("#syncButton").show();
-			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000
+			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000;
 			if (tapiriik.NextSync !== null){
 				if (!inCooldown) {
-				$("#syncButton").addClass("active");
+					$("#syncButton").addClass("active");
 				} else {
 					$("#syncButton").removeClass("active");
 				}
@@ -226,9 +265,11 @@ tapiriik.RefreshSyncCountdown = function(){
 				$("#syncButton").text(tapiriik.FormatTimespan(delta));
 			} else {
 				if (!inCooldown){
+					$("#syncButton").addClass("active");
 					$("#syncStatusPreamble").text("");
 					$("#syncButton").text("Synchronize now");
 				} else {
+					$("#syncButton").removeClass("active");
 					$("#syncStatusPreamble").text("Synchronized");
 					$("#syncButton").text("");
 				}

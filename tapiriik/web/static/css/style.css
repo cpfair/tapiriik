@@ -105,6 +105,10 @@ body {
 	font-weight:bold;
 	margin-top:-150px;
 }
+.logo.inline {
+	position:relative;
+	margin:0;
+}
 .logo .sub {
 	font-size:28%;
 }
@@ -382,6 +386,10 @@ a {
 
 .syncStatus a.active:hover {
 	text-decoration: underline;
+}
+
+.paymentButton, .reclaimButton {
+	color:#aaa;
 }
 
 @media only screen and (max-device-width: 480px) {

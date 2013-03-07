@@ -15,8 +15,8 @@ def sync_status(req):
             continue
         totalErrors += len(conn["SyncErrors"])
     print(req.user)
-    return HttpResponse(json.dumps({"NextSync": req.user["NextSynchronization"].ctime() + " UTC",
-                                    "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user else "",
+    return HttpResponse(json.dumps({"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user else None,
+                                    "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user else None,
                                     "Synchronizing": "SynchronizationWorker" in req.user,
                                     "Errors": totalErrors}), mimetype="application/json")
 

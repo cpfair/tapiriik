@@ -151,8 +151,8 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 WEB_ROOT = 'http://localhost:8000'
 
 PP_WEBSCR = "https://www.sandbox.paypal.com/cgi-bin/webscr"
-PP_BUTTON_ID = "JFN3UK6GAGCAG"
-PP_RECEIVER_ID = "4SSFRRECKLLFS"
+PP_BUTTON_ID = "XD6G9Z7VMRM3Q"
+PP_RECEIVER_ID = "NR6NTNSRT7NDJ"
 PAYMENT_AMOUNT = 2
 PAYMENT_CURRENCY = "USD"
 

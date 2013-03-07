@@ -23,6 +23,8 @@ urlpatterns = patterns('',
     url(r'^diagnostics/user/(?P<user>.+)$', 'tapiriik.web.views.diag_user', {}, name='diagnostics_user'),
     url(r'^diagnostics/login$', 'tapiriik.web.views.diag_login', {}, name='diagnostics_login'),
 
+    url(r'^payments/claim$', 'tapiriik.web.views.payments_claim', {}, name='payments_claim'),
+    url(r'^payments/claim-ajax$', 'tapiriik.web.views.payments_claim_ajax', {}, name='payments_claim_ajax'),
     url(r'^payments/return$', 'tapiriik.web.views.payments_return', {}, name='payments_return'),
     url(r'^payments/ipn$', 'tapiriik.web.views.payments_ipn', {}, name='payments_ipn'),
 
