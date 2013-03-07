@@ -51,6 +51,14 @@ tapiriik.Init = function(){
 			return false;
 		}
 	});
+
+	$(".paymentForm").hide();
+	$(".paymentButton").show();
+	$(".paymentButton").click(function(){
+		$(".paymentButton").slideUp();
+		$(".paymentForm").slideDown();
+		return false;
+	});
 };
 
 tapiriik.AddressChanged=function(){

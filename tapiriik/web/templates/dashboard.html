@@ -12,7 +12,7 @@
 	<div class="syncStatus" style="display:none;">&laquo; <span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em> &raquo;</div>
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
-			Yay you paid me
+			Thanks for supporting tapiriik; enjoy your automatic synchronization.
 		{% else %}
 			{% include "payment.html" %}
 		{% endif %}
