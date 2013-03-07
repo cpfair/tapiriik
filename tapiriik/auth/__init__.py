@@ -30,6 +30,8 @@ class User:
         db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
 
     def HasActivePayment(user):
+        if "Payments" not in user:
+            return False
         for payment in user.Payments:
             if payment.Timestamp > (datetime.utcnow() - timedelta(years=1)):
                 return True
