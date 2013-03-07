@@ -150,6 +150,12 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
 WEB_ROOT = 'http://localhost:8000'
 
+PP_WEBSCR = "https://www.sandbox.paypal.com/cgi-bin/webscr"
+PP_BUTTON_ID = "JFN3UK6GAGCAG"
+PP_RECEIVER_ID = "4SSFRRECKLLFS"
+PAYMENT_AMOUNT = 2
+PAYMENT_CURRENCY = "USD"
+
 # empty means no invites
 INVITE_KEYS = []
 

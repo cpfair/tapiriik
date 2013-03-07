@@ -1,9 +1,13 @@
+from .payment import *
+from .totp import *
 from tapiriik.database import db
 from tapiriik.sync import Sync
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 
 class User:
+    def Get(id):
+        return db.users.find_one({"_id": ObjectId(id)})
     def Ensure(req):
         if req.user == None:
             req.user = User.Create()
@@ -21,6 +25,16 @@ class User:
     def GetConnectionRecordsByUser(user):
         return db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})
 
+    def AsssociatePayment(user, payment):
+        db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Payments": payment}}, multi=True)  # deassociate payment ids from other accounts that may be using them
+        db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
+
+    def HasActivePayment(user):
+        for payment in user.Payments:
+            if payment.Timestamp > (datetime.utcnow() - timedelta(years=1)):
+                return True
+        return False
+
     def ConnectService(user, serviceRecord):
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord["_id"])})
         if "ConnectedServices" not in user:
@@ -29,6 +43,7 @@ class User:
         if existingUser is not None:
             # merge merge merge
             user["ConnectedServices"] += existingUser["ConnectedServices"]
+            user["Payments"] += existingUser["Payments"]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:

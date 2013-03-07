@@ -33,7 +33,7 @@ class Sync:
                 activityList.append(act)
 
     def PerformGlobalSync():
-        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
+        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "NextSynchronization": {"$ne": None}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             syncStart = datetime.utcnow()
             try:
@@ -41,7 +41,10 @@ class Sync:
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
-                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow() + Sync.SyncInterval, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
+                nextSync = None
+                if User.HasActivePayment(user):
+                    nextSync = datetime.utcnow() + Sync.SyncInterval
+                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
 

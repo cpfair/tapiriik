@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from tapiriik.database import db
 from tapiriik.sync import Sync
-from tapiriik.auth.totp import TOTP
+from tapiriik.auth import TOTP
 from bson.objectid import ObjectId
 import hashlib
 from datetime import datetime

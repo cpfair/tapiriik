@@ -185,7 +185,7 @@ tapiriik.ImmediateSyncRequested = function(){
 
 tapiriik.UpdateSyncCountdown = function(){
 	$.ajax({"url":"/sync/status", success:function(data){
-		tapiriik.NextSync = new Date(data.NextSync);
+		tapiriik.NextSync = data.NextSync !== null ? new Date(data.NextSync) : null;
 		tapiriik.LastSync = new Date(data.LastSync);
 		if (tapiriik.SyncErrorsCt != data.Errors && tapiriik.SyncErrorsCt !== undefined){
 			window.location.reload(); // show them the errors
@@ -207,13 +207,24 @@ tapiriik.RefreshSyncCountdown = function(){
 		var delta = tapiriik.NextSync - (new Date());
 		if (delta>0){
 			$("#syncButton").show();
-			$("#syncButton").text(tapiriik.FormatTimespan(delta));
-			if (((new Date()) - tapiriik.LastSync) > tapiriik.MinimumSyncInterval*1000) {
+			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000
+			if (tapiriik.NextSync !== null){
+				if (!inCooldown) {
 				$("#syncButton").addClass("active");
+				} else {
+					$("#syncButton").removeClass("active");
+				}
+				$("#syncStatusPreamble").text("Next synchronization in ");
+				$("#syncButton").text(tapiriik.FormatTimespan(delta));
 			} else {
-				$("#syncButton").removeClass("active");
+				if (!inCooldown){
+					$("#syncStatusPreamble").text("");
+					$("#syncButton").text("Synchronize now");
+				} else {
+					$("#syncStatusPreamble").text("Synchronized");
+					$("#syncButton").text("");
+				}
 			}
-			$("#syncStatusPreamble").text("Next synchronization in ");
 			if (tapiriik.FastUpdateCountdownTimer !== undefined){
 				clearInterval(tapiriik.FastUpdateCountdownTimer);
 				tapiriik.FastUpdateCountdownTimer = undefined;

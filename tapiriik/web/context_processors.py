@@ -1,6 +1,6 @@
 from tapiriik.services import Service
 from tapiriik.sync import Sync
-from tapiriik.settings import SITE_VER
+from tapiriik.settings import SITE_VER, PP_WEBSCR
 from tapiriik.database import db
 
 
@@ -9,7 +9,7 @@ def providers(req):
 
 
 def config(req):
-    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER}}
+    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp_url": PP_WEBSCR}}
 
 
 def stats(req):
