@@ -11,6 +11,14 @@
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
 		<li><b>Sync Control:</b> <a href="?sync=full">Full</a> | <a href="?sync=normal">Normal</a></li>
 	</ul>
+	{% if user.Payments|length > 0 %}
+		<h3>Payments</h3>
+		<ul>
+		{% for payment in user.Payments %}
+			<li><b>Txn:</b> <tt>{{ payment.Txn }}</tt> on {{ payment.Timestamp }}</li>
+		{% endfor %}
+		</ul>
+	{% endif %}
 	{% for connection in user.ConnectedServices|svc_populate_conns %}
 	<h3>{{ connection.Service }}</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
