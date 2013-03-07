@@ -1,6 +1,7 @@
 from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_AMOUNT, PAYMENT_CURRENCY
 from tapiriik.auth import Payments, User
 from django.http import HttpResponse
+from django.shortcuts import redirect, render
 import requests
 
 def payments_ipn(req):
@@ -18,3 +19,7 @@ def payments_ipn(req):
 	User.AssociatePayment(user, payment)
 	return HttpResponse()
 
+def payments_return(req):
+	if req.user is None or User.HasActivePayment(req.user):
+		return redirect("/")
+	return render("payments/return")
