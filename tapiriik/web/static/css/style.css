@@ -289,6 +289,7 @@ a {
 	text-align: center;
 	border-radius:5px;
 	z-index:2;
+	overflow:hidden;
 }
 
 .service .controls {
