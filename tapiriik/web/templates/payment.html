@@ -1,0 +1,9 @@
+<form action="{{ config.pp.url }}" method="post" class="paymentForm">
+	<h3>Why do I want your money?</h3>
+	Synchronizing activities once costs <em>almost</em> nothing. Do it 24 times a day, 365 days a year, and the cost is no longer marginal. $2 a year covers these costs so tapiriik will always run smoothly.
+	<input type="hidden" name="cmd" value="_s-xclick">
+	<input type="hidden" name="hosted_button_id" value="{{ config.pp.buttonId }}">
+	<input type="hidden" name="custom" value="{{ user|dict_get:'_id' }}">
+	<button type="submit" name="submit">$2 USD</button>
+	<b>No auto-renewal</b>, just come back here in a year if you're so inclined. Your payment will apply to <b>all your accounts</b>, present and future, and <b>may be transferred at any time</b>.
+</form>
