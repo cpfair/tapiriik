@@ -1,4 +1,5 @@
 from tapiriik.database import db
+from tapiriik.auth import User
 from tapiriik.services import Service, APIException, APIAuthorizationException
 from datetime import datetime, timedelta
 import sys
