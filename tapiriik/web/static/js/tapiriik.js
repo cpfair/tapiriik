@@ -192,17 +192,18 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	var icon;
 	if (serviceID != "tapiriik"){
 		var origIcon = $(".service#"+serviceID+" .icon img");
-		icon = origIcon.clone().attr("src", origIcon.attr("lgsrc")).hide();
+		icon = origIcon.clone().attr("src", origIcon.attr("lgsrc"));
 	} else {
-		icon = $("<div>").hide().addClass("logo inline").text("tapiriik");
+		icon = $("<div>").addClass("logo inline").text("tapiriik");
 	}
 	popover = $("<div>").addClass("dialogPopoverWrap").append(tapiriik.CreatePopover(contents).css({"position":"relative"}));
-	popover.css({"position":"relative","display":"none", "width":"100%"});
-	var dialogWrap = $("<div>").addClass("dialogWrap").append(icon).append(popover);
+	popover.css({"position":"relative", "width":"100%"});
+	var dialogWrap = $("<div>").addClass("dialogWrap").append(icon).append(popover).hide();
 	$(".contentWrap").append(dialogWrap);
 	$(".mainBlock").fadeOut(250, function(){
-		popover.fadeIn(250);
-		icon.fadeIn(250);
+		
+		$(dialogWrap).fadeIn();
+		
 	});
 };
 tapiriik.DismissServiceDialog = function(){

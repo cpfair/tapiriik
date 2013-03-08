@@ -251,6 +251,13 @@ a {
 	color: #444;
 }
 
+a img {
+	border:none;
+}
+
+.dialogWrap img {
+	display:inline-block;
+}
 .sync-connector {
 	position:absolute;
 	left:15px;
