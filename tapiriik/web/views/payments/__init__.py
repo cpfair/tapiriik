@@ -10,9 +10,9 @@ def payments_ipn(req):
     data["cmd"] = "_notify-validate"
     response = requests.post(PP_WEBSCR, data=data)
     if response.text != "VERIFIED":
-        return HttpResponse(code=403)
+        return HttpResponse(status=403)
     if req.POST["receiver_id"] != PP_RECEIVER_ID or req.POST["mc_gross"] != PAYMENT_AMOUNT or req.POST["mc_currency"] != PAYMENT_CURRENCY:
-        return HttpResponse(code=403)
+        return HttpResponse(status=400)
     if req.POST["payment_status"] != "Completed":
         return HttpResponse()
     payment = Payments.LogPayment(req.POST["txn_id"])
