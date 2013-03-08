@@ -28,6 +28,7 @@ class User:
     def AssociatePayment(user, payment):
         db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Payments": payment}}, multi=True)  # deassociate payment ids from other accounts that may be using them
         db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
+        Sync.ScheduleImmediateSync(user)
 
     def HasActivePayment(user):
         if "Payments" not in user:
