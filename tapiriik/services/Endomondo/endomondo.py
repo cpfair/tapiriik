@@ -212,10 +212,6 @@ class EndomondoService:
         params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
         data = self._createUploadData(activity)
         data = zlib.compress(data.encode("ASCII"))
-        f = open("upload.dat", "wb")
-        f.write(data)
-        f.flush()
-        f.close()
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
         print(response.text)
         if response.status_code != 200:
