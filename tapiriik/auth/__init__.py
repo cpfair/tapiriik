@@ -32,8 +32,8 @@ class User:
     def HasActivePayment(user):
         if "Payments" not in user:
             return False
-        for payment in user.Payments:
-            if payment.Timestamp > (datetime.utcnow() - timedelta(years=1)):
+        for payment in user["Payments"]:
+            if payment["Timestamp"] > (datetime.utcnow() - timedelta(years=1)):
                 return True
         return False
 
