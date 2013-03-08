@@ -1,17 +1,21 @@
 from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_AMOUNT, PAYMENT_CURRENCY
 from tapiriik.auth import Payments, User
+from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 import requests
 
 
+@csrf_exempt
 def payments_ipn(req):
     data = req.POST.dict()
     data["cmd"] = "_notify-validate"
+    print(data)
     response = requests.post(PP_WEBSCR, data=data)
+    print(response.text)
     if response.text != "VERIFIED":
         return HttpResponse(status=403)
-    if req.POST["receiver_id"] != PP_RECEIVER_ID or req.POST["mc_gross"] != PAYMENT_AMOUNT or req.POST["mc_currency"] != PAYMENT_CURRENCY:
+    if req.POST["receiver_id"] != PP_RECEIVER_ID or float(req.POST["mc_gross"]) != PAYMENT_AMOUNT or req.POST["mc_currency"] != PAYMENT_CURRENCY:
         return HttpResponse(status=400)
     if req.POST["payment_status"] != "Completed":
         return HttpResponse()
