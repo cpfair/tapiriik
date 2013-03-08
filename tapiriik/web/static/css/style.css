@@ -344,6 +344,8 @@ a img {
 }
 
 .service .icon img {
+	width:150px;
+	height:38px;
 	display: inline-block;
 	vertical-align: middle;
 }
