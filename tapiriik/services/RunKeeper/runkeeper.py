@@ -208,6 +208,9 @@ class RunKeeperService():
             else:
                 wpType = "gps"  # meh
 
+            if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None or waypoint.Location.Altitude is None:
+                continue
+
             record["path"].append({"timestamp": timestamp,
                                     "latitude": waypoint.Location.Latitude,
                                     "longitude": waypoint.Location.Longitude,
