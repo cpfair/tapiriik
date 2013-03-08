@@ -10,9 +10,7 @@ import requests
 def payments_ipn(req):
     data = req.POST.dict()
     data["cmd"] = "_notify-validate"
-    print(data)
     response = requests.post(PP_WEBSCR, data=data)
-    print(response.text)
     if response.text != "VERIFIED":
         return HttpResponse(status=403)
     if req.POST["receiver_id"] != PP_RECEIVER_ID or float(req.POST["mc_gross"]) != PAYMENT_AMOUNT or req.POST["mc_currency"] != PAYMENT_CURRENCY:
