@@ -33,7 +33,7 @@ class User:
         if "Payments" not in user:
             return False
         for payment in user["Payments"]:
-            if payment["Timestamp"] > (datetime.utcnow() - timedelta(years=1)):
+            if payment["Timestamp"] > (datetime.utcnow() - timedelta(days=365.25)):
                 return True
         return False
 
