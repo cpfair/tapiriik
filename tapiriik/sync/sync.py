@@ -1,5 +1,4 @@
 from tapiriik.database import db
-from tapiriik.auth import User
 from tapiriik.services import Service, APIException, APIAuthorizationException
 from datetime import datetime, timedelta
 import sys
@@ -34,6 +33,7 @@ class Sync:
                 activityList.append(act)
 
     def PerformGlobalSync():
+        from tapiriik.auth import User
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "NextSynchronization": {"$ne": None}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             syncStart = datetime.utcnow()
