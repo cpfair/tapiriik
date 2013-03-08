@@ -1,15 +1,13 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_authentication import ServiceAuthenticationType
-from tapiriik.database import db
+from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
-import urllib.parse
 import json
-import pytz
 
 
 class StravaService:
@@ -53,14 +51,14 @@ class StravaService:
                 break
             offset += 50
 
-        cachedRides = list(db.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
+        cachedRides = list(cachedb.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
         for ride in data:
             if ride["id"] not in [x["id"] for x in cachedRides]:
                 resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
                 ridedata = resp.json()
                 ridedata = ridedata["ride"]
                 ridedata["Owner"] = svcRecord["ExternalID"]
-                db.strava_cache.insert(ridedata)
+                cachedb.strava_cache.insert(ridedata)
             else:
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
             if ridedata["start_latlng"] is None:
@@ -81,13 +79,13 @@ class StravaService:
         # thanks to Cosmo Catalano for the API reference code
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
 
-        ridedata = db.strava_activity_cache.find_one({"id": activityID})
+        ridedata = cachedb.strava_activity_cache.find_one({"id": activityID})
         if ridedata is None:
             resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
             ridedata = resp.json()
             ridedata["id"] = activityID
             ridedata["Owner"] = svcRecord["ExternalID"]
-            db.strava_activity_cache.insert(ridedata)
+            cachedb.strava_activity_cache.insert(ridedata)
 
         activity.Waypoints = []
 
@@ -108,10 +106,10 @@ class StravaService:
                 waypoint.Type = WaypointType.Start
             elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
-            elif not moving and ridedata["moving"][idx] == True:
+            elif not moving and ridedata["moving"][idx] is True:
                 waypoint.Type = WaypointType.Resume
                 moving = True
-            elif ridedata["moving"][idx] == False:
+            elif ridedata["moving"][idx] is False:
                 waypoint.Type = WaypointType.Pause
                 moving = False
 
@@ -159,5 +157,5 @@ class StravaService:
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text, serviceRecord)
 
     def DeleteCachedData(self, serviceRecord):
-        db.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})
-        db.strava_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.strava_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})

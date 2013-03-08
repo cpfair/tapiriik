@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from tapiriik.database import db
+from tapiriik.database import cachedb
 import requests
 import hashlib
 import pytz
@@ -75,7 +75,7 @@ class Activity:
                         break
                 if loc is None:
                     raise Exception("Can't find TZ without a waypoint with a location")
-            cachedTzData = db.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
+            cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
             if cachedTzData is None:
                 warnings.filterwarnings("ignore", "the 'strict' argument")
                 warnings.filterwarnings("ignore", "unclosed <socket")
@@ -88,7 +88,7 @@ class Activity:
                     cachedTzData["TZ"] = data["rawOffset"]
                 cachedTzData["Latitude"] = loc.Latitude
                 cachedTzData["Longitude"] = loc.Longitude
-                db.tz_cache.insert(cachedTzData)
+                cachedb.tz_cache.insert(cachedTzData)
 
             if type(cachedTzData["TZ"]) != str:
                 self.TZ = pytz.FixedOffset(cachedTzData["TZ"] * 60)

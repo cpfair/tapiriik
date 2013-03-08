@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SE
 from tapiriik.services.service_authentication import ServiceAuthenticationType
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
-from tapiriik.database import db
+from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
@@ -118,7 +118,7 @@ class RunKeeperService():
         activities = []
         for act in allItems:
             activity = self._populateActivity(act)
-            activity.UploadedTo = [{"Connection":serviceRecord, "ActivityID":act["uri"]}]
+            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["uri"]}]
             activities.append(activity)
         return activities
 
@@ -137,7 +137,7 @@ class RunKeeperService():
 
     def DownloadActivity(self, serviceRecord, activity):
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        ridedata = db.rk_activity_cache.find_one({"uri": activityID})
+        ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
         if ridedata is None:
             response = requests.get("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
@@ -146,7 +146,7 @@ class RunKeeperService():
                 raise APIException("Unable to download activity " + activityID, serviceRecord)
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord["ExternalID"]
-            db.rk_activity_cache.insert(ridedata)
+            cachedb.rk_activity_cache.insert(ridedata)
 
         self._populateActivityWaypoints(ridedata, activity)
 
@@ -230,4 +230,4 @@ class RunKeeperService():
         return record
 
     def DeleteCachedData(self, serviceRecord):
-        db.rk_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.rk_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})

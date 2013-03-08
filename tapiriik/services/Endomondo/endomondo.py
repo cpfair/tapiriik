@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_authentication import ServiceAuthenticationType
-from tapiriik.database import db
+from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
 
@@ -11,6 +11,7 @@ import pytz
 import re
 import zlib
 import os
+
 
 class EndomondoService:
     ID = "endomondo"
@@ -176,10 +177,10 @@ class EndomondoService:
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
 
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
-                cachedTrackData = db.endomondo_activity_cache.find_one({"TrackID": act["id"]})
+                cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
                     cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
-                    db.endomondo_activity_cache.insert(cachedTrackData)
+                    cachedb.endomondo_activity_cache.insert(cachedTrackData)
 
                 self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
 
@@ -193,7 +194,7 @@ class EndomondoService:
                 if earliestDate is None or activity.StartTime.astimezone(pytz.utc) < earliestDate:  # probably redundant, I would assume it works out the TZes...
                     earliestDate = activity.StartTime.astimezone(pytz.utc)
 
-            if not exhaustive or ("more" in data and data["more"] == False):
+            if not exhaustive or ("more" in data and data["more"] is False):
                 break
         return activities
 
@@ -248,4 +249,4 @@ class EndomondoService:
         return "\n".join(scsv)
 
     def DeleteCachedData(self, serviceRecord):
-        db.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
