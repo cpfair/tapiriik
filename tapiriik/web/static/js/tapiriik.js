@@ -292,7 +292,7 @@ tapiriik.RefreshSyncCountdown = function(){
 				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 1000);
 			}
 		}
-		$(".syncStatus").show();
+		setTimeout(function(){$(".syncStatus").slideDown();}, 500);
 	}
 };
 
