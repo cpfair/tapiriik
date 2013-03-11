@@ -1,3 +1,4 @@
 requests
 pymongo
 pytz
+lxml

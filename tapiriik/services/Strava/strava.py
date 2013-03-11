@@ -21,6 +21,8 @@ class StravaService:
     SupportsHR = True
     SupportsPower = True
     SupportsCalories = False  # don't think it does
+    SupportsCadence = False
+    SupportsTemp = False
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})

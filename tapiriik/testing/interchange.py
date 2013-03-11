@@ -32,6 +32,7 @@ class InterchangeTests(TapiriikTestCase):
         act = TestTools.create_random_activity(rkSvc, rkSvc.SupportedActivities[0])
         record = rkSvc._createUploadData(act)
         returnedAct = rkSvc._populateActivity(record)
+        act.Name = None  # RK doesn't have a "name" field, so it's fudged into the notes, but not really
         rkSvc._populateActivityWaypoints(record, returnedAct)
         self.assertActivitiesEqual(returnedAct, act)
 
