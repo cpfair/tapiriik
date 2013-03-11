@@ -5,7 +5,8 @@ from tapiriik.database import db
 class Service:
     _serviceMappings = {"runkeeper": RunKeeper,
                         "strava": Strava,
-                        "endomondo": Endomondo}
+                        "endomondo": Endomondo,
+                        "dropbox": Dropbox}
 
     def FromID(id):
         if id in Service._serviceMappings:
@@ -13,7 +14,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo]
+        return [RunKeeper, Strava, Endomondo, Dropbox]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT

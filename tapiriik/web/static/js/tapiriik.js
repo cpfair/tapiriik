@@ -87,8 +87,14 @@ tapiriik.IFrameOAuthReturn=function(success){
 tapiriik.OpenAuthDialog = function(svcId){
 	var mode = tapiriik.ServiceInfo[svcId].AuthenticationType;
 	var contents;
+
 	if (mode == "oauth"){
-		contents = $("<iframe>").attr("src",tapiriik.ServiceInfo[svcId].AuthorizationURL).attr("id",svcId);
+		if (tapiriik.ServiceInfo[svcId].NoFrame){
+			window.location = tapiriik.ServiceInfo[svcId].AuthorizationURL;
+			return;
+		} else {
+			contents = $("<iframe>").attr("src",tapiriik.ServiceInfo[svcId].AuthorizationURL).attr("id",svcId);
+		}
 	} else if (mode == "direct") {
 		contents = tapiriik.CreateDirectLoginForm(svcId);
 	}

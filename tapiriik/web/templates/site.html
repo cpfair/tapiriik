@@ -55,7 +55,7 @@
 	tapiriik.SiteVer = "{{ config.siteVer|slice:":7" }}";
 	tapiriik.ServiceInfo = {};
 	{% for provider in service_providers %}
-	tapiriik.ServiceInfo["{{ provider.ID }}"] = {AuthenticationType: "{{ provider.AuthenticationType }}", AuthorizationURL: "{{ provider.UserAuthorizationURL|safe }}"};{% endfor %}
+	tapiriik.ServiceInfo["{{ provider.ID }}"] = {AuthenticationType: "{{ provider.AuthenticationType }}", AuthorizationURL: "{{ provider.UserAuthorizationURL|safe }}", NoFrame: {% if provider.AuthenticationNoFrame %}true{% else %}false{% endif %} };{% endfor %}
 	tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
 	{% if user %}
 	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}, ID: "{{ user|dict_get:'_id' }}"};
