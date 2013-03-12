@@ -92,19 +92,26 @@ class Sync:
                 continue
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
-            dlSvcRecord = activity.UploadedTo[0]["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
-            dlSvc = Service.FromID(dlSvcRecord["Service"])
-            try:
-                act = dlSvc.DownloadActivity(dlSvcRecord, activity)
-            except APIAuthorizationException as e:
-                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message})
-                continue
-            except APIException as e:
-                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message})
-                continue
-            except Exception as e:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+
+            for dlSvcUploadRec in activity.UploadedTo:
+                dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
+                dlSvc = Service.FromID(dlSvcRecord["Service"])
+                try:
+                    act = dlSvc.DownloadActivity(dlSvcRecord, activity)
+                except APIAuthorizationException as e:
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message})
+                    continue
+                except APIException as e:
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message})
+                    continue
+                except Exception as e:
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    continue
+                else:
+                    break  # succesfully got the activity, can stop now
+
+            if act is None:  # couldn't download it from anywhere
                 continue
 
             for destinationSvcRecord in recipientServices:
