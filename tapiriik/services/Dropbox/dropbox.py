@@ -15,7 +15,7 @@ class DropboxService():
         self.DBCl = client.DropboxClient(self.DBSess)
         self.OutstandingReqTokens = {}
 
-    def __getClient(self, serviceRec):
+    def _getClient(self, serviceRec):
         sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
         sess.set_token(serviceRec["Authorization"]["Key"], serviceRec["Authorization"]["Secret"])
         return client.DropboxClient(sess)
@@ -30,7 +30,7 @@ class DropboxService():
         return self.DBSess.build_authorize_url(reqToken, oauth_callback=WEB_ROOT + reverse("oauth_return", kwargs={"service": "dropbox"}))
 
     def _getUserId(self, serviceRec):
-        info = self.__getClient(serviceRec).account_info()
+        info = self._getClient(serviceRec).account_info()
         return info['uid']
 
     def RetrieveAuthorizationToken(self, req):

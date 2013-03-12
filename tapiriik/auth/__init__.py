@@ -21,6 +21,9 @@ class User:
     def GetConnectionRecordsByUser(user):
         return db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})
 
+    def GetConnectionRecord(user, svcId):
+        return db.connections.find_one({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"] if x["Service"] == svcId]}})
+
     def ConnectService(user, serviceRecord):
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord["_id"])})
         if "ConnectedServices" not in user:

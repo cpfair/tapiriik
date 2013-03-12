@@ -383,6 +383,54 @@ a {
 	text-decoration: underline;
 }
 
+#folderList {
+	margin:10px 0;
+	font-size:130%;
+	height:200px;
+	width:300px;
+	overflow-y:auto;
+	overflow-x:hidden;
+	border:1px solid #8ec1da;
+	background-color: #edf9ff;
+	border-radius:5px;
+}
+#folderList ul {
+	overflow-x:hidden;
+	margin:0;
+	padding:5px;
+	list-style:none;
+	width:300px;
+}
+#folderList li {
+	padding:3px 0;
+}
+#folderList li:first-child {
+	padding-top:0;
+}
+
+#folderList li:last-child {
+	padding-bottom:0;
+}
+#folderList li a {
+	display:inline-block;
+	overflow: hidden;
+	padding:0;
+	white-space:nowrap;
+	background: white;
+	color:black;
+	padding:3px;
+	border-radius:3px;
+	cursor: pointer;
+}
+#folderList li a:hover {
+	background-color: #dbf3ff;
+}
+#folderList li a:active {
+	background-color: #c0deed;
+}
+#folderList h2 {
+	text-align: center;
+}
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {
 		width:90%;

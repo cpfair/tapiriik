@@ -61,6 +61,17 @@ tapiriik.AddressChanged=function(){
 	} else if (components[0]=="disconnect") {
 		tapiriik.OpenDeauthDialog(components[1]);
 		return;
+	} else if (components[0]=="dropbox") {
+		if (components[1]=="configure"){
+			components.shift();
+			components.shift();
+			tapiriik.DropboxBrowserPath = '/' + components.join('/');
+			tapiriik.PopulateDropboxBrowser();
+			if (tapiriik.DropboxBrowserOpen) return;
+			tapiriik.OpenDropboxConfigDialog()
+			tapiriik.DropboxBrowserOpen = true;
+			return;
+		}
 	}
 	tapiriik.DismissServiceDialog();
 };
@@ -152,7 +163,48 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 	return form;
 };
 
+tapiriik.OpenDropboxConfigDialog = function(){
+	var configPanel = $("<form><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div style=\"text-align:center\">Will sync to /asd</div><input type=\"checkbox\" id=\"unsetSyncAll\"><label for=\"unsetSyncAll\" style=\"display:inline-block\">Don't sync untagged activities</label></input><br/><button id=\"OK\">Save Settings</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
+	var folderList = $("#folderList", configPanel);
+	tapiriik.CreateServiceDialog("dropbox", configPanel);
+	tapiriik.DropboxLastDepth = 0;
+};
+
+tapiriik.PopulateDropboxBrowser = function(){
+	if (tapiriik.OutstandingDropboxNavigate) return;
+	tapiriik.OutstandingDropboxNavigate = true;
+	var depth = tapiriik.DropboxBrowserPath.length; //cheap
+	tapiriik.DropboxNavigatingUp = depth < tapiriik.DropboxLastDepth;
+	tapiriik.DropboxLastDepth = depth;
+	$("#folderList ul").animate({"margin-left":(tapiriik.DropboxNavigatingUp?1:-1)*$("#folderList").width()});
+	$.ajax("/dropbox/browse-ajax/" + tapiriik.DropboxBrowserPath).success(tapiriik.PopulateDropboxBrowserCallback);
+};
+
+tapiriik.PopulateDropboxBrowserCallback = function(data){
+	tapiriik.OutstandingDropboxNavigate = false;
+	$("#folderList").text("");
+
+	
+
+	list = $("<ul>").appendTo($("#folderList")).css({"margin-left":(tapiriik.DropboxNavigatingUp?-1:1)*$("#folderList").width()});
+
+	if (data.length === 0) {
+		$("<h2>no subfolders</h2>").appendTo(list);
+	}
+	
+	for (var i = 0; i < data.length; i++) {
+		var li = $("<li>").appendTo(list);
+		$("<a>").text(data[i].replace(tapiriik.DropboxBrowserPath,"").replace(/^\//,"")).attr("path",data[i]).appendTo(li).click(tapiriik.DropboxBrowserNavigateDown);
+	}
+	$("#folderList ul").animate({"margin-left":0});
+};
+
+tapiriik.DropboxBrowserNavigateDown = function(){
+	$.address.value("/dropbox/configure/" + $(this).attr("path").substring(1));
+};
+
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
+	tapiriik.DropboxBrowserOpen = false;
 	$(".dialogWrap").remove();
 	var origIcon = $(".service#"+serviceID+" .icon img");
 	var icon = origIcon.clone().attr("src", origIcon.attr("lgsrc")).hide();
@@ -166,6 +218,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	});
 };
 tapiriik.DismissServiceDialog = function(){
+	tapiriik.DropboxBrowserOpen = false;
 	$(".dialogWrap").fadeOut(250, function(){
 		$(".dialogWrap").remove();
 		$(".mainBlock").fadeIn(250);
