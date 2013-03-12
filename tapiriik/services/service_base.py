@@ -8,6 +8,8 @@ class ServiceBase:
     Configurable = RequiresConfiguration = False
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
     UserAuthorizationURL = None
+    AuthenticationNoFrame = False
+    ConfigurationDefaults = {}
 
     def WebInit(self):
         pass

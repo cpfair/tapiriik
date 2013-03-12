@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import ActivityType
 from tapiriik.services.gpx import GPXIO
@@ -10,28 +10,31 @@ from bson.binary import Binary
 import zlib
 import re
 
-class DropboxService():
+
+class DropboxService(ServiceBase):
     ID = "dropbox"
     DisplayName = "Dropbox"
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
+    Configurable = RequiresConfiguration = True
 
-    ActivityTaggingTable = {  # earlier items have precedence over 
-                            ActivityType.Running: "run",
-                            ActivityType.MountainBiking: "m(oun)?t(ai)?n\s*bik(e|ing)",
-                            ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
-                            ActivityType.Walking: "walk",
-                            ActivityType.Hiking: "hik(e|ing)",
-                            ActivityType.DownhillSkiing: "down(hill)?\s*ski(ing)?",
-                            ActivityType.CrossCountrySkiing = "(xc|cross.*country)\s*ski(ing)?",
-                            ActivityType.Snowboarding = "snowboard(ing)?",
-                            ActivityType.Skating = "skat(e|ing)?",
-                            ActivityType.Swim = "swim",
-                            ActivityType.Wheelchair = "wheelchair",
-                            ActivityType.Rowing = "row",
-                            ActivityType.Elliptical = "elliptical",
-                            ActivityType.Other = "(other|unknown)"
+    ActivityTaggingTable = {  # earlier items have precedence over
+        ActivityType.Running: "run",
+        ActivityType.MountainBiking: "m(oun)?t(ai)?n\s*bik(e|ing)",
+        ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
+        ActivityType.Walking: "walk",
+        ActivityType.Hiking: "hik(e|ing)",
+        ActivityType.DownhillSkiing: "down(hill)?\s*ski(ing)?",
+        ActivityType.CrossCountrySkiing: "(xc|cross.*country)\s*ski(ing)?",
+        ActivityType.Snowboarding: "snowboard(ing)?",
+        ActivityType.Skating: "skat(e|ing)?",
+        ActivityType.Swimming: "swim",
+        ActivityType.Wheelchair: "wheelchair",
+        ActivityType.Rowing: "row",
+        ActivityType.Elliptical: "elliptical",
+        ActivityType.Other: "(other|unknown)"
     }
+
     def __init__(self):
         self.DBSess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
         self.DBCl = client.DropboxClient(self.DBSess)
@@ -68,6 +71,7 @@ class DropboxService():
         else:
             uid = existingRecord["ExternalID"]
         return (uid, {"Key": accessToken.key, "Secret": accessToken.secret})
+
     def _folderRecurse(self, structCache, dbcl, path):
         hash = None
         if path in structCache["Directories"]:
@@ -79,33 +83,35 @@ class DropboxService():
                 return structCache  # nothing new to update here
             raise  # an actual issue
 
-        structCache["Directories"][path]={"Hash": dirmetadata["hash"]}
+        structCache["Directories"][path] = {"Hash": dirmetadata["hash"]}
         for file in dirmetadata["contents"]:
             if file["is_dir"]:
                 structCache = self._folderRecurse(structCache, dbcl, file["path"])
             else:
                 if not file["path"].lower().endswith(".gpx"):
                     continue  # another kind of file
-                structCache["Files"][file["path"]]={"Rev": file["rev"]}
+                structCache["Files"][file["path"]] = {"Rev": file["rev"]}
         return structCache
+
     def _tagActivity(self, text):
         for act, pattern in self.ActivityTaggingTable:
             if re.match(pattern, text, re.IGNORECASE):
                 return act
         return None
+
     def DownloadActivityList(self, svcRec):
         dbcl = self._getClient(svcRec)
         syncRoot = svcRec["Config"]["SyncRoot"]
-        cache = dbcache.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]});
+        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
         if cache is None:
-            cache = {"ExternalID": svcRec["ExternalID"], "Structure":{"Files": {}, "Directories": {}}, "Activities":{}}
+            cache = {"ExternalID": svcRec["ExternalID"], "Structure": {"Files": {}, "Directories": {}}, "Activities": {}}
         cache["Structure"] = self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
 
         for path, file in cache["Structure"]["Files"]:
-            relPath = path.replace(syncRoot,"")
-            existUID, existing = [k, x for k, x in cache["Activities"] if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
+            relPath = path.replace(syncRoot, "")
+            existUID, existing = [(k, x) for k, x in cache["Activities"] if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
             existing = existing[0] if existing else None
             if existing and existing["Rev"] == file["Rev"]:
                 data = zlib.decompress(cachedb.dropbox_data_cache.find_one({"UID": existUID})["Data"])  # really need compression?
@@ -131,4 +137,3 @@ class DropboxService():
             if "UploadUntagged" not in serviceRecord["Config"] or serviceRecord["Config"]["UploadUntagged"] is not True:
                 raise APIException("Activity untagged", serviceRecord)
         return activity
-

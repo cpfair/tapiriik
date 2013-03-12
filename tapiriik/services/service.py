@@ -1,6 +1,6 @@
 from tapiriik.services import *
 from tapiriik.database import db
-
+import copy
 
 class Service:
     _serviceMappings = {"runkeeper": RunKeeper,
@@ -43,3 +43,25 @@ class Service:
         svc.DeleteCachedData(serviceRecord)
         svc.RevokeAuthorization(serviceRecord)
         db.connections.remove({"_id": serviceRecord["_id"]})
+
+    def _mergeConfig(base, config):
+        return dict(list(base.items()) + list(config.items()))
+
+    def HasConfiguration(svcRec):
+        if not Service.FromID(svcRec["Service"]).Configurable:
+            return False  # of course not
+        return "Config" in svcRec and len(svcRec["Config"].values()) > 0
+
+    def GetConfiguration(svcRec):
+        svc = Service.FromID(svcRec["Service"])
+        if not svc.Configurable:
+            raise ValueError("Passed service is not configurable")
+        return Service._mergeConfig(svc.ConfigurationDefaults, svcRec["Config"]) if "Config" in svcRec else {}
+
+    def SetConfiguration(config, svcRec):
+        sparseConfig = copy.deepcopy(config)
+        svc = Service.FromID(svcRec["Service"])
+        for k, v in sparseConfig:
+            if k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v:
+                del sparseConfig[k]  # it's the default, we can not store it
+        db.connections.update({"_id": svcRec["_id"]}, {"Config": sparseConfig})
