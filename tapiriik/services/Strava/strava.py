@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import db
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
@@ -12,7 +12,7 @@ import json
 import pytz
 
 
-class StravaService:
+class StravaService(ServiceBase):
     ID = "strava"
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
@@ -20,9 +20,6 @@ class StravaService:
     SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True
     SupportsPower = True
-    SupportsCalories = False  # don't think it does
-    SupportsCadence = False
-    SupportsTemp = False
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})

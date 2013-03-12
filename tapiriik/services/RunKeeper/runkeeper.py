@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import db
@@ -10,7 +10,7 @@ import urllib.parse
 import json
 
 
-class RunKeeperService():
+class RunKeeperService(ServiceBase):
     ID = "runkeeper"
     DisplayName = "RunKeeper"
     AuthenticationType = ServiceAuthenticationType.OAuth
@@ -34,9 +34,6 @@ class RunKeeperService():
 
     SupportsHR = True
     SupportsCalories = True
-    SupportsCadence = False
-    SupportsTemp = False
-    SupportsPower = False
 
     _wayptTypeMappings = {"start": WaypointType.Start, "end": WaypointType.End, "pause": WaypointType.Pause, "resume": WaypointType.Resume}
 

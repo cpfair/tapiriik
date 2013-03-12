@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import db
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
@@ -12,7 +12,8 @@ import re
 import zlib
 import os
 
-class EndomondoService:
+
+class EndomondoService(ServiceBase):
     ID = "endomondo"
     DisplayName = "Endomondo"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
@@ -57,9 +58,6 @@ class EndomondoService:
     SupportedActivities = list(_activityMappings.values())
     SupportsHR = True
     SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
-    SupportsCadence = False
-    SupportsTemp = False
-    SupportsPower = False
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "endomondo"})

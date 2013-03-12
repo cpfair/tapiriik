@@ -1,4 +1,4 @@
-from .service_authentication import *
+from .service_base import *
 from .api import *
 from tapiriik.services.RunKeeper import RunKeeperService
 RunKeeper = RunKeeperService()
