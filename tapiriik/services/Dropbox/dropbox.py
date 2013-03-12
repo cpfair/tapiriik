@@ -1,11 +1,14 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.interchange import ActivityType
 from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
 from dropbox import client, rest, session
 from django.core.urlresolvers import reverse
 from bson.binary import Binary
 import zlib
+import re
 
 class DropboxService():
     ID = "dropbox"
@@ -13,6 +16,22 @@ class DropboxService():
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
 
+    ActivityTaggingTable = {  # earlier items have precedence over 
+                            ActivityType.Running: "run",
+                            ActivityType.MountainBiking: "m(oun)?t(ai)?n\s*bik(e|ing)",
+                            ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
+                            ActivityType.Walking: "walk",
+                            ActivityType.Hiking: "hik(e|ing)",
+                            ActivityType.DownhillSkiing: "down(hill)?\s*ski(ing)?",
+                            ActivityType.CrossCountrySkiing = "(xc|cross.*country)\s*ski(ing)?",
+                            ActivityType.Snowboarding = "snowboard(ing)?",
+                            ActivityType.Skating = "skat(e|ing)?",
+                            ActivityType.Swim = "swim",
+                            ActivityType.Wheelchair = "wheelchair",
+                            ActivityType.Rowing = "row",
+                            ActivityType.Elliptical = "elliptical",
+                            ActivityType.Other = "(other|unknown)"
+    }
     def __init__(self):
         self.DBSess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
         self.DBCl = client.DropboxClient(self.DBSess)
@@ -69,6 +88,11 @@ class DropboxService():
                     continue  # another kind of file
                 structCache["Files"][file["path"]]={"Rev": file["rev"]}
         return structCache
+    def _tagActivity(self, text):
+        for act, pattern in self.ActivityTaggingTable:
+            if re.match(pattern, text, re.IGNORECASE):
+                return act
+        return None
     def DownloadActivityList(self, svcRec):
         dbcl = self._getClient(svcRec)
         syncRoot = svcRec["Config"]["SyncRoot"]
@@ -80,7 +104,8 @@ class DropboxService():
         activities = []
 
         for path, file in cache["Structure"]["Files"]:
-            existUID, existing = [k, x for k, x in cache["Activities"] if x["Path"] == path.replace(syncRoot,"")]  # path is relative to syncroot to reduce churn if they relocate it
+            relPath = path.replace(syncRoot,"")
+            existUID, existing = [k, x for k, x in cache["Activities"] if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
             existing = existing[0] if existing else None
             if existing and existing["Rev"] == file["Rev"]:
                 data = zlib.decompress(cachedb.dropbox_data_cache.find_one({"UID": existUID})["Data"])  # really need compression?
@@ -90,11 +115,20 @@ class DropboxService():
                 f, metadata = dbcl.get_file_and_metadata(path)
                 data = f.read()
                 act = GPXIO.Parse(data)
-                cache["Activities"][act.UID] = {"Rev": metadata["rev"], "Path": path.replace(syncRoot,"")}
+                cache["Activities"][act.UID] = {"Rev": metadata["rev"], "Path": relPath}
                 cachedb.dropbox_data_cache.update({"UID": act.UID}, {"UID": act.UID, "Data": Binary(zlib.compress(data))}, upsert=True)  # easier than GridFS
-            ## activity tagging stuff here ##
+            tagRes = self._tagActivity()
+            act.Tagged = tagRes is not None
+            act.Type = tagRes if tagRes is not None else ActivityType.Unknown
             activities.append(act)
 
         cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache, upsert=True)
         return activities
+
+    def DownloadActivity(self, serviceRecord, activity):
+        # activity is already populated at this point, still need to check that it is tagged if preference requires it
+        if not activity.Tagged:
+            if "UploadUntagged" not in serviceRecord["Config"] or serviceRecord["Config"]["UploadUntagged"] is not True:
+                raise APIException("Activity untagged", serviceRecord)
+        return activity
 
