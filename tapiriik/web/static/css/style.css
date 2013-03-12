@@ -383,12 +383,15 @@ a {
 	text-decoration: underline;
 }
 
+form.dropboxConfig {
+	max-width:302px; /* magic # */
+}
 #folderList {
 	margin:10px 0;
 	font-size:130%;
 	height:200px;
 	width:300px;
-	overflow-y:auto;
+	overflow-y:scroll;
 	overflow-x:hidden;
 	border:1px solid #8ec1da;
 	background-color: #edf9ff;
@@ -411,7 +414,7 @@ a {
 #folderList li:last-child {
 	padding-bottom:0;
 }
-#folderList li a {
+#folderList li a, #folderStack a {
 	display:inline-block;
 	overflow: hidden;
 	padding:0;
@@ -422,10 +425,15 @@ a {
 	border-radius:3px;
 	cursor: pointer;
 }
-#folderList li a:hover {
+#folderStack a {
+	background-color: #dbf3ff;
+	margin-right:5px;
+	margin-bottom:5px;
+}
+#folderList li a:hover, #folderStack a:hover {
 	background-color: #dbf3ff;
 }
-#folderList li a:active {
+#folderList li a:active, #folderStack a:hover {
 	background-color: #c0deed;
 }
 #folderList h2 {

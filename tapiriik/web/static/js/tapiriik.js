@@ -30,6 +30,7 @@ $.ajaxSetup({
 });
 
 tapiriik = {};
+tapiriik.PreviousURLComponents = [];
 
 tapiriik.Init = function(){
 	// ...
@@ -55,6 +56,14 @@ tapiriik.Init = function(){
 
 tapiriik.AddressChanged=function(){
 	var components = $.address.pathNames();
+	var unchangedDepth = 0;
+	for (var i = 0; i < tapiriik.PreviousURLComponents.length; i++) {
+		if (i>components.length-1 || components[i] != tapiriik.PreviousURLComponents[i]){
+			break;
+		}
+		unchangedDepth = i+1;
+	}
+	tapiriik.PreviousURLComponents = components;
 	if (components[0]=="auth") {
 		tapiriik.OpenAuthDialog(components[1]);
 		return;
@@ -63,13 +72,14 @@ tapiriik.AddressChanged=function(){
 		return;
 	} else if (components[0]=="dropbox") {
 		if (components[1]=="configure"){
-			components.shift();
-			components.shift();
-			tapiriik.DropboxBrowserPath = '/' + components.join('/');
-			tapiriik.PopulateDropboxBrowser();
-			if (tapiriik.DropboxBrowserOpen) return;
-			tapiriik.OpenDropboxConfigDialog()
-			tapiriik.DropboxBrowserOpen = true;
+			if (unchangedDepth<=1) {
+				tapiriik.DropboxBrowserPath = "/"
+				$.address.value("/dropbox/configure/") // where the init directory will go, meh
+				tapiriik.OpenDropboxConfigDialog();	
+			} else {
+				tapiriik.DropboxBrowserPath = "/" + components.slice(2).join("/");
+				tapiriik.PopulateDropboxBrowser();
+			}
 			return;
 		}
 	}
@@ -164,27 +174,49 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 };
 
 tapiriik.OpenDropboxConfigDialog = function(){
-	var configPanel = $("<form><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div style=\"text-align:center\">Will sync to /asd</div><input type=\"checkbox\" id=\"unsetSyncAll\"><label for=\"unsetSyncAll\" style=\"display:inline-block\">Don't sync untagged activities</label></input><br/><button id=\"OK\">Save Settings</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
-	var folderList = $("#folderList", configPanel);
+	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"unsetSyncAll\"><label for=\"unsetSyncAll\" style=\"display:inline-block\">Don't sync untagged activities</label></input><br/><button id=\"OK\">Save Settings</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 	tapiriik.CreateServiceDialog("dropbox", configPanel);
 	tapiriik.DropboxLastDepth = 0;
+	tapiriik.PopulateDropboxBrowser(configPanel);
 };
 
-tapiriik.PopulateDropboxBrowser = function(){
-	if (tapiriik.OutstandingDropboxNavigate) return;
-	tapiriik.OutstandingDropboxNavigate = true;
+tapiriik.PopulateDropboxBrowser = function(cfgPanel){
+
+	var fstack = $("#folderStack", cfgPanel).text("");
+	var parts = tapiriik.DropboxBrowserPath.split('/');
+	parts.unshift('/');
+	build = "/";
+	for (var i = 0; i < parts.length; i++) {
+		if (parts[i] == "") continue;
+		if (i !== 0) build += parts[i];
+		$("<a class=\"folder\"/>").text(parts[i]).attr("path", build).appendTo(fstack).click(tapiriik.DropboxBrowserNavigateDown);
+	}
+
+	if (tapiriik.DropboxBrowserPath.length<2) {
+		$("button#OK", cfgPanel).addClass("disabled");
+	} else {
+		$("button#OK", cfgPanel).removeClass("disabled");
+	}
+
+	if (tapiriik.DropboxBrowserPath == tapiriik.CurrentDropboxBrowserPath) return;
+	
+
 	var depth = tapiriik.DropboxBrowserPath.length; //cheap
+
 	tapiriik.DropboxNavigatingUp = depth < tapiriik.DropboxLastDepth;
+
 	tapiriik.DropboxLastDepth = depth;
+
 	$("#folderList ul").animate({"margin-left":(tapiriik.DropboxNavigatingUp?1:-1)*$("#folderList").width()});
-	$.ajax("/dropbox/browse-ajax/" + tapiriik.DropboxBrowserPath).success(tapiriik.PopulateDropboxBrowserCallback);
+
+	if (tapiriik.OutstandingDropboxNavigate !== undefined) tapiriik.OutstandingDropboxNavigate.abort();
+	tapiriik.OutstandingDropboxNavigate = $.ajax("/dropbox/browse-ajax/" + tapiriik.DropboxBrowserPath).success(tapiriik.PopulateDropboxBrowserCallback);
+	tapiriik.CurrentDropboxBrowserPath = tapiriik.DropboxBrowserPath;
 };
 
 tapiriik.PopulateDropboxBrowserCallback = function(data){
-	tapiriik.OutstandingDropboxNavigate = false;
+	tapiriik.OutstandingDropboxNavigate = undefined;
 	$("#folderList").text("");
-
-	
 
 	list = $("<ul>").appendTo($("#folderList")).css({"margin-left":(tapiriik.DropboxNavigatingUp?-1:1)*$("#folderList").width()});
 
@@ -196,11 +228,15 @@ tapiriik.PopulateDropboxBrowserCallback = function(data){
 		var li = $("<li>").appendTo(list);
 		$("<a>").text(data[i].replace(tapiriik.DropboxBrowserPath,"").replace(/^\//,"")).attr("path",data[i]).appendTo(li).click(tapiriik.DropboxBrowserNavigateDown);
 	}
+	
+	
 	$("#folderList ul").animate({"margin-left":0});
 };
 
 tapiriik.DropboxBrowserNavigateDown = function(){
-	$.address.value("/dropbox/configure/" + $(this).attr("path").substring(1));
+	$.address.path("/dropbox/configure" + $(this).attr("path"));
+	//tapiriik.DropboxBrowserPath = $(this).attr("path");
+	//tapiriik.PopulateDropboxBrowser();
 };
 
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
