@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException
-from tapiriik.services.interchange import ActivityType
+from tapiriik.services.interchange import ActivityType, UploadActivity
 from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
 from dropbox import client, rest, session
@@ -114,8 +114,9 @@ class DropboxService(ServiceBase):
             existUID, existing = [(k, x) for k, x in cache["Activities"] if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
             existing = existing[0] if existing else None
             if existing and existing["Rev"] == file["Rev"]:
-                data = zlib.decompress(cachedb.dropbox_data_cache.find_one({"UID": existUID})["Data"])  # really need compression?
-                act = GPXIO.Parse(data)
+                #  don't need entire activity loaded here, just UID
+                act = UploadActivity()
+                act.UID = existUID
             else:
                 # get the activity and store the data locally
                 f, metadata = dbcl.get_file_and_metadata(path)
@@ -123,6 +124,8 @@ class DropboxService(ServiceBase):
                 act = GPXIO.Parse(data)
                 cache["Activities"][act.UID] = {"Rev": metadata["rev"], "Path": relPath}
                 cachedb.dropbox_data_cache.update({"UID": act.UID}, {"UID": act.UID, "Data": Binary(zlib.compress(data))}, upsert=True)  # easier than GridFS
+
+            act.UploadedTo = [{"Connection": svcRec}]
             tagRes = self._tagActivity()
             act.Tagged = tagRes is not None
             act.Type = tagRes if tagRes is not None else ActivityType.Unknown
@@ -132,8 +135,31 @@ class DropboxService(ServiceBase):
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
-        # activity is already populated at this point, still need to check that it is tagged if preference requires it
+        # activity might not be populated at this point, still possible to bail out
         if not activity.Tagged:
             if "UploadUntagged" not in serviceRecord["Config"] or serviceRecord["Config"]["UploadUntagged"] is not True:
                 raise APIException("Activity untagged", serviceRecord)
+
+        # activity might already be populated, if not its data is in the local cache
+        if activity.EndTime is None: #  in the abscence of an actual Populated variable...
+            data = zlib.decompress(cachedb.dropbox_data_cache.find_one({"UID": activity.UID})["Data"])  # really need compression?
+            fullActivity = GPXIO.Parse(data)
+            fullActivity.Tagged = activity.Tagged
+            fullActivity.Type = activity.Type
+            activity = fullActivity
+
         return activity
+
+    def UploadActivity(self, serviceRecord, activity):
+        activity.CalculateTZ()
+        data = GPXIO.Dump(activity)
+        cachedb.dropbox_data_cache.update({"UID": activity.UID}, {"UID": activity.UID, "Data": Binary(zlib.compress(data))}, upsert=True)
+        dbcl = self._getClient(serviceRecord)
+        fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
+        fpath = serviceRecord["Config"]["SyncRoot"] + fname
+        metadata = dbcl.put_file(fpath, data)
+        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
+        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
+        cache["Structure"]["Files"][fpath] = {"Rev": metadata["rev"]}
+        cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache)  # not upsert, hope the recort exists at this time...
+        

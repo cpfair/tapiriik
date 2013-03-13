@@ -116,6 +116,8 @@ class Sync:
 
             for destinationSvcRecord in recipientServices:
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
+                if destSvc.RequiresConfiguration and not Service.HasConfiguration(destinationSvcRecord):
+                    continue  # not configured, so we won't even try
                 try:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
