@@ -6,7 +6,7 @@ from datetime import datetime
 
 def sync_status(req):
     if not req.user:
-        return HttpResponse(status=401)
+        return HttpResponse(status=403)
 
     conns = User.GetConnectionRecordsByUser(req.user)
     totalErrors = 0
