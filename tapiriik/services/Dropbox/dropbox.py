@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException
-from tapiriik.services.interchange import ActivityType, UploadActivity
+from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
 from dropbox import client, rest, session
@@ -121,7 +121,7 @@ class DropboxService(ServiceBase):
             existing = existing[0] if existing else None
             if existing and existing["Rev"] == file["Rev"]:
                 #  don't need entire activity loaded here, just UID
-                act = UploadActivity()
+                act = UploadedActivity()
                 act.UID = existUID
             else:
                 # get the activity and store the data locally

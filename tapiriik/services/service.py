@@ -48,6 +48,7 @@ class Service:
         return dict(list(base.items()) + list(config.items()))
 
     def HasConfiguration(svcRec):
+        print (svcRec)
         if not Service.FromID(svcRec["Service"]).Configurable:
             return False  # of course not
         return "Config" in svcRec and len(svcRec["Config"].values()) > 0
@@ -56,12 +57,12 @@ class Service:
         svc = Service.FromID(svcRec["Service"])
         if not svc.Configurable:
             raise ValueError("Passed service is not configurable")
-        return Service._mergeConfig(svc.ConfigurationDefaults, svcRec["Config"]) if "Config" in svcRec else {}
+        return Service._mergeConfig(svc.ConfigurationDefaults, svcRec["Config"]) if "Config" in svcRec else svc.ConfigurationDefaults
 
     def SetConfiguration(config, svcRec):
         sparseConfig = copy.deepcopy(config)
         svc = Service.FromID(svcRec["Service"])
-        for k, v in sparseConfig:
+        for k, v in config.items():
             if k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v:
                 del sparseConfig[k]  # it's the default, we can not store it
-        db.connections.update({"_id": svcRec["_id"]}, {"Config": sparseConfig})
+        db.connections.update({"_id": svcRec["_id"]}, {"$set": {"Config": sparseConfig}})

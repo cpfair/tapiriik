@@ -34,7 +34,7 @@ def authreturn(req, service):
 
 
 @require_POST
-def deauth(req, service):
+def deauth(req, service):  # this is RK-specific
     deauthData = json.loads(req.body)
     token = deauthData["access_token"]
     svc = Service.FromID(service)

@@ -48,7 +48,7 @@ body {
 	width:960px;
 }
 
-.content {
+.content, .popoverInner {
 	font-size:130%; /* damn font is unreadable */
 	color:#333;
 }
@@ -194,7 +194,7 @@ form input {
 	font-size:120%;
 }
 
-form button {
+button {
 	font-family: Economica;
 	font-weight:bold;
 	font-size:150%;
@@ -210,16 +210,16 @@ form button {
 	cursor:pointer;
 }
 
-form button.cancel {
+button.cancel {
 	background-color:#ccc;
 }
 
-form button.disabled {
+button.disabled {
 	background-color:#eee;
 	cursor:not-allowed;
 }
 
-form button:active {
+button:active {
 	opacity:0.7;
 }
 

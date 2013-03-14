@@ -15,6 +15,8 @@ def config(req):
 
 
 def js_bridge(req):
+    if req.user is None:
+        return {"js_bridge_serviceinfo": "{}"}
     serviceInfo = {}
     for svc in Service.List():
         svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
@@ -27,8 +29,7 @@ def js_bridge(req):
         }
         if svc.Configurable:
             info["Configured"] = Service.HasConfiguration(svcRec)
-            if info["Configured"]:
-                info["Config"] = Service.GetConfiguration(svcRec)
+            info["Config"] = Service.GetConfiguration(svcRec)
         serviceInfo[svc.ID] = info
     return {"js_bridge_serviceinfo": json.dumps(serviceInfo)}
 
