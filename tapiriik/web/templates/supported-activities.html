@@ -1,0 +1,17 @@
+{% extends "site.html" %}
+{% block title %}supported activities{% endblock %}
+{% block content %}
+<div style="text-align:left;">
+<h1>Supported activity types</h1>
+<ul style="list-style:none;float:left;">
+	<li><span style="color:#444">Activity Name [<tt>tag1</tt>|<tt>tag2</tt>|<tt>&hellip;</tt>]</span></li>
+	{% for name, map in actMap %}
+	<li>{{ name }} [{% for synonym in map %}<tt>{{ synonym|safe }}{% if not forloop.last %}|{% endfor %}</tt>{% endfor %}])
+	{% endfor %}
+</ul>
+<h2>This list doesn't matter<sup>*</sup></h2>
+<p><b>Do not despair if the activities you want to sync are not on this list</b>, tapiriik can still synchronize them. You'll just have to change them to the appropriate activity type once they've arrived at their final destination(s). <b>HR, power, cadence, temperature, and caloric data will always be synchronized</b> when the destination supports it, no matter what type of activity the data is attached to.</p>
+
+<div style="clear:both;"></div>
+</div>
+{% endblock %}

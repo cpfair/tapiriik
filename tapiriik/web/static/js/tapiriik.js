@@ -200,7 +200,9 @@ tapiriik.OpenDropboxConfigDialog = function(){
 };
 
 tapiriik.OpenDropboxInfoDialog = function(){
-	
+	var infoPanel = $("<div><h1>One more thing...</h1><p>.GPX files don't include any information about what type of activity the contain, so <b>tapiriik needs your help! Just put what you were doing into the name of the file</b>, e.g. <b><tt><em>cycling</em>-mar-12-2012.gpx</tt></b>, or place the file into <b>an appropriately named subfolder</b>, e.g. <b><tt><em>run</em>/oldcrow-10k.gpx</tt></b>. If you want you can <a href=\"/supported-activities\">check out the complete list of activities and tags</a>, but don't worry, unrecognized activities will be left alone until you tag them.</p><button>Sounds good</button></div>");
+	$("button", infoPanel).click(tapiriik.DismissServiceDialog);
+	tapiriik.CreateServiceDialog("dropbox", infoPanel);
 }
 
 tapiriik.SaveDropboxConfig = function(){
@@ -291,6 +293,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 
 tapiriik.DismissServiceDialog = function(){
 	$.address.value("/");
+	return false;
 };
 
 tapiriik.DoDismissServiceDialog = function(){

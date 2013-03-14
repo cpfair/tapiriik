@@ -29,6 +29,8 @@ urlpatterns = patterns('',
     url(r'^diagnostics/user/(?P<user>.+)$', 'tapiriik.web.views.diag_user', {}, name='diagnostics_user'),
     url(r'^diagnostics/login$', 'tapiriik.web.views.diag_login', {}, name='diagnostics_login'),
 
+    url(r'^supported-activities$', 'tapiriik.web.views.supported_activities', {}, name='supported_activities'),
+
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
     url(r'^privacy$', TemplateView.as_view(template_name='static/privacy.html'), name='privacy'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),

@@ -24,7 +24,7 @@ class DropboxService(ServiceBase):
         ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
         ActivityType.Walking: "walk",
         ActivityType.Hiking: "hik(e|ing)",
-        ActivityType.DownhillSkiing: "down(hill)?\s*ski(ing)?",
+        ActivityType.DownhillSkiing: "(downhill|down(hill)?\s*ski(ing))?",
         ActivityType.CrossCountrySkiing: "(xc|cross.*country)\s*ski(ing)?",
         ActivityType.Snowboarding: "snowboard(ing)?",
         ActivityType.Skating: "skat(e|ing)?",
