@@ -35,6 +35,12 @@ class DropboxService(ServiceBase):
         ActivityType.Other: "(other|unknown)"
     }
 
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False}
+
+    SupportsHR = SupportsCadence = True
+
+    SupportedActivities = ActivityTaggingTable.keys()
+
     def __init__(self):
         self.DBSess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
         self.DBCl = client.DropboxClient(self.DBSess)

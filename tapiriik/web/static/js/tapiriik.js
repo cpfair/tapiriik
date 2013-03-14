@@ -199,12 +199,22 @@ tapiriik.OpenDropboxConfigDialog = function(){
 	tapiriik.PopulateDropboxBrowser(configPanel);
 };
 
+tapiriik.OpenDropboxInfoDialog = function(){
+	
+}
+
 tapiriik.SaveDropboxConfig = function(){
 	if (tapiriik.DropboxBrowserPath.length <= 1) {
 		return false; // need to select a directory
 	}
 	tapiriik.ServiceInfo["dropbox"]["Config"]["SyncRoot"] = tapiriik.DropboxBrowserPath
-	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
+	tapiriik.SaveConfig("dropbox", function(){
+		if (tapiriik.ServiceInfo["dropbox"]["Configured"]) {
+			tapiriik.DismissServiceDialog();
+		} else {
+			tapiriik.OpenDropboxInfoDialog();
+		}
+	});
 	return false;
 };
 

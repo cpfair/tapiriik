@@ -5,7 +5,7 @@ class ServiceAuthenticationType:
 
 class ServiceBase:
     ID = AuthenticationType = DisplayName = SupportedActivities = None
-    Configurable = RequiresConfiguration = False
+    Configurable = RequiresConfiguration = False  # requiresConfiguration means no sync until user configures
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
     UserAuthorizationURL = None
     AuthenticationNoFrame = False
