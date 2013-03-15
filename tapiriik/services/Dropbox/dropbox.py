@@ -24,7 +24,7 @@ class DropboxService(ServiceBase):
         ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
         ActivityType.Walking: "walk",
         ActivityType.Hiking: "hik(e|ing)",
-        ActivityType.DownhillSkiing: "(downhill|down(hill)?\s*ski(ing))?",
+        ActivityType.DownhillSkiing: "(downhill|down(hill)?\s*ski(ing)?)",
         ActivityType.CrossCountrySkiing: "(xc|cross.*country)\s*ski(ing)?",
         ActivityType.Snowboarding: "snowboard(ing)?",
         ActivityType.Skating: "skat(e|ing)?",
@@ -78,64 +78,78 @@ class DropboxService(ServiceBase):
             uid = existingRecord["ExternalID"]
         return (uid, {"Key": accessToken.key, "Secret": accessToken.secret})
 
+    def ConfigurationUpdating(self, svcRec, newConfig, oldConfig):
+        from tapiriik.auth import User
+        if newConfig["SyncRoot"] != oldConfig["SyncRoot"]:
+            User.ScheduleImmediateSync(User.AuthByService(svcRec), True)
+            cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, {"$unset": {"Structure": None}})
+
     def _folderRecurse(self, structCache, dbcl, path):
         hash = None
-        if path in structCache["Directories"]:
-            hash = structCache["Directories"][path]["Hash"]
+        existingRecord = [x for x in structCache if x["Path"] == path]
+        existingRecord = existingRecord[0] if len(existingRecord) else None
+        if existingRecord:
+            hash = existingRecord["Hash"]
         try:
             dirmetadata = dbcl.metadata(path, hash=hash)
         except rest.ErrorResponse as e:
-            if e.state == 304:
-                return structCache  # nothing new to update here
+            if e.status == 304:
+                return  # nothing new to update here
             raise  # an actual issue
+        if not existingRecord:
+            existingRecord = {"Files": [], "Path": dirmetadata["path"]}
+            structCache.append(existingRecord)
 
-        structCache["Directories"][path] = {"Hash": dirmetadata["hash"]}
+        existingRecord["Hash"] = dirmetadata["hash"]
+        existingRecord["Files"] = []
         for file in dirmetadata["contents"]:
             if file["is_dir"]:
-                structCache = self._folderRecurse(structCache, dbcl, file["path"])
+                self._folderRecurse(structCache, dbcl, file["path"])
             else:
                 if not file["path"].lower().endswith(".gpx"):
                     continue  # another kind of file
-                structCache["Files"][file["path"]] = {"Rev": file["rev"]}
-        return structCache
+                existingRecord["Files"].append({"Rev": file["rev"], "Path": file["path"]})
 
     def _tagActivity(self, text):
-        for act, pattern in self.ActivityTaggingTable:
-            if re.match(pattern, text, re.IGNORECASE):
+        for act, pattern in self.ActivityTaggingTable.items():
+            if re.search(pattern, text, re.IGNORECASE):
                 return act
         return None
 
-    def DownloadActivityList(self, svcRec):
+    def DownloadActivityList(self, svcRec, exhaustive=False):
         dbcl = self._getClient(svcRec)
         syncRoot = svcRec["Config"]["SyncRoot"]
         cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
         if cache is None:
-            cache = {"ExternalID": svcRec["ExternalID"], "Structure": {"Files": {}, "Directories": {}}, "Activities": {}}
-        cache["Structure"] = self._folderRecurse(cache["Structure"], dbcl, syncRoot)
+            cache = {"ExternalID": svcRec["ExternalID"], "Structure": [], "Activities": {}}
+        self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
 
-        for path, file in cache["Structure"]["Files"]:
-            relPath = path.replace(syncRoot, "")
-            existUID, existing = [(k, x) for k, x in cache["Activities"] if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
-            existing = existing[0] if existing else None
-            if existing and existing["Rev"] == file["Rev"]:
-                #  don't need entire activity loaded here, just UID
-                act = UploadedActivity()
-                act.UID = existUID
-            else:
-                # get the activity and store the data locally
-                f, metadata = dbcl.get_file_and_metadata(path)
-                data = f.read()
-                act = GPXIO.Parse(data)
-                cache["Activities"][act.UID] = {"Rev": metadata["rev"], "Path": relPath}
-                cachedb.dropbox_data_cache.update({"UID": act.UID}, {"UID": act.UID, "Data": Binary(zlib.compress(data))}, upsert=True)  # easier than GridFS
-
-            act.UploadedTo = [{"Connection": svcRec}]
-            tagRes = self._tagActivity()
-            act.Tagged = tagRes is not None
-            act.Type = tagRes if tagRes is not None else ActivityType.Unknown
-            activities.append(act)
+        for dir in cache["Structure"]:
+            for file in dir["Files"]:
+                path = file["Path"]
+                relPath = path.replace(syncRoot, "")
+                existing = [(k, x) for k, x in cache["Activities"].items() if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
+                existing = existing[0] if existing else None
+                if existing is not None:
+                    existUID, existing = existing
+                if existing and existing["Rev"] == file["Rev"]:
+                    #  don't need entire activity loaded here, just UID
+                    act = UploadedActivity()
+                    act.UID = existUID
+                else:
+                    # get the activity and store the data locally
+                    f, metadata = dbcl.get_file_and_metadata(path)
+                    data = f.read()
+                    act = GPXIO.Parse(data.decode("UTF-8"))
+                    cache["Activities"][act.UID] = {"Rev": metadata["rev"], "Path": relPath}
+                    cachedb.dropbox_data_cache.update({"UID": act.UID}, {"UID": act.UID, "Data": Binary(zlib.compress(data))}, upsert=True)  # easier than GridFS
+                act.UploadedTo = [{"Connection": svcRec}]
+                tagRes = self._tagActivity(relPath)
+                act.Tagged = tagRes is not None
+                act.Type = tagRes if tagRes is not None else ActivityType.Other
+                activities.append(act)
 
         cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache, upsert=True)
         return activities
@@ -147,9 +161,9 @@ class DropboxService(ServiceBase):
                 raise APIException("Activity untagged", serviceRecord)
 
         # activity might already be populated, if not its data is in the local cache
-        if activity.EndTime is None: #  in the abscence of an actual Populated variable...
+        if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
             data = zlib.decompress(cachedb.dropbox_data_cache.find_one({"UID": activity.UID})["Data"])  # really need compression?
-            fullActivity = GPXIO.Parse(data)
+            fullActivity = GPXIO.Parse(data.decode("UTF-8"))
             fullActivity.Tagged = activity.Tagged
             fullActivity.Type = activity.Type
             activity = fullActivity
@@ -159,13 +173,14 @@ class DropboxService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         activity.CalculateTZ()
         data = GPXIO.Dump(activity)
-        cachedb.dropbox_data_cache.update({"UID": activity.UID}, {"UID": activity.UID, "Data": Binary(zlib.compress(data))}, upsert=True)
+        cachedb.dropbox_data_cache.update({"UID": activity.UID}, {"UID": activity.UID, "Data": Binary(zlib.compress(data.encode("UTF-8")))}, upsert=True)
         dbcl = self._getClient(serviceRecord)
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
         fpath = serviceRecord["Config"]["SyncRoot"] + fname
         metadata = dbcl.put_file(fpath, data)
-        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
-        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
-        cache["Structure"]["Files"][fpath] = {"Rev": metadata["rev"]}
-        cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache)  # not upsert, hope the recort exists at this time...
+
+        #cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]}) FIXME
+        #cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
+        #cache["Structure"]["Files"][fpath] = {"Rev": metadata["rev"]}
+        #cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache)  # not upsert, hope the recort exists at this time...
         

@@ -62,6 +62,7 @@ class Service:
     def SetConfiguration(config, svcRec):
         sparseConfig = copy.deepcopy(config)
         svc = Service.FromID(svcRec["Service"])
+        svc.ConfigurationUpdating(svcRec, config, Service.GetConfiguration(svcRec))
         for k, v in config.items():
             if k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v:
                 del sparseConfig[k]  # it's the default, we can not store it

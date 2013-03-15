@@ -31,3 +31,6 @@ class ServiceBase:
 
     def DeleteCachedData(self, serviceRecord):
         raise NotImplementedError
+
+    def ConfigurationUpdating(self, newConfig, oldConfig):
+        raise NotImplementedError

@@ -210,7 +210,7 @@ tapiriik.OpenDropboxConfigDialog = function(){
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
 	tapiriik.CreateServiceDialog("dropbox", configPanel);
-	tapiriik.DropboxLastDepth = 0;
+	tapiriik.DropboxLastDepth = 1;
 	tapiriik.PopulateDropboxBrowser();
 };
 
@@ -234,7 +234,7 @@ tapiriik.SaveDropboxConfig = function(){
 };
 
 tapiriik.PopulateDropboxBrowser = function(){
-	var cfgPanel = $("form#dropboxConfig");
+	var cfgPanel = $("form.dropboxConfig");
 	var fstack = $("#folderStack", cfgPanel).text("");
 	var parts = tapiriik.DropboxBrowserPath.split('/');
 	parts.unshift('/');
@@ -256,7 +256,7 @@ tapiriik.PopulateDropboxBrowser = function(){
 
 	var depth = tapiriik.DropboxBrowserPath.length; //cheap
 
-	tapiriik.DropboxNavigatingUp = depth < tapiriik.DropboxLastDepth;
+	tapiriik.DropboxNavigatingUp = depth <= tapiriik.DropboxLastDepth;
 
 	tapiriik.DropboxLastDepth = depth;
 
