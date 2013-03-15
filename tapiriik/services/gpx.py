@@ -55,15 +55,17 @@ class GPXIO:
                     wp.Location.Altitude = float(eleEl.text)
                 extEl = xtrkpt.find("gpx:extensions", namespaces=ns)
                 if extEl is not None:
-                    hrEl = extEl.find("gpxtpx:hr", namespaces=ns)
-                    if hrEl is not None:
-                        wp.HR = int(hrEl.text)
-                    cadEl = extEl.find("gpxtpx:cad", namespaces=ns)
-                    if cadEl is not None:
-                        wp.Cadence = int(cadEl.text)
-                    tempEl = extEl.find("gpxtpx:atemp", namespaces=ns)
-                    if tempEl is not None:
-                        wp.Temp = float(tempEl.text)
+                    gpxtpxExtEl = extEl.find("gpxtpx:TrackPointExtension", namespaces=ns)
+                    if gpxtpxExtEl is not None:
+                        hrEl = gpxtpxExtEl.find("gpxtpx:hr", namespaces=ns)
+                        if hrEl is not None:
+                            wp.HR = int(hrEl.text)
+                        cadEl = gpxtpxExtEl.find("gpxtpx:cad", namespaces=ns)
+                        if cadEl is not None:
+                            wp.Cadence = int(cadEl.text)
+                        tempEl = gpxtpxExtEl.find("gpxtpx:atemp", namespaces=ns)
+                        if tempEl is not None:
+                            wp.Temp = float(tempEl.text)
                 act.Waypoints.append(wp)
 
 
@@ -109,11 +111,12 @@ class GPXIO:
                 etree.SubElement(trkpt, "ele").text = str(wp.Location.Altitude)
             if wp.HR is not None or wp.Cadence is not None or wp.Temp is not None or wp.Calories is not None or wp.Power is not None:
                 exts = etree.SubElement(trkpt, "extensions")
+                gpxtpxexts = etree.SubElement(exts, GPXTPX + "TrackPointExtension")
                 if wp.HR is not None:
-                    etree.SubElement(exts, GPXTPX+"hr").text = str(int(wp.HR))
+                    etree.SubElement(gpxtpxexts, GPXTPX + "hr").text = str(int(wp.HR))
                 if wp.Cadence is not None:
-                    etree.SubElement(exts, GPXTPX+"cad").text = str(int(wp.Cadence))
+                    etree.SubElement(gpxtpxexts, GPXTPX + "cad").text = str(int(wp.Cadence))
                 if wp.Temp is not None:
-                    etree.SubElement(exts, GPXTPX+"atemp").text = str(wp.Temp)
+                    etree.SubElement(gpxtpxexts, GPXTPX + "atemp").text = str(wp.Temp)
 
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
