@@ -373,6 +373,10 @@ a {
 	background-position: 0% 65%;
 }
 
+.service .status#sync-info {
+	background-image:url('../img/sync-info.png');	
+}
+
 .service .status#sync-fail {
 	background-image:url('../img/sync-fail.png');	
 }

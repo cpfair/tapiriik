@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.api import APIException, APIAuthorizationException, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
@@ -84,6 +84,11 @@ class DropboxService(ServiceBase):
             User.ScheduleImmediateSync(User.AuthByService(svcRec), True)
             cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, {"$unset": {"Structure": None}})
 
+    def _raiseDbException(self, e):
+        if e.status == 401:
+                raise APIAuthorizationException("Authorization error - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.body))
+        raise APIException("API failure - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.body))
+
     def _folderRecurse(self, structCache, dbcl, path):
         hash = None
         existingRecord = [x for x in structCache if x["Path"] == path]
@@ -102,7 +107,7 @@ class DropboxService(ServiceBase):
                 # dir doesn't exist any more, delete it and all children
                 structCache[:] = (x for x in structCache if x != existingRecord and x not in children)
                 return
-            raise  # an actual issue
+            self._raiseDbException(e)
         if not existingRecord:
             existingRecord = {"Files": [], "Path": dirmetadata["path"]}
             structCache.append(existingRecord)
@@ -124,7 +129,10 @@ class DropboxService(ServiceBase):
         return None
 
     def _getActivity(self, dbcl, path):
-        f, metadata = dbcl.get_file_and_metadata(path)
+        try:
+            f, metadata = dbcl.get_file_and_metadata(path)
+        except rest.ErrorResponse as e:
+            self._raiseDbException(e)
         data = f.read()
         act = GPXIO.Parse(data.decode("UTF-8"))
         return act, metadata["rev"]
@@ -169,7 +177,7 @@ class DropboxService(ServiceBase):
         # activity might not be populated at this point, still possible to bail out
         if not activity.Tagged:
             if "UploadUntagged" not in serviceRecord["Config"] or serviceRecord["Config"]["UploadUntagged"] is not True:
-                raise APIException("Activity untagged", serviceRecord)
+                raise ServiceException("Activity untagged", code="UNTAGGED")
 
         # activity might already be populated, if not download it again
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
@@ -188,7 +196,10 @@ class DropboxService(ServiceBase):
         dbcl = self._getClient(serviceRecord)
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
         fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
-        metadata = dbcl.put_file(fpath, data)
+        try:
+            metadata = dbcl.put_file(fpath, data)
+        except rest.ErrorResponse as e:
+            self._raiseDbException(e)
 
         # fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})

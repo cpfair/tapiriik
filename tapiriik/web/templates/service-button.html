@@ -13,24 +13,27 @@
 						{% if connection.SyncErrors|length > 0 %}
 							{% if connection.SyncErrors.0.Type == "authorization" %}
 								<span class="status" id="sync-fail">Authorization Error</span>
-								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
-								<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
+							{% elif connection.SyncErrors.0.Code == "UNTAGGED" %}
+								<span class="status" id="sync-info">Untagged activities</span>
 							{% else %}
 								<span class="status" id="sync-fail">Sync Failure</span>
-								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
 							{% endif %}
-							
 						{% else %}
 							<span class="status" id="sync-ok">Connected</span>
-							{% if provider.Configurable %}
-							<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
-							{% else %}
-							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
-							{% endif %}
 						{% endif %}
+						{% if connection.SyncErrors|length == 0 or connection.SyncErrors.0.Type != "authorization" %}
+							{% if provider.Configurable %}
+								<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
+							{% else %}
+								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
+							{% endif %}
 						{% else %}
-							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">
-Connect</a>
+							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
+							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
+						{% endif %}
+
+					{% else %}
+						<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">Connect</a>
 					{% endif %}
 				</div>
 			</div>

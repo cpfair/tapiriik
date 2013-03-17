@@ -17,8 +17,8 @@ class Sync:
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
         recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities
-                                                                    and ("SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"])
-                                                                    and conn not in [x["Connection"] for x in activity.UploadedTo]]
+                                                                and ("SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"])
+                                                                and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
     def _accumulateActivities(svc, svcActivities, activityList):
@@ -36,7 +36,7 @@ class Sync:
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             try:
-                Sync.PerformUserSync(user, "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] == True)
+                Sync.PerformUserSync(user, "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True)
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
@@ -67,10 +67,10 @@ class Sync:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message})
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
                 continue
             except APIException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message})
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                 continue
             except Exception as e:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -83,9 +83,9 @@ class Sync:
 
         for activity in activities:
             # we won't need this now, but maybe later
-            db.connections.update({"_id": {"$in": [x["Connection"]["_id"] for x in activity.UploadedTo]}},\
-                {"$addToSet": {"SynchronizedActivities": activity.UID}},\
-                multi=True)
+            db.connections.update({"_id": {"$in": [x["Connection"]["_id"] for x in activity.UploadedTo]}},
+                                  {"$addToSet": {"SynchronizedActivities": activity.UID}},
+                                  multi=True)
 
             recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
             if len(recipientServices) == 0:
@@ -99,10 +99,10 @@ class Sync:
                 try:
                     act = dlSvc.DownloadActivity(dlSvcRecord, activity)
                 except APIAuthorizationException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message})
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
                     continue
                 except APIException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message})
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                     continue
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -122,17 +122,17 @@ class Sync:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message})
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
                 except APIException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message})
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
                     continue
                 else:
                     # flag as successful
-                    db.connections.update({"_id": destinationSvcRecord["_id"]},\
-                    {"$addToSet": {"SynchronizedActivities": activity.UID}})
+                    db.connections.update({"_id": destinationSvcRecord["_id"]},
+                                          {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
 
@@ -142,6 +142,7 @@ class Sync:
         # unlock the row
         db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}})
         print("Finished sync for " + str(user["_id"]))
+
 
 class SynchronizationConcurrencyException(Exception):
     pass

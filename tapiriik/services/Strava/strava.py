@@ -152,8 +152,8 @@ class StravaService(ServiceBase):
         response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), headers={"Content-Type": "application/json"})
         if response.status_code != 200:
             if response.status_code == 401:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text, serviceRecord)
-            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text, serviceRecord)
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text)
+            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text)
 
     def DeleteCachedData(self, serviceRecord):
         db.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})

@@ -215,7 +215,7 @@ tapiriik.OpenConfigDialog = function(svcId){
 tapiriik.OpenDropboxConfigDialog = function(){
 	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>").addClass("dropboxConfig");
 
-	if (!tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
+	if (tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
 	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
@@ -243,7 +243,7 @@ tapiriik.SaveDropboxConfig = function(){
 		return false; // need to select a directory
 	}
 	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath;
-	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = !$("#syncAll").is(":checked");
+	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = $("#syncAll").is(":checked");
 	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
 	return false;
 };
@@ -352,10 +352,10 @@ tapiriik.UpdateSyncCountdown = function(){
 	$.ajax({"url":"/sync/status", success:function(data){
 		tapiriik.NextSync = new Date(data.NextSync);
 		tapiriik.LastSync = new Date(data.LastSync);
-		if (tapiriik.SyncErrorsCt != data.Errors && tapiriik.SyncErrorsCt !== undefined){
+		if (tapiriik.SyncErrors !== undefined && tapiriik.SyncErrors.toString() != data.Errors.toString()){
 			window.location.reload(); // show them the errors
 		}
-		tapiriik.SyncErrorsCt = data.Errors;
+		tapiriik.SyncErrors = data.Errors;
 		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.RefreshSyncCountdown();
 	}});

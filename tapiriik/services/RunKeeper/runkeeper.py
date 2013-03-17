@@ -49,7 +49,7 @@ class RunKeeperService(ServiceBase):
 
         response = requests.post("https://runkeeper.com/apps/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if response.status_code != 200:
-            raise APIAuthorizationException("Invalid code", None)
+            raise APIAuthorizationException("Invalid code")
         token = response.json()["access_token"]
 
         # hacky, but also totally their fault for not giving the user id in the token req
@@ -64,7 +64,7 @@ class RunKeeperService(ServiceBase):
     def RevokeAuthorization(self, serviceRecord):
         resp = requests.post("https://runkeeper.com/apps/de-authorize", data={"access_token": serviceRecord["Authorization"]["Token"]})
         if resp.status_code != 204:
-            raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text, "code")
+            raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
 
     def _apiHeaders(self, serviceRecord):
@@ -79,7 +79,7 @@ class RunKeeperService(ServiceBase):
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to retrieve user URLs", serviceRecord)
-                raise APIException("Unable to retrieve user URLs" + str(response), serviceRecord)
+                raise APIException("Unable to retrieve user URLs" + str(response))
 
             uris = response.json()
             for k in uris.keys():
@@ -104,8 +104,8 @@ class RunKeeperService(ServiceBase):
             response = requests.get(pageUri, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
-                raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
+                    raise APIAuthorizationException("No authorization to retrieve activity list")
+                raise APIException("Unable to retrieve activity list " + str(response))
             data = response.json()
             allItems += data["items"]
             if not exhaustive or "next" not in data or data["next"] == "":
@@ -139,8 +139,8 @@ class RunKeeperService(ServiceBase):
             response = requests.get("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to download activity" + activityID, serviceRecord)
-                raise APIException("Unable to download activity " + activityID, serviceRecord)
+                    raise APIAuthorizationException("No authorization to download activity" + activityID)
+                raise APIException("Unable to download activity " + activityID)
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord["ExternalID"]
             db.rk_activity_cache.insert(ridedata)
@@ -182,8 +182,8 @@ class RunKeeperService(ServiceBase):
 
         if response.status_code != 201:
             if response.status_code == 401 or response.status_code == 403:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID, serviceRecord)
-            raise APIException("Unable to upload activity " + activity.UID, serviceRecord)
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID)
+            raise APIException("Unable to upload activity " + activity.UID)
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
