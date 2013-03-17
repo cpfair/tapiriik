@@ -194,6 +194,10 @@ form input {
 	font-size:120%;
 }
 
+form input[type=checkbox] {
+	vertical-align:text-top;
+}
+
 button {
 	font-family: Economica;
 	font-weight:bold;
@@ -212,6 +216,10 @@ button {
 
 button.cancel {
 	background-color:#ccc;
+}
+
+button.delete {
+	background-color:#daa;
 }
 
 button.disabled {
@@ -353,6 +361,12 @@ a {
 	background-image:url('../img/unlink.png');
 }
 
+.service .control#sync-config {
+	background-image:url('../img/sync-settings.png');	
+	padding-left:17px;
+	background-position: 0% 65%;
+}
+
 .service .status#sync-ok {
 	background-image:url('../img/sync-ok.png');	
 	padding-left:17px;
@@ -384,13 +398,13 @@ a {
 }
 
 form.dropboxConfig {
-	max-width:302px; /* magic # */
+	max-width:377px; /* magic # */
 }
 #folderList {
 	margin:10px 0;
 	font-size:130%;
-	height:200px;
-	width:300px;
+	height:300px;
+	width:375px;
 	overflow-y:scroll;
 	overflow-x:hidden;
 	border:1px solid #8ec1da;
@@ -402,7 +416,7 @@ form.dropboxConfig {
 	margin:0;
 	padding:5px;
 	list-style:none;
-	width:300px;
+	width:375px;
 }
 #folderList li {
 	padding:3px 0;
@@ -438,6 +452,7 @@ form.dropboxConfig {
 }
 #folderList h2 {
 	text-align: center;
+	padding-right:20px; /* sort of account for scrollbar */
 }
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {

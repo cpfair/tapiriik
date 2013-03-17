@@ -36,6 +36,7 @@ tapiriik.Init = function(){
 	// ...
 	$("#syncButton").click(tapiriik.ImmediateSyncRequested);
 	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);
+	$(".service a.configDialog").click(tapiriik.ConfigDialogLinkClicked);
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
 	
 	if (tapiriik.User !== undefined){
@@ -63,7 +64,9 @@ tapiriik.Init = function(){
 
 	$.address.change(tapiriik.AddressChanged);
 	tapiriik.AddressChanged();
+
 };
+$.address.wrap(true);
 
 tapiriik.AddressChanged=function(){
 	var components = $.address.pathNames();
@@ -85,7 +88,7 @@ tapiriik.AddressChanged=function(){
 		if (components[1]=="dropbox"){
 			if (unchangedDepth<=1) {
 				tapiriik.DropboxBrowserPath = tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
-				$.address.value("/configure/dropbox" + tapiriik.DropboxBrowserPath); // init directory, meh
+				$.address.value("configure/dropbox" + tapiriik.DropboxBrowserPath); // init directory, meh
 				tapiriik.OpenDropboxConfigDialog();
 			} else {
 				tapiriik.DropboxBrowserPath = "/" + components.slice(2).join("/");
@@ -104,7 +107,7 @@ tapiriik.AddressChanged=function(){
 
 tapiriik.SaveConfig = function(svcId, config, callback) {
 	$.post("/config/save/"+svcId, {"config": JSON.stringify(tapiriik.ServiceInfo[svcId].Config)},function(){
-		$.address.value("/");
+		$.address.value("");
 		window.location.reload();
 	});
 
@@ -115,6 +118,11 @@ tapiriik.AuthDialogLinkClicked = function(e){
 	return false;
 };
 
+tapiriik.ConfigDialogLinkClicked = function(e){
+	$.address.value("configure/"+$(this).attr("service"));
+	return false;
+};
+
 tapiriik.DeauthDialogLinkClicked = function(e){
 	$.address.value("disconnect/"+$(this).attr("service"));
 	return false;
@@ -122,10 +130,10 @@ tapiriik.DeauthDialogLinkClicked = function(e){
 
 tapiriik.IFrameOAuthReturn=function(success){
 	if (success){
-		$.address.value("/");
+		$.address.value("");
 		window.location.reload();
 	} else {
-		$.address.value("/");
+		$.address.value("");
 	}
 };
 
@@ -156,7 +164,7 @@ tapiriik.OpenDeauthDialog = function(svcId){
 		$.ajax({url:"/auth/disconnect-ajax/"+svcId,
 				type:"POST",
 				success: function(){
-					$.address.value("/");
+					$.address.value("");
 					window.location.reload();
 				},
 				error: function(data){
@@ -168,7 +176,7 @@ tapiriik.OpenDeauthDialog = function(svcId){
 	});
 	
 	$("#cancel", form).click(function(){
-		$.address.value("/");
+		history.back();
 	});
 
 	tapiriik.CreateServiceDialog(svcId, form);
@@ -184,7 +192,7 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 		$.post("/auth/login-ajax/"+svcId,{username:$("#email",form).val(),password:$("#password",form).val()}, function(data){
 			
 			if (data.success) {
-				$.address.value("/");
+				$.address.value("");
 				window.location.reload();
 			} else {
 				$(".error",form).show();
@@ -199,16 +207,22 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 
 tapiriik.OpenConfigDialog = function(svcId){
 	if (svcId == "dropbox" && !tapiriik.ServiceInfo.dropbox.Configured) {
-		$.address.value("/dropbox/info");
+		$.address.value("dropbox/info");
 		return;
 	}
-	$.address.value("/configure/" + svcId);
+	$.address.value("configure/" + svcId);
 };
 tapiriik.OpenDropboxConfigDialog = function(){
-	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"unsetSyncAll\"><label for=\"unsetSyncAll\" style=\"display:inline-block\">Don't sync untagged activities</label></input><br/><button id=\"OK\">Save Settings</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
+	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>").addClass("dropboxConfig");
 
+	if (!tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
+	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
+	$("#disconnect", configPanel).click(function(){
+		$.address.value("disconnect/dropbox");
+		return false;
+	});
 	tapiriik.CreateServiceDialog("dropbox", configPanel);
 	tapiriik.DropboxLastDepth = 1;
 	tapiriik.PopulateDropboxBrowser();
@@ -219,7 +233,7 @@ tapiriik.OpenDropboxInfoDialog = function(){
 		<p>.GPX files don't include any information about what type of activity the contain, so <b>tapiriik needs your help! Just put what you were doing into the name of the file</b> or place the file into <b>an appropriately named subfolder</b>, e.g. <tt><b>cycling</b>-mar-12-2012.gpx</tt> or <tt><b>run</b>/oldcrow-10k.gpx</tt>. If you want you can <a href=\"/supported-activities\">see the complete list of activities and tags</a>, but don't worry, unrecognized activities will be left alone until you tag them.</p>\
 		<button>Sounds good</button></div>");
 	$("button", infoPanel).click(function(){
-		$.address.value("/configure/dropbox");
+		$.address.value("configure/dropbox");
 	});
 	tapiriik.CreateServiceDialog("dropbox", infoPanel);
 };
@@ -229,6 +243,7 @@ tapiriik.SaveDropboxConfig = function(){
 		return false; // need to select a directory
 	}
 	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath;
+	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = !$("#syncAll").is(":checked");
 	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
 	return false;
 };
@@ -251,7 +266,7 @@ tapiriik.PopulateDropboxBrowser = function(){
 		$("button#OK", cfgPanel).removeClass("disabled");
 	}
 
-	if (tapiriik.DropboxBrowserPath == tapiriik.CurrentDropboxBrowserPath) return;
+	if (tapiriik.DropboxBrowserPath == tapiriik.CurrentDropboxBrowserPath && $("#folderList").children().length) return;
 	
 
 	var depth = tapiriik.DropboxBrowserPath.length; //cheap
@@ -303,8 +318,9 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	});
 };
 
-tapiriik.DismissServiceDialog = function(){
-	$.address.value("/");
+tapiriik.DismissServiceDialog = function(e){
+	if (e) e.preventDefault();
+	$.address.value("");
 	return false;
 };
 

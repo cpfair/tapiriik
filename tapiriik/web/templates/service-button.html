@@ -22,7 +22,11 @@
 							
 						{% else %}
 							<span class="status" id="sync-ok">Connected</span>
+							{% if provider.Configurable %}
+							<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
+							{% else %}
 							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
+							{% endif %}
 						{% endif %}
 						{% else %}
 							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">
