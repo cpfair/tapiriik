@@ -49,7 +49,8 @@ class User:
         if existingUser is not None:
             # merge merge merge
             user["ConnectedServices"] += existingUser["ConnectedServices"]
-            user["Payments"] += existingUser["Payments"]
+            if "Payments" in existingUser:
+                user["Payments"] += existingUser["Payments"]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
