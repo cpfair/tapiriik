@@ -67,38 +67,35 @@ class Activity:
         self.CalculateUID()
 
     def CalculateTZ(self, loc=None):
-        if self.TZ is not None:
-            return self.TZ
-        else:
-            if len(self.Waypoints) == 0 and loc is None:
-                raise Exception("Can't find TZ without waypoints")
+        if len(self.Waypoints) == 0 and loc is None:
+            raise Exception("Can't find TZ without waypoints")
+        if loc is None:
+            for wp in self.Waypoints:
+                if wp.Location is not None:
+                    loc = wp.Location
+                    break
             if loc is None:
-                for wp in self.Waypoints:
-                    if wp.Location is not None:
-                        loc = wp.Location
-                        break
-                if loc is None:
-                    raise Exception("Can't find TZ without a waypoint with a location")
-            cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
-            if cachedTzData is None:
-                warnings.filterwarnings("ignore", "the 'strict' argument")
-                warnings.filterwarnings("ignore", "unclosed <socket")
-                resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
-                data = resp.json()
-                cachedTzData = {}
-                if "timezoneId" in data:
-                    cachedTzData["TZ"] = data["timezoneId"]
-                else:
-                    cachedTzData["TZ"] = data["rawOffset"]
-                cachedTzData["Latitude"] = loc.Latitude
-                cachedTzData["Longitude"] = loc.Longitude
-                cachedb.tz_cache.insert(cachedTzData)
-
-            if type(cachedTzData["TZ"]) != str:
-                self.TZ = pytz.FixedOffset(cachedTzData["TZ"] * 60)
+                raise Exception("Can't find TZ without a waypoint with a location")
+        cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
+        if cachedTzData is None:
+            warnings.filterwarnings("ignore", "the 'strict' argument")
+            warnings.filterwarnings("ignore", "unclosed <socket")
+            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
+            data = resp.json()
+            cachedTzData = {}
+            if "timezoneId" in data:
+                cachedTzData["TZ"] = data["timezoneId"]
             else:
-                self.TZ = pytz.timezone(cachedTzData["TZ"])
-            return self.TZ
+                cachedTzData["TZ"] = data["rawOffset"]
+            cachedTzData["Latitude"] = loc.Latitude
+            cachedTzData["Longitude"] = loc.Longitude
+            cachedb.tz_cache.insert(cachedTzData)
+
+        if type(cachedTzData["TZ"]) != str:
+            self.TZ = pytz.FixedOffset(cachedTzData["TZ"] * 60)
+        else:
+            self.TZ = pytz.timezone(cachedTzData["TZ"])
+        return self.TZ
 
     def EnsureTZ(self):
         self.CalculateTZ()

@@ -151,8 +151,7 @@ class EndomondoService(ServiceBase):
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
 
-        activity.CalculateTZ()
-        activity.AdjustTZ()
+        activity.EnsureTZ()
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 

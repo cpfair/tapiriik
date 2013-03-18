@@ -141,7 +141,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         data = f.read()
         act = GPXIO.Parse(data.decode("UTF-8"))
-        act.EnsureTZ()
+        act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -171,7 +171,6 @@ class DropboxService(ServiceBase):
                 else:
                     # get the full activity
                     act, rev = self._getActivity(dbcl, path)
-                    act.EnsureTZ()
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime}
                 act.UploadedTo = [{"Connection": svcRec}]
                 tagRes = self._tagActivity(relPath)
