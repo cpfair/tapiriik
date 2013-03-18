@@ -258,6 +258,9 @@ tapiriik.SaveDropboxConfig = function(){
 	if (tapiriik.DropboxBrowserPath.length <= 1) {
 		return false; // need to select a directory
 	}
+	if (tapiriik.DropboxSettingsSavePending) return;
+	tapiriik.DropboxSettingsSavePending = true;
+	$("button#OK").addClass("disabled");
 	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath;
 	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = $("#syncAll").is(":checked");
 	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
@@ -345,7 +348,14 @@ tapiriik.OpenPaymentReclaimDialog = function(){
 };
 
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
-	$(".dialogWrap").remove();
+	if ($(".dialogWrap").size()>0){
+		$(".dialogWrap").fadeOut(100, function(){
+			$(".dialogWrap").remove();
+			tapiriik.CreateServiceDialog(serviceID, contents);
+		});
+		return;
+	}
+	
 	var icon;
 	if (serviceID != "tapiriik"){
 		var origIcon = $(".service#"+serviceID+" .icon img");

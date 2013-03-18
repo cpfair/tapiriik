@@ -19,4 +19,7 @@ def supported_activities(req):
     activities["Rowing"] = ["rowing", "row"]
     activities["Elliptical"] = ["elliptical"]
     activities["Other"] = ["other", "unknown"]
-    return render(req, "supported-activities.html", {"actMap": activities})
+    activityList = []
+    for act, synonyms in activities.items():
+        activityList.append({"name": act, "synonyms": synonyms})
+    return render(req, "supported-activities.html", {"actMap": activityList})
