@@ -141,6 +141,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         data = f.read()
         act = GPXIO.Parse(data.decode("UTF-8"))
+        act.EnsureTZ()
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -165,11 +166,13 @@ class DropboxService(ServiceBase):
                 if existing and existing["Rev"] == file["Rev"]:
                     #  don't need entire activity loaded here, just UID
                     act = UploadedActivity()
-                    act.UID = existUID
+                    act.StartTime = existing["StartTime"]
+                    act.CalculateUID()
                 else:
                     # get the full activity
                     act, rev = self._getActivity(dbcl, path)
-                    cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath}
+                    act.EnsureTZ()
+                    cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime}
                 act.UploadedTo = [{"Connection": svcRec}]
                 tagRes = self._tagActivity(relPath)
                 act.DBPath = path
@@ -208,10 +211,9 @@ class DropboxService(ServiceBase):
             metadata = dbcl.put_file(fpath, data)
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
-
         # fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})
-        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
+        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname, "StartTime": activity.StartTime}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord["ExternalID"]}, cache)  # not upsert, hope the record exists at this time...
 
     def DeleteCachedData(self, serviceRecord):

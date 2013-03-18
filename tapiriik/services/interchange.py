@@ -104,6 +104,8 @@ class Activity:
         self.CalculateTZ()
         if self.StartTime.tzinfo is None:
             self.DefineTZ()
+        else:
+            self.AdjustTZ()
 
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)

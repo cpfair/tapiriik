@@ -73,7 +73,6 @@ class GPXIO:
 
         act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
 
-        act.TZ = act.Waypoints[0].Timestamp.tzinfo
         act.StartTime = startTime
         act.EndTime = endTime
         act.CalculateUID()
