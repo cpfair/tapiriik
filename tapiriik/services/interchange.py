@@ -34,6 +34,8 @@ class Activity:
         self.Name = name
 
     def CalculateUID(self):
+        if self.StartTime is datetime.min:
+            return  # don't even try
         csp = hashlib.new("md5")
         roundedStartTime = self.StartTime
         roundedStartTime = roundedStartTime - timedelta(microseconds=roundedStartTime.microsecond)
