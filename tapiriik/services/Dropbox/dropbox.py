@@ -79,15 +79,16 @@ class DropboxService(ServiceBase):
         return (uid, {"Key": accessToken.key, "Secret": accessToken.secret})
 
     def ConfigurationUpdating(self, svcRec, newConfig, oldConfig):
+        from tapiriik.sync import Sync
         from tapiriik.auth import User
         if newConfig["SyncRoot"] != oldConfig["SyncRoot"]:
-            User.ScheduleImmediateSync(User.AuthByService(svcRec), True)
+            Sync.ScheduleImmediateSync(User.AuthByService(svcRec), True)
             cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, {"$unset": {"Structure": None}})
 
     def _raiseDbException(self, e):
         if e.status == 401:
-                raise APIAuthorizationException("Authorization error - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.body))
-        raise APIException("API failure - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.body))
+                raise APIAuthorizationException("Authorization error - status " + str(e.status) + " reason " + str(e.error_msg) + " body " + str(e.body))
+        raise APIException("API failure - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.error_msg))
 
     def _folderRecurse(self, structCache, dbcl, path):
         hash = None
@@ -114,14 +115,16 @@ class DropboxService(ServiceBase):
 
         existingRecord["Hash"] = dirmetadata["hash"]
         existingRecord["Files"] = []
+        curDirs = []
         for file in dirmetadata["contents"]:
             if file["is_dir"]:
+                curDirs.append(file["path"])
                 self._folderRecurse(structCache, dbcl, file["path"])
             else:
                 if not file["path"].lower().endswith(".gpx"):
                     continue  # another kind of file
                 existingRecord["Files"].append({"Rev": file["rev"], "Path": file["path"]})
-
+        structCache[:] = (x for x in structCache if x["Path"] in curDirs or x not in children)  # delete ones that don't exist
     def _tagActivity(self, text):
         for act, pattern in self.ActivityTaggingTable.items():
             if re.search(pattern, text, re.IGNORECASE):
@@ -167,6 +170,7 @@ class DropboxService(ServiceBase):
                 tagRes = self._tagActivity(relPath)
                 act.DBPath = path
                 act.Tagged = tagRes is not None
+
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
                 activities.append(act)
 
@@ -176,7 +180,7 @@ class DropboxService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
         if not activity.Tagged:
-            if "UploadUntagged" not in serviceRecord["Config"] or serviceRecord["Config"]["UploadUntagged"] is not True:
+            if "UploadUntagged" not in serviceRecord["Config"] or not serviceRecord["Config"]["UploadUntagged"]:
                 raise ServiceException("Activity untagged", code="UNTAGGED")
 
         # activity might already be populated, if not download it again

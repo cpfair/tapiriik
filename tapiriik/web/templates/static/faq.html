@@ -14,6 +14,8 @@ As much as possible: in addition to your path, tapiriik will also sync <b>heart 
 
 <h3>How often do synchronizations occur? Can I manually trigger a sync?</h3>
 Your activities will be synchronized <b>every 60 minutes</b>, but if you're anxious you can visit <a href="https://tapiriik.com">tapiriik.com</a> and click the countdown to sync immediately. There is a 10 minute minimum period between synchronizations.
+<h3>What are "untagged activites" and why do I care?</h3>
+<b>tapiriik can't automatically determine what activity you were performing while synchronizing a gpx file from your Dropbox</b>. You need to put the <a href="/supported-activities">name of the activity</a> in the file name, or place the filde in an <a href="/supported-activities">appropriately named folder</a>.
 <h3>What data is stored on your servers?</h3>
 As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
 <h3>I've already connected a few services, but I want to add more, how?</h3>
@@ -22,9 +24,6 @@ Just sign into any one of the services you already connected, then sign into the
 No worries - tapiriik will see that and <b>won't create any duplicate activities</b>.
 
 <h3>But why?</h3>
-I'm indecisive, and I couldn't stand the tedium of downloading + uploading GPX files between the services I tracked activities with. 
-
-<h3></h3>
-<h3></h3>
+I'm indecisive, and I couldn't stand the tedium of downloading + uploading GPX files between the services I tracked activities with.
 </div>
 {% endblock %}

@@ -106,7 +106,7 @@ tapiriik.AddressChanged=function(){
 };
 
 tapiriik.SaveConfig = function(svcId, config, callback) {
-	$.post("/config/save/"+svcId, {"config": JSON.stringify(tapiriik.ServiceInfo[svcId].Config)},function(){
+	$.post("/configure/save/"+svcId, {"config": JSON.stringify(tapiriik.ServiceInfo[svcId].Config)},function(){
 		$.address.value("");
 		window.location.reload();
 	});

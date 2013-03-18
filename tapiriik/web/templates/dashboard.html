@@ -6,7 +6,15 @@
 	
 	
 		{% for connection in user.ConnectedServices|svc_populate_conns %}
-		{% include "service-button.html" with provider=connection|svc_conn_to_provider connection=connection %}
+		{% with svc=connection|svc_conn_to_provider %}
+			{% include "service-button.html" with provider=svc connection=connection %}
+			{% if svc.RequiresConfiguration and not connection.Config %}
+				<noscript>
+				<p><a href="/configure/{{ connection.Service }}">You must configure {{ svc.DisplayName }} before first use</a></p>
+				</noscript>
+			{% endif %}
+		{% endwith %}
+		
 		{% if not forloop.last %}{% endif %}{% endfor %}
 	<div class="syncStatus" style="display:none;">&laquo; <span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em> &raquo;</div>
 	{% if user.ConnectedServices|svc_providers_except|length != 0 %}

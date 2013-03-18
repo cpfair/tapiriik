@@ -17,7 +17,8 @@ urlpatterns = patterns('',
     url(r'^auth/disconnect/(?P<service>.+)$', 'tapiriik.web.views.auth_disconnect', {}, name='auth_disconnect', ),
     url(r'^auth/disconnect-ajax/(?P<service>.+)$', 'tapiriik.web.views.auth_disconnect_ajax', {}, name='auth_disconnect_ajax', ),
 
-    url(r'^config/save/(?P<service>.+)?$', 'tapiriik.web.views.config_save', {}, name='config_save', ),
+    url(r'^configure/save/(?P<service>.+)?$', 'tapiriik.web.views.config.config_save', {}, name='config_save', ),
+    url(r'^configure/dropbox$', 'tapiriik.web.views.config.dropbox', {}, name='dropbox_config', ),
 
     url(r'^dropbox/browse-ajax/?$', 'tapiriik.web.views.dropbox.browse', {}, name='dropbox_browse_ajax', ),
     url(r'^dropbox/browse-ajax/(?P<path>.+)?$', 'tapiriik.web.views.dropbox.browse', {}, name='dropbox_browse_ajax', ),

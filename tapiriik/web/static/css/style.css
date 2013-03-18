@@ -328,7 +328,7 @@ a {
 }
 
 .service.connected:hover .controlsInner {
-	top:-1em;
+	top:-1.03em; /* damn letter g / economica font */
 }
 
 .service .icon {
@@ -344,6 +344,11 @@ a {
 	vertical-align: middle;
 }
 
+.service .status {
+	display: inline-block;
+	max-height:1em;
+	overflow:hidden;
+}
 .service .status, .service .control {
 	text-decoration: none;
 	color:white;

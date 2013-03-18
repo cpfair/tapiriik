@@ -1,5 +1,5 @@
 from tapiriik.database import db
-from tapiriik.services import Service, APIException, APIAuthorizationException
+from tapiriik.services import Service, APIException, APIAuthorizationException, ServiceException
 from datetime import datetime, timedelta
 import sys
 import os
@@ -69,7 +69,7 @@ class Sync:
             except APIAuthorizationException as e:
                 conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
                 continue
-            except APIException as e:
+            except ServiceException as e:
                 conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                 continue
             except Exception as e:
@@ -92,7 +92,7 @@ class Sync:
                 continue
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
-
+            act = None
             for dlSvcUploadRec in activity.UploadedTo:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
@@ -101,7 +101,7 @@ class Sync:
                 except APIAuthorizationException as e:
                     dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
                     continue
-                except APIException as e:
+                except ServiceException as e:
                     dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                     continue
                 except Exception as e:
@@ -123,7 +123,7 @@ class Sync:
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
-                except APIException as e:
+                except ServiceException as e:
                     destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()

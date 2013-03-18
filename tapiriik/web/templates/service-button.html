@@ -23,7 +23,7 @@
 						{% endif %}
 						{% if connection.SyncErrors|length == 0 or connection.SyncErrors.0.Type != "authorization" %}
 							{% if provider.Configurable %}
-								<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
+								<a href="/configure/{{ provider.ID }}" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
 							{% else %}
 								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
 							{% endif %}
