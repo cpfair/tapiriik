@@ -14,6 +14,8 @@ Activities are synchronized <b>only to services that handle them</b> (e.g. no sw
 <h3>What data gets synchronized?</h3>
 As much as possible: in addition to your path, tapiriik will also sync <b>heart rate, cadence, power, calories burned, and even temperature</b> between all services which support them.
 
+<h3>What are "untagged activites" and why do I care?</h3>
+<b>tapiriik can't automatically determine what activity you were performing while synchronizing a gpx file from your Dropbox</b>. You need to put the <a href="/supported-activities">name of the activity</a> in the file name, or place the filde in an <a href="/supported-activities">appropriately named folder</a>.
 <h3>What data is stored on your servers?</h3>
 As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
 <h3>I've already connected a few services, but I want to add more, how?</h3>
@@ -23,8 +25,5 @@ No worries - tapiriik will see that and <b>won't create any duplicate activities
 
 <h3>But why?</h3>
 I'm indecisive, and I couldn't stand the tedium of shuttling GPX files between the services I tracked activities with. 
-
-<h3></h3>
-<h3></h3>
 </div>
 {% endblock %}

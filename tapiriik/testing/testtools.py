@@ -27,6 +27,8 @@ class TapiriikTestCase(TestCase):
             self.assertEqual(a.StartTime, b.StartTime)
             self.assertEqual(a.EndTime, b.EndTime)
             self.assertEqual(a.Type, b.Type)
+            self.assertEqual(a.Distance, b.Distance)
+            self.assertEqual(a.Name, b.Name)
             self.assertEqual(len(a.Waypoints), len(b.Waypoints))
             for idx in range(0, len(a.Waypoints) - 1):
                 self.assertEqual(a.Waypoints[idx].Timestamp.astimezone(pytz.utc), b.Waypoints[idx].Timestamp.astimezone(pytz.utc))
@@ -52,18 +54,27 @@ class TestTools:
     def create_mock_upload_record(svc):
         return {"ActivityID": random.randint(1, 1000), "Connection": TestTools.create_mock_svc_record(svc)}
 
-    def create_random_activity(svc, actType=ActivityType.Other):
+    def create_random_activity(svc, actType=ActivityType.Other, tz=False):
         ''' creates completely random activity with valid waypoints and data '''
         act = Activity()
+
+        if tz is True:
+            tz = pytz.timezone(pytz.all_timezones[random.randint(0, len(pytz.all_timezones) - 1)])
+            act.TZ = tz
+
         if len(act.Waypoints) > 0:
             raise ValueError("Waypoint list already populated")
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
         act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
+        if tz is not False:
+            act.StartTime = tz.localize(act.StartTime)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
         act.Type = actType
         act.Distance = random.random() * 10000
+        act.Name = str(random.random())
         paused = False
         waypointTime = act.StartTime
+        backToBackPauses = False
         while waypointTime < act.EndTime:
             wp = Waypoint()
             if waypointTime == act.StartTime:
@@ -84,12 +95,14 @@ class TestTools:
             if svc.SupportsTemp:
                 wp.Temp = float(random.randint(0, 100))
 
-            if random.randint(40, 50) == 42:  # pause quite often
+            if (random.randint(40, 50) == 42 or backToBackPauses) and not paused:  # pause quite often
                 wp.Type = WaypointType.Pause
                 paused = True
+
             elif paused:
                 paused = False
                 wp.Type = WaypointType.Resume
+                backToBackPauses = not backToBackPauses
 
             waypointTime += timedelta(0, int(random.random() + 9.5))  # 10ish seconds
 

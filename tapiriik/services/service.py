@@ -1,11 +1,12 @@
 from tapiriik.services import *
 from tapiriik.database import db
-
+import copy
 
 class Service:
     _serviceMappings = {"runkeeper": RunKeeper,
                         "strava": Strava,
-                        "endomondo": Endomondo}
+                        "endomondo": Endomondo,
+                        "dropbox": Dropbox}
 
     def FromID(id):
         if id in Service._serviceMappings:
@@ -13,7 +14,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo]
+        return [RunKeeper, Strava, Endomondo, Dropbox]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
@@ -42,3 +43,26 @@ class Service:
         svc.DeleteCachedData(serviceRecord)
         svc.RevokeAuthorization(serviceRecord)
         db.connections.remove({"_id": serviceRecord["_id"]})
+
+    def _mergeConfig(base, config):
+        return dict(list(base.items()) + list(config.items()))
+
+    def HasConfiguration(svcRec):
+        if not Service.FromID(svcRec["Service"]).Configurable:
+            return False  # of course not
+        return "Config" in svcRec and len(svcRec["Config"].values()) > 0
+
+    def GetConfiguration(svcRec):
+        svc = Service.FromID(svcRec["Service"])
+        if not svc.Configurable:
+            raise ValueError("Passed service is not configurable")
+        return Service._mergeConfig(svc.ConfigurationDefaults, svcRec["Config"]) if "Config" in svcRec else svc.ConfigurationDefaults
+
+    def SetConfiguration(config, svcRec):
+        sparseConfig = copy.deepcopy(config)
+        svc = Service.FromID(svcRec["Service"])
+        svc.ConfigurationUpdating(svcRec, config, Service.GetConfiguration(svcRec))
+        for k, v in config.items():
+            if k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v:
+                del sparseConfig[k]  # it's the default, we can not store it
+        db.connections.update({"_id": svcRec["_id"]}, {"$set": {"Config": sparseConfig}})

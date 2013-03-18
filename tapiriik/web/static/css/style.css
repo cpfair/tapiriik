@@ -48,7 +48,7 @@ body {
 	width:960px;
 }
 
-.content {
+.content, .popoverInner {
 	font-size:130%; /* damn font is unreadable */
 	color:#333;
 }
@@ -198,7 +198,11 @@ form input {
 	font-size:120%;
 }
 
-form button {
+form input[type=checkbox] {
+	vertical-align:text-top;
+}
+
+button {
 	font-family: Economica;
 	font-weight:bold;
 	font-size:150%;
@@ -214,16 +218,20 @@ form button {
 	cursor:pointer;
 }
 
-form button.cancel {
+button.cancel {
 	background-color:#ccc;
 }
 
-form button.disabled {
+button.delete {
+	background-color:#daa;
+}
+
+button.disabled {
 	background-color:#eee;
 	cursor:not-allowed;
 }
 
-form button:active {
+button:active {
 	opacity:0.7;
 }
 
@@ -332,7 +340,7 @@ a img {
 }
 
 .service.connected:hover .controlsInner {
-	top:-1em;
+	top:-1.03em; /* damn letter g / economica font */
 }
 
 .service .icon {
@@ -350,6 +358,11 @@ a img {
 	vertical-align: middle;
 }
 
+.service .status {
+	display: inline-block;
+	max-height:1em;
+	overflow:hidden;
+}
 .service .status, .service .control {
 	text-decoration: none;
 	color:white;
@@ -367,10 +380,20 @@ a img {
 	background-image:url('../img/unlink.png');
 }
 
+.service .control#sync-config {
+	background-image:url('../img/sync-settings.png');	
+	padding-left:17px;
+	background-position: 0% 65%;
+}
+
 .service .status#sync-ok {
 	background-image:url('../img/sync-ok.png');	
 	padding-left:17px;
 	background-position: 0% 65%;
+}
+
+.service .status#sync-info {
+	background-image:url('../img/sync-info.png');	
 }
 
 .service .status#sync-fail {
@@ -401,6 +424,63 @@ a img {
 	color:#aaa;
 }
 
+form.dropboxConfig {
+	max-width:377px; /* magic # */
+}
+#folderList {
+	margin:10px 0;
+	font-size:130%;
+	height:300px;
+	width:375px;
+	overflow-y:scroll;
+	overflow-x:hidden;
+	border:1px solid #8ec1da;
+	background-color: #edf9ff;
+	border-radius:5px;
+}
+#folderList ul {
+	overflow-x:hidden;
+	margin:0;
+	padding:5px;
+	list-style:none;
+	width:375px;
+}
+#folderList li {
+	padding:3px 0;
+}
+#folderList li:first-child {
+	padding-top:0;
+}
+
+#folderList li:last-child {
+	padding-bottom:0;
+}
+#folderList li a, #folderStack a {
+	display:inline-block;
+	overflow: hidden;
+	padding:0;
+	white-space:nowrap;
+	background: white;
+	color:black;
+	padding:3px;
+	border-radius:3px;
+	cursor: pointer;
+}
+#folderStack a {
+	background-color: #dbf3ff;
+	margin-right:5px;
+	margin-bottom:5px;
+}
+#folderList li a:hover, #folderStack a:hover {
+	background-color: #dbf3ff;
+}
+#folderList li a:active, #folderStack a:hover {
+	background-color: #c0deed;
+}
+#folderList h2 {
+	text-align: center;
+	padding-right:20px; /* sort of account for scrollbar */
+}
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {
 		width:90%;

@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
@@ -13,7 +13,8 @@ import zlib
 import os
 
 
-class EndomondoService:
+
+class EndomondoService(ServiceBase):
     ID = "endomondo"
     DisplayName = "Endomondo"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
@@ -58,9 +59,6 @@ class EndomondoService:
     SupportedActivities = list(_activityMappings.values())
     SupportsHR = True
     SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
-    SupportsCadence = False
-    SupportsTemp = False
-    SupportsPower = False
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "endomondo"})
@@ -166,8 +164,8 @@ class EndomondoService:
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve activity list", serviceRecord)
-                raise APIException("Unable to retrieve activity list " + str(response), serviceRecord)
+                    raise APIAuthorizationException("No authorization to retrieve activity list")
+                raise APIException("Unable to retrieve activity list " + str(response))
             data = response.json()
             for act in data["data"]:
                 if not act["has_points"]:
@@ -216,7 +214,7 @@ class EndomondoService:
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
         print(response.text)
         if response.status_code != 200:
-            raise APIException("Could not upload activity " + response.text, serviceRecord)
+            raise APIException("Could not upload activity " + response.text)
 
     def _createUploadData(self, activity):
         activity.EnsureTZ()

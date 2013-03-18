@@ -1,4 +1,3 @@
-{% load displayutils %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -52,14 +51,7 @@
 
 	
 	<script type="text/javascript">
-	tapiriik.SiteVer = "{{ config.siteVer|slice:":7" }}";
-	tapiriik.ServiceInfo = {};
-	{% for provider in service_providers %}
-	tapiriik.ServiceInfo["{{ provider.ID }}"] = {AuthenticationType: "{{ provider.AuthenticationType }}", AuthorizationURL: "{{ provider.UserAuthorizationURL|safe }}"};{% endfor %}
-	tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
-	{% if user %}
-	tapiriik.User = {ConnectedServicesCount: {{ user.ConnectedServices|length }}, ID: "{{ user|dict_get:'_id' }}"};
-	{% endif %}
+	{% include "js-bridge.js" %}
 
 	var _gaq = _gaq || [];
 	_gaq.push(['_setAccount', 'UA-39083873-1']);

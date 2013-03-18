@@ -6,8 +6,13 @@ from tapiriik.auth import User
 import json
 
 
+def authredirect(req, service):
+    svc = Service.FromID(service)
+    return redirect(svc.GenerateUserAuthorizationURL())
+
+
 def authreturn(req, service):
-    if ("error" in req.GET):
+    if ("error" in req.GET or "not_approved" in req.GET):
         success = False
     else:
         svc = Service.FromID(service)
@@ -29,7 +34,7 @@ def authreturn(req, service):
 
 
 @require_POST
-def deauth(req, service):
+def deauth(req, service):  # this is RK-specific
     deauthData = json.loads(req.body)
     token = deauthData["access_token"]
     svc = Service.FromID(service)

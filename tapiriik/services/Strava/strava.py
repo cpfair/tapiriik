@@ -1,5 +1,5 @@
 from tapiriik.settings import WEB_ROOT
-from tapiriik.services.service_authentication import ServiceAuthenticationType
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
@@ -10,7 +10,7 @@ import requests
 import json
 
 
-class StravaService:
+class StravaService(ServiceBase):
     ID = "strava"
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
@@ -18,7 +18,6 @@ class StravaService:
     SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True
     SupportsPower = True
-    SupportsCalories = False  # don't think it does
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})
@@ -153,8 +152,8 @@ class StravaService:
         response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), headers={"Content-Type": "application/json"})
         if response.status_code != 200:
             if response.status_code == 401:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text, serviceRecord)
-            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text, serviceRecord)
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text)
+            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text)
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})
