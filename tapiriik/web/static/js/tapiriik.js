@@ -55,7 +55,7 @@ tapiriik.Init = function(){
 
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
-			if (tapiriik.ServiceInfo[i].Configurable && !tapiriik.ServiceInfo[i].Configured){
+			if (tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].Configurable && !tapiriik.ServiceInfo[i].Configured){
 				tapiriik.OpenConfigDialog(i);
 				break; // we can nag them again if there's >1
 			}

@@ -48,7 +48,6 @@ class Service:
         return dict(list(base.items()) + list(config.items()))
 
     def HasConfiguration(svcRec):
-        print (svcRec)
         if not Service.FromID(svcRec["Service"]).Configurable:
             return False  # of course not
         return "Config" in svcRec and len(svcRec["Config"].values()) > 0

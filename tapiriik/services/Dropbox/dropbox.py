@@ -78,6 +78,9 @@ class DropboxService(ServiceBase):
             uid = existingRecord["ExternalID"]
         return (uid, {"Key": accessToken.key, "Secret": accessToken.secret})
 
+    def RevokeAuthorization(self, serviceRecord):
+        pass  # :(
+
     def ConfigurationUpdating(self, svcRec, newConfig, oldConfig):
         from tapiriik.sync import Sync
         from tapiriik.auth import User
@@ -146,6 +149,7 @@ class DropboxService(ServiceBase):
         cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
         if cache is None:
             cache = {"ExternalID": svcRec["ExternalID"], "Structure": [], "Activities": {}}
+ 
         self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
@@ -194,7 +198,7 @@ class DropboxService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        activity.CalculateTZ()
+        activity.EnsureTZ()
         data = GPXIO.Dump(activity)
 
         dbcl = self._getClient(serviceRecord)
@@ -209,3 +213,6 @@ class DropboxService(ServiceBase):
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})
         cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord["ExternalID"]}, cache)  # not upsert, hope the record exists at this time...
+
+    def DeleteCachedData(self, serviceRecord):
+        cachedb.dropbox_cache.remove({"ExternalID": serviceRecord["ExternalID"]})

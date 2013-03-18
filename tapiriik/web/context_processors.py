@@ -27,9 +27,10 @@ def js_bridge(req):
             "Configurable": svc.Configurable,
             "RequiresConfiguration": svc.RequiresConfiguration
         }
-        if svc.Configurable:
+        if svc.Configurable and svcRec:
             info["Configured"] = Service.HasConfiguration(svcRec)
             info["Config"] = Service.GetConfiguration(svcRec)
+        info["Connected"] = svcRec is not None
         serviceInfo[svc.ID] = info
     return {"js_bridge_serviceinfo": json.dumps(serviceInfo)}
 

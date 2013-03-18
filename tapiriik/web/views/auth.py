@@ -66,6 +66,6 @@ def auth_disconnect_do(req, service):
     else:
         svcId = svcId[0]
     svcRec = Service.GetServiceRecordByID(svcId)
-    User.DisconnectService(svcRec)
     Service.DeleteServiceRecord(svcRec)
+    User.DisconnectService(svcRec)
     return True
