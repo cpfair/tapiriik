@@ -106,6 +106,23 @@ class Activity:
         else:
             self.AdjustTZ()
 
+    def CalculateDistance(self):
+        import math
+        dist = 0
+        for x in range(1, len(self.Waypoints)):
+            if self.Waypoints[x - 1].Type == WaypointType.Pause:
+                continue  # don't count distance while paused
+            lastLoc = self.Waypoints[x - 1].Location
+            loc = self.Waypoints[x].Location
+            latRads = loc.Latitude * math.pi / 180
+            meters_lat_degree = 1000 * 111.13292 + 1.175 * math.cos(4 * latRads) - 559.82 * math.cos(2 * latRads)
+            meters_lon_degree = 1000 * 111.41284 * math.cos(latRads) - 93.5 * math.cos(3 * latRads)
+            dx = (loc.Longitude - lastLoc.Longitude) * meters_lon_degree
+            dy = (loc.Latitude - lastLoc.Latitude) * meters_lat_degree
+            dz = loc.Altitude - lastLoc.Altitude
+            dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+        self.Distance = dist
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__
