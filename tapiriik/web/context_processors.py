@@ -15,11 +15,12 @@ def config(req):
 
 
 def js_bridge(req):
-    if req.user is None:
-        return {"js_bridge_serviceinfo": "{}"}
     serviceInfo = {}
     for svc in Service.List():
-        svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
+        if req.user is not None:
+            svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
+        else:
+            svcRec = None
         info = {
             "AuthenticationType": svc.AuthenticationType,
             "AuthorizationURL": svc.UserAuthorizationURL,

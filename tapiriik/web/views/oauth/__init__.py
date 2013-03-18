@@ -12,7 +12,7 @@ def authredirect(req, service):
 
 
 def authreturn(req, service):
-    if ("error" in req.GET):
+    if ("error" in req.GET or "not_approved" in req.GET):
         success = False
     else:
         svc = Service.FromID(service)

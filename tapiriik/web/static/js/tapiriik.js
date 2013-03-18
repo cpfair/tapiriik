@@ -114,7 +114,11 @@ tapiriik.SaveConfig = function(svcId, config, callback) {
 };
 
 tapiriik.AuthDialogLinkClicked = function(e){
-	$.address.value("auth/"+$(this).attr("service"));
+	var svcId = $(this).attr("service");
+	if (tapiriik.ServiceInfo[svcId].NoFrame){
+		return; // prevents super-annoying redirect loop if you back up from the auth page
+	}
+	$.address.value("auth/" + svcId);
 	return false;
 };
 
@@ -142,9 +146,9 @@ tapiriik.OpenAuthDialog = function(svcId){
 	var contents;
 
 	if (mode == "oauth"){
-		if (tapiriik.ServiceInfo[svcId].NoFrame){
+		if (tapiriik.ServiceInfo[svcId].NoFrame){ // this should never happen, but in case someone curious tries the URL
 			window.location = tapiriik.ServiceInfo[svcId].AuthorizationURL;
-			return;
+			contents = $("<div><h1>Weeeeee</h1>(redirecting you right now)</div>"); 
 		} else {
 			contents = $("<iframe>").attr("src",tapiriik.ServiceInfo[svcId].AuthorizationURL).attr("id",svcId);
 		}
