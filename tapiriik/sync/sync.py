@@ -86,7 +86,7 @@ class Sync:
             Sync._accumulateActivities(svc, svcActivities, activities)
 
         for activity in activities:
-            print ("\t" + str(activity) + " from " + activity.UploadedTo[0]["Connection"]["Service"] + " ct " + str(len(activity.UploadedTo)))
+            print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
 
         for activity in activities:
             # we won't need this now, but maybe later

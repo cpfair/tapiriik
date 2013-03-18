@@ -130,9 +130,12 @@ class StravaService(ServiceBase):
         # hasHR = hasCadence = hasPower = False does Strava care?
         fields = ["time", "latitude", "longitude", "elevation", "cmd", "heartrate", "cadence", "watts"]
         points = []
+        print("activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
+        if activity.TZ:
+            activity.AdjustTZ()
         activity.EnsureTZ()
         for wp in activity.Waypoints:
-            wpTime = wp.Timestamp - activity.TZ.utcoffset(wp.Timestamp)  # strava y u do timezones wrong??
+            wpTime = wp.Timestamp - wp.Timestamp.utcoffset()  # strava y u do timezones wrong??
             points.append([wpTime.strftime("%Y-%m-%dT%H:%M:%S"),
                             wp.Location.Latitude if wp.Location is not None else "",
                             wp.Location.Longitude if wp.Location is not None else "",
