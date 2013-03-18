@@ -37,6 +37,8 @@ class Activity:
         csp = hashlib.new("md5")
         roundedStartTime = self.StartTime
         roundedStartTime = roundedStartTime - timedelta(microseconds=roundedStartTime.microsecond)
+        if self.TZ:
+            roundedStartTime = roundedStartTime.astimezone(self.TZ)
         csp.update(roundedStartTime.strftime("%Y-%m-%d %H:%M:%S").encode('utf-8'))  # exclude TZ for compat
         self.UID = csp.hexdigest()
 
@@ -51,6 +53,7 @@ class Activity:
         for wp in self.Waypoints:
             if wp.Timestamp.tzinfo is None:
                 wp.Timestamp = self.TZ.localize(wp.Timestamp)
+        self.CalculateUID()
 
     def AdjustTZ(self):
         """ run astimezone() on all contained dates (requires non-naive DTs) """
@@ -61,6 +64,7 @@ class Activity:
 
         for wp in self.Waypoints:
                 wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
+        self.CalculateUID()
 
     def CalculateTZ(self, loc=None):
         if self.TZ is not None:
