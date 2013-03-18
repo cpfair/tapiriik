@@ -60,7 +60,7 @@ class StravaService(ServiceBase):
                 cachedb.strava_cache.insert(ridedata)
             else:
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
-            if ridedata["start_latlng"] is None:
+            if ridedata["start_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
                 continue  # stationary activity - no syncing for now
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
@@ -93,6 +93,7 @@ class StravaService(ServiceBase):
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0) or ("watts_calc" in ridedata and len(ridedata["watts_calc"]) > 0)
         moving = True
+
         waypointCt = len(ridedata["time"])
         for idx in range(0, waypointCt - 1):
             latlng = ridedata["latlng"][idx]
