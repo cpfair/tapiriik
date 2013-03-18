@@ -211,7 +211,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         # fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})
-        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": fname}
+        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": "/" + fname}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord["ExternalID"]}, cache)  # not upsert, hope the record exists at this time...
 
     def DeleteCachedData(self, serviceRecord):
