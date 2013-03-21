@@ -85,7 +85,17 @@ class Sync:
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
+        origins = db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}})
+            
         for activity in activities:
+            if len(activity.UploadedTo) == 1:
+                # we can log the origin of this activity
+                db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["Service"]}}, upsert=True)
+                activity.Origin = activity.UploadedTo[0]["Connection"]
+            else:
+                knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
+                if len(knownOrigin) > 0:
+                    activity.Origin = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]]
             print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
 
         for activity in activities:
@@ -124,17 +134,22 @@ class Sync:
             for destinationSvcRecord in recipientServices:
                 
                 flowException = False
-                for src in [x["Connection"] for x in activity.UploadedTo]
-                    if User.CheckFlowException(user, src, destinationSvcRecord):
+                if hasattr(activity, "Origin"):
+                    # we know the activity origin - do a more intuitive flow exception check
+                    if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
                         flowException = True
-                        break
-                #  this isn't an absolute failure - it's possible we could still take an indirect route
-                #  there's no tracking of the original origin of an activity, so this would happen anyways, but only at the next sync
-                if flowException:
-                    for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
-                        if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
-                            flowException = False
+                else:
+                    for src in [x["Connection"] for x in activity.UploadedTo]
+                        if User.CheckFlowException(user, src, destinationSvcRecord):
+                            flowException = True
                             break
+                    #  this isn't an absolute failure - it's possible we could still take an indirect route
+                    #  at this point there's no knowledge of the origin of this activity, so this behaviour would happen anyways at the next sync
+                    if flowException:
+                        for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
+                            if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                                flowException = False
+                                break
                 if flowException:
                     print("\t\tFlow exception for " + destSvc.ID)
                     continue;
