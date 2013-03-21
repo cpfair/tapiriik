@@ -13,10 +13,22 @@ def config_save(req, service):
     conn = User.GetConnectionRecord(req.user, service)
     if not conn:
         return HttpResponse(status=404)
-    print(json.loads(req.POST["config"]))
     Service.SetConfiguration(json.loads(req.POST["config"]), conn)
     return HttpResponse()
 
+
+def config_flow_save(req, service):
+    if not req.user:
+        return HttpResponse(status=403)
+    conns = User.GetConnectionRecordsByUser(req.user)
+    if service not in [x["Service"] for x in conns]:
+        return HttpResponse(status=404)
+    sourceSvc = [x for x in conns if x["Service"] == service][0]
+    #  the JS doesn't resolve the flow exceptions, it just passes in the expanded config flags for the edited service (which will override other flowexceptions)
+    flowFlags = req.POST["flowFlags"]
+    for destSvc in [x for x in conns if x["Service"] != service]:
+        User.SetFlowFlags(req.user, sourceSvc, destSvc, destSvc["Service"] in flowFlags["forward"], destSvc["Service"] in flowFlags["backwards"])
+    return HttpResponse()
 
 
 class DropboxConfigForm(forms.Form):

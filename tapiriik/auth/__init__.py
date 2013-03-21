@@ -84,15 +84,22 @@ class User:
         # flow exceptions are stored in "forward" direction - service-account X will not send activities to service-account Y
         forwardException = {"Target": {"Service": targetServiceRecord["Service"], "ExternalID": targetServiceRecord["ExternalID"]}, "Source": {"Service": sourceServiceRecord["Service"], "ExternalID": sourceServiceRecord["ExternalID"]}}
         backwardsException = {"Target": forwardException["Source"], "Source": forwardException["Target"]}
-        if flowToTarget:  
-            user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != forwardException]
-        elif not flowToTarget and forwardException not in user["FlowExceptions"]:
-            user["FlowExceptions"].append(forwardException)
-        if flowtoSource:  
-            user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != backwardsException]
-        elif not flowtoSource and backwardsException not in user["FlowExceptions"]:
-            user["FlowExceptions"].append(backwardsException)
-        db.users.update({"_id": user["_id"]}, {"$set":{"FlowExceptions": user["FlowExceptions"]}})
+        if flowToTarget is not None:
+            if flowToTarget:
+                user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != forwardException]
+            elif not flowToTarget and forwardException not in user["FlowExceptions"]:
+                user["FlowExceptions"].append(forwardException)
+        if flowtoSource is not None:
+            if flowtoSource:
+                user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != backwardsException]
+            elif not flowtoSource and backwardsException not in user["FlowExceptions"]:
+                user["FlowExceptions"].append(backwardsException)
+        db.users.update({"_id": user["_id"]}, {"$set": {"FlowExceptions": user["FlowExceptions"]}})
+
+    def GetFlowExceptions(user):
+        if "FlowExceptions" not in user:
+            return {}
+        return user["FlowExceptions"]
 
     def CheckFlowException(user, sourceServiceRecord, targetServiceRecord):
         ''' returns true if there is a flow exception blocking activities moving from source to destination '''

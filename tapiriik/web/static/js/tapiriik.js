@@ -65,7 +65,7 @@ tapiriik.Init = function(){
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
 			if (tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].Configurable && !tapiriik.ServiceInfo[i].Configured){
-				tapiriik.OpenConfigDialog(i);
+				tapiriik.ActivateConfigDialog(i);
 				break; // we can nag them again if there's >1
 			}
 		}
@@ -97,17 +97,19 @@ tapiriik.AddressChanged=function(){
 		tapiriik.OpenPaymentReclaimDialog();
 		return;
 	} else if (components[0]=="configure") {
-		if (components[1]=="dropbox"){
+		if (components[1]=="dropbox" && components[2]=="setup"){
 			if (unchangedDepth<=1) {
 				tapiriik.DropboxBrowserPath = tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
-				$.address.value("configure/dropbox" + tapiriik.DropboxBrowserPath); // init directory, meh
+				$.address.value("configure/dropbox/setup" + tapiriik.DropboxBrowserPath); // init directory, meh
 				tapiriik.OpenDropboxConfigDialog();
 			} else {
-				tapiriik.DropboxBrowserPath = "/" + components.slice(2).join("/");
+				tapiriik.DropboxBrowserPath = "/" + components.slice(3).join("/");
 				tapiriik.PopulateDropboxBrowser();
 			}
 			return;
 		}
+		tapiriik.OpenFlowConfigPanel(components[1]);
+		return;
 	} else if (components[0] == "dropbox") {
 		if (components[1] == "info"){
 			tapiriik.OpenDropboxInfoDialog();
@@ -221,13 +223,30 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 	return form;
 };
 
-tapiriik.OpenConfigDialog = function(svcId){
+tapiriik.ActivateConfigDialog = function(svcId){
 	if (svcId == "dropbox" && !tapiriik.ServiceInfo.dropbox.Configured) {
 		$.address.value("dropbox/info");
 		return;
 	}
 	$.address.value("configure/" + svcId);
 };
+
+tapiriik.OpenFlowConfigPanel = function(svcId){
+	var configPanel = $("<form class=\"flowConfig\"><h1>Flow</h1><table class=\"serviceTable\"><th><td></td><td>From</td><td>To</td></th></table></form>");
+	for (var i in tapiriik.ServiceInfo) {
+		if (i == svcId) continue;
+		var destSvc = tapiriik.ServiceInfo[i];
+		var destRow = $("<tr><td>" + i + "</td><td><input type=\"checkbox\" class=\"from\"/></td><td><input type=\"checkbox\" class=\"to\"/></td></tr>");
+		if (destSvc.BlockFlowTo.indexOf(svcId) < 0) {
+			$("checkbox.from", destRow).attr("checked","checked");
+		}
+		if (tapiriik.ServiceInfo[svcId].BlockFlowTo.indexOf(i) < 0) {
+			$("checkbox.to", destRow).attr("checked","checked");
+		}
+		$("table", configPanel).append(svcRow);
+	}
+};
+
 tapiriik.OpenDropboxConfigDialog = function(){
 	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>").addClass("dropboxConfig");
 
@@ -249,7 +268,7 @@ tapiriik.OpenDropboxInfoDialog = function(){
 		<p>.GPX files don't include any information about what type of activity the contain, so <b>tapiriik needs your help! Just put what you were doing into the name of the file</b> or place the file into <b>an appropriately named subfolder</b>, e.g. <tt><b>cycling</b>-mar-12-2012.gpx</tt> or <tt><b>run</b>/oldcrow-10k.gpx</tt>. If you want you can <a href=\"/supported-activities\">see the complete list of activities and tags</a>, but don't worry, unrecognized activities will be left alone until you tag them.</p>\
 		<button>Sounds good</button></div>");
 	$("button", infoPanel).click(function(){
-		$.address.value("configure/dropbox");
+		$.address.value("configure/dropbox/setup");
 	});
 	tapiriik.CreateServiceDialog("dropbox", infoPanel);
 };
