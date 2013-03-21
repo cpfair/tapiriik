@@ -51,6 +51,8 @@ class User:
             user["ConnectedServices"] += existingUser["ConnectedServices"]
             if "Payments" in existingUser:
                 user["Payments"] += existingUser["Payments"]
+            if "FlowExceptions" in existingUser:
+                user["FlowExceptions"] += existingUser["FlowExceptions"]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
@@ -74,6 +76,28 @@ class User:
 
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices.ID": serviceRecord["_id"]})
+
+    def SetFlowException(user, sourceServiceRecord, targetServiceRecord, flowToTarget=True, flowtoSource=True):
+        if "FlowExceptions" not in user:
+            user["FlowExceptions"] = []
+
+        # flow exceptions are stored in "forward" direction - service-account X will not send activities to service-account Y
+        forwardException = {"Target": {"Service": targetServiceRecord["Service"], "ExternalID": targetServiceRecord["ExternalID"]}, "Source": {"Service": sourceServiceRecord["Service"], "ExternalID": sourceServiceRecord["ExternalID"]}}
+        backwardsException = {"Target": forwardException["Source"], "Source": forwardException["Target"]}
+        if flowToTarget:  
+            user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != forwardException]
+        elif not flowToTarget and forwardException not in user["FlowExceptions"]:
+            user["FlowExceptions"].append(forwardException)
+        if flowtoSource:  
+            user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != backwardsException]
+        elif not flowtoSource and backwardsException not in user["FlowExceptions"]:
+            user["FlowExceptions"].append(backwardsException)
+        db.users.update({"_id": user["_id"]}, {"$set":{"FlowExceptions": user["FlowExceptions"]}})
+
+    def CheckFlowException(user, sourceServiceRecord, targetServiceRecord):
+        ''' returns true if there is a flow exception blocking activities moving from source to destination '''
+        forwardException = {"Target": {"Service": targetServiceRecord["Service"], "ExternalID": targetServiceRecord["ExternalID"]}, "Source": {"Service": sourceServiceRecord["Service"], "ExternalID": sourceServiceRecord["ExternalID"]}}
+        return "FlowExceptions" in user and forwardException in user["FlowExceptions"]
 
 
 class SessionAuth:

@@ -122,6 +122,24 @@ class Sync:
                 continue
 
             for destinationSvcRecord in recipientServices:
+                
+                flowException = False
+                for src in [x["Connection"] for x in activity.UploadedTo]
+                    if User.CheckFlowException(user, src, destinationSvcRecord):
+                        flowException = True
+                        break
+                #  this isn't an absolute failure - it's possible we could still take an indirect route
+                #  there's no tracking of the original origin of an activity, so this would happen anyways, but only at the next sync
+                if flowException:
+                    for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
+                        if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                            flowException = False
+                            break
+                if flowException:
+                    print("\t\tFlow exception for " + destSvc.ID)
+                    continue;
+
+
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
                 if destSvc.RequiresConfiguration and not Service.HasConfiguration(destinationSvcRecord):
                     continue  # not configured, so we won't even try
