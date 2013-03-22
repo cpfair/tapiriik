@@ -11,8 +11,14 @@ class Sync:
     SyncInterval = timedelta(hours=1)
     MinimumSyncInterval = timedelta(minutes=10)
 
-    def ScheduleImmediateSync(user, exhaustive=False):
-        db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow(), "NextSyncIsExhaustive": exhaustive}})
+    def ScheduleImmediateSync(user, exhaustive=None):
+        if exhaustive is None:
+            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
+        else:
+            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow(), "NextSyncIsExhaustive": exhaustive}})
+
+    def SetNextSyncIsExhaustive(user, exhaustive=False):
+        db.users.update({"_id": user["_id"]}, {"$set": {"NextSyncIsExhaustive": exhaustive}})
 
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections

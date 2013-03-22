@@ -61,7 +61,7 @@ class User:
                 delta = True
         db.users.update({"_id": user["_id"]}, {"$set": {"ConnectedServices": user["ConnectedServices"]}})
         if delta or ("SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
-            Sync.ScheduleImmediateSync(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
+            Sync.SetNextSyncIsExhaustive(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
 
     def DisconnectService(serviceRecord):
         # not that >1 user should have this connection
