@@ -1,4 +1,5 @@
 from tapiriik.auth import User
+from tapiriik.sync import Sync
 from tapiriik.services import Service
 from django.shortcuts import render, redirect
 from django import forms
@@ -28,6 +29,7 @@ def config_flow_save(req, service):
     flowFlags = json.loads(req.POST["flowFlags"])
     for destSvc in [x for x in conns if x["Service"] != service]:
         User.SetFlowException(req.user, sourceSvc, destSvc, destSvc["Service"] in flowFlags["forward"], destSvc["Service"] in flowFlags["backward"])
+    Sync.SetNextSyncIsExhaustive(req.user, True)  # to pick up any activities left behind
     return HttpResponse()
 
 
