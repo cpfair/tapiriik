@@ -387,12 +387,31 @@ a img {
 .service .config h1 {
 	text-align: center;
 	font-size:120%;
-	margin-bottom:3px;
+	margin-bottom:5px;
+}
+
+.service .config h2 {
+	color:white;
+	text-align: center;
+	font-size:110%;
+	margin-top: 3px;
+	margin-bottom:0;
+}
+
+.service .config .configSection { 
+	background-color: #9ec5d9;
+	margin:0 -5px;
+	padding: 0 5px;
+}
+
+.service .flowConfig {
+	text-align: center;
 }
 
 .service .flowConfig table {
 	width:100%;
 	table-layout: fixed;
+
 }
 
 .service .flowConfig td, .service .flowConfig th {
@@ -404,9 +423,6 @@ a img {
 	width:40px;
 }
 
-.service .flowConfig {
-	text-align: center;
-}
 .service .flowConfig td input[type=checkbox] {
 	vertical-align: middle;
 	-webkit-appearance: none;

@@ -65,7 +65,7 @@ tapiriik.Init = function(){
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
 			if (tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].Configurable && !tapiriik.ServiceInfo[i].Configured){
-				tapiriik.ActivateConfigDialog(i);
+				tapiriik.ActivateSetupDialog(i);
 				break; // we can nag them again if there's >1
 			}
 		}
@@ -98,7 +98,7 @@ tapiriik.AddressChanged=function(){
 		return;
 	} else if (components[0]=="configure") {
 		if (components[1]=="dropbox" && components[2]=="setup"){
-			if (unchangedDepth<=1) {
+			if (unchangedDepth<=2) {
 				tapiriik.DropboxBrowserPath = tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
 				$.address.value("configure/dropbox/setup" + tapiriik.DropboxBrowserPath); // init directory, meh
 				tapiriik.OpenDropboxConfigDialog();
@@ -176,7 +176,7 @@ tapiriik.OpenAuthDialog = function(svcId){
 };
 
 tapiriik.OpenDeauthDialog = function(svcId){
-	var form = $("<form><center><button id=\"disconnect\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Never mind</button></center></form><h2>(nothing will be deleted)</h2>");
+	var form = $("<form><center><button id=\"disconnect\" class=\"delete\">Disconnect</button><button id=\"cancel\" class=\"cancel\">Never mind</button></center></form><h2>(nothing will be deleted)</h2>");
 	form.bind("submit", function() {return false;});
 	$("#disconnect", form).click(function(){
 		if (tapiriik.DeauthPending !== undefined) return false;
@@ -226,17 +226,21 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 };
 
 tapiriik.ActivateConfigDialog = function(svcId){
+	$.address.value("configure/" + svcId);
+};
+
+tapiriik.ActivateSetupDialog = function(svcId){
 	if (svcId == "dropbox" && !tapiriik.ServiceInfo.dropbox.Configured) {
 		$.address.value("dropbox/info");
 		return;
 	}
-	$.address.value("configure/" + svcId);
+	$.address.value("configure/" + svcId + "/setup");
 };
 
 tapiriik.OpenFlowConfigPanel = function(svcId){
 	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
 	tapiriik.DoDismissConfigPanel();
-	var configPanel = $("<form class=\"flowConfig\"><h1>Sync...</h1><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
+	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><button id=\"save\">Save</button><button id=\"setup\">Setup</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
@@ -276,6 +280,15 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 		return false;
 	});
 
+	if (tapiriik.ServiceInfo[svcId].Configurable){
+		$("button#setup", configPanel).click(function(){
+			tapiriik.ActivateSetupDialog(svcId);
+			return false;
+		});
+	} else {
+		$("button#setup", configPanel).hide();
+	}
+
 
 	tapiriik.CreateConfigPanel(svcId, configPanel);
 };
@@ -283,16 +296,12 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 
 
 tapiriik.OpenDropboxConfigDialog = function(){
-	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>").addClass("dropboxConfig");
+	var configPanel = $("<form class=\"dropboxConfig\"><h1>Set Up Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
 	if (tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
 	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
-	$("#disconnect", configPanel).click(function(){
-		$.address.value("disconnect/dropbox");
-		return false;
-	});
 	tapiriik.CreateServiceDialog("dropbox", configPanel);
 	tapiriik.DropboxLastDepth = 1;
 	tapiriik.PopulateDropboxBrowser();
@@ -374,7 +383,7 @@ tapiriik.PopulateDropboxBrowserCallback = function(data){
 };
 
 tapiriik.DropboxBrowserNavigateDown = function(){
-	$.address.path("/configure/dropbox" + $(this).attr("path"));
+	$.address.path("/configure/dropbox/setup" + $(this).attr("path"));
 };
 
 tapiriik.OpenPaymentReclaimDialog = function(){

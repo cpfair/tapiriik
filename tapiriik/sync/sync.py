@@ -157,7 +157,7 @@ class Sync:
                                 flowException = False
                                 break
                 if flowException:
-                    print("\t\tFlow exception for " + destinationSvcRecord.ID)
+                    print("\t\tFlow exception for " + destinationSvcRecord["Service"])
                     continue
 
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
