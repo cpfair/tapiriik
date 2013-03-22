@@ -96,12 +96,12 @@ class Sync:
         for activity in activities:
             if len(activity.UploadedTo) == 1:
                 # we can log the origin of this activity
-                db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["Service"]}}, upsert=True)
+                db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["ExternalID"]}}, upsert=True)
                 activity.Origin = activity.UploadedTo[0]["Connection"]
             else:
                 knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
                 if len(knownOrigin) > 0:
-                    activity.Origin = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]]
+                    activity.Origin = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]][0]
             print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
 
         for activity in activities:
