@@ -23,6 +23,7 @@ def js_bridge(req):
         else:
             svcRec = None
         info = {
+            "DisplayName": svc.DisplayName,
             "AuthenticationType": svc.AuthenticationType,
             "AuthorizationURL": svc.UserAuthorizationURL,
             "NoFrame": svc.AuthenticationNoFrame,

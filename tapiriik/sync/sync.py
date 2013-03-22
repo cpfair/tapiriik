@@ -50,7 +50,7 @@ class Sync:
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
 
     def PerformUserSync(user, exhaustive=False):
-
+        from tapiriik.auth import User
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
         if len(connectedServiceIds) <= 1:
@@ -132,14 +132,14 @@ class Sync:
                 continue
 
             for destinationSvcRecord in recipientServices:
-                
+
                 flowException = False
                 if hasattr(activity, "Origin"):
                     # we know the activity origin - do a more intuitive flow exception check
                     if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
                         flowException = True
                 else:
-                    for src in [x["Connection"] for x in activity.UploadedTo]
+                    for src in [x["Connection"] for x in activity.UploadedTo]:
                         if User.CheckFlowException(user, src, destinationSvcRecord):
                             flowException = True
                             break
@@ -151,9 +151,8 @@ class Sync:
                                 flowException = False
                                 break
                 if flowException:
-                    print("\t\tFlow exception for " + destSvc.ID)
-                    continue;
-
+                    print("\t\tFlow exception for " + destinationSvcRecord.ID)
+                    continue
 
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
                 if destSvc.RequiresConfiguration and not Service.HasConfiguration(destinationSvcRecord):

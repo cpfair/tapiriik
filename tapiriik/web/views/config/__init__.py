@@ -25,9 +25,9 @@ def config_flow_save(req, service):
         return HttpResponse(status=404)
     sourceSvc = [x for x in conns if x["Service"] == service][0]
     #  the JS doesn't resolve the flow exceptions, it just passes in the expanded config flags for the edited service (which will override other flowexceptions)
-    flowFlags = req.POST["flowFlags"]
+    flowFlags = json.loads(req.POST["flowFlags"])
     for destSvc in [x for x in conns if x["Service"] != service]:
-        User.SetFlowFlags(req.user, sourceSvc, destSvc, destSvc["Service"] in flowFlags["forward"], destSvc["Service"] in flowFlags["backwards"])
+        User.SetFlowException(req.user, sourceSvc, destSvc, destSvc["Service"] in flowFlags["forward"], destSvc["Service"] in flowFlags["backward"])
     return HttpResponse()
 
 

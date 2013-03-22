@@ -108,6 +108,7 @@ tapiriik.AddressChanged=function(){
 			}
 			return;
 		}
+		tapiriik.DoDismissServiceDialog();
 		tapiriik.OpenFlowConfigPanel(components[1]);
 		return;
 	} else if (components[0] == "dropbox") {
@@ -117,6 +118,7 @@ tapiriik.AddressChanged=function(){
 		}
 	}
 	tapiriik.DoDismissServiceDialog();
+	tapiriik.DoDismissConfigPanel();
 };
 
 tapiriik.SaveConfig = function(svcId, config, callback) {
@@ -232,20 +234,53 @@ tapiriik.ActivateConfigDialog = function(svcId){
 };
 
 tapiriik.OpenFlowConfigPanel = function(svcId){
-	var configPanel = $("<form class=\"flowConfig\"><h1>Flow</h1><table class=\"serviceTable\"><th><td></td><td>From</td><td>To</td></th></table></form>");
+	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
+	tapiriik.DoDismissConfigPanel();
+	var configPanel = $("<form class=\"flowConfig\"><h1>Sync...</h1><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
-		if (i == svcId) continue;
+		if (i == svcId || !tapiriik.ServiceInfo[i].Connected) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
-		var destRow = $("<tr><td>" + i + "</td><td><input type=\"checkbox\" class=\"from\"/></td><td><input type=\"checkbox\" class=\"to\"/></td></tr>");
+		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\"/></td><td>" + tapiriik.ServiceInfo[i].DisplayName + "</td><td><input type=\"checkbox\" class=\"from\"/></td></tr>");
 		if (destSvc.BlockFlowTo.indexOf(svcId) < 0) {
-			$("checkbox.from", destRow).attr("checked","checked");
+			$("input.from", destRow).attr("checked","checked");
 		}
 		if (tapiriik.ServiceInfo[svcId].BlockFlowTo.indexOf(i) < 0) {
-			$("checkbox.to", destRow).attr("checked","checked");
+			$("input.to", destRow).attr("checked","checked");
 		}
-		$("table", configPanel).append(svcRow);
+		$("input", destRow).attr("service", i);
+		$("table", configPanel).append(destRow);
 	}
+	$("button#save", configPanel).click(function(){
+		if ($(this).hasClass("disabled")) return;
+		$(this).addClass("disabled");
+
+		var flowFlags = {"forward":[],"backward":[]};
+		var flags = $("input[type=checkbox]", configPanel);
+		for (var i = 0; i < flags.length; i++) {
+			if ($(flags[i]).is(":checked")){
+				if ($(flags[i]).hasClass("to")){
+					flowFlags.forward.push($(flags[i]).attr("service"));
+				} else {
+					flowFlags.backward.push($(flags[i]).attr("service"));
+				}
+			}	
+		}
+		$.post("/configure/flow/save/"+svcId, {"flowFlags":JSON.stringify(flowFlags)}, function(){
+			$.address.value("");
+			setTimeout(function(){window.location.reload();}, 400); //would be possible to resolve the changes in JS to avoid a reload, I'll leave that for later
+		});
+		return false;
+	});
+	$("button#disconnect", configPanel).click(function(){
+		$.address.value("disconnect/"+svcId);
+		return false;
+	});
+
+
+	tapiriik.CreateConfigPanel(svcId, configPanel);
 };
+
+
 
 tapiriik.OpenDropboxConfigDialog = function(){
 	var configPanel = $("<form class=\"dropboxConfig\"><h1>Configure Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>").addClass("dropboxConfig");
@@ -366,6 +401,22 @@ tapiriik.OpenPaymentReclaimDialog = function(){
 	tapiriik.CreateServiceDialog("tapiriik",form);
 };
 
+tapiriik.CreateConfigPanel = function(serviceID, contents){
+	var configTray = $("<div>").addClass("config").append($("<div>").addClass("arrow")).append(contents).appendTo($(".service#"+serviceID));
+
+	$(configTray).hide();
+	$(".service#"+serviceID+" .controls").slideUp(100, function(){
+		$(configTray).slideDown(200);		
+	});
+};
+
+tapiriik.DoDismissConfigPanel = function(){
+	$(".config").slideUp(200, function(){
+		$(".controls", $(this).parent()).slideDown(200);
+		$(this).remove();
+	});
+};
+
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	if ($(".dialogWrap").size()>0){
 		$(".dialogWrap").fadeOut(100, function(){
@@ -446,7 +497,7 @@ tapiriik.RefreshSyncCountdown = function(){
 	if (tapiriik.SyncErrors !== undefined){
 
 		var delta = tapiriik.NextSync - (new Date());
-		if (delta>0 || tapiriik.NextSync == undefined){
+		if (delta>0 || tapiriik.NextSync === undefined){
 			$("#syncButton").show();
 			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000;
 			if (tapiriik.NextSync !== null){
@@ -485,7 +536,7 @@ tapiriik.RefreshSyncCountdown = function(){
 				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 1000);
 			}
 		}
-		setTimeout(function(){$(".syncStatus").slideDown();}, 500);
+		setTimeout(function(){$(".syncStatus").animate({"opacity":1});}, 500);
 	}
 };
 

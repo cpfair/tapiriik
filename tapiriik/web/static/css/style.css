@@ -33,6 +33,7 @@ body {
 }
 
 .content, .popoverInner {
+	position: relative;
 	margin:14px 15px;
 	background-color:white;
 	border-radius: 10px;
@@ -287,6 +288,20 @@ a img {
 	height:32px;
 	vertical-align: 65%;
 }
+
+.serviceButtonOuter {
+	width:100%;
+	position: relative;
+	display: table;
+}
+.serviceButtonWrap {
+	position: relative;
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+	width: 100%;
+}
+
 .serviceOuter {
 	display: inline-block;
 }
@@ -295,7 +310,7 @@ a img {
 	width:175px;
 	position:relative;
 	margin:10px;
-	line-height:100%;
+	vertical-align: middle;
 }
 
 .service.inactive {
@@ -307,13 +322,13 @@ a img {
 	background-color:#c0deed;
 	text-align: center;
 	border-radius:5px;
-	z-index:2;
+	z-index:3;
 	overflow:hidden;
 }
 
 .service .controls {
-	
-	z-index:1;
+	position:relative;
+	z-index:2;
 	margin-top:-5px;
 	padding: 3px 5px;
 	padding-top:6px;
@@ -323,6 +338,8 @@ a img {
 	border-bottom-right-radius:5px;
 	overflow:hidden;
 	max-height:20px;
+	vertical-align: top;
+	line-height: 100%;
 }
 
 .service .controls a {
@@ -341,6 +358,85 @@ a img {
 
 .service.connected:hover .controlsInner {
 	top:-1.03em; /* damn letter g / economica font */
+}
+
+.service .config {
+	z-index:1;
+	position:relative;
+	margin-top:-5px;
+	padding: 3px 5px;
+	padding-bottom:10px;
+	padding-top:6px;
+	color:white;
+	background-color:#a6cfe3;
+	border-bottom-left-radius:5px;
+	border-bottom-right-radius:5px;
+}
+
+.service .config .arrow {
+	position: absolute;
+	top:0;
+	left:50%;
+	margin-left: -15px;
+	width: 0;
+	height: 0;
+	border:15px solid transparent;
+	border-top-color:#c0deed;
+}
+
+.service .config h1 {
+	text-align: center;
+	font-size:120%;
+	margin-bottom:3px;
+}
+
+.service .flowConfig table {
+	width:100%;
+	table-layout: fixed;
+}
+
+.service .flowConfig td, .service .flowConfig th {
+	text-align: center;
+}
+
+.service .flowConfig td:first-child, .service .flowConfig td:last-child,
+.service .flowConfig th:first-child, .service .flowConfig th:last-child {
+	width:40px;
+}
+
+.service .flowConfig {
+	text-align: center;
+}
+.service .flowConfig td input[type=checkbox] {
+	vertical-align: middle;
+	-webkit-appearance: none;
+	width:16px;
+	height:16px;
+    background: url('../img/sync-arrow.png');
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+}
+
+.service .flowConfig td input[type=checkbox]:before {
+	content:"/";
+	color:white;
+	position: absolute;
+	top:-6px;
+	left:4px;
+}
+
+.service .flowConfig td input[type=checkbox]:checked:before {
+	content:"";
+	color:white;
+	position: absolute;
+	top:-6px;
+	left:3px;
+}
+
+.service .flowConfig button {
+	font-size:100%;
+	text-align: center;
 }
 
 .service .icon {

@@ -5,19 +5,21 @@
 
 {% if user != none %}
 	
-	
-		{% for connection in user.ConnectedServices|svc_populate_conns %}
-		{% with svc=connection|svc_conn_to_provider %}
-			{% include "service-button.html" with provider=svc connection=connection %}
-			{% if svc.RequiresConfiguration and not connection.Config %}
-				<noscript>
-				<p><a href="/configure/{{ connection.Service }}">You must configure {{ svc.DisplayName }} before first use</a></p>
-				</noscript>
-			{% endif %}
-		{% endwith %}
-		
-		{% if not forloop.last %}{% endif %}{% endfor %}
-	<div class="syncStatus" style="display:none;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
+		<div class="serviceButtonOuter">
+			<div class="serviceButtonWrap">
+			{% for connection in user.ConnectedServices|svc_populate_conns %}
+			{% with svc=connection|svc_conn_to_provider %}
+				{% include "service-button.html" with provider=svc connection=connection %}
+				{% if svc.RequiresConfiguration and not connection.Config %}
+					<noscript>
+					<p><a href="/configure/{{ connection.Service }}">You must configure {{ svc.DisplayName }} before first use</a></p>
+					</noscript>
+				{% endif %}
+			{% endwith %}
+			{% endfor %}
+			</div>
+		</div>
+	<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}

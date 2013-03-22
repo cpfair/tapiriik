@@ -23,7 +23,7 @@ class User:
         return db.users.find_one({"_id": uid})
 
     def GetConnectionRecordsByUser(user):
-        return db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})
+        return list(db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}}))
 
     def GetConnectionRecord(user, svcId):
         return db.connections.find_one({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"] if x["Service"] == svcId]}})

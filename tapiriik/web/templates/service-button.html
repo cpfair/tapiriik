@@ -22,10 +22,10 @@
 							<span class="status" id="sync-ok">Connected</span>
 						{% endif %}
 						{% if connection.SyncErrors|length == 0 or connection.SyncErrors.0.Type != "authorization" %}
-							{% if provider.Configurable %}
+							{% if user.ConnectedServices|length > 1 %}
 								<a href="/configure/{{ provider.ID }}" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
 							{% else %}
-								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
+								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a> 
 							{% endif %}
 						{% else %}
 							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
