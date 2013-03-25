@@ -169,6 +169,8 @@ class EndomondoService(ServiceBase):
             for act in data["data"]:
                 if not act["has_points"]:
                     continue  # it'll break strava, which needs waypoints to find TZ. Meh
+                if act["tracking"]:
+                    continue  # come back once they've completed the activity
                 activity = UploadedActivity()
                 activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
