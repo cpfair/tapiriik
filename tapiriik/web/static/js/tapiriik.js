@@ -386,6 +386,11 @@ tapiriik.DropboxBrowserNavigateDown = function(){
 	$.address.path("/configure/dropbox/setup" + $(this).attr("path"));
 };
 
+tapiriik.PaymentReclaimDialogLinkClicked = function(){
+	$.address.value("/payments/claim");
+	return false;
+};
+
 tapiriik.OpenPaymentReclaimDialog = function(){
 	var form = $("<form><center><div class=\"error\">Unknown Transaction ID</div><label for=\"txn\" style=\"margin-bottom:7px\">PayPal Transaction ID</label><input type=\"text\" style=\"width:220px;text-align:center;\" placeholder=\"VADE0B248932\" id=\"txn\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>Your payment will be reassociated with the accounts you a currently connected to</p></center></form>");
 	var pending = false;
