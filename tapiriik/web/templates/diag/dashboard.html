@@ -5,6 +5,7 @@
 <div style="text-align:left">
 	<h3>Stats</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
+		<li><b>Users:</b> {{ userCt }} ({{ autosyncCt }} automatically synchronizing)</li>
 		<li><b>Aggregated distance:</b> {{ stats.TotalDistanceSynced|format_meters }} km</li>
 		<li><b>Sync time used:</b> {{ stats.TotalSyncTimeUsed|floatformat:0 }} sec</li>
 		<li><b>Stats update:</b> {{ stats.Updated }} UTC</li>

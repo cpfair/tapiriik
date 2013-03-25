@@ -11,7 +11,7 @@ from datetime import datetime
 
 def diag_requireAuth(view):
     def authWrapper(req, *args, **kwargs):
-        if DIAG_AUTH_TOTP_SECRET is not None and DIAG_AUTH_PASSWORD is not None and ("diag_auth" not in req.session or req.session["diag_auth"] != True):
+        if DIAG_AUTH_TOTP_SECRET is not None and DIAG_AUTH_PASSWORD is not None and ("diag_auth" not in req.session or req.session["diag_auth"] is not True):
             return redirect("diagnostics_login")
         return view(req, *args, **kwargs)
     return authWrapper
@@ -20,24 +20,27 @@ def diag_requireAuth(view):
 @diag_requireAuth
 def diag_dashboard(req):
     lockedSyncRecords = db.users.aggregate([
-                                            {"$match": {"SynchronizationWorker": {"$ne": None}}},
-                                            {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                            ])
+                                           {"$match": {"SynchronizationWorker": {"$ne": None}}},
+                                           {"$group": {"_id": None, "count": {"$sum": 1}}}
+                                           ])
     if len(lockedSyncRecords["result"]) > 0:
         lockedSyncRecords = lockedSyncRecords["result"][0]["count"]
     else:
         lockedSyncRecords = 0
 
     pendingSynchronizations = db.users.aggregate([
-                                                {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
-                                                {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                                ])
+                                                 {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
+                                                 {"$group": {"_id": None, "count": {"$sum": 1}}}
+                                                 ])
     if len(pendingSynchronizations["result"]) > 0:
         pendingSynchronizations = pendingSynchronizations["result"][0]["count"]
     else:
         pendingSynchronizations = 0
 
-    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "pendingSynchronizations": pendingSynchronizations})
+    userCt = db.users.count()
+    autosyncCt = db.users.find({"NextSynchronization": {"$ne": None}}).count()
+
+    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt})
 
 
 @diag_requireAuth
