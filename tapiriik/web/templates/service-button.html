@@ -10,8 +10,10 @@
 			<div class="controls">
 				<div class="controlsInner">
 					{% if provider.ID in user.ConnectedServices|svc_ids %}
+					<div class="row">
 						{% if connection.SyncErrors|length > 0 %}
 							{% if connection.SyncErrors.0.Type == "authorization" %}
+
 								<span class="status" id="sync-fail">Authorization Error</span>
 							{% elif connection.SyncErrors.0.Code == "UNTAGGED" %}
 								<span class="status" id="sync-info">Untagged activities</span>
@@ -21,9 +23,11 @@
 						{% else %}
 							<span class="status" id="sync-ok">Connected</span>
 						{% endif %}
+					</div>
+					<div class="row">
 						{% if connection.SyncErrors|length == 0 or connection.SyncErrors.0.Type != "authorization" %}
 							{% if user.ConnectedServices|length > 1 %}
-								<a href="/configure/{{ provider.ID }}" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
+								<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
 							{% else %}
 								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a> 
 							{% endif %}
@@ -31,9 +35,12 @@
 							<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Dis</span></a> &#x22EF;
 							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
 						{% endif %}
+					</div>
 
 					{% else %}
+					<div class="row">
 						<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">Connect</a>
+					</div>
 					{% endif %}
 				</div>
 			</div>

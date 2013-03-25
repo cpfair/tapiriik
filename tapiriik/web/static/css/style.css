@@ -219,6 +219,14 @@ button {
 	cursor:pointer;
 }
 
+button:focus {
+	outline:none;
+}
+
+button::-moz-focus-inner {
+  border: 0;
+}
+
 button.cancel {
 	background-color:#ccc;
 }
@@ -233,7 +241,19 @@ button.disabled {
 }
 
 button:active {
-	opacity:0.7;
+	background-color: #d3e8f2;
+}
+
+button.cancel:active {
+	background-color: #dbdbdb;
+}
+
+button.disabled:active {
+	background-color: #f3f3f3;
+}
+
+button.delete:active {
+	background-color: #e7c3c3;
 }
 
 form .error {
@@ -331,18 +351,23 @@ a img {
 	z-index:2;
 	margin-top:-5px;
 	padding: 3px 5px;
-	padding-top:6px;
+	padding-top:0;
 	color:white;
 	background-color:#8ec1da;
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
 	overflow:hidden;
-	max-height:20px;
+	height:25px;
 	vertical-align: top;
-	line-height: 100%;
 }
 
+.service .controls .row {
+	position: relative;
+	height:25px;
+	overflow: hidden;
+}
 .service .controls a {
+	outline:none;
 	text-decoration: none;
 }
 
@@ -352,12 +377,15 @@ a img {
 }
 
 .service .controlsInner {
+	margin-top: 3px;
 	position: relative;
 	-webkit-transition: top 0.2s ease;
+	-moz-transition: top 0.2s ease;
+	transition: top 0.2s ease;
 }
 
 .service.connected:hover .controlsInner {
-	top:-1.03em; /* damn letter g / economica font */
+	top:-25px;
 }
 
 .service .config {
@@ -369,8 +397,7 @@ a img {
 	padding-top:6px;
 	color:white;
 	background-color:#a6cfe3;
-	border-bottom-left-radius:5px;
-	border-bottom-right-radius:5px;
+	padding-bottom:45px;
 }
 
 .service .config .arrow {
@@ -387,6 +414,7 @@ a img {
 .service .config h1 {
 	text-align: center;
 	font-size:120%;
+	margin-top: 7px;
 	margin-bottom:5px;
 }
 
@@ -398,12 +426,37 @@ a img {
 	margin-bottom:0;
 }
 
+.service .config .fineprint {
+	font-size:70%;
+}
 .service .config .configSection { 
 	background-color: #9ec5d9;
 	margin:0 -5px;
 	padding: 0 5px;
 }
 
+.service .config button#save {
+	border-top-left-radius:0;
+	border-top-right-radius:0;
+	border-bottom-right-radius:0;
+	position:absolute;
+	left:-10px;
+	bottom:-5px;
+	width:130px;
+}
+.service .config button#disconnect {
+	border-top-left-radius:0;
+	border-top-right-radius:0;
+	border-bottom-left-radius:0;
+	position:absolute;
+	right:-10px;
+	bottom:-5px;
+	width:45px;
+	background-image:url('../img/unlink.png');
+	background-repeat: no-repeat;
+	background-position: center center;
+	text-indent: -999px;
+}
 .service .flowConfig {
 	text-align: center;
 }
@@ -479,7 +532,6 @@ a img {
 	text-decoration: none;
 	color:white;
 	padding-left:19px;
-	bottom:0;
 	background-repeat:no-repeat;
 	background-position: center left;
 }

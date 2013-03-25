@@ -240,7 +240,7 @@ tapiriik.ActivateSetupDialog = function(svcId){
 tapiriik.OpenFlowConfigPanel = function(svcId){
 	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
 	tapiriik.DoDismissConfigPanel();
-	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><button id=\"save\">Save</button><button id=\"setup\">Setup</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
+	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">X</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
