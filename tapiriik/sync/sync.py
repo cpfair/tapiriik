@@ -9,7 +9,7 @@ import traceback
 class Sync:
 
     SyncInterval = timedelta(hours=1)
-    MinimumSyncInterval = timedelta(minutes=10)
+    MinimumSyncInterval = timedelta(minutes=2)
 
     def ScheduleImmediateSync(user, exhaustive=None):
         if exhaustive is None:

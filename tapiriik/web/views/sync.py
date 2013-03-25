@@ -4,6 +4,7 @@ from tapiriik.auth import User
 from tapiriik.sync import Sync
 from datetime import datetime
 
+
 def sync_status(req):
     if not req.user:
         return HttpResponse(status=403)
@@ -14,7 +15,7 @@ def sync_status(req):
         if "SyncErrors" not in conn:
             continue
         for err in conn["SyncErrors"]:
-            if "Code" in err and err["Code"] is not None and len(err["Code"])>0:
+            if "Code" in err and err["Code"] is not None and len(err["Code"]) > 0:
                 errorCodes.append(err["Code"])
             else:
                 errorCodes.append("SYS-" + err["Step"])
@@ -23,10 +24,11 @@ def sync_status(req):
                                     "Synchronizing": "SynchronizationWorker" in req.user,
                                     "Errors": errorCodes}), mimetype="application/json")
 
+
 def sync_schedule_immediate(req):
     if not req.user:
         return HttpResponse(status=401)
-    if (datetime.utcnow() - req.user["LastSynchronization"] < Sync.MinimumSyncInterval):
+    if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None and datetime.utcnow() - req.user["LastSynchronization"] < Sync.MinimumSyncInterval:
         return HttpResponse(status=403)
     Sync.ScheduleImmediateSync(req.user)
-    return HttpResponse(json.dumps({"success": True}))
+    return HttpResponse()
