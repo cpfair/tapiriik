@@ -287,6 +287,12 @@ a img {
 .dialogWrap img {
 	display:inline-block;
 }
+
+.splashPreamble {
+	color:#777;
+	font-size:110%;
+}
+
 .sync-connector {
 	position:absolute;
 	left:15px;
@@ -308,6 +314,7 @@ a img {
 	height:32px;
 	vertical-align: 65%;
 }
+
 
 .serviceButtonOuter {
 	width:100%;

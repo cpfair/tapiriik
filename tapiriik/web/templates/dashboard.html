@@ -34,8 +34,11 @@
 	{% endif %}
 	
 {% else %}
+<p class="splashPreamble">tapiriik synchronizes your fitness activities between RunKeeper, Strava, Endomondo and Dropbox<br/>
+(your heart rate, cadence, power, and temperature data syncs too)</p> 
 	{% for provider in service_providers %}
 	{% include "service-button.html" with provider=provider %}
 	{% endfor %}
+<p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
 {% endblock %}
