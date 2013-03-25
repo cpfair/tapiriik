@@ -1,8 +1,9 @@
 {% extends "site.html" %}
 {% load services %}
 {% load users %}
-{% block content %}
+{% block title %}{% if user != none %}dashboard{% else %}sync your fitness activities{% endif %}{% endblock %}
 
+{% block content %}
 {% if user != none %}
 	
 		<div class="serviceButtonOuter">
