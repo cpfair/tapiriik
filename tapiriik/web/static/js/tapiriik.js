@@ -511,7 +511,7 @@ tapiriik.RefreshSyncCountdown = function(){
 	if (tapiriik.SyncErrors !== undefined){
 
 		var delta = tapiriik.NextSync - (new Date());
-		if (delta>0 || tapiriik.NextSync === undefined){
+		if (delta>0 || tapiriik.NextSync === null){
 			$("#syncButton").show();
 			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000;
 			if (tapiriik.NextSync !== null){
