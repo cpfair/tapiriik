@@ -45,7 +45,7 @@ class Sync:
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
                                abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3 and
-                               abs(x.Distance - act.Distance) < 100   # sometimes people start multiple consecutive activities, so check if they're significantly different
+                               abs(x.Distance - act.Distance) < 1000   # sometimes people start multiple consecutive activities, so check if they're significantly different
                                )
                               ]
             if len(existElsewhere) > 0:
