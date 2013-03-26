@@ -83,7 +83,7 @@ class Sync:
             return  # nothing's going anywhere anyways
 
         # mark this user as in-progress
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid()}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationProgress": 0}})
         lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid()})
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
@@ -124,6 +124,8 @@ class Sync:
                     activity.Origin = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]][0]
             print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
 
+        totalActivities = len(activities)
+        processedActivities = 0
         for activity in activities:
             # we won't need this now, but maybe later
             db.connections.update({"_id": {"$in": [x["Connection"]["_id"] for x in activity.UploadedTo]}},
@@ -132,7 +134,17 @@ class Sync:
 
             recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
             if len(recipientServices) == 0:
+                totalActivities -= 1  # doesn't count
                 continue
+
+            # this is after the above exit point since it's the most frequent case - want to avoid DB churn
+            if totalActivities <= 0:
+                syncProgress = 1
+            else:
+                syncProgress = max(0, min(1, processedActivities / totalActivities))
+
+            db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
+
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
             act = None
@@ -155,6 +167,7 @@ class Sync:
                     break  # succesfully got the activity, can stop now
 
             if act is None:  # couldn't download it from anywhere
+                processedActivities += 1  # we tried
                 continue
 
             for destinationSvcRecord in recipientServices:
@@ -201,11 +214,13 @@ class Sync:
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
 
+            processedActivities += 1
+
         for conn in serviceConnections:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
 
         # unlock the row
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}})
         print("Finished sync for " + str(user["_id"]))
 
 

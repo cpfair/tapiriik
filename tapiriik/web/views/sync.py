@@ -22,6 +22,7 @@ def sync_status(req):
     return HttpResponse(json.dumps({"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
                                     "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
                                     "Synchronizing": "SynchronizationWorker" in req.user,
+                                    "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
                                     "Errors": errorCodes}), mimetype="application/json")
 
 
