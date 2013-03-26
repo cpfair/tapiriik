@@ -35,7 +35,7 @@ class Sync:
             existElsewhere = [x for x in activityList if x.UID == act.UID or
                               (x.StartTime is not None and
                                act.StartTime is not None and
-                               (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
+                               (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
                                (act.StartTime-x.StartTime).total_seconds() < 60 * 3
                                )
                               ]
