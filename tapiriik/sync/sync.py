@@ -36,7 +36,7 @@ class Sync:
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
-                               (act.StartTime-x.StartTime).total_seconds() < 60 * 3
+                               abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3
                                )
                               ]
             if len(existElsewhere) > 0:
