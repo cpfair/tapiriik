@@ -1,6 +1,7 @@
 from django.shortcuts import redirect, render
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from tapiriik.services import Service
 from tapiriik.auth import User
 import json
@@ -33,6 +34,7 @@ def authreturn(req, service):
     return render(req, "oauth-return.html", {"success": 1 if success else 0})
 
 
+@csrf_exempt
 @require_POST
 def deauth(req, service):  # this is RK-specific
     deauthData = json.loads(req.body)
