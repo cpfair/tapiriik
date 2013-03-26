@@ -140,7 +140,7 @@ class RunKeeperService(ServiceBase):
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
                     raise APIAuthorizationException("No authorization to download activity" + activityID)
-                raise APIException("Unable to download activity " + activityID)
+                raise APIException("Unable to download activity " + activityID + " response " + str(response))
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord["ExternalID"]
             cachedb.rk_activity_cache.insert(ridedata)
@@ -183,7 +183,7 @@ class RunKeeperService(ServiceBase):
         if response.status_code != 201:
             if response.status_code == 401 or response.status_code == 403:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID)
-            raise APIException("Unable to upload activity " + activity.UID)
+            raise APIException("Unable to upload activity " + activity.UID + " response " + str(response))
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
