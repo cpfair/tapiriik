@@ -48,9 +48,11 @@ def diag_dashboard(req):
 @diag_requireAuth
 def diag_user(req, user):
     userRec = db.users.find_one({"_id": ObjectId(user)})
-    if "sync" in req.GET:
-        Sync.ScheduleImmediateSync(userRec, req.GET["sync"] == "full")
+    if "sync" in req.POST:
+        Sync.ScheduleImmediateSync(userRec, req.POST["sync"] == "Full")
         userRec = db.users.find_one({"_id": ObjectId(user)})  # reload
+    elif "unlock" in req.POST:
+        db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationWorker": None}})
     return render(req, "diag/user.html", {"user": userRec})
 
 

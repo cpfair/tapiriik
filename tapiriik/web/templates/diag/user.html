@@ -9,7 +9,7 @@
 		<li><b>Created:</b> {{ user.Created }} UTC</li>
 		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
-		<li><b>Sync Control:</b> <a href="?sync=full">Full</a> | <a href="?sync=normal">Normal</a></li>
+		<li><b>Sync Control:</b> <form action="" method="POST"><input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/></form></li>
 	</ul>
 	{% if user.Payments|length > 0 %}
 		<h3>Payments</h3>
