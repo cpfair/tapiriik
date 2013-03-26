@@ -48,9 +48,9 @@ class Activity:
         """ run localize() on all contained dates (doesn't change values) """
         if self.TZ is None:
             raise ValueError("TZ not set")
-        if self.StartTime.tzinfo is None:
+        if self.StartTime.tzinfo is None and self.StartTime is not datetime.min:
             self.StartTime = self.TZ.localize(self.StartTime)
-        if self.EndTime.tzinfo is None:
+        if self.EndTime.tzinfo is None and self.EndTime is not datetime.min:
             self.EndTime = self.TZ.localize(self.EndTime)
         for wp in self.Waypoints:
             if wp.Timestamp.tzinfo is None:
