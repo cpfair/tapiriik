@@ -25,8 +25,10 @@ def diag_dashboard(req):
                                            ])
     if len(lockedSyncRecords["result"]) > 0:
         lockedSyncRecords = lockedSyncRecords["result"][0]["count"]
+        lockedSyncUsers = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     else:
         lockedSyncRecords = 0
+        lockedSyncUsers = []
 
     pendingSynchronizations = db.users.aggregate([
                                                  {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
@@ -40,7 +42,7 @@ def diag_dashboard(req):
     userCt = db.users.count()
     autosyncCt = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
-    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt})
+    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "lockedSyncUsers": lockedSyncUsers, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt})
 
 
 @diag_requireAuth

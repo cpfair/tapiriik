@@ -12,7 +12,16 @@
 	</ul>
 	<h3>Sync</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
-		<li><b>Locked records:</b> {{ lockedSyncRecords }}</li>
+		<li><b>Locked records:</b> {{ lockedSyncRecords }}
+			{% if lockedSyncRecords > 0 %}
+			<ul>{% for lockedUser in lockedSyncUsers %}
+					{% with userId=lockedUser|dict_get:'_id' %}
+					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a></li>
+					{% endwith %}
+				{% endfor %}
+			</ul>
+			{% endif %}
+		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
 	</ul>
 </div>
