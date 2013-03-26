@@ -174,7 +174,7 @@ class EndomondoService(ServiceBase):
                 activity = UploadedActivity()
                 activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
-
+                print ("\tActivity s/t " + str(activity.StartTime))
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
