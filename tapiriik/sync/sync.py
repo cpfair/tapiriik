@@ -27,13 +27,21 @@ class Sync:
                                                                 and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
+    def _fromSameService(activityA, activityB):
+        otherSvcs = [y["Connection"]["_id"] for y in activityB.UploadedTo]
+        for uploadA in activityA.UploadedTo:
+            if uploadA["Connection"]["_id"] in otherSvcs:
+                return True
+        return False
+
     def _accumulateActivities(svc, svcActivities, activityList):
         for act in svcActivities:
             act.UIDs = [act.UID]
             if len(act.Waypoints) > 0:
                 act.EnsureTZ()
             existElsewhere = [x for x in activityList if x.UID == act.UID or
-                              (x.StartTime is not None and
+                              ( not Sync._fromSameService(x, act) and
+                                x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
                                abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3
