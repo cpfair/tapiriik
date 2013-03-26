@@ -42,7 +42,7 @@ def diag_dashboard(req):
     userCt = db.users.count()
     autosyncCt = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
-    errorUsers = db.users.find({"SyncErrors": {"$ne": []}})
+    errorUsers = list(db.users.find({"SyncErrors": {"$ne": []}}))
 
     return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "lockedSyncUsers": lockedSyncUsers, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt, "errorUsers": errorUsers})
 
