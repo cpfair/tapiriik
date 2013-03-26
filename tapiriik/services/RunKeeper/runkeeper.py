@@ -78,7 +78,7 @@ class RunKeeperService(ServiceBase):
 
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve user URLs", serviceRecord)
+                    raise APIAuthorizationException("No authorization to retrieve user URLs")
                 raise APIException("Unable to retrieve user URLs" + str(response))
 
             uris = response.json()
@@ -183,7 +183,7 @@ class RunKeeperService(ServiceBase):
         if response.status_code != 201:
             if response.status_code == 401 or response.status_code == 403:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID)
-            raise APIException("Unable to upload activity " + activity.UID, serviceRecord)
+            raise APIException("Unable to upload activity " + activity.UID)
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
