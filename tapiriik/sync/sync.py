@@ -23,20 +23,28 @@ class Sync:
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
         recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities
-                                                                and ("SynchronizedActivities" not in conn or activity.UID not in conn["SynchronizedActivities"])
+                                                                and ("SynchronizedActivities" not in conn or not [x for x in activity.UIDs if x in conn["SynchronizedActivities"]])
                                                                 and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
     def _accumulateActivities(svc, svcActivities, activityList):
         for act in svcActivities:
-                existElsewhere = [x for x in activityList if x.UID == act.UID]
-                if len(existElsewhere) > 0:
-                    if act.TZ is not None and existElsewhere[0].TZ is None:
-                        existElsewhere[0].TZ = act.TZ
-                        existElsewhere[0].DefineTZ()
-                    existElsewhere[0].UploadedTo += act.UploadedTo
-                    continue
-                activityList.append(act)
+            act.UIDs = [act.UID]
+            existElsewhere = [x for x in activityList if x.UID == act.UID or
+                              (x.StartTime is not None and
+                               act.StartTime is not None and
+                               (act.StartTime-x.StartTime).total_seconds() < 60 * 3
+                               )
+                              ]
+            if len(existElsewhere) > 0:
+                if act.TZ is not None and existElsewhere[0].TZ is None:
+                    existElsewhere[0].TZ = act.TZ
+                    existElsewhere[0].DefineTZ()
+                existElsewhere[0].UploadedTo += act.UploadedTo
+                existElsewhere[0].UIDs += act.UIDs  # I think this is merited
+                act.UIDs += existElsewhere[0].UIDs
+                continue
+            activityList.append(act)
 
     def PerformGlobalSync():
         from tapiriik.auth import User
