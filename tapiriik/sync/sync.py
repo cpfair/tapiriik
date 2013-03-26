@@ -29,6 +29,7 @@ class Sync:
 
     def _accumulateActivities(svc, svcActivities, activityList):
         for act in svcActivities:
+            act.EnsureTZ()
             act.UIDs = [act.UID]
             existElsewhere = [x for x in activityList if x.UID == act.UID or
                               (x.StartTime is not None and
