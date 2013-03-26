@@ -37,7 +37,7 @@ def authreturn(req, service):
 @csrf_exempt
 @require_POST
 def deauth(req, service):  # this is RK-specific
-    deauthData = json.loads(req.body)
+    deauthData = json.loads(req.text)
     token = deauthData["access_token"]
     svc = Service.FromID(service)
     svcRecord = Service.GetServiceRecordWithAuthDetails(svc, {"Token": token})
