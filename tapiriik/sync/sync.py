@@ -6,6 +6,14 @@ import os
 import traceback
 
 
+def _formatExc(exc_type, exc_value, exc_traceback):
+    tb = exc_traceback
+    while tb.tb_next:
+        tb = tb.tb_next
+        frame = tb.tb_frame
+    return '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([k + "=" + v for k, v in frame.f_locals.items()])
+
+
 class Sync:
 
     SyncInterval = timedelta(hours=1)
@@ -100,14 +108,16 @@ class Sync:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                 continue
             except ServiceException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                 continue
             except Exception as e:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc(exc_type, exc_value, exc_traceback)})
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
@@ -142,14 +152,16 @@ class Sync:
                 try:
                     act = dlSvc.DownloadActivity(dlSvcRecord, activity)
                 except APIAuthorizationException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                     continue
                 except ServiceException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                     continue
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc(exc_type, exc_value, exc_traceback)})
                     continue
                 else:
                     break  # succesfully got the activity, can stop now
@@ -187,12 +199,14 @@ class Sync:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                 except ServiceException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(exc_type, exc_value, exc_traceback), "Code": e.Code})
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc(exc_type, exc_value, exc_traceback)})
                     continue
                 else:
                     # flag as successful
