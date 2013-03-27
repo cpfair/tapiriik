@@ -43,6 +43,8 @@ def js_bridge(req):
         for exc in flowExc:
             if "ExternalID" in serviceInfo[exc["Source"]["Service"]] and exc["Source"]["ExternalID"] != serviceInfo[exc["Source"]["Service"]]["ExternalID"]:
                 continue  # this is an old exception for a different connection
+            if "ExternalID" in serviceInfo[exc["Target"]["Service"]] and exc["Target"]["ExternalID"] != serviceInfo[exc["Target"]["Service"]]["ExternalID"]:
+                continue  # same as above
             serviceInfo[exc["Source"]["Service"]]["BlockFlowTo"].append(exc["Target"]["Service"])
     return {"js_bridge_serviceinfo": json.dumps(serviceInfo)}
 
