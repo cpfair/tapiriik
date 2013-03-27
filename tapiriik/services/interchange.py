@@ -165,6 +165,8 @@ class Waypoint:
         return not self.__eq__(other)
 
     def __str__(self):
+        if self.Location is None:
+            return str(self.Type)+"@"+str(self.Timestamp)
         return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
     __repr__ = __str__
 
