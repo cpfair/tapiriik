@@ -112,8 +112,13 @@ class User:
 class SessionAuth:
     def process_request(self, req):
         userId = req.session.get("userid")
+        isSU = False
+        if req.session.get("substituteUserid") is not None:
+            userId = req.session.get("substituteUserid")
+            isSU = True
 
-        if userId == None:
+        if userId is None:
             req.user = None
         else:
             req.user = db.users.find_one({"_id": ObjectId(userId)})
+            req.user["Substitute"] = isSU

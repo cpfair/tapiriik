@@ -55,7 +55,16 @@ def diag_user(req, user):
         userRec = db.users.find_one({"_id": ObjectId(user)})  # reload
     elif "unlock" in req.POST:
         db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationWorker": None}})
+    elif "substitute" in req.POST:
+        req.session["substituteUserId"] = user
     return render(req, "diag/user.html", {"user": userRec})
+
+@diag_requireAuth
+def diag_unsu(req):
+    if "substituteUserid" in req.session:
+        del req.session["substituteUserid"]
+    return redirect("dashboard")
+
 
 
 def diag_login(req):
