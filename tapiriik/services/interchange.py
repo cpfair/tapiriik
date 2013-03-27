@@ -123,6 +123,30 @@ class Activity:
             dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
         self.Distance = dist
 
+    def CheckSanity(self):
+        if len(self.Waypoints) == 0:
+            raise ValueError("No waypoints")
+        if self.Distance > 1000 * 1000:
+            raise ValueError("Exceedlingly long activity (distance)")
+        if (self.EndTime - self.StartTime).total_seconds() < 0:
+            raise ValueError("Event finishes before it starts")
+        if (self.EndTime - self.StartTime).total_seconds() == 0:
+            raise ValueError("0-duration activity")
+        if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
+            raise ValueError("Exceedlingly long activity (time)")
+
+        altLow = 99999
+        altHigh = -99999
+        for wp in self.Waypoints:
+            if wp.Location is None:
+                raise ValueError("Waypoint without location")
+            if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
+                raise ValueError("Invalid lat/lng")
+            altLow = min(altLow, wp.Location.Altitude)
+            altHigh = max(altHigh, wp.Location.Altitude)
+        if altLow == altHigh:
+            raise ValueError("Invalid altitudes / no change from " + str(altLow))
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__
