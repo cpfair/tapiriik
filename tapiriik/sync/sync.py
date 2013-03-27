@@ -167,7 +167,14 @@ class Sync:
                     tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
                 else:
-                    break  # succesfully got the activity, can stop now
+                    try:
+                        act.CheckSanity()
+                    except:
+                        tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        act = None
+                        continue
+                    else:
+                        break  # succesfully got the activity + passed sanity checks, can stop now
 
             if act is None:  # couldn't download it from anywhere
                 continue
