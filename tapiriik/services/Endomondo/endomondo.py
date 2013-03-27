@@ -215,7 +215,7 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"], "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
         data = self._createUploadData(activity)
         data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
