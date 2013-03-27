@@ -11,7 +11,7 @@ def _formatExc(exc_type, exc_value, exc_traceback):
     while tb.tb_next:
         tb = tb.tb_next
         frame = tb.tb_frame
-    return '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([k + "=" + v for k, v in frame.f_locals.items()])
+    return '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + str(v) for k, v in frame.f_locals.items()])
 
 
 class Sync:
@@ -215,11 +215,13 @@ class Sync:
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
 
+        allSyncErrors = []
         for conn in serviceConnections:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
+            allSyncErrors += conn["SyncErrors"]
 
         # unlock the row
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None}, "$set": {"SyncErrorCount": len(allSyncErrors)}})
         print("Finished sync for " + str(user["_id"]))
 
 
