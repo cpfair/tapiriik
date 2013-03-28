@@ -4,6 +4,18 @@ from datetime import datetime, timedelta
 import sys
 import os
 import traceback
+import pprint
+
+
+def _formatExc():
+    print("Dumping exception")
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    tb = exc_traceback
+    while tb.tb_next:
+        tb = tb.tb_next
+    frame = tb.tb_frame
+    return '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + pprint.pformat(v) for k, v in frame.f_locals.items()])
+    del tb
 
 
 class Sync:
@@ -44,8 +56,7 @@ class Sync:
                                 x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
-                               abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3 and
-                               abs(x.Distance - act.Distance) < 1000   # sometimes people start multiple consecutive activities, so check if they're significantly different
+                               abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3
                                )
                               ]
             if len(existElsewhere) > 0:
@@ -54,7 +65,7 @@ class Sync:
                     existElsewhere[0].DefineTZ()
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
-                act.UIDs += existElsewhere[0].UIDs
+                act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters
                 continue
             activityList.append(act)
 
@@ -88,31 +99,38 @@ class Sync:
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
-        print ("Beginning sync for " + str(user["_id"]))
+        print ("Beginning sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
 
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
         activities = []
 
+        excludedServices = []
+
+        tempSyncErrors = {}
+
         for conn in serviceConnections:
+            tempSyncErrors[conn["_id"]] = []
             conn["SyncErrors"] = []
             svc = Service.FromID(conn["Service"])
             try:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                excludedServices.append(conn["_id"])
                 continue
             except ServiceException as e:
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                excludedServices.append(conn["_id"])
                 continue
             except Exception as e:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                conn["SyncErrors"].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
+                excludedServices.append(conn["_id"])
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
         origins = db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}})
-            
+
         for activity in activities:
             if len(activity.UploadedTo) == 1:
                 # we can log the origin of this activity
@@ -149,29 +167,39 @@ class Sync:
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
             act = None
             for dlSvcUploadRec in activity.UploadedTo:
+
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
+                print("\t from " + dlSvc.ID)
                 try:
                     act = dlSvc.DownloadActivity(dlSvcRecord, activity)
                 except APIAuthorizationException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
                 except ServiceException as e:
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
                 except Exception as e:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    dlSvcRecord["SyncErrors"].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
                 else:
-                    break  # succesfully got the activity, can stop now
+                    try:
+                        act.CheckSanity()
+                    except:
+                        tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        act = None
+                        continue
+                    else:
+                        break  # succesfully got the activity + passed sanity checks, can stop now
 
             if act is None:  # couldn't download it from anywhere
                 processedActivities += 1  # we tried
                 continue
 
             for destinationSvcRecord in recipientServices:
-
+                if destinationSvcRecord["_id"] in excludedServices:
+                    print("\t\tExcluded " + destinationSvcRecord["Service"])
+                    continue  # we don't know for sure if it needs to be uploaded, hold off for now
                 flowException = False
                 if hasattr(activity, "Origin"):
                     # we know the activity origin - do a more intuitive flow exception check
@@ -200,13 +228,11 @@ class Sync:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message, "Code": e.Code})
+                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                 except ServiceException as e:
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message, "Code": e.Code})
+                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                 except Exception as e:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    destinationSvcRecord["SyncErrors"].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback))})
-                    continue
+                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc()})
                 else:
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord["_id"]},
@@ -216,12 +242,14 @@ class Sync:
 
             processedActivities += 1
 
+        allSyncErrors = []
         for conn in serviceConnections:
-            db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": conn["SyncErrors"]}})
+            db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": tempSyncErrors[conn["_id"]]}})
+            allSyncErrors += tempSyncErrors[conn["_id"]]
 
         # unlock the row
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}})
-        print("Finished sync for " + str(user["_id"]))
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors)}})
+        print("Finished sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
 
 
 class SynchronizationConcurrencyException(Exception):

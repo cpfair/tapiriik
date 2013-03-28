@@ -23,6 +23,16 @@
 			{% endif %}
 		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
+		<li><b>Users with errors:</b> {{ errorUsers|length }}
+			{% if errorUsers|length > 0 %}
+			<ul>{% for errorUser in errorUsers %}
+					{% with userId=errorUser|dict_get:'_id' %}
+					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a></li>
+					{% endwith %}
+				{% endfor %}
+			</ul>
+			{% endif %}
+		</li>
 	</ul>
 </div>
 

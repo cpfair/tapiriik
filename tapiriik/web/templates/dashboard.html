@@ -5,7 +5,11 @@
 
 {% block content %}
 {% if user != none %}
-	
+		{% if user.Substitute %}
+		<h1>Substituting user</h1>
+		<a href="{% url 'diagnostics_unsu' %}">Return</a>
+		<hr/>
+		{% endif %}
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
 			{% for connection in user.ConnectedServices|svc_populate_conns %}

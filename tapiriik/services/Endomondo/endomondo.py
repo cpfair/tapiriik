@@ -160,6 +160,7 @@ class EndomondoService(ServiceBase):
         while True:
             before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45, "before": before}
+            print("Req with " + str(params))
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
@@ -167,12 +168,18 @@ class EndomondoService(ServiceBase):
                 raise APIException("Unable to retrieve activity list " + str(response))
             data = response.json()
             for act in data["data"]:
+                startTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
+                if earliestDate is None or startTime < earliestDate:  # probably redundant, I would assume it works out the TZes...
+                    earliestDate = startTime
+                print("activity pre")
                 if not act["has_points"]:
+                    print("\t no pts")
                     continue  # it'll break strava, which needs waypoints to find TZ. Meh
                 if "tracking" in act and act["tracking"]:
+                    print("\t tracking")
                     continue  # come back once they've completed the activity
                 activity = UploadedActivity()
-                activity.StartTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
+                activity.StartTime = startTime
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
                 print ("\tActivity s/t " + str(activity.StartTime))
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
@@ -190,8 +197,7 @@ class EndomondoService(ServiceBase):
                 activity.CalculateUID()
                 activities.append(activity)
 
-                if earliestDate is None or activity.StartTime.astimezone(pytz.utc) < earliestDate:  # probably redundant, I would assume it works out the TZes...
-                    earliestDate = activity.StartTime.astimezone(pytz.utc)
+                
 
             if not exhaustive or ("more" in data and data["more"] is False):
                 break
@@ -209,7 +215,7 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"], "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
         data = self._createUploadData(activity)
         data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)

@@ -48,9 +48,9 @@ class Activity:
         """ run localize() on all contained dates (doesn't change values) """
         if self.TZ is None:
             raise ValueError("TZ not set")
-        if self.StartTime.tzinfo is None:
+        if self.StartTime.tzinfo is None and self.StartTime is not datetime.min:
             self.StartTime = self.TZ.localize(self.StartTime)
-        if self.EndTime.tzinfo is None:
+        if self.EndTime.tzinfo is None and self.EndTime is not datetime.min:
             self.EndTime = self.TZ.localize(self.EndTime)
         for wp in self.Waypoints:
             if wp.Timestamp.tzinfo is None:
@@ -123,6 +123,30 @@ class Activity:
             dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
         self.Distance = dist
 
+    def CheckSanity(self):
+        if len(self.Waypoints) == 0:
+            raise ValueError("No waypoints")
+        if self.Distance > 1000 * 1000:
+            raise ValueError("Exceedlingly long activity (distance)")
+        if (self.EndTime - self.StartTime).total_seconds() < 0:
+            raise ValueError("Event finishes before it starts")
+        if (self.EndTime - self.StartTime).total_seconds() == 0:
+            raise ValueError("0-duration activity")
+        if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
+            raise ValueError("Exceedlingly long activity (time)")
+
+        altLow = 99999
+        altHigh = -99999
+        for wp in self.Waypoints:
+            if wp.Location is None:
+                raise ValueError("Waypoint without location")
+            if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
+                raise ValueError("Invalid lat/lng")
+            altLow = min(altLow, wp.Location.Altitude)
+            altHigh = max(altHigh, wp.Location.Altitude)
+        if altLow == altHigh:
+            raise ValueError("Invalid altitudes / no change from " + str(altLow))
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
     __repr__ = __str__
@@ -165,6 +189,8 @@ class Waypoint:
         return not self.__eq__(other)
 
     def __str__(self):
+        if self.Location is None:
+            return str(self.Type)+"@"+str(self.Timestamp)
         return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
     __repr__ = __str__
 

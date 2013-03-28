@@ -35,10 +35,16 @@ def js_bridge(req):
             info["Config"] = Service.GetConfiguration(svcRec)
         info["BlockFlowTo"] = []
         info["Connected"] = svcRec is not None
+        if svcRec is not None:
+            info["ExternalID"] = svcRec["ExternalID"]
         serviceInfo[svc.ID] = info
     if req.user is not None:
         flowExc = User.GetFlowExceptions(req.user)
         for exc in flowExc:
+            if "ExternalID" in serviceInfo[exc["Source"]["Service"]] and exc["Source"]["ExternalID"] != serviceInfo[exc["Source"]["Service"]]["ExternalID"]:
+                continue  # this is an old exception for a different connection
+            if "ExternalID" in serviceInfo[exc["Target"]["Service"]] and exc["Target"]["ExternalID"] != serviceInfo[exc["Target"]["Service"]]["ExternalID"]:
+                continue  # same as above
             serviceInfo[exc["Source"]["Service"]]["BlockFlowTo"].append(exc["Target"]["Service"])
     return {"js_bridge_serviceinfo": json.dumps(serviceInfo)}
 
