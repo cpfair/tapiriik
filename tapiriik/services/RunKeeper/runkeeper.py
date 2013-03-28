@@ -115,6 +115,8 @@ class RunKeeperService(ServiceBase):
         activities = []
         for act in allItems:
             activity = self._populateActivity(act)
+            if (activity.StartTime - activity.EndTime).total_seconds() == 0:
+                raise ValueError("0-duration activity")
             activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["uri"]}]
             activities.append(activity)
         return activities
