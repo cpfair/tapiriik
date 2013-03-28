@@ -128,7 +128,8 @@ class EndomondoService(ServiceBase):
             split = row.split(";")
             if split[2] == "W":
                 # init record
-                activity.Distance = float(split[8]) * 1000
+                activity.Distance = float(split[8]) * 1000 if split[8] != "" else None
+
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
@@ -215,7 +216,7 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"], "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000}
+        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"], "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000 if activity.Distance is not None else None}
         data = self._createUploadData(activity)
         data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
@@ -243,8 +244,8 @@ class EndomondoService(ServiceBase):
                 }[wp.Type])
 
             if wp.Location is not None:
-                line[2] = str(wp.Location.Latitude)
-                line[3] = str(wp.Location.Longitude)
+                line[2] = str(wp.Location.Latitude) if wp.Location.Latitude is not None else ""
+                line[3] = str(wp.Location.Longitude) if wp.Location.Longitude is not None else ""
                 if wp.Location.Altitude is not None:
                     line[6] = str(wp.Location.Altitude)
 

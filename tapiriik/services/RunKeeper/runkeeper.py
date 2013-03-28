@@ -158,7 +158,7 @@ class RunKeeperService(ServiceBase):
         hasCalories = "calories" in rawData and len(rawData["calories"]) > 0
         for pathpoint in rawData["path"]:
             waypoint = Waypoint(activity.StartTime + timedelta(0, pathpoint["timestamp"]))
-            waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"])
+            waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"] if "altitude" in pathpoint and float(pathpoint["altitude"]) != 0 else None)  # if you're running near sea level, well...
             waypoint.Type = self._wayptTypeMappings[pathpoint["type"]] if pathpoint["type"] in self._wayptTypeMappings else WaypointType.Regular
 
             if hasHR:
@@ -192,12 +192,11 @@ class RunKeeperService(ServiceBase):
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
-        record["total_distance"] = activity.Distance
+        if activity.Distance is not None:
+            record["total_distance"] = activity.Distance  # RK calculates this itself, so we probably don't care
         record["notes"] = activity.Name  # not symetric, but better than nothing
         record["path"] = []
         for waypoint in activity.Waypoints:
-            if (waypoint.Location is None):
-                continue  # RK waypoints must be anchored to locations
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
             if waypoint.Type in self._wayptTypeMappings.values():
@@ -208,11 +207,13 @@ class RunKeeperService(ServiceBase):
             if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None or waypoint.Location.Altitude is None:
                 continue
 
-            record["path"].append({"timestamp": timestamp,
-                                    "latitude": waypoint.Location.Latitude,
-                                    "longitude": waypoint.Location.Longitude,
-                                    "altitude": waypoint.Location.Altitude,
-                                    "type": wpType})
+            if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                pathPt = {"timestamp": timestamp,
+                          "latitude": waypoint.Location.Latitude,
+                          "longitude": waypoint.Location.Longitude,
+                          "type": wpType}
+                pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                record["path"].append(pathPt)
 
             if waypoint.HR is not None:
                 if "heart_rate" not in record:

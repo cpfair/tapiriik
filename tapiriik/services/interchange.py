@@ -24,7 +24,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=0, name=None, tz=None, waypointList=None):
+    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -126,7 +126,7 @@ class Activity:
     def CheckSanity(self):
         if len(self.Waypoints) == 0:
             raise ValueError("No waypoints")
-        if self.Distance > 1000 * 1000:
+        if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedlingly long activity (distance)")
         if (self.EndTime - self.StartTime).total_seconds() < 0:
             raise ValueError("Event finishes before it starts")
@@ -135,16 +135,18 @@ class Activity:
         if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
             raise ValueError("Exceedlingly long activity (time)")
 
-        altLow = 99999
-        altHigh = -99999
+        altLow = None
+        altHigh = None
         for wp in self.Waypoints:
             if wp.Location is None:
                 raise ValueError("Waypoint without location")
             if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                 raise ValueError("Invalid lat/lng")
-            altLow = min(altLow, wp.Location.Altitude)
-            altHigh = max(altHigh, wp.Location.Altitude)
-        if altLow == altHigh:
+            if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
+                altLow = wp.location.Altitude
+            if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
+                altHigh = wp.location.Altitude
+        if altLow is not None and altLow == altHigh:
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
     def __str__(self):
@@ -191,7 +193,7 @@ class Waypoint:
     def __str__(self):
         if self.Location is None:
             return str(self.Type)+"@"+str(self.Timestamp)
-        return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude)) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
+        return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude) if self.Location.Altitude is not None else None) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
     __repr__ = __str__
 
 

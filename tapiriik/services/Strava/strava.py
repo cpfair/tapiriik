@@ -60,7 +60,7 @@ class StravaService(ServiceBase):
                 cachedb.strava_cache.insert(ridedata)
             else:
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
-            if ridedata["start_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
+            if ridedata["start_latlng"] is None or ridedata["end_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
                 continue  # stationary activity - no syncing for now
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
@@ -92,7 +92,11 @@ class StravaService(ServiceBase):
         hasCadence = "cadence" in ridedata and len(ridedata["cadence"]) > 0
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0) or ("watts_calc" in ridedata and len(ridedata["watts_calc"]) > 0)
+        hasAltitude = "altitude" in ridedata and len(ridedata["altitude"]) > 0
         moving = True
+
+        if "error" in ridedata:
+            raise APIException("Strava error " + ridedata["error"])
 
         waypointCt = len(ridedata["time"])
         for idx in range(0, waypointCt - 1):
@@ -100,7 +104,12 @@ class StravaService(ServiceBase):
 
             waypoint = Waypoint(activity.StartTime + timedelta(0, ridedata["time"][idx]))
             latlng = ridedata["latlng"][idx]
-            waypoint.Location = Location(latlng[0], latlng[1], ridedata["altitude"][idx])
+            waypoint.Location = Location(latlng[0], latlng[1], None)
+            if waypoint.Location.Longitude == 0 and Waypoint.Location.Latitude == 0:
+                Waypoint.Location.Longitude = None
+                Waypoint.Location.Latitude = None
+            if hasAltitude:
+                waypoint.Location.Altitude = float(ridedata["altitude"][idx])
 
             if idx == 0:
                 waypoint.Type = WaypointType.Start

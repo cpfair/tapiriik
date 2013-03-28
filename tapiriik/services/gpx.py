@@ -94,6 +94,8 @@ class GPXIO:
         trkseg = etree.SubElement(trk, "trkseg")
         inPause = False
         for wp in activity.Waypoints:
+            if wp.Location.Latitude is None or wp.Location.Longitude is None:
+                continue  # drop the point
             if wp.Type == WaypointType.Pause:
                 if inPause:
                     raise ValueError("Multiple consecutive pause waypoints - invalid GPX / dropped points will result")
