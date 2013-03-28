@@ -115,10 +115,10 @@ class StravaService(ServiceBase):
                 waypoint.Type = WaypointType.Start
             elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
-            elif not moving and ridedata["moving"][idx] is True:
+            elif not moving and ridedata["resting"][idx] is False:
                 waypoint.Type = WaypointType.Resume
                 moving = True
-            elif ridedata["moving"][idx] is False:
+            elif ridedata["resting"][idx] is True:
                 waypoint.Type = WaypointType.Pause
                 moving = False
 
