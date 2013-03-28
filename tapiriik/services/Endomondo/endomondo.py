@@ -143,6 +143,9 @@ class EndomondoService(ServiceBase):
                     wp.Type = WaypointType.Resume
                 else:
                     wp.Type == WaypointType.Regular
+
+                if split[0] == "":
+                    continue  # no timestamp, for whatever reason
                 wp.Timestamp = pytz.utc.localize(datetime.strptime(split[0], "%Y-%m-%d %H:%M:%S UTC"))  # it's like this as opposed to %z so I know when they change things (it'll break)
                 if split[2] != "":
                     wp.Location = Location(float(split[2]), float(split[3]), None)
@@ -151,8 +154,8 @@ class EndomondoService(ServiceBase):
                 if split[7] != "":
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
-
-        activity.EnsureTZ()
+        if len(activity.Waypoints) > 0:
+            activity.EnsureTZ()
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
@@ -191,14 +194,15 @@ class EndomondoService(ServiceBase):
 
                 self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
 
+                if len(activity.Waypoints) == 0:
+                    continue  # this can happen here if there are no timestamps on the pathpoints
+
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
 
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
                 activity.CalculateUID()
                 activities.append(activity)
-
-                
 
             if not exhaustive or ("more" in data and data["more"] is False):
                 break
