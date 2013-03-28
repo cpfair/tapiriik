@@ -151,6 +151,8 @@ class EndomondoService(ServiceBase):
                     wp.Location = Location(float(split[2]), float(split[3]), None)
                     if split[6] != "":
                         wp.Location.Altitude = float(split[6])  # why this is missing: who knows?
+                else:
+                    continue  # don't make a waypoint without a location
                 if split[7] != "":
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
