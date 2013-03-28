@@ -137,17 +137,19 @@ class Activity:
 
         altLow = None
         altHigh = None
+        pointsWithoutLocation = 0
         for wp in self.Waypoints:
-            if wp.Location is None:
-                raise ValueError("Waypoint without location")
-            if wp.Location.Latitude is None and wp.Location.Longitude is None and wp.Location.Altitude is None:
-                raise ValueError("Waypoint with no location information")
-            if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
-                raise ValueError("Invalid lat/lng")
-            if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
-                altLow = wp.Location.Altitude
-            if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
-                altHigh = wp.Location.Altitude
+            if wp.Location:
+                if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
+                    raise ValueError("Invalid lat/lng")
+                if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
+                    altLow = wp.Location.Altitude
+                if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
+                    altHigh = wp.Location.Altitude
+            if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                pointsWithoutLocation += 1
+        if pointsWithoutLocation == len(self.Waypoints):
+            raise ValueError("No points have location")
         if altLow is not None and altLow == altHigh:
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 

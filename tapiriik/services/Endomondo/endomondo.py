@@ -121,6 +121,7 @@ class EndomondoService(ServiceBase):
         #;
         # alt;
         # hr;
+        wptsWithLocation = 0
         rows = recordText.split("\n")
         for row in rows:
             if row == "OK" or len(row) == 0:
@@ -149,15 +150,18 @@ class EndomondoService(ServiceBase):
                 wp.Timestamp = pytz.utc.localize(datetime.strptime(split[0], "%Y-%m-%d %H:%M:%S UTC"))  # it's like this as opposed to %z so I know when they change things (it'll break)
                 if split[2] != "":
                     wp.Location = Location(float(split[2]), float(split[3]), None)
+                    if wp.Location.Latitude is not None and wp.Location.Latitude is not None:
+                        wptsWithLocation += 1
                     if split[6] != "":
                         wp.Location.Altitude = float(split[6])  # why this is missing: who knows?
-                else:
-                    continue  # don't make a waypoint without a location
+
                 if split[7] != "":
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
-        if len(activity.Waypoints) > 0:
+        if wptsWithLocation > 0:
             activity.EnsureTZ()
+        else:
+            activity.Waypoints = []  # practically speaking
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
@@ -197,7 +201,7 @@ class EndomondoService(ServiceBase):
                 self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
 
                 if len(activity.Waypoints) == 0:
-                    continue  # this can happen here if there are no timestamps on the pathpoints
+                    continue  # this can happen here if there are no timestamps/locations on the waypoints
 
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
