@@ -14,8 +14,9 @@ def _formatExc():
     while tb.tb_next:
         tb = tb.tb_next
     frame = tb.tb_frame
-    return '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + pprint.pformat(v) for k, v in frame.f_locals.items()])
-    del tb
+    exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + pprint.pformat(v) for k, v in frame.f_locals.items()])
+    print(exc)
+    return exc
 
 
 class Sync:

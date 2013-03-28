@@ -73,7 +73,7 @@ class Activity:
             raise Exception("Can't find TZ without waypoints")
         if loc is None:
             for wp in self.Waypoints:
-                if wp.Location is not None:
+                if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
                     loc = wp.Location
                     break
             if loc is None:
@@ -143,9 +143,9 @@ class Activity:
             if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                 raise ValueError("Invalid lat/lng")
             if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
-                altLow = wp.location.Altitude
+                altLow = wp.Location.Altitude
             if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
-                altHigh = wp.location.Altitude
+                altHigh = wp.Location.Altitude
         if altLow is not None and altLow == altHigh:
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 

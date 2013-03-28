@@ -105,9 +105,9 @@ class StravaService(ServiceBase):
             waypoint = Waypoint(activity.StartTime + timedelta(0, ridedata["time"][idx]))
             latlng = ridedata["latlng"][idx]
             waypoint.Location = Location(latlng[0], latlng[1], None)
-            if waypoint.Location.Longitude == 0 and Waypoint.Location.Latitude == 0:
-                Waypoint.Location.Longitude = None
-                Waypoint.Location.Latitude = None
+            if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
+                waypoint.Location.Longitude = None
+                waypoint.Location.Latitude = None
             if hasAltitude:
                 waypoint.Location.Altitude = float(ridedata["altitude"][idx])
 
