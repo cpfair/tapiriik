@@ -130,7 +130,8 @@ class Activity:
             raise ValueError("Exceedlingly long activity (distance)")
         if (self.EndTime - self.StartTime).total_seconds() < 0:
             raise ValueError("Event finishes before it starts")
-        if (self.EndTime - self.StartTime).total_seconds() == 0:
+        if (self.EndTime - self.StartTime).total_seconds() == 0 and self.StartTime != datetime.min:
+            # the 2nd condition here is for Dropbox - which cheats and just fills in the UID
             raise ValueError("0-duration activity")
         if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
             raise ValueError("Exceedlingly long activity (time)")
