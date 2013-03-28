@@ -140,6 +140,8 @@ class Activity:
         for wp in self.Waypoints:
             if wp.Location is None:
                 raise ValueError("Waypoint without location")
+            if wp.Location.Latitude is None and wp.Location.Longitude is None and wp.Location.Altitude is None:
+                raise ValueError("Waypoint with no location information")
             if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                 raise ValueError("Invalid lat/lng")
             if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
