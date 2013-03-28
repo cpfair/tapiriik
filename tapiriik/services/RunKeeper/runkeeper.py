@@ -204,7 +204,7 @@ class RunKeeperService(ServiceBase):
             else:
                 wpType = "gps"  # meh
 
-            if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None or waypoint.Location.Altitude is None:
+            if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
                 continue
 
             if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
