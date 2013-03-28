@@ -98,7 +98,7 @@ class GPXIO:
                 continue  # drop the point
             if wp.Type == WaypointType.Pause:
                 if inPause:
-                    raise ValueError("Multiple consecutive pause waypoints - invalid GPX / dropped points will result")
+                    continue  # this used to be an exception, but I don't think that was merited
                 inPause = True
             if inPause and (wp.Type == WaypointType.Regular or wp.Type == WaypointType.Resume or wp.Type == WaypointType.End):
                 trkseg = etree.SubElement(trk, "trkseg")
