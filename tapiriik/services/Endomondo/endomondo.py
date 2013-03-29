@@ -200,8 +200,8 @@ class EndomondoService(ServiceBase):
 
                 self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
 
-                if len(activity.Waypoints) == 0:
-                    continue  # this can happen here if there are no timestamps/locations on the waypoints
+                if len(activity.Waypoints) <= 1:
+                    continue  # this can happen here if there are no timestamps/locations on the waypoints, or if only one waypoint is there (a weird condition)
 
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
