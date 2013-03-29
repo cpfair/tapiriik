@@ -194,6 +194,7 @@ class DropboxService(ServiceBase):
             fullActivity, rev = self._getActivity(dbcl, activity.DBPath)
             fullActivity.Tagged = activity.Tagged
             fullActivity.Type = activity.Type
+            fullActivity.UploadedTo = activity.UploadedTo
             activity = fullActivity
 
         return activity

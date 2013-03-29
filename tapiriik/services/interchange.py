@@ -124,6 +124,9 @@ class Activity:
         self.Distance = dist
 
     def CheckSanity(self):
+        if not hasattr(self, "UploadedTo") or len(self.UploadedTo) == 0:
+            raise ValueError("Unset UploadedTo field")
+        srcs = self.UploadedTo  # this is just so I can see the source of the activity in the exception message
         if len(self.Waypoints) == 0:
             raise ValueError("No waypoints")
         if len(self.Waypoints) == 1:
