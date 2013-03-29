@@ -126,6 +126,8 @@ class Activity:
     def CheckSanity(self):
         if len(self.Waypoints) == 0:
             raise ValueError("No waypoints")
+        if len(self.Waypoints) == 1:
+            raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedlingly long activity (distance)")
         if (self.EndTime - self.StartTime).total_seconds() < 0:
