@@ -65,6 +65,10 @@ class Sync:
                 if act.TZ is not None and existElsewhere[0].TZ is None:
                     existElsewhere[0].TZ = act.TZ
                     existElsewhere[0].DefineTZ()
+                if act.StartTime is not datetime.min and existElsewhere[0].StartTime is datetime.min:
+                    existElsewhere[0].StartTime = act.StartTime
+                    existElsewhere[0].EndTime = act.EndTime
+
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
                 act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters
@@ -172,7 +176,7 @@ class Sync:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
                 print("\t from " + dlSvc.ID)
-                workingCopy = copy.deepcopy(activity)  # I stand corrected, a deep copy it is. Not that expensive at this point
+                workingCopy = copy.copy(activity)  # we can hope
                 try:
                     workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                 except APIAuthorizationException as e:
