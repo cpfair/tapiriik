@@ -186,10 +186,12 @@ class Sync:
                     tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
                 else:
-                    if act.Exclude:
+                    if not downloadedAct:
+                        raise("Unbreak DownloadAcivity() please")
+                    if downloadedAct.Exclude:
                             continue  # try again
                     try:
-                        act.CheckSanity()
+                        downloadedAct.CheckSanity()
                     except:
                         tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                         continue
