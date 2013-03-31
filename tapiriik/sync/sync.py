@@ -70,7 +70,7 @@ class Sync:
                 existElsewhere[0].EndTime = existElsewhere[0].EndTime if existElsewhere[0].EndTime is not None else act.EndTime
                 existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
-                existElsewhere[0].Type = existElsewhere[0].Type if existElsewhere[0].Type != ActivityType.Unknown else act.Type
+                existElsewhere[0].Type = existElsewhere[0].Type if existElsewhere[0].Type != ActivityType.Other else act.Type
 
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
