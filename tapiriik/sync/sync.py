@@ -5,7 +5,7 @@ import sys
 import os
 import traceback
 import pprint
-
+import copy
 
 def _formatExc():
     print("Dumping exception")
@@ -167,15 +167,14 @@ class Sync:
 
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
-            downloadedAct = None
             act = None
             for dlSvcUploadRec in activity.UploadedTo:
-
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
                 print("\t from " + dlSvc.ID)
+                workingCopy = copy.copy(activity)  # a shallow copy is OK, since all the significant members are immutable
                 try:
-                    downloadedAct = dlSvc.DownloadActivity(dlSvcRecord, activity)
+                    workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                 except APIAuthorizationException as e:
                     tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
@@ -186,17 +185,15 @@ class Sync:
                     tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
                 else:
-                    if not downloadedAct:
-                        raise("Unbreak DownloadAcivity() please")
-                    if downloadedAct.Exclude:
+                    if workingCopy.Exclude:
                             continue  # try again
                     try:
-                        downloadedAct.CheckSanity()
+                        workingCopy.CheckSanity()
                     except:
                         tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                         continue
                     else:
-                        act = downloadedAct
+                        act = workingCopy
                         break  # succesfully got the activity + passed sanity checks, can stop now
 
             if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
