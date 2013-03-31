@@ -172,7 +172,7 @@ class Sync:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
                 print("\t from " + dlSvc.ID)
-                workingCopy = copy.copy(activity)  # a shallow copy is OK, since all the significant members are immutable
+                workingCopy = copy.deepcopy(activity)  # I stand corrected, a deep copy it is. Not that expensive at this point
                 try:
                     workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                 except APIAuthorizationException as e:
