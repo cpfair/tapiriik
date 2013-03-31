@@ -149,6 +149,9 @@ class RunKeeperService(ServiceBase):
 
         self._populateActivityWaypoints(ridedata, activity)
 
+        if len(activity.Waypoints) <= 1:
+            activity.Exclude = True
+
         return activity
 
     def _populateActivityWaypoints(self, rawData, activity):

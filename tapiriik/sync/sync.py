@@ -61,6 +61,7 @@ class Sync:
                                )
                               ]
             if len(existElsewhere) > 0:
+                # we don't merge the exclude values here, since at this stage the services have the option of just not returning those activities
                 if act.TZ is not None and existElsewhere[0].TZ is None:
                     existElsewhere[0].TZ = act.TZ
                     existElsewhere[0].DefineTZ()
@@ -191,9 +192,12 @@ class Sync:
                         act = None
                         continue
                     else:
+                        if act.Exclude:
+                            act = None
+                            continue  # try again
                         break  # succesfully got the activity + passed sanity checks, can stop now
 
-            if act is None:  # couldn't download it from anywhere
+            if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                 processedActivities += 1  # we tried
                 continue
 
