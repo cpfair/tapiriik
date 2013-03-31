@@ -128,6 +128,7 @@ class DropboxService(ServiceBase):
                     continue  # another kind of file
                 existingRecord["Files"].append({"Rev": file["rev"], "Path": file["path"]})
         structCache[:] = (x for x in structCache if x["Path"] in curDirs or x not in children)  # delete ones that don't exist
+
     def _tagActivity(self, text):
         for act, pattern in self.ActivityTaggingTable.items():
             if re.search(pattern, text, re.IGNORECASE):
@@ -140,7 +141,11 @@ class DropboxService(ServiceBase):
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
         data = f.read()
-        act = GPXIO.Parse(data.decode("UTF-8"))
+        try:
+            strData = data.decode("UTF-8")
+        except:
+            strData = data.decode("ASCII")
+        act = GPXIO.Parse(strData)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
@@ -150,7 +155,6 @@ class DropboxService(ServiceBase):
         cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
         if cache is None:
             cache = {"ExternalID": svcRec["ExternalID"], "Structure": [], "Activities": {}}
- 
         self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
