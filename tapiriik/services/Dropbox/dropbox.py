@@ -141,11 +141,7 @@ class DropboxService(ServiceBase):
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
         data = f.read()
-        try:
-            strData = data.decode("UTF-8")
-        except:
-            strData = data.decode("ASCII")
-        act = GPXIO.Parse(strData)
+        act = GPXIO.Parse(data)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
@@ -211,7 +207,7 @@ class DropboxService(ServiceBase):
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
         fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
         try:
-            metadata = dbcl.put_file(fpath, data)
+            metadata = dbcl.put_file(fpath, data.encode("UTF-8"))
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
         # fake this in so we don't immediately redownload the activity next time 'round
