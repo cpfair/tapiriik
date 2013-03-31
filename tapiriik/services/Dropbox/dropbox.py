@@ -140,7 +140,7 @@ class DropboxService(ServiceBase):
             f, metadata = dbcl.get_file_and_metadata(path)
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
-        act = GPXIO.Parse(f)
+        act = GPXIO.Parse(f.read())
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
