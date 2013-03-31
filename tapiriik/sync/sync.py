@@ -167,6 +167,7 @@ class Sync:
 
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
+            downloadedAct = None
             act = None
             for dlSvcUploadRec in activity.UploadedTo:
 
@@ -174,7 +175,7 @@ class Sync:
                 dlSvc = Service.FromID(dlSvcRecord["Service"])
                 print("\t from " + dlSvc.ID)
                 try:
-                    act = dlSvc.DownloadActivity(dlSvcRecord, activity)
+                    downloadedAct = dlSvc.DownloadActivity(dlSvcRecord, activity)
                 except APIAuthorizationException as e:
                     tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
@@ -186,15 +187,14 @@ class Sync:
                     continue
                 else:
                     if act.Exclude:
-                            act = None
                             continue  # try again
                     try:
                         act.CheckSanity()
                     except:
                         tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
-                        act = None
                         continue
                     else:
+                        act = downloadedAct
                         break  # succesfully got the activity + passed sanity checks, can stop now
 
             if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
