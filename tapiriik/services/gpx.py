@@ -13,17 +13,15 @@ class GPXIO:
         "gpxext": "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
     }
 
-    def Parse(gpxData):
+    def Parse(gpxString):
         ns = copy.deepcopy(GPXIO.Namespaces)
         ns["gpx"] = ns[None]
         del ns[None]
         act = Activity()
         act.Distance = None
 
-        try:
-            root = etree.parse(gpxData)
-        except:
-            root = etree.fromstring(gpxData)
+
+        root = etree.fromstring(gpxString)
         xmeta = root.find("gpx:metadata", namespaces=ns)
         if xmeta is not None:
             xname = xmeta.find("gpx:name", namespaces=ns)

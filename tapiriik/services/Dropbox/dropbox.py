@@ -141,7 +141,13 @@ class DropboxService(ServiceBase):
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
         data = f.read()
-        act = GPXIO.Parse(data)
+
+        try:
+            dataStr = str(data, 'UTF-8')
+        except:
+            dataStr = str(data, 'latin_1').encode("UTF-8")
+
+        act = GPXIO.Parse(dataStr)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
