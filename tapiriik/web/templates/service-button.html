@@ -7,6 +7,9 @@
 			<div class="button">
 				<div class="icon"><img lgsrc="{{ STATIC_URL }}img/services/{{ provider.ID }}_l.png" src="{{ STATIC_URL }}img/services/{{ provider.ID }}.png" alt="{{ provider.DisplayName }}"/>Sync with {{ provider.DisplayName }}</div>
 			</div>
+		{% if not user or provider.ID not in user.ConnectedServices|svc_ids %}
+		</a>
+		{% endif %}
 			<div class="controls">
 				<div class="controlsInner">
 					{% if provider.ID in user.ConnectedServices|svc_ids %}
@@ -44,8 +47,5 @@
 					{% endif %}
 				</div>
 			</div>
-		{% if not user or provider.ID not in user.ConnectedServices|svc_ids %}
-		</a>
-		{% endif %}
 	</div>
 </div>

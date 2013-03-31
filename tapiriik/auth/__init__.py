@@ -121,4 +121,5 @@ class SessionAuth:
             req.user = None
         else:
             req.user = db.users.find_one({"_id": ObjectId(userId)})
-            req.user["Substitute"] = isSU
+            if req.user is not None:
+                req.user["Substitute"] = isSU

@@ -364,13 +364,15 @@ a img {
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
 	overflow:hidden;
+	max-height:25px;
 	height:25px;
-	vertical-align: top;
+	display: block;
 }
 
 .service .controls .row {
 	position: relative;
 	height:25px;
+	max-height:25px;
 	overflow: hidden;
 }
 .service .controls a {
@@ -540,7 +542,7 @@ a img {
 	color:white;
 	padding-left:19px;
 	background-repeat:no-repeat;
-	background-position: center left;
+	background-position: 0px 5px;
 }
 
 .service .control#login {
