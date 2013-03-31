@@ -48,6 +48,7 @@ class Sync:
         return False
 
     def _accumulateActivities(svc, svcActivities, activityList):
+        from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
             if len(act.Waypoints) > 0:
@@ -65,9 +66,11 @@ class Sync:
                 if act.TZ is not None and existElsewhere[0].TZ is None:
                     existElsewhere[0].TZ = act.TZ
                     existElsewhere[0].DefineTZ()
-                if act.StartTime is not datetime.min and existElsewhere[0].StartTime is datetime.min:
-                    existElsewhere[0].StartTime = act.StartTime
-                    existElsewhere[0].EndTime = act.EndTime
+                existElsewhere[0].StartTime = existElsewhere[0].StartTime if existElsewhere[0].StartTime is not None else act.StartTime
+                existElsewhere[0].EndTime = existElsewhere[0].EndTime if existElsewhere[0].EndTime is not None else act.EndTime
+                existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
+                existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
+                existElsewhere[0].Type = existElsewhere[0].Type if existElsewhere[0].Type != ActivityType.Unknown else act.Type
 
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
