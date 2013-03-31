@@ -205,6 +205,8 @@ class DropboxService(ServiceBase):
 
         dbcl = self._getClient(serviceRecord)
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
+        if activity.Name is not None and len(activity.Name) > 0:
+            fname = activity.Name + "_" + fname
         fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
         try:
             metadata = dbcl.put_file(fpath, data.encode("UTF-8"))
