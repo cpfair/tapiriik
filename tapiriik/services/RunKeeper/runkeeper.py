@@ -114,6 +114,8 @@ class RunKeeperService(ServiceBase):
 
         activities = []
         for act in allItems:
+            if "has_path" in act and act["has_path"] is False:
+                continue
             activity = self._populateActivity(act)
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 continue  # these activites are corrupted
