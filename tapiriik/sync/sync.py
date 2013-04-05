@@ -48,18 +48,28 @@ class Sync:
         return False
 
     def _accumulateActivities(svc, svcActivities, activityList):
+        activityStartLeewaySeconds = 60 * 3
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
             if len(act.Waypoints) > 0:
                 act.EnsureTZ()
-            existElsewhere = [x for x in activityList if x.UID == act.UID or
-                              ( not Sync._fromSameService(x, act) and
-                                x.StartTime is not None and
+            existElsewhere = [x for x in activityList if x.UID == act.UID
+                              or  # check to see if the activities are reasonably close together to be considered duplicate
+                              (x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
-                               abs((act.StartTime-x.StartTime).total_seconds()) < 60 * 3
+                               abs((act.StartTime-x.StartTime).total_seconds()) < activityStartLeewaySeconds
+                              )
+                              or  # try comparing the time as if it were TZ-aware and in the expected TZ (this won't actually change the value of the times being compared)
+                              (x.StartTime is not None and
+                               act.StartTime is not None and
+                               (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
+                               (
+                                   (act.StartTime.tzinfo is not None and abs((act.StartTime-act.StartTime.tzinfo.localize(x.StartTime)).total_seconds()) < activityStartLeewaySeconds) or
+                                   (x.StartTime.tzinfo is not None and abs((x.StartTime-x.StartTime.tzinfo.localize(act.StartTime)).total_seconds()) < activityStartLeewaySeconds)
                                )
+                              )
                               ]
             if len(existElsewhere) > 0:
                 # we don't merge the exclude values here, since at this stage the services have the option of just not returning those activities
