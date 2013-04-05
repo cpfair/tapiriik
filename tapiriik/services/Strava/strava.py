@@ -8,7 +8,7 @@ from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
 import json
-
+import os
 
 class StravaService(ServiceBase):
     ID = "strava"
@@ -155,6 +155,7 @@ class StravaService(ServiceBase):
                             ])
         req = {"token": serviceRecord["Authorization"]["Token"],
                 "type": "json",
+                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"],
                 "data_fields": fields,
                 "data": points,
                 "activity_name": activity.Name,
