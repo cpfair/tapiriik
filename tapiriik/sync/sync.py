@@ -65,10 +65,7 @@ class Sync:
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
-                               (
-                                   (act.StartTime.tzinfo is not None and abs((act.StartTime-act.StartTime.tzinfo.localize(x.StartTime)).total_seconds()) < activityStartLeewaySeconds) or
-                                   (x.StartTime.tzinfo is not None and abs((x.StartTime-x.StartTime.tzinfo.localize(act.StartTime)).total_seconds()) < activityStartLeewaySeconds)
-                               )
+                               abs((act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)).total_seconds()) < activityStartLeewaySeconds
                               )
                               ]
             if len(existElsewhere) > 0:
