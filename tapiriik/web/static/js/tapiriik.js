@@ -442,7 +442,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	
 	var icon;
 	if (serviceID != "tapiriik"){
-		var origIcon = $(".service#"+serviceID+" .icon img");
+		var origIcon = $(".service#"+serviceID+" .icon img").first();
 		icon = origIcon.clone().attr("src", origIcon.attr("lgsrc"));
 	} else {
 		icon = $("<div>").addClass("logo inline").text("tapiriik");
