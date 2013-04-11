@@ -20,7 +20,6 @@ class GPXIO:
         act = Activity()
         act.Distance = None
 
-
         try:
             root = etree.XML(gpxData)
         except:
@@ -84,7 +83,6 @@ class GPXIO:
         act.CalculateUID()
         return act
 
-
     def Dump(activity):
         GPXTPX = "{" + GPXIO.Namespaces["gpxtpx"] + "}"
         root = etree.Element("gpx", nsmap=GPXIO.Namespaces)
@@ -99,7 +97,7 @@ class GPXIO:
         trkseg = etree.SubElement(trk, "trkseg")
         inPause = False
         for wp in activity.Waypoints:
-            if wp.Location.Latitude is None or wp.Location.Longitude is None:
+            if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 continue  # drop the point
             if wp.Type == WaypointType.Pause:
                 if inPause:
