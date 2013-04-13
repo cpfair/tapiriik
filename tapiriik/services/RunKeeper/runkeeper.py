@@ -14,7 +14,7 @@ class RunKeeperService(ServiceBase):
     ID = "runkeeper"
     DisplayName = "RunKeeper"
     AuthenticationType = ServiceAuthenticationType.OAuth
-    UserAuthorizationURL = None
+    UserProfileURL = "http://runkeeper.com/user/{0}/profile"
 
     _activityMappings = {"Running": ActivityType.Running,
                          "Cycling": ActivityType.Cycling,

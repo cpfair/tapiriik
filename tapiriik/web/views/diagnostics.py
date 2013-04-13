@@ -1,5 +1,4 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from tapiriik.database import db
 from tapiriik.sync import Sync
@@ -50,14 +49,31 @@ def diag_dashboard(req):
 @diag_requireAuth
 def diag_user(req, user):
     userRec = db.users.find_one({"_id": ObjectId(user)})
+    delta = False
     if "sync" in req.POST:
         Sync.ScheduleImmediateSync(userRec, req.POST["sync"] == "Full")
-        userRec = db.users.find_one({"_id": ObjectId(user)})  # reload
+        delta = True
     elif "unlock" in req.POST:
         db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationWorker": None}})
+        delta = True
     elif "substitute" in req.POST:
         req.session["substituteUserid"] = user
         return redirect("dashboard")
+    elif "svc_unlink" in req.POST:
+        from tapiriik.services import Service
+        from tapiriik.auth import User
+        svcRec = Service.GetServiceRecordByID(req.POST["id"])
+        try:
+            Service.DeleteServiceRecord(svcRec)
+        except:
+            pass
+        try:
+            User.DisconnectService(svcRec)
+        except:
+            pass
+        delta = True
+    if delta:
+        return redirect("diagnostics_user", user=user)
     return render(req, "diag/user.html", {"user": userRec})
 
 @diag_requireAuth

@@ -18,6 +18,7 @@ class EndomondoService(ServiceBase):
     ID = "endomondo"
     DisplayName = "Endomondo"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
+    UserProfileURL = "http://www.endomondo.com/profile/{0}"
 
     _activityMappings = {
         0:  ActivityType.Running,

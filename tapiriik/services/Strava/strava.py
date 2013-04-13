@@ -14,6 +14,7 @@ class StravaService(ServiceBase):
     ID = "strava"
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
+    UserProfileURL = "http://www.strava.com/athletes/{0}"
 
     SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True

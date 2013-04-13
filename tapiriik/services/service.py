@@ -1,6 +1,8 @@
 from tapiriik.services import *
 from tapiriik.database import db
+from bson.objectid import ObjectId
 import copy
+
 
 class Service:
     _serviceMappings = {"runkeeper": RunKeeper,
@@ -27,7 +29,7 @@ class Service:
         return db.connections.find_one({"Service": service.ID, "Authorization": authDetails})
 
     def GetServiceRecordByID(uid):
-        return db.connections.find_one({"_id": uid})
+        return db.connections.find_one({"_id": ObjectId(uid)})
 
     def EnsureServiceRecordWithAuth(service, uid, authDetails):
         serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})

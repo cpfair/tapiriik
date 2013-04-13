@@ -8,6 +8,7 @@ class ServiceBase:
     Configurable = RequiresConfiguration = False  # requiresConfiguration means no sync until user configures
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
     UserAuthorizationURL = None
+    UserProfileURL = None
     AuthenticationNoFrame = False
     ConfigurationDefaults = {}
 

@@ -10,3 +10,8 @@ def meters_to_kms(value):
 @register.filter(name='dict_get')
 def dict_get(dict, key):
     return dict.get(key, None)
+
+
+@register.filter(name='format')
+def format(format, var):
+    return format.format(var)
