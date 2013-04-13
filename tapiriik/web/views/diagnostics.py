@@ -76,12 +76,15 @@ def diag_user(req, user):
         return redirect("diagnostics_user", user=user)
     return render(req, "diag/user.html", {"user": userRec})
 
+
 @diag_requireAuth
 def diag_unsu(req):
     if "substituteUserid" in req.session:
+        user = req.session["substituteUserid"]
         del req.session["substituteUserid"]
-    return redirect("dashboard")
-
+        return redirect("diagnostics_user", user=user)
+    else:
+        return redirect("dashboard")
 
 
 def diag_login(req):
