@@ -99,6 +99,7 @@ class StravaService(ServiceBase):
         if "error" in ridedata:
             raise APIException("Strava error " + ridedata["error"])
 
+        hasLocation = False
         waypointCt = len(ridedata["time"])
         for idx in range(0, waypointCt - 1):
             latlng = ridedata["latlng"][idx]
@@ -109,6 +110,8 @@ class StravaService(ServiceBase):
             if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
                 waypoint.Location.Longitude = None
                 waypoint.Location.Latitude = None
+            else:  # strava only returns 0 as invalid coords, so no need to check for null
+                hasLocation = True
             if hasAltitude:
                 waypoint.Location.Altitude = float(ridedata["altitude"][idx])
 
@@ -132,7 +135,8 @@ class StravaService(ServiceBase):
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx] if "watts" in ridedata else ridedata["watts_calc"][idx]
             activity.Waypoints.append(waypoint)
-
+        if not hasLocation:
+            activity.Exclude = True
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
