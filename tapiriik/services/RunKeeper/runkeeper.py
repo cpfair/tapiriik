@@ -40,7 +40,7 @@ class RunKeeperService(ServiceBase):
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
 
-    def RetrieveAuthorizationToken(self, req):
+    def RetrieveAuthorizationToken(self, req, level):
         from tapiriik.services import Service
 
         #  might consider a real OAuth client
