@@ -28,6 +28,9 @@ class User:
     def GetConnectionRecord(user, svcId):
         return db.connections.find_one({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"] if x["Service"] == svcId]}})
 
+    def SetEmail(user, email):
+        db.users.update({"_id": ObjectId(user["_id"])}, {"$set": {"Email": email}})
+
     def AssociatePayment(user, payment):
         db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Payments": payment}}, multi=True)  # deassociate payment ids from other accounts that may be using them
         db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
@@ -53,13 +56,15 @@ class User:
                 user["Payments"] += existingUser["Payments"]
             if "FlowExceptions" in existingUser:
                 user["FlowExceptions"] += existingUser["FlowExceptions"]
+            user["Email"] = user["Email"] if "Email" in user and user["Email"] is not None else (existingUser["Email"] if "Email" in existingUser else None)
+            user["SyncErrorCount"] = max(user["SyncErrorCount"] if "SyncErrorCount" in user and user["SyncErrorCount"] is not None else 0, existingUser["SyncErrorCount"] if "SyncErrorCount" in existingUser and existingUser["SyncErrorCount"] is not None else 0)
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
             if serviceRecord["_id"] not in [x["ID"] for x in user["ConnectedServices"]]:
                 user["ConnectedServices"].append({"Service": serviceRecord["Service"], "ID": serviceRecord["_id"]})
                 delta = True
-        db.users.update({"_id": user["_id"]}, {"$set": {"ConnectedServices": user["ConnectedServices"]}})
+        db.users.update({"_id": user["_id"]}, user)
         if delta or ("SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
             Sync.SetNextSyncIsExhaustive(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
             if "SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0:

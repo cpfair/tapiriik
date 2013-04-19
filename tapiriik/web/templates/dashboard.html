@@ -24,7 +24,27 @@
 			{% endfor %}
 			</div>
 		</div>
+	{% if user.SyncErrorCount > 0 %}
+	<hr/>
+	<h2>Oh no!</h2>
+	<p>
+		Looks like there were some problems synchronizing your activities! <b>Nothing to be worried about, though</b>, I'll look what went wrong soon.</p>
+		{% if not user.Email %}
+		<form action="account/setemail" method="POST" style="text-align:center;">
+			<input type="email" name="email" placeholder="your@email.com" style="text-align:center;"/><br/>
+			<button type="submit">Save my email (optional)</button>
+			{% csrf_token %}
+		</form>
+		<p><b>If you want to make my job easier</b>, you can enter your email here to have it associated with your account so I can contact you if needed. <b>This is entirely optional.</b>
+		{% else %}
+			<p><b>Your email has been associated with this account</b> - if I need any information from you to fix these errors, I'll drop you a line.</p>
+		{% endif %}
+
+	</p>
+	{% comment %} It's entirely possible that the synchronization could be run again after an error - and it will with auto-sync, but it makes more sense that errors need to be resolved before continuing {% endcomment %}
+	{% else %}
 	<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
+	{% endif %}
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}
