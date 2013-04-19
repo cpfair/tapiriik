@@ -42,9 +42,9 @@
 
 	</p>
 	{% comment %} It's entirely possible that the synchronization could be run again after an error - and it will with auto-sync, but it makes more sense that errors need to be resolved before continuing {% endcomment %}
-	{% else %}
-	<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
 	{% endif %}
+	<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
+	
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}
