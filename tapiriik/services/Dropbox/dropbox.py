@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
+from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
@@ -16,7 +16,7 @@ class DropboxService(ServiceBase):
     DisplayName = "Dropbox"
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
-    Configurable = RequiresConfiguration = True
+    Configurable = True
 
     ActivityTaggingTable = {  # earlier items have precedence over
         ActivityType.Running: "run",
@@ -42,12 +42,13 @@ class DropboxService(ServiceBase):
     SupportedActivities = ActivityTaggingTable.keys()
 
     def __init__(self):
-        self.DBSess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
-        self.DBCl = client.DropboxClient(self.DBSess)
         self.OutstandingReqTokens = {}
 
     def _getClient(self, serviceRec):
-        sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "dropbox")
+        if serviceRec["Authorization"]["Full"]:
+            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
+        else:
+            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
         sess.set_token(serviceRec["Authorization"]["Key"], serviceRec["Authorization"]["Secret"])
         return client.DropboxClient(sess)
 
@@ -55,28 +56,39 @@ class DropboxService(ServiceBase):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "dropbox"})
         pass
 
-    def GenerateUserAuthorizationURL(self):
-        reqToken = self.DBSess.obtain_request_token()
+    def RequiresConfiguration(self, svcRec):
+        return svcRec["Authorization"]["Full"]
+
+    def GenerateUserAuthorizationURL(self, level=None):
+        full = level == "full"
+        if full:
+            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
+        else:
+            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
+
+        reqToken = sess.obtain_request_token()
         self.OutstandingReqTokens[reqToken.key] = reqToken
-        return self.DBSess.build_authorize_url(reqToken, oauth_callback=WEB_ROOT + reverse("oauth_return", kwargs={"service": "dropbox"}))
+        return sess.build_authorize_url(reqToken, oauth_callback=WEB_ROOT + reverse("oauth_return", kwargs={"service": "dropbox", "level": "full" if full else "normal"}))
 
     def _getUserId(self, serviceRec):
         info = self._getClient(serviceRec).account_info()
         return info['uid']
 
-    def RetrieveAuthorizationToken(self, req):
+    def RetrieveAuthorizationToken(self, req, level):
         from tapiriik.services import Service
         tokenKey = req.GET["oauth_token"]
         token = self.OutstandingReqTokens[tokenKey]
         del self.OutstandingReqTokens[tokenKey]
-        accessToken = self.DBSess.obtain_access_token(token)
-
-        existingRecord = Service.GetServiceRecordWithAuthDetails(self, {"Token": accessToken.key})
-        if existingRecord is None:
-            uid = self._getUserId({"Authorization": {"Key": accessToken.key, "Secret": accessToken.secret}})  # meh
+        full = level == "full"
+        if full:
+            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
         else:
-            uid = existingRecord["ExternalID"]
-        return (uid, {"Key": accessToken.key, "Secret": accessToken.secret})
+            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
+
+        accessToken = sess.obtain_access_token(token)
+
+        uid = int(req.GET["uid"])  # duh!
+        return (uid, {"Key": accessToken.key, "Secret": accessToken.secret, "Full": full})
 
     def RevokeAuthorization(self, serviceRecord):
         pass  # :(
@@ -146,10 +158,15 @@ class DropboxService(ServiceBase):
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
         dbcl = self._getClient(svcRec)
-        syncRoot = svcRec["Config"]["SyncRoot"]
+        if not svcRec["Authorization"]["Full"]:
+            syncRoot = "/"
+        else:
+            syncRoot = svcRec["Config"]["SyncRoot"] 
         cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
         if cache is None:
             cache = {"ExternalID": svcRec["ExternalID"], "Structure": [], "Activities": {}}
+        if "Structure" not in cache:
+            cache["Structure"] = []
         self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
@@ -157,7 +174,11 @@ class DropboxService(ServiceBase):
         for dir in cache["Structure"]:
             for file in dir["Files"]:
                 path = file["Path"]
-                relPath = path.replace(syncRoot, "")
+                if svcRec["Authorization"]["Full"]:
+                    relPath = path.replace(syncRoot, "", 1)
+                else:
+                    relPath = path.replace("/Apps/tapiriik/", "", 1)  # dropbox api is meh api
+
                 existing = [(k, x) for k, x in cache["Activities"].items() if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
                 existing = existing[0] if existing else None
                 if existing is not None:
@@ -206,8 +227,13 @@ class DropboxService(ServiceBase):
         dbcl = self._getClient(serviceRecord)
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
         if activity.Name is not None and len(activity.Name) > 0:
-            fname = activity.Name + "_" + fname
-        fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
+            fname = activity.Name.replace("/", "_") + "_" + fname
+
+        if not serviceRecord["Authorization"]["Full"]:
+            fpath = "/" + fname
+        else:
+            fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
+
         try:
             metadata = dbcl.put_file(fpath, data.encode("UTF-8"))
         except rest.ErrorResponse as e:

@@ -64,7 +64,7 @@ tapiriik.Init = function(){
 
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
-			if (tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].Configurable && !tapiriik.ServiceInfo[i].Configured){
+			if (tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].RequiresConfiguration && !tapiriik.ServiceInfo[i].Configured){
 				tapiriik.ActivateSetupDialog(i);
 				break; // we can nag them again if there's >1
 			}
@@ -98,13 +98,17 @@ tapiriik.AddressChanged=function(){
 		return;
 	} else if (components[0]=="configure") {
 		if (components[1]=="dropbox" && components[2]=="setup"){
-			if (unchangedDepth<=2) {
-				tapiriik.DropboxBrowserPath = tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
-				$.address.value("configure/dropbox/setup" + tapiriik.DropboxBrowserPath); // init directory, meh
-				tapiriik.OpenDropboxConfigDialog();
+			if (tapiriik.ServiceInfo.dropbox.AccessLevel == "full"){
+				if (unchangedDepth<=2) {
+					tapiriik.DropboxBrowserPath = tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
+					$.address.value("configure/dropbox/setup" + tapiriik.DropboxBrowserPath); // init directory, meh
+					tapiriik.OpenDropboxConfigDialog();
+				} else {
+					tapiriik.DropboxBrowserPath = "/" + components.slice(3).join("/");
+					tapiriik.PopulateDropboxBrowser();
+				}
 			} else {
-				tapiriik.DropboxBrowserPath = "/" + components.slice(3).join("/");
-				tapiriik.PopulateDropboxBrowser();
+				tapiriik.OpenDropboxConfigDialog();
 			}
 			return;
 		}
@@ -230,10 +234,6 @@ tapiriik.ActivateConfigDialog = function(svcId){
 };
 
 tapiriik.ActivateSetupDialog = function(svcId){
-	if (svcId == "dropbox" && !tapiriik.ServiceInfo.dropbox.Configured) {
-		$.address.value("dropbox/info");
-		return;
-	}
 	$.address.value("configure/" + svcId + "/setup");
 };
 
@@ -296,7 +296,12 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 
 
 tapiriik.OpenDropboxConfigDialog = function(){
-	var configPanel = $("<form class=\"dropboxConfig\"><h1>Set Up Dropbox Sync</h1><label>Select sync folder</label><div id=\"folderList\"></div><div id=\"folderStackOuter\">Will sync to <span id=\"folderStack\"></span></div><input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
+	var configPanel = $("<form class=\"dropboxConfig\"><h1>Set Up Dropbox Sync</h1>\
+		<label>Select sync folder</label><div id=\"folderList\"></div>\
+		<div id=\"folderStackOuter\"><span id=\"syncLocationPreamble\">Will sync to</span> <span id=\"folderStack\"></span></div>\
+		<div id=\"reauth_up\">Want to sync to a different location? You'll need to <a href=\"/auth/redirect/dropbox/full\">authorize tapiriik to access your entire Dropbpx folder</a>.</div>\
+		<div id=\"reauth_down\">Don't want tapiriik to have full access to your Dropbox? <a href=\"/auth/redirect/dropbox\">Restrict tapiriik to <tt>/Apps/tapiriik/</tt></a>.</div>\
+		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
 	if (tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
@@ -304,7 +309,19 @@ tapiriik.OpenDropboxConfigDialog = function(){
 	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
 	tapiriik.CreateServiceDialog("dropbox", configPanel);
 	tapiriik.DropboxLastDepth = 1;
-	tapiriik.PopulateDropboxBrowser();
+	if (tapiriik.ServiceInfo.dropbox.AccessLevel == "full"){
+		tapiriik.PopulateDropboxBrowser();
+		$("#reauth_up", configPanel).remove();
+	} else {
+		$("#reauth_down", configPanel).remove();
+		$("label", configPanel).first().remove(); //meh
+		$("#syncLocationPreamble", configPanel).html("<label>Activities sync to:</label>"); // more meh
+		$("#folderList", configPanel).remove();
+		var fstack = $("#folderStack", configPanel);
+		$("<a class=\"folder inactive\"/>").text("/").appendTo(fstack);
+		$("<a class=\"folder inactive\"/>").text("Apps").appendTo(fstack);
+		$("<a class=\"folder inactive\"/>").text("tapiriik").appendTo(fstack);
+	}
 };
 
 tapiriik.OpenDropboxInfoDialog = function(){

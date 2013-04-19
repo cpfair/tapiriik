@@ -5,7 +5,11 @@ class ServiceAuthenticationType:
 
 class ServiceBase:
     ID = AuthenticationType = DisplayName = SupportedActivities = None
-    Configurable = RequiresConfiguration = False  # requiresConfiguration means no sync until user configures
+    Configurable = False
+
+    def RequiresConfiguration(self, serviceRecord):  # this needs to be a property since Dropbox needs to decide at runtime
+        return False  # true means no sync until user configures
+
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
     UserAuthorizationURL = None
     UserProfileURL = None

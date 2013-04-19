@@ -15,9 +15,9 @@
 			{% for connection in user.ConnectedServices|svc_populate_conns %}
 			{% with svc=connection|svc_conn_to_provider %}
 				{% include "service-button.html" with provider=svc connection=connection %}
-				{% if svc.RequiresConfiguration and not connection.Config %}
+				{% if svc.Configurable %}
 					<noscript>
-					<p><a href="/configure/{{ connection.Service }}">You must configure {{ svc.DisplayName }} before first use</a></p>
+					<p><a href="/configure/{{ connection.Service }}">Configure {{ svc.DisplayName }} &raquo;</a></p>
 					</noscript>
 				{% endif %}
 			{% endwith %}

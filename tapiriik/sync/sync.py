@@ -155,7 +155,12 @@ class Sync:
             else:
                 knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
                 if len(knownOrigin) > 0:
-                    activity.Origin = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]][0]
+                    connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]]
+                    if len(connectedOrigins) > 0:  # they might have disconnected it
+                        activity.Origin = connectedOrigins[0]
+                    else:
+                        activity.Origin = knownOrigin[0]["Origin"]  # I have it on good authority that this will work
+
             print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
 
         totalActivities = len(activities)
@@ -240,7 +245,7 @@ class Sync:
                     continue
 
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
-                if destSvc.RequiresConfiguration and not Service.HasConfiguration(destinationSvcRecord):
+                if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
                     continue  # not configured, so we won't even try
                 try:
                     print("\t\tUploading to " + destSvc.ID)

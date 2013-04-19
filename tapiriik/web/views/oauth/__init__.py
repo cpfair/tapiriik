@@ -7,17 +7,17 @@ from tapiriik.auth import User
 import json
 
 
-def authredirect(req, service):
+def authredirect(req, service, level=None):
     svc = Service.FromID(service)
-    return redirect(svc.GenerateUserAuthorizationURL())
+    return redirect(svc.GenerateUserAuthorizationURL(level))
 
 
-def authreturn(req, service):
+def authreturn(req, service, level=None):
     if ("error" in req.GET or "not_approved" in req.GET):
         success = False
     else:
         svc = Service.FromID(service)
-        uid, authData = svc.RetrieveAuthorizationToken(req)
+        uid, authData = svc.RetrieveAuthorizationToken(req, level)
         serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData)
 
         # auth by this service connection

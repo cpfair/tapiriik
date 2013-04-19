@@ -28,9 +28,12 @@ def js_bridge(req):
             "AuthorizationURL": svc.UserAuthorizationURL,
             "NoFrame": svc.AuthenticationNoFrame,
             "Configurable": svc.Configurable,
-            "RequiresConfiguration": svc.RequiresConfiguration
+            "RequiresConfiguration": False  # by default
         }
         if svc.Configurable and svcRec:
+            if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
+                info["AccessLevel"] = "full" if svcRec["Authorization"]["Full"] else "normal"
+            info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
             info["Configured"] = Service.HasConfiguration(svcRec)
             info["Config"] = Service.GetConfiguration(svcRec)
         info["BlockFlowTo"] = []

@@ -644,6 +644,12 @@ form.dropboxConfig {
 	margin-right:5px;
 	margin-bottom:5px;
 }
+#folderStack a.inactive {
+	cursor:default;
+}
+#folderStack a.inactive:hover  {
+	background-color: #dbf3ff;
+}
 #folderList li a:hover, #folderStack a:hover {
 	background-color: #dbf3ff;
 }
