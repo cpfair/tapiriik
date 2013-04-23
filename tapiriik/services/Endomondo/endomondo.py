@@ -122,7 +122,8 @@ class EndomondoService(ServiceBase):
         #;
         # alt;
         # hr;
-        wptsWithLocation = 0
+        wptsWithLocation = False
+        wptsWithNonZeroAltitude = False
         rows = recordText.split("\n")
         for row in rows:
             if row == "OK" or len(row) == 0:
@@ -152,15 +153,22 @@ class EndomondoService(ServiceBase):
                 if split[2] != "":
                     wp.Location = Location(float(split[2]), float(split[3]), None)
                     if wp.Location.Latitude is not None and wp.Location.Latitude is not None:
-                        wptsWithLocation += 1
-                    if split[6] != "" and split[6] != "0":
+                        wptsWithLocation = True
+                    if split[6] != "":
                         wp.Location.Altitude = float(split[6])  # why this is missing: who knows?
+                        if wp.Location.Altitude != 0:
+                            wptsWithNonZeroAltitude = True
 
                 if split[7] != "":
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
-        if wptsWithLocation > 0:
+
+        if wptsWithLocation:
             activity.EnsureTZ()
+            if not wptsWithNonZeroAltitude:  # do this here so, should the activity run near sea level, altitude data won't be spotty
+                for x in activity.Waypoints:  # clear waypoints of altitude data if all of them were logged at 0m (invalid)
+                    if x.Location is not None:
+                        x.Location.Altitude = None
         else:
             activity.Waypoints = []  # practically speaking
 
