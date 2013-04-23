@@ -153,7 +153,7 @@ class EndomondoService(ServiceBase):
                     wp.Location = Location(float(split[2]), float(split[3]), None)
                     if wp.Location.Latitude is not None and wp.Location.Latitude is not None:
                         wptsWithLocation += 1
-                    if split[6] != "":
+                    if split[6] != "" and split[6] != "0":
                         wp.Location.Altitude = float(split[6])  # why this is missing: who knows?
 
                 if split[7] != "":
