@@ -165,7 +165,7 @@ class Activity:
                 pointsWithoutLocation += 1
         if pointsWithoutLocation == len(self.Waypoints):
             raise ValueError("No points have location")
-        if altLow is not None and altLow == altHigh:
+        if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
     def __str__(self):
