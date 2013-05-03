@@ -38,7 +38,7 @@ tapiriik.Init = function(){
 	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);
 	$(".service a.configDialog").click(tapiriik.ConfigDialogLinkClicked);
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
-	
+
 	if (tapiriik.User !== undefined){
 		if (tapiriik.User.ConnectedServicesCount > 1){
 			tapiriik.UpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 60000);
@@ -169,7 +169,7 @@ tapiriik.OpenAuthDialog = function(svcId){
 	if (mode == "oauth"){
 		if (tapiriik.ServiceInfo[svcId].NoFrame){ // this should never happen, but in case someone curious tries the URL
 			window.location = tapiriik.ServiceInfo[svcId].AuthorizationURL;
-			contents = $("<div><h1>Weeeeee</h1>(redirecting you right now)</div>"); 
+			contents = $("<div><h1>Weeeeee</h1>(redirecting you right now)</div>");
 		} else {
 			contents = $("<iframe>").attr("src",tapiriik.ServiceInfo[svcId].AuthorizationURL).attr("id",svcId);
 		}
@@ -199,7 +199,7 @@ tapiriik.OpenDeauthDialog = function(svcId){
 				}});
 		return false;
 	});
-	
+
 	$("#cancel", form).click(function(){
 		history.back();
 	});
@@ -208,13 +208,16 @@ tapiriik.OpenDeauthDialog = function(svcId){
 };
 
 tapiriik.CreateDirectLoginForm = function(svcId){
-	var form = $("<form><div class=\"error\">There was a problem logging you in</div><label for=\"email\">Email</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><center><button type=\"submit\" >Log in</button></center></form>");
+	var form = $("<form><div class=\"error\">There was a problem logging you in</div><label for=\"email\">Email</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><span class=\"persist-controls\"><input type=\"checkbox\" id=\"persist\"/><label for=\"persist\">Save these details</label><br/></span><center><button type=\"submit\" >Log in</button></center></form>");
+	if (!tapiriik.ServiceInfo[svcId].UsesExtendedAuth){
+		$(".persist-controls",form).hide();
+	}
 	var loginPending = false;
 	form.bind("submit", function(){
 		if (loginPending) return false;
 		loginPending=true;
 		$("button",form).addClass("disabled");
-		$.post("/auth/login-ajax/"+svcId,{username:$("#email",form).val(),password:$("#password",form).val()}, function(data){
+		$.post("/auth/login-ajax/"+svcId,{username:$("#email",form).val(),password:$("#password",form).val(), persist:$("#persist",form).is(":checked")?"1":null}, function(data){
 			if (data.success) {
 				$.address.value("");
 				window.location.reload();
@@ -267,7 +270,7 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 				} else {
 					flowFlags.backward.push($(flags[i]).attr("service"));
 				}
-			}	
+			}
 		}
 		$.post("/configure/flow/save/"+svcId, {"flowFlags":JSON.stringify(flowFlags)}, function(){
 			$.address.value("");
@@ -437,7 +440,7 @@ tapiriik.CreateConfigPanel = function(serviceID, contents){
 
 	$(configTray).hide();
 	$(".service#"+serviceID+" .controls").slideUp(100, function(){
-		$(configTray).slideDown(200);		
+		$(configTray).slideDown(200);
 	});
 };
 
@@ -456,7 +459,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 		});
 		return;
 	}
-	
+
 	var icon;
 	if (serviceID != "tapiriik"){
 		var origIcon = $(".service#"+serviceID+" .icon img").first();
@@ -469,9 +472,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	var dialogWrap = $("<div>").addClass("dialogWrap").append(icon).append(popover).hide();
 	$(".contentWrap").append(dialogWrap);
 	$(".mainBlock").fadeOut(250, function(){
-		
 		$(dialogWrap).fadeIn();
-		
 	});
 };
 

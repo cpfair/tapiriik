@@ -31,13 +31,23 @@ class Service:
     def GetServiceRecordByID(uid):
         return db.connections.find_one({"_id": ObjectId(uid)})
 
-    def EnsureServiceRecordWithAuth(service, uid, authDetails):
+    def EnsureServiceRecordWithAuth(service, uid, authDetails, extendedAuthDetails=None, persistExtendedAuthDetails=False):
+        if persistExtendedAuthDetails and not service.RequiresExtendedAuthorizationDetails:
+            raise ValueError("Attempting to persist extended auth details on service that doesn't use them")
+        # think this entire block could be replaced with an upsert...
         serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
         if serviceRecord is None:
-            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails})
+            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None})
             serviceRecord = db.connections.find_one({"ExternalID": uid, "Service": service.ID})
-        if serviceRecord["Authorization"] != authDetails:
-            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails}})
+        elif serviceRecord["Authorization"] != authDetails or (serviceRecord["ExtendedAuthorization"] != extendedAuthDetails and persistExtendedAuthDetails):
+            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None}})
+
+        # if not persisted, these details are stored in the cache db so they don't get backed up
+        if service.RequiresExtendedAuthorizationDetails:
+            if not persistExtendedAuthDetails:
+                cachedb.extendedAuthDetails.update({"ID": serviceRecord["_id"]}, {"ID": serviceRecord["_id"], "ExtendedAuthorization": extendedAuthDetails}, upsert=True)
+            else:
+                cachedb.extendedAuthDetails.remove({"ID": serviceRecord["_id"]})
         return serviceRecord
 
     def DeleteServiceRecord(serviceRecord):

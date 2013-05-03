@@ -5,9 +5,10 @@ class ServiceAuthenticationType:
 
 class ServiceBase:
     ID = AuthenticationType = DisplayName = SupportedActivities = None
+    RequiresExtendedAuthorizationDetails = False
     Configurable = False
 
-    def RequiresConfiguration(self, serviceRecord):  # this needs to be a property since Dropbox needs to decide at runtime
+    def RequiresConfiguration(self, serviceRecord):  # this needs to be a pseudo-property since Dropbox needs to decide at runtime
         return False  # true means no sync until user configures
 
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
@@ -19,7 +20,7 @@ class ServiceBase:
     def WebInit(self):
         pass
 
-    def Authorize(self, email, password):
+    def Authorize(self, email, password, store=False):
         raise NotImplementedError
 
     def RevokeAuthorization(self, serviceRecord):

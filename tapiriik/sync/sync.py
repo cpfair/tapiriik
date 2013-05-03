@@ -1,4 +1,4 @@
-from tapiriik.database import db
+from tapiriik.database import db, cachedb
 from tapiriik.services import Service, APIException, APIAuthorizationException, ServiceException
 from datetime import datetime, timedelta
 import sys
@@ -118,6 +118,7 @@ class Sync:
         print ("Beginning sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
 
         serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
+        allExtendedAuthDetails = list(cachedb.extendedAuthDetails.find({"ID": {"$in": connectedServiceIds}}))
         activities = []
 
         excludedServices = []
@@ -128,6 +129,17 @@ class Sync:
             tempSyncErrors[conn["_id"]] = []
             conn["SyncErrors"] = []
             svc = Service.FromID(conn["Service"])
+
+            if svc.RequiresExtendedAuthorizationDetails:
+                if conn["ExtendedAuthorization"] is None:
+                    extAuthDetails = [x["ExtendedAuthorization"] for x in allExtendedAuthDetails if x["ID"] == conn["_id"]]
+                    if not len(extAuthDetails):
+                        print("No extended auth details for " + svc.ID)
+                        excludedServices.append(conn["_id"])
+                        continue
+                    # the connection never gets saved in full again, so we can sub these in here at no risk
+                    conn["ExtendedAuthorization"] = extAuthDetails[0]
+
             try:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
@@ -270,6 +282,8 @@ class Sync:
             db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": tempSyncErrors[conn["_id"]]}})
             allSyncErrors += tempSyncErrors[conn["_id"]]
 
+        # clear non-persisted extended auth details
+        cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
         # unlock the row
         db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors)}})
         print("Finished sync for " + str(user["_id"]) + " at " + datetime.now().ctime())

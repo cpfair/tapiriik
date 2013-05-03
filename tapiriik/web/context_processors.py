@@ -16,7 +16,7 @@ def config(req):
 
 def js_bridge(req):
     serviceInfo = {}
-    
+
     for svc in Service.List():
         if req.user is not None:
             svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
@@ -25,6 +25,7 @@ def js_bridge(req):
         info = {
             "DisplayName": svc.DisplayName,
             "AuthenticationType": svc.AuthenticationType,
+            "UsesExtendedAuth": svc.RequiresExtendedAuthorizationDetails,
             "AuthorizationURL": svc.UserAuthorizationURL,
             "NoFrame": svc.AuthenticationNoFrame,
             "Configurable": svc.Configurable,

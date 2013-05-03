@@ -22,9 +22,16 @@ def auth_login_ajax(req, service):
 
 def auth_do(req, service):
     svc = Service.FromID(service)
-    uid, authData = svc.Authorize(req.POST["username"], req.POST["password"])
+    from tapiriik.services.api import APIAuthorizationException
+    try:
+        if svc.RequiresExtendedAuthorizationDetails:
+            uid, authData, extendedAuthData = svc.Authorize(req.POST["username"], req.POST["password"])
+        else:
+            uid, authData = svc.Authorize(req.POST["username"], req.POST["password"])
+    except APIAuthorizationException:
+        return False
     if authData is not None:
-        serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData)
+        serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData, extendedAuthDetails=extendedAuthData if svc.RequiresExtendedAuthorizationDetails else None, persistExtendedAuthDetails=bool(req.POST.get("persist", None)))
         # auth by this service connection
         existingUser = User.AuthByService(serviceRecord)
         # only log us in as this different user in the case that we don't already have an account

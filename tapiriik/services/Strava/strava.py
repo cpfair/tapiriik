@@ -28,7 +28,7 @@ class StravaService(ServiceBase):
         params = {"email": email, "password": password}
         resp = requests.post("https://www.strava.com/api/v2/authentication/login", data=params)
         if resp.status_code != 200:
-            return (None, None)  # maybe raise an exception instead?
+            raise APIAuthorizationException("Invalid login")
         data = resp.json()
         return (data["athlete"]["id"], {"Token": data["token"]})
 

@@ -81,7 +81,7 @@ class EndomondoService(ServiceBase):
         resp = requests.get("https://api.mobile.endomondo.com/mobile/auth", params=params)
         print("response: " + resp.text + str(resp.status_code))
         if resp.text.strip() == "USER_UNKNOWN" or resp.text.strip() == "USER_EXISTS_PASSWORD_WRONG":
-            return (None, None)  # maybe raise an exception instead?
+            raise APIAuthorizationException("Invalid login")
         data = self._parseKVP(resp.text)
         return (data["userId"], {"AuthToken": data["authToken"], "SecureToken": data["secureToken"]})
 
