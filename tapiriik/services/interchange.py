@@ -24,7 +24,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=datetime.min, endTime=datetime.min, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -35,7 +35,7 @@ class Activity:
         self.Exclude = False
 
     def CalculateUID(self):
-        if self.StartTime is datetime.min:
+        if not self.StartTime:
             return  # don't even try
         csp = hashlib.new("md5")
         roundedStartTime = self.StartTime
@@ -49,9 +49,9 @@ class Activity:
         """ run localize() on all contained dates (doesn't change values) """
         if self.TZ is None:
             raise ValueError("TZ not set")
-        if self.StartTime.tzinfo is None and self.StartTime is not datetime.min:
+        if self.StartTime and self.StartTime.tzinfo is None:
             self.StartTime = self.TZ.localize(self.StartTime)
-        if self.EndTime.tzinfo is None and self.EndTime is not datetime.min:
+        if self.EndTime and self.EndTime.tzinfo is None:
             self.EndTime = self.TZ.localize(self.EndTime)
         for wp in self.Waypoints:
             if wp.Timestamp.tzinfo is None:
@@ -142,12 +142,11 @@ class Activity:
             raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedlingly long activity (distance)")
-        if self.StartTime and self.StartTime != datetime.min and self.EndTime and self.EndTime != datetime.min:
+        if self.StartTime and self.EndTime:
             # We can only do these checks if the activity has both start and end times (Dropbox)
             if (self.EndTime - self.StartTime).total_seconds() < 0:
                 raise ValueError("Event finishes before it starts")
-            if (self.EndTime - self.StartTime).total_seconds() == 0 and self.StartTime != datetime.min:
-                # the 2nd condition here is for Dropbox - which cheats and just fills in the UID
+            if (self.EndTime - self.StartTime).total_seconds() == 0:
                 raise ValueError("0-duration activity")
             if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
                 raise ValueError("Exceedlingly long activity (time)")
@@ -194,7 +193,7 @@ class WaypointType:
 
 
 class Waypoint:
-    def __init__(self, timestamp=datetime.min, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, temp=None):
+    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, temp=None):
         self.Timestamp = timestamp
         self.Location = location
         self.HR = hr
