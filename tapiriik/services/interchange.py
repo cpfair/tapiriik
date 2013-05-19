@@ -142,14 +142,15 @@ class Activity:
             raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedlingly long activity (distance)")
-        if (self.EndTime - self.StartTime).total_seconds() < 0:
-            raise ValueError("Event finishes before it starts")
-        if (self.EndTime - self.StartTime).total_seconds() == 0 and self.StartTime != datetime.min:
-            # the 2nd condition here is for Dropbox - which cheats and just fills in the UID
-            raise ValueError("0-duration activity")
-        if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
-            raise ValueError("Exceedlingly long activity (time)")
-
+        if self.StartTime and self.EndTime:
+            # We can only do these checks if the activity has both start and end times (Dropbox)
+            if (self.EndTime - self.StartTime).total_seconds() < 0:
+                raise ValueError("Event finishes before it starts")
+            if (self.EndTime - self.StartTime).total_seconds() == 0 and self.StartTime != datetime.min:
+                # the 2nd condition here is for Dropbox - which cheats and just fills in the UID
+                raise ValueError("0-duration activity")
+            if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
+                raise ValueError("Exceedlingly long activity (time)")
         altLow = None
         altHigh = None
         pointsWithoutLocation = 0

@@ -184,14 +184,16 @@ class DropboxService(ServiceBase):
                 if existing is not None:
                     existUID, existing = existing
                 if existing and existing["Rev"] == file["Rev"]:
-                    #  don't need entire activity loaded here, just UID
+                    # don't need entire activity loaded here, just UID
                     act = UploadedActivity()
                     act.UID = existUID
                     act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y %z")
+                    if "EndTime" in existing:  # some cached activities may not have this, it is not essential
+                        act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
                 else:
                     # get the full activity
                     act, rev = self._getActivity(dbcl, path)
-                    cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z")}
+                    cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 act.UploadedTo = [{"Connection": svcRec}]
                 tagRes = self._tagActivity(relPath)
                 act.DBPath = path
@@ -240,7 +242,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         # fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})
-        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": "/" + fname, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z")}
+        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": "/" + fname, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord["ExternalID"]}, cache)  # not upsert, hope the record exists at this time...
 
     def DeleteCachedData(self, serviceRecord):
