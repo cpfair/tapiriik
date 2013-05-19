@@ -142,7 +142,7 @@ class Activity:
             raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedlingly long activity (distance)")
-        if self.StartTime and self.EndTime:
+        if self.StartTime and self.StartTime != datetime.min and self.EndTime and self.EndTime != datetime.min:
             # We can only do these checks if the activity has both start and end times (Dropbox)
             if (self.EndTime - self.StartTime).total_seconds() < 0:
                 raise ValueError("Event finishes before it starts")
