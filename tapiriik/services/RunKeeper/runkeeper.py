@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET
+from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
