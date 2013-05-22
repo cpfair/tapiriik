@@ -86,7 +86,7 @@ class StravaService(ServiceBase):
 
             ct += 1
         if not AGGRESSIVE_CACHE:
-            cachedb.strava_cache.remove({"Owner": serviceRecord["ExternalID"], "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
+            cachedb.strava_cache.remove({"Owner": svcRecord["ExternalID"], "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities
 
     def DownloadActivity(self, svcRecord, activity):
