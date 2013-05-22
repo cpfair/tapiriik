@@ -138,8 +138,9 @@ class RunKeeperService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
-        if ridedata is None:
+        if AGGRESSIVE_CACHE:
+            ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
+        if not AGGRESSIVE_CACHE or ridedata is None:
             response = requests.get("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
@@ -147,7 +148,8 @@ class RunKeeperService(ServiceBase):
                 raise APIException("Unable to download activity " + activityID + " response " + str(response) + " " + response.text)
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord["ExternalID"]
-            cachedb.rk_activity_cache.insert(ridedata)
+            if AGGRESSIVE_CACHE:
+                cachedb.rk_activity_cache.insert(ridedata)
 
         self._populateActivityWaypoints(ridedata, activity)
 

@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT
+from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
@@ -176,6 +176,9 @@ class EndomondoService(ServiceBase):
 
         activities = []
         earliestDate = None
+        earliestFirstPageDate = None
+        paged = False
+
         while True:
             before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45, "before": before}
@@ -204,10 +207,13 @@ class EndomondoService(ServiceBase):
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
-                    cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": self._downloadRawTrackRecord(serviceRecord, act["id"])}
-                    cachedb.endomondo_activity_cache.insert(cachedTrackData)
-
-                self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
+                    data = self._downloadRawTrackRecord(serviceRecord, act["id"])
+                    self._populateActivityFromTrackRecord(activity, data)
+                    if not paged or AGGRESSIVE_CACHE:  # Don't cache stuff that we won't need in the immediate future.
+                        cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
+                        cachedb.endomondo_activity_cache.insert(cachedTrackData)
+                else:
+                    self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
 
                 if len(activity.Waypoints) <= 1:
                     continue  # this can happen here if there are no timestamps/locations on the waypoints, or if only one waypoint is there (a weird condition)
@@ -218,9 +224,14 @@ class EndomondoService(ServiceBase):
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
                 activity.CalculateUID()
                 activities.append(activity)
-
+            if not paged:
+                earliestFirstPageDate = earliestDate
             if not exhaustive or ("more" in data and data["more"] is False):
                 break
+            else:
+                paged = True
+        if not AGGRESSIVE_CACHE:
+            cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"], "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):

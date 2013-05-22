@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT
+from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
@@ -42,24 +42,28 @@ class StravaService(ServiceBase):
         activities = []
         data = []
         offset = 0
+        pgSz = 50  # this is determined by the Strava API
+        earliestFirstPageDate = earliestDate = None
         while True:
             resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord["ExternalID"]))
             reqdata = resp.json()
             reqdata = reqdata["rides"]
             data += reqdata
-            if not exhaustive or len(reqdata) < 50:  # api returns 50 rows at a time, so once we start getting <50 we're done
+            if not exhaustive or len(reqdata) < pgSz:  # api returns 50 rows at a time, so once we start getting <50 we're done
                 break
-            offset += 50
+            offset += pgSz
 
         cachedRides = list(cachedb.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
+        ct = 0
         for ride in data:
+            cached = False
             if ride["id"] not in [x["id"] for x in cachedRides]:
                 resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
                 ridedata = resp.json()
                 ridedata = ridedata["ride"]
                 ridedata["Owner"] = svcRecord["ExternalID"]
-                cachedb.strava_cache.insert(ridedata)
             else:
+                cached = True
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
             if ridedata["start_latlng"] is None or ridedata["end_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
                 continue  # stationary activity - no syncing for now
@@ -72,20 +76,32 @@ class StravaService(ServiceBase):
             activity.Name = ridedata["name"]
             activity.CalculateUID()
             activities.append(activity)
+            if not earliestDate or activity.StartTime < earliestDate:
+                earliestDate = activity.StartTime
+            if ct == pgSz - 1:
+                earliestFirstPageDate = earliestDate
+            if not cached and (AGGRESSIVE_CACHE or ct < pgSz):  # Only cache the details we'll be needing immediately (on the 1st page of results)
+                ridedata["StartTime"] = activity.StartTime
+                cachedb.strava_cache.insert(ridedata)
 
+            ct += 1
+        if not AGGRESSIVE_CACHE:
+            cachedb.strava_cache.remove({"Owner": serviceRecord["ExternalID"], "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities
 
     def DownloadActivity(self, svcRecord, activity):
         # thanks to Cosmo Catalano for the API reference code
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
 
-        ridedata = cachedb.strava_activity_cache.find_one({"id": activityID})
-        if ridedata is None:
+        if AGGRESSIVE_CACHE:
+            ridedata = cachedb.strava_activity_cache.find_one({"id": activityID})
+        if not AGGRESSIVE_CACHE or ridedata is None:
             resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
             ridedata = resp.json()
             ridedata["id"] = activityID
             ridedata["Owner"] = svcRecord["ExternalID"]
-            cachedb.strava_activity_cache.insert(ridedata)
+            if AGGRESSIVE_CACHE:
+                cachedb.strava_activity_cache.insert(ridedata)
 
         activity.Waypoints = []
 
