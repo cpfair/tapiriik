@@ -115,7 +115,9 @@ class RunKeeperService(ServiceBase):
         activities = []
         for act in allItems:
             if "has_path" in act and act["has_path"] is False:
-                continue
+                continue  # No points = no sync.
+            if "is_live" in act and act["is_live"] is True:
+                continue  # Otherwise we end up with partial activities.
             activity = self._populateActivity(act)
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 continue  # these activites are corrupted
