@@ -150,7 +150,8 @@ class Sync:
         for activity in activities:
             if len(activity.UploadedTo) == 1:
                 # we can log the origin of this activity
-                db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["ExternalID"]}}, upsert=True)
+                if not len([x for x in origins if x["ActivityUID"] == activity.UID]):  # No need to hammer the database updating these when they haven't changed
+                    db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["ExternalID"]}}, upsert=True)
                 activity.Origin = activity.UploadedTo[0]["Connection"]
             else:
                 knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
