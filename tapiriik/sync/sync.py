@@ -186,39 +186,8 @@ class Sync:
 
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
-            act = None
-            for dlSvcUploadRec in activity.UploadedTo:
-                dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
-                dlSvc = Service.FromID(dlSvcRecord["Service"])
-                print("\t from " + dlSvc.ID)
-                workingCopy = copy.copy(activity)  # we can hope
-                try:
-                    workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
-                except APIAuthorizationException as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                    continue
-                except ServiceException as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                    continue
-                except Exception as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
-                    continue
-                else:
-                    if workingCopy.Exclude:
-                            continue  # try again
-                    try:
-                        workingCopy.CheckSanity()
-                    except:
-                        tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
-                        continue
-                    else:
-                        act = workingCopy
-                        break  # succesfully got the activity + passed sanity checks, can stop now
 
-            if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
-                processedActivities += 1  # we tried
-                continue
-
+            eligibleServices = []
             for destinationSvcRecord in recipientServices:
                 if destinationSvcRecord["_id"] in excludedServices:
                     print("\t\tExcluded " + destinationSvcRecord["Service"])
@@ -243,10 +212,49 @@ class Sync:
                 if flowException:
                     print("\t\tFlow exception for " + destinationSvcRecord["Service"])
                     continue
-
                 destSvc = Service.FromID(destinationSvcRecord["Service"])
                 if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
                     continue  # not configured, so we won't even try
+                eligibleServices.append(destinationSvcRecord)
+
+            if not len(eligibleServices):
+                totalActivities -= 1  # Again, doesn't really count.
+                continue
+
+            for dlSvcUploadRec in activity.UploadedTo:
+                dlSvcRecord = dlSvcUploadRec["Connection"]
+                dlSvc = Service.FromID(dlSvcRecord["Service"])
+                print("\t from " + dlSvc.ID)
+                act = None
+                workingCopy = copy.copy(activity)  # we can hope
+                try:
+                    workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
+                except APIAuthorizationException as e:
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    continue
+                except ServiceException as e:
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    continue
+                except Exception as e:
+                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                    continue
+                else:
+                    if workingCopy.Exclude:
+                        continue  # try again
+                    try:
+                        workingCopy.CheckSanity()
+                    except:
+                        tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        continue
+                    else:
+                        act = workingCopy
+                        break  # succesfully got the activity + passed sanity checks, can stop now
+
+            if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
+                processedActivities += 1  # we tried
+                continue
+
+            for destinationSvcRecord in eligibleServices:
                 try:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
