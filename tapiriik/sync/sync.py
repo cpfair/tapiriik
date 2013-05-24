@@ -262,6 +262,7 @@ class Sync:
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
+                act.Waypoints = activity.Waypoints = []  # Free some memory
 
             processedActivities += 1
 

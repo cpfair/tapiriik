@@ -94,7 +94,7 @@ class EndomondoService(ServiceBase):
         response = requests.get("http://api.mobile.endomondo.com/mobile/readTrack", params=params)
         return response.text
 
-    def _populateActivityFromTrackRecord(self, activity, recordText):
+    def _populateActivityFromTrackRecord(self, activity, recordText, minimumWaypoints=False):
         activity.Waypoints = []
         ###       1ST RECORD      ###
         # userID;
@@ -162,6 +162,8 @@ class EndomondoService(ServiceBase):
                 if split[7] != "":
                     wp.HR = float(split[7])
                 activity.Waypoints.append(wp)
+                if wptsWithLocation and minimumWaypoints:
+                    break
 
         if wptsWithLocation:
             activity.EnsureTZ()
@@ -208,20 +210,17 @@ class EndomondoService(ServiceBase):
                 cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
                     data = self._downloadRawTrackRecord(serviceRecord, act["id"])
-                    self._populateActivityFromTrackRecord(activity, data)
+                    self._populateActivityFromTrackRecord(activity, data, minimumWaypoints=True)
                     if not paged or AGGRESSIVE_CACHE:  # Don't cache stuff that we won't need in the immediate future.
                         cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
                         cachedb.endomondo_activity_cache.insert(cachedTrackData)
                 else:
-                    self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"])
-
-                if len(activity.Waypoints) <= 1:
-                    continue  # this can happen here if there are no timestamps/locations on the waypoints, or if only one waypoint is there (a weird condition)
-
+                    self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"], minimumWaypoints=True)
+                activity.Waypoints = []
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
 
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"], "ActivityData": cachedTrackData["Data"]}]
                 activity.CalculateUID()
                 activities.append(activity)
             if not paged:
@@ -235,6 +234,12 @@ class EndomondoService(ServiceBase):
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
+        activityData = [x["ActivityData"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        self._populateActivityFromTrackRecord(activity, activityData)
+        [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
+        if len(activity.Waypoints) <= 1:
+            activity.Exclude = True
+            return activity
         return activity  # the activity is fully populated at this point, thanks to meh API design decisions
 
     def UploadActivity(self, serviceRecord, activity):
