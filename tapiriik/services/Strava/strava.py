@@ -110,6 +110,7 @@ class StravaService(ServiceBase):
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0) or ("watts_calc" in ridedata and len(ridedata["watts_calc"]) > 0)
         hasAltitude = "altitude" in ridedata and len(ridedata["altitude"]) > 0
+        hasRestingData = "resting" in ridedata and len(ridedata["resting"]) > 0
         moving = True
 
         if "error" in ridedata:
@@ -135,10 +136,10 @@ class StravaService(ServiceBase):
                 waypoint.Type = WaypointType.Start
             elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
-            elif not moving and ridedata["resting"][idx] is False:
+            elif hasRestingData and not moving and ridedata["resting"][idx] is False:
                 waypoint.Type = WaypointType.Resume
                 moving = True
-            elif ridedata["resting"][idx] is True:
+            elif hasRestingData and ridedata["resting"][idx] is True:
                 waypoint.Type = WaypointType.Pause
                 moving = False
 
