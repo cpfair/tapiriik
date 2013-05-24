@@ -211,8 +211,8 @@ class EndomondoService(ServiceBase):
                 if cachedTrackData is None:
                     data = self._downloadRawTrackRecord(serviceRecord, act["id"])
                     self._populateActivityFromTrackRecord(activity, data, minimumWaypoints=True)
+                    cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
                     if not paged or AGGRESSIVE_CACHE:  # Don't cache stuff that we won't need in the immediate future.
-                        cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
                         cachedb.endomondo_activity_cache.insert(cachedTrackData)
                 else:
                     self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"], minimumWaypoints=True)
