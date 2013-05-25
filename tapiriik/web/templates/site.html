@@ -33,7 +33,7 @@
 		    		</div>
 	    		</div>
 	    		<div class="footers"><a href="{% url 'faq' %}">FAQ</a> | <a href="{% url 'privacy' %}">Privacy</a> | <a href="{% url 'credits' %}">Credits</a><br/><span style="font-size:95%;font-weight:normal">All trademarks displayed are property of their respective owners</br>
-	    			<a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="mailto:contact@tapiriik.com" target="_blank">Collin Fair</a></a>
+	    			<a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="mailto:contact@tapiriik.com{% if user %}?body=My tapiriik user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank">Collin Fair</a></a>
 	    		</div>
 	    	</div>
     	</div>
