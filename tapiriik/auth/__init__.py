@@ -58,6 +58,7 @@ class User:
                 user["FlowExceptions"] += existingUser["FlowExceptions"]
             user["Email"] = user["Email"] if "Email" in user and user["Email"] is not None else (existingUser["Email"] if "Email" in existingUser else None)
             user["SyncErrorCount"] = max(user["SyncErrorCount"] if "SyncErrorCount" in user and user["SyncErrorCount"] is not None else 0, existingUser["SyncErrorCount"] if "SyncErrorCount" in existingUser and existingUser["SyncErrorCount"] is not None else 0)
+            user["Created"] = user["Created"] if user["Created"] < existingUser["Created"] else existingUser["Created"]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
