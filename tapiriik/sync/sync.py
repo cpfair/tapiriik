@@ -256,6 +256,7 @@ class Sync:
                 continue
 
             for destinationSvcRecord in eligibleServices:
+                destSvc = Service.FromID(destinationSvcRecord["Service"])
                 try:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
@@ -271,7 +272,7 @@ class Sync:
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
-                act.Waypoints = activity.Waypoints = []  # Free some memory
+            act.Waypoints = activity.Waypoints = []  # Free some memory
 
             processedActivities += 1
 
