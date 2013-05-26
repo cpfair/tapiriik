@@ -192,9 +192,8 @@ class DropboxService(ServiceBase):
                     # get the full activity
                     act, rev = self._getActivity(dbcl, path)
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z")}
-                act.UploadedTo = [{"Connection": svcRec}]
+                act.UploadedTo = [{"Connection": svcRec, "Path": path}]
                 tagRes = self._tagActivity(relPath)
-                act.DBPath = path
                 act.Tagged = tagRes is not None
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
@@ -211,8 +210,9 @@ class DropboxService(ServiceBase):
 
         # activity might already be populated, if not download it again
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
+            path = [x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
             dbcl = self._getClient(serviceRecord)
-            fullActivity, rev = self._getActivity(dbcl, activity.DBPath)
+            fullActivity, rev = self._getActivity(dbcl, path)
             fullActivity.Tagged = activity.Tagged
             fullActivity.Type = activity.Type
             fullActivity.UploadedTo = activity.UploadedTo
