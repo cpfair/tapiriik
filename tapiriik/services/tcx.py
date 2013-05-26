@@ -12,10 +12,11 @@ class TCXIO:
         "ns2": "http://www.garmin.com/xmlschemas/UserProfile/v2",
         "ns3": "http://www.garmin.com/xmlschemas/ActivityExtension/v2",
         "ns4": "http://www.garmin.com/xmlschemas/ProfileExtension/v1",
-        "ns5": "http://www.garmin.com/xmlschemas/ActivityGoals/v1"
+        "ns5": "http://www.garmin.com/xmlschemas/ActivityGoals/v1",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance"
     }
 
-    def Parse(gpxData, act=None):
+    def Parse(tcxData, act=None):
         ns = copy.deepcopy(TCXIO.Namespaces)
         ns["tcx"] = ns[None]
         del ns[None]
@@ -23,9 +24,9 @@ class TCXIO:
         act.Distance = None
 
         try:
-            root = etree.XML(gpxData)
+            root = etree.XML(tcxData)
         except:
-            root = etree.fromstring(gpxData)
+            root = etree.fromstring(tcxData)
 
 
         xact = root.find("tcx:Activities", namespaces=ns).find("tcx:Activity", namespaces=ns)
@@ -74,45 +75,83 @@ class TCXIO:
         return act
 
     def Dump(activity):
-        GPXTPX = "{" + GPXIO.Namespaces["gpxtpx"] + "}"
-        root = etree.Element("gpx", nsmap=GPXIO.Namespaces)
-        root.attrib["creator"] = "tapiriik-sync"
-        meta = etree.SubElement(root, "metadata")
-        trk = etree.SubElement(root, "trk")
+        root = etree.Element("TrainingCenterDatabase", nsmap=TCXIO.Namespaces)
+        activities = etree.SubElement(root, "Activities")
+        act = etree.SubElement(activities, "Activity")
+
+
+        author = etree.SubElement(root, "Author")
+        author.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "Application_t"
+        etree.SubElement(author, "Name").text = "tapiriik"
+        build = etree.SubElement(author, "Build")
+        version = etree.SubElement(build, "Version")
+        etree.SubElement(version, "VersionMajor").text = "0"
+        etree.SubElement(version, "VersionMinor").text = "0"
+        etree.SubElement(version, "BuildMajor").text = "0"
+        etree.SubElement(version, "BuildMinor").text = "0"
+        etree.SubElement(author, "LangID").text = "en"
+        etree.SubElement(author, "PartNumber").text = "000-00000-00"
+
+        dateFormat = "%Y-%m-%dT%H:%M:%S.000Z"
 
         if activity.Name is not None:
-            etree.SubElement(meta, "name").text = activity.Name
-            etree.SubElement(trk, "name").text = activity.Name
-
-        trkseg = etree.SubElement(trk, "trkseg")
+            etree.SubElement(act, "Notes").text = activity.Name
+        act.attrib["Sport"] = "Other"
+        etree.SubElement(act, "Id").text = activity.StartTime.astimezone(UTC).strftime(dateFormat)
+        lap = track = None
         inPause = False
+        lapStartWpt = None
+        def newLap(wpt):
+            nonlocal lapStartWpt, lap, track
+            lapStartWpt = wpt
+            lap = etree.SubElement(act, "Lap")
+            lap.attrib["StartTime"] = wpt.Timestamp.astimezone(UTC).strftime(dateFormat)
+            if wpt.Calories and lapStartWpt.Calories:
+                etree.SubElement(lap, "Calories").text = str(wpt.Calories - lapStartWpt.Calories)
+            else:
+                etree.SubElement(lap, "Calories").text = "0"  # meh schema is meh
+            etree.SubElement(lap, "Intensity").text = "Active"
+            etree.SubElement(lap, "TriggerMethod").text = "Manual"  # I assume!
+
+            track = etree.SubElement(lap, "Track")
+
+        def finishLap(wpt):
+            nonlocal lapStartWpt, lap
+            dist = activity.GetDistance(lapStartWpt, wpt)
+            xdist = etree.SubElement(lap, "DistanceMeters")
+            xdist.text = str(dist)
+            # I think this is actually supposed to be "unpaused time" - oh well, no way to really tell that.
+            totaltime = etree.SubElement(lap, "TotalTimeSeconds")
+            totaltime.text = str((wpt.Timestamp - lapStartWpt.Timestamp).total_seconds())
+            lap.insert(0, xdist)
+            lap.insert(0, totaltime)
+
+        newLap(activity.Waypoints[0])
         for wp in activity.Waypoints:
             if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 continue  # drop the point
-            if wp.Type == WaypointType.Pause or wp.Type == WaypointType.Lap:
-                #  Laps will create new trksegs (the immediate unsetting of inPause is intentional)
+            if wp.Type == WaypointType.Pause:
                 if inPause:
                     continue  # this used to be an exception, but I don't think that was merited
                 inPause = True
             if inPause and wp.Type != WaypointType.Pause:
-                trkseg = etree.SubElement(trk, "trkseg")
                 inPause = False
-            trkpt = etree.SubElement(trkseg, "trkpt")
+            if wp.Type == WaypointType.Lap:
+                finishLap(wp)
+                newLap(wp)
+            trkpt = etree.SubElement(track, "Trackpoint")
             if wp.Timestamp.tzinfo is None:
-                raise ValueError("GPX export requires TZ info")
-            etree.SubElement(trkpt, "time").text = wp.Timestamp.astimezone(UTC).isoformat()
-            trkpt.attrib["lat"] = str(wp.Location.Latitude)
-            trkpt.attrib["lon"] = str(wp.Location.Longitude)
-            if wp.Location.Altitude is not None:
-                etree.SubElement(trkpt, "ele").text = str(wp.Location.Altitude)
-            if wp.HR is not None or wp.Cadence is not None or wp.Temp is not None or wp.Calories is not None or wp.Power is not None:
-                exts = etree.SubElement(trkpt, "extensions")
-                gpxtpxexts = etree.SubElement(exts, GPXTPX + "TrackPointExtension")
-                if wp.HR is not None:
-                    etree.SubElement(gpxtpxexts, GPXTPX + "hr").text = str(int(wp.HR))
-                if wp.Cadence is not None:
-                    etree.SubElement(gpxtpxexts, GPXTPX + "cad").text = str(int(wp.Cadence))
-                if wp.Temp is not None:
-                    etree.SubElement(gpxtpxexts, GPXTPX + "atemp").text = str(wp.Temp)
+                raise ValueError("TCX export requires TZ info")
+            etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
+            pos = etree.SubElement(trkpt, "Position")
+            etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
+            etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
 
+            if wp.Location.Altitude is not None:
+                etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
+            if wp.HR is not None:
+                etree.SubElement(trkpt, "HeartRateBpm").text = str(int(wp.HR))
+            if wp.Cadence is not None:
+                etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
+        finishLap(wp)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
