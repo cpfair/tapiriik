@@ -1,0 +1,118 @@
+from lxml import etree, objectify
+from pytz import UTC
+import copy
+import dateutil.parser
+from datetime import datetime
+from .interchange import WaypointType, Activity, Waypoint, Location
+
+
+class TCXIO:
+    Namespaces = {
+        None: "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2",
+        "ns2": "http://www.garmin.com/xmlschemas/UserProfile/v2",
+        "ns3": "http://www.garmin.com/xmlschemas/ActivityExtension/v2",
+        "ns4": "http://www.garmin.com/xmlschemas/ProfileExtension/v1",
+        "ns5": "http://www.garmin.com/xmlschemas/ActivityGoals/v1"
+    }
+
+    def Parse(gpxData, act=None):
+        ns = copy.deepcopy(TCXIO.Namespaces)
+        ns["tcx"] = ns[None]
+        del ns[None]
+        act = act if act else Activity()
+        act.Distance = None
+
+        try:
+            root = etree.XML(gpxData)
+        except:
+            root = etree.fromstring(gpxData)
+
+
+        xact = root.find("tcx:Activities", namespaces=ns).find("tcx:Activity", namespaces=ns)
+
+        xlaps = xact.findall("tcx:Lap", namespaces=ns)
+        startTime = None
+        endTime = None
+
+        beginSeg = False
+        for xlap in xlaps:
+            beginSeg = True
+            xtrkseg = xlap.find("tcx:Track", namespaces=ns)
+            for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
+                wp = Waypoint()
+                if len(act.Waypoints) == 0:
+                    wp.Type = WaypointType.Start
+                elif beginSeg:
+                    wp.Type = WaypointType.Lap
+                beginSeg = False
+
+                wp.Timestamp = dateutil.parser.parse(xtrkpt.find("tcx:Time", namespaces=ns).text)
+                if startTime is None or wp.Timestamp < startTime:
+                    startTime = wp.Timestamp
+                if endTime is None or wp.Timestamp > endTime:
+                    endTime = wp.Timestamp
+                xpos = xtrkpt.find("tcx:Position", namespaces=ns)
+                wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
+                eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
+                if eleEl is not None:
+                    wp.Location.Altitude = float(eleEl.text)
+                hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
+                if hrEl is not None:
+                    wp.HR = int(hrEl.text)
+                cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
+                if cadEl is not None:
+                    wp.Cadence = int(cadEl.text)
+                act.Waypoints.append(wp)
+            act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.Pause
+
+        act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
+        act.TZ = act.Waypoints[0].Timestamp.tzinfo
+        act.StartTime = startTime
+        act.EndTime = endTime
+        act.CalculateDistance()
+        act.CalculateUID()
+        return act
+
+    def Dump(activity):
+        GPXTPX = "{" + GPXIO.Namespaces["gpxtpx"] + "}"
+        root = etree.Element("gpx", nsmap=GPXIO.Namespaces)
+        root.attrib["creator"] = "tapiriik-sync"
+        meta = etree.SubElement(root, "metadata")
+        trk = etree.SubElement(root, "trk")
+
+        if activity.Name is not None:
+            etree.SubElement(meta, "name").text = activity.Name
+            etree.SubElement(trk, "name").text = activity.Name
+
+        trkseg = etree.SubElement(trk, "trkseg")
+        inPause = False
+        for wp in activity.Waypoints:
+            if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                continue  # drop the point
+            if wp.Type == WaypointType.Pause or wp.Type == WaypointType.Lap:
+                #  Laps will create new trksegs (the immediate unsetting of inPause is intentional)
+                if inPause:
+                    continue  # this used to be an exception, but I don't think that was merited
+                inPause = True
+            if inPause and wp.Type != WaypointType.Pause:
+                trkseg = etree.SubElement(trk, "trkseg")
+                inPause = False
+            trkpt = etree.SubElement(trkseg, "trkpt")
+            if wp.Timestamp.tzinfo is None:
+                raise ValueError("GPX export requires TZ info")
+            etree.SubElement(trkpt, "time").text = wp.Timestamp.astimezone(UTC).isoformat()
+            trkpt.attrib["lat"] = str(wp.Location.Latitude)
+            trkpt.attrib["lon"] = str(wp.Location.Longitude)
+            if wp.Location.Altitude is not None:
+                etree.SubElement(trkpt, "ele").text = str(wp.Location.Altitude)
+            if wp.HR is not None or wp.Cadence is not None or wp.Temp is not None or wp.Calories is not None or wp.Power is not None:
+                exts = etree.SubElement(trkpt, "extensions")
+                gpxtpxexts = etree.SubElement(exts, GPXTPX + "TrackPointExtension")
+                if wp.HR is not None:
+                    etree.SubElement(gpxtpxexts, GPXTPX + "hr").text = str(int(wp.HR))
+                if wp.Cadence is not None:
+                    etree.SubElement(gpxtpxexts, GPXTPX + "cad").text = str(int(wp.Cadence))
+                if wp.Temp is not None:
+                    etree.SubElement(gpxtpxexts, GPXTPX + "atemp").text = str(wp.Temp)
+
+        return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
