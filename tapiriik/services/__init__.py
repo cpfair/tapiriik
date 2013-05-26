@@ -8,4 +8,6 @@ from tapiriik.services.Endomondo import EndomondoService
 Endomondo = EndomondoService()
 from tapiriik.services.Dropbox import DropboxService
 Dropbox = DropboxService()
+from tapiriik.services.GarminConnect import GarminConnectService
+GarminConnect = GarminConnectService()
 from .service import *

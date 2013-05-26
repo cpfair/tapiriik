@@ -1,5 +1,5 @@
 from tapiriik.services import *
-from tapiriik.database import db
+from tapiriik.database import db, cachedb
 from bson.objectid import ObjectId
 import copy
 
@@ -8,7 +8,8 @@ class Service:
     _serviceMappings = {"runkeeper": RunKeeper,
                         "strava": Strava,
                         "endomondo": Endomondo,
-                        "dropbox": Dropbox}
+                        "dropbox": Dropbox,
+                        "garminconnect": GarminConnect}
 
     def FromID(id):
         if id in Service._serviceMappings:
@@ -16,7 +17,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo, Dropbox]
+        return [RunKeeper, Strava, Endomondo, Dropbox, GarminConnect]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
