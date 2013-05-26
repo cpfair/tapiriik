@@ -259,7 +259,8 @@ class EndomondoService(ServiceBase):
                 WaypointType.Resume: "1",
                 WaypointType.Start: "2",
                 WaypointType.End: "3",
-                WaypointType.Regular: ""
+                WaypointType.Regular: "",
+                WaypointType.Lap: ""  # Endomondo has no lap tracking
                 }[wp.Type])
 
             if wp.Location is not None:

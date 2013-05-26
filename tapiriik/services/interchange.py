@@ -185,11 +185,12 @@ class UploadedActivity (Activity):
 
 
 class WaypointType:
-    Start = 0
-    Regular = 1
-    Pause = 11
-    Resume = 12
-    End = 100
+    Start = 0   # Start of activity
+    Regular = 1 # Normal
+    Lap = 2     # A new lap starts with this
+    Pause = 11  # All waypoints within a paused period should have this type
+    Resume = 12 # The first waypoint after a paused period
+    End = 100   # End of activity
 
 
 class Waypoint:
