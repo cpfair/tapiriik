@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.tcx import TCXIO
 #from tapiriik.auth.password_storage import PasswordStore
 
 from django.core.urlresolvers import reverse
@@ -73,7 +74,7 @@ class GarminConnectService(ServiceBase):
 
     def Authorize(self, email, password):
         cookies = self._get_cookies(email, password)
-        username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
+        username = requests.get("https://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         return (username, {}, {"Email": email, "Password": password})
 
 
@@ -118,6 +119,14 @@ class GarminConnectService(ServiceBase):
             else:
                 page += 1
         return activities
+
+    def DownloadActivity(self, serviceRecord, activity):
+        #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
+        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        cookies = self._get_cookies(serviceRecord)
+        res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
+        TCXIO.Parse(res.content, activity)
+        return activity
 
     def RevokeAuthorization(self, serviceRecord):
         #  nothing to do here...
