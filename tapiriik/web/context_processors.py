@@ -31,16 +31,17 @@ def js_bridge(req):
             "Configurable": svc.Configurable,
             "RequiresConfiguration": False  # by default
         }
-        if svc.Configurable and svcRec:
-            if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
-                info["AccessLevel"] = "full" if svcRec["Authorization"]["Full"] else "normal"
-            info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
-            info["Configured"] = Service.HasConfiguration(svcRec)
-            info["Config"] = Service.GetConfiguration(svcRec)
+        if svcRec:
+            if svc.Configurable:
+                if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
+                    info["AccessLevel"] = "full" if svcRec.Authorization["Full"] else "normal"
+                info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
+                info["Configured"] = Service.HasConfiguration(svcRec)
+                info["Config"] = Service.GetConfiguration(svcRec)
+            info["HasExtendedAuth"] = svcRec.HasExtendedAuthorizationDetails()
+            info["ExternalID"] = svcRec.ExternalID
         info["BlockFlowTo"] = []
         info["Connected"] = svcRec is not None
-        if svcRec is not None:
-            info["ExternalID"] = svcRec["ExternalID"]
         serviceInfo[svc.ID] = info
     if req.user is not None:
         flowExc = User.GetFlowExceptions(req.user)

@@ -11,3 +11,4 @@ Dropbox = DropboxService()
 from tapiriik.services.GarminConnect import GarminConnectService
 GarminConnect = GarminConnectService()
 from .service import *
+from .service_record import *
