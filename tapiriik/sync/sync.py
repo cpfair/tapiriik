@@ -6,6 +6,7 @@ import os
 import traceback
 import pprint
 import copy
+import pytz
 
 def _formatExc():
     print("Dumping exception")
@@ -71,6 +72,8 @@ class Sync:
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
+            if act.TZ and not hasattr(act.TZ, "localize"):
+                raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
             existElsewhere = [x for x in activityList if x.UID == act.UID
                               or  # check to see if the activities are reasonably close together to be considered duplicate

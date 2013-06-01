@@ -5,10 +5,23 @@ from tapiriik.services import Service
 from tapiriik.services.interchange import Activity, ActivityType
 from tapiriik.auth import User
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 import random
 import pytz
 import copy
+
+
+class UTC(tzinfo):
+    """UTC"""
+
+    def utcoffset(self, dt):
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return timedelta(0)
 
 
 class SyncTests(TapiriikTestCase):
@@ -171,6 +184,26 @@ class SyncTests(TapiriikTestCase):
 
         self.assertEqual(len(syncToA), 1)
         self.assertEqual(len(syncToB), 1)
+
+    def test_activity_coalesce_normaltz(self):
+        ''' ensure that we can't coalesce activities with non-pytz timezones '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = TestTools.create_random_activity(svcA, tz=UTC())
+
+        actB = Activity()
+        actB.StartTime = actA.StartTime.replace(tzinfo=None) + timedelta(seconds=10)
+        actB.EndTime = actA.EndTime.replace(tzinfo=None)
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actA.Name = "Not this"
+        actB.Name = "Heya"
+        actB.Type = ActivityType.Walking
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        self.assertRaises(ValueError, Sync._accumulateActivities, Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+
 
     def test_activity_coalesce(self):
         ''' ensure that activity data is getting coalesced by _accumulateActivities '''

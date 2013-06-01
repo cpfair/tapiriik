@@ -48,6 +48,7 @@ class GPXIO:
                 beginSeg = False
 
                 wp.Timestamp = dateutil.parser.parse(xtrkpt.find("gpx:time", namespaces=ns).text)
+                wp.Timestamp.replace(tzinfo=UTC)
                 if startTime is None or wp.Timestamp < startTime:
                     startTime = wp.Timestamp
                 if endTime is None or wp.Timestamp > endTime:

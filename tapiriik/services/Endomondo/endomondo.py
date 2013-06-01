@@ -230,7 +230,7 @@ class EndomondoService(ServiceBase):
             else:
                 paged = True
         if not AGGRESSIVE_CACHE:
-            cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"], "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
+            cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord.ExternalID, "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):

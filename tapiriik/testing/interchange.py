@@ -40,7 +40,7 @@ class InterchangeTests(TapiriikTestCase):
 
         #  endomondo - only waypoints at this point, the activity metadata is somewhat out-of-band
         eSvc = Service.FromID("endomondo")
-        
+
         act = TestTools.create_random_activity(eSvc, eSvc.SupportedActivities[0])
         oldWaypoints = act.Waypoints
         self.assertEqual(oldWaypoints[0].Calories, None)

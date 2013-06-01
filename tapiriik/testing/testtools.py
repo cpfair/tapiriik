@@ -73,7 +73,7 @@ class TestTools:
         if tz is True:
             tz = pytz.timezone(pytz.all_timezones[random.randint(0, len(pytz.all_timezones) - 1)])
             act.TZ = tz
-        elif type(tz) is pytz.timezone:
+        elif tz is not False:
             act.TZ = tz
 
         if len(act.Waypoints) > 0:
@@ -81,7 +81,10 @@ class TestTools:
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
         act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
         if tz is not False:
-            act.StartTime = tz.localize(act.StartTime)
+            if hasattr(tz, "localize"):
+                act.StartTime = tz.localize(act.StartTime)
+            else:
+                act.StartTime = act.StartTime.replace(tzinfo=tz)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
         act.Distance = random.random() * 10000
         act.Name = str(random.random())
