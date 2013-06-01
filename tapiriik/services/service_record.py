@@ -8,7 +8,7 @@ class ServiceRecord:
     def __init__(self, dbRec):
         self.__dict__.update(dbRec)
     def __repr__(self):
-        return str(self.__dict__)
+        return "<ServiceRecord> " + str(self.__dict__)
     @property
     def Service(self):
         from tapiriik.services import Service
@@ -17,6 +17,6 @@ class ServiceRecord:
     def HasExtendedAuthorizationDetails(self):
         if not self.Service.RequiresExtendedAuthorizationDetails:
             return False
-        if "ExtendedAuthorization" in self.__dict__:
+        if "ExtendedAuthorization" in self.__dict__ and self.ExtendedAuthorization:
             return True
-        return cachedb.extendedAuthDetails.find({"ID": self._id}).limit(1) is not None
+        return cachedb.extendedAuthDetails.find({"ID": self._id}).limit(1).count()

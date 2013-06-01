@@ -33,6 +33,8 @@ tapiriik = {};
 tapiriik.PreviousURLComponents = [];
 
 tapiriik.Init = function(){
+	// I swear, getting this to happen automatically in CSS or Django templating is nearly impossible.
+	$(".controls").each(function(){if ($(".row",this).length>2) {$(this).addClass("multi");}});
 	// ...
 	$("#syncButton").click(tapiriik.ImmediateSyncRequested);
 	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);

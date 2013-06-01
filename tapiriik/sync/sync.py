@@ -131,7 +131,7 @@ class Sync:
             svc = conn.Service
 
             if svc.RequiresExtendedAuthorizationDetails:
-                if not hasattr(conn, "ExtendedAuthorization"):
+                if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
                     extAuthDetails = [x["ExtendedAuthorization"] for x in allExtendedAuthDetails if x["ID"] == conn._id]
                     if not len(extAuthDetails):
                         print("No extended auth details for " + svc.ID)
@@ -163,23 +163,23 @@ class Sync:
             if len(activity.UploadedTo) == 1:
                 if not len(excludedServices):  # otherwise it could be incorrectly recorded
                     # we can log the origin of this activity
-                    db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["ExternalID"]}}, upsert=True)
+                    db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}}, upsert=True)
                     activity.Origin = activity.UploadedTo[0]["Connection"]
             else:
                 knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
                 if len(knownOrigin) > 0:
-                    connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]]
+                    connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
                     if len(connectedOrigins) > 0:  # they might have disconnected it
                         activity.Origin = connectedOrigins[0]
                     else:
                         activity.Origin = knownOrigin[0]["Origin"]  # I have it on good authority that this will work
-            print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
+            print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"].Service.ID for x in activity.UploadedTo]))
 
         totalActivities = len(activities)
         processedActivities = 0
         for activity in activities:
             # we won't need this now, but maybe later
-            db.connections.update({"_id": {"$in": [x["Connection"]["_id"] for x in activity.UploadedTo]}},
+            db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                   {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                   multi=True)
 
@@ -197,7 +197,7 @@ class Sync:
             db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
 
             # download the full activity record
-            print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
+            print("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
             act = None
             for dlSvcUploadRec in activity.UploadedTo:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error

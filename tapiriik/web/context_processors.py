@@ -1,7 +1,7 @@
 from tapiriik.services import Service
 from tapiriik.auth import User
 from tapiriik.sync import Sync
-from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID
+from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES
 from tapiriik.database import db
 import json
 
@@ -11,7 +11,7 @@ def providers(req):
 
 
 def config(req):
-    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}}}
+    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}, "soft_launch": SOFT_LAUNCH_SERVICES}}
 
 
 def js_bridge(req):

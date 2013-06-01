@@ -37,7 +37,7 @@ class Service:
         if persistExtendedAuthDetails and not service.RequiresExtendedAuthorizationDetails:
             raise ValueError("Attempting to persist extended auth details on service that doesn't use them")
         # think this entire block could be replaced with an upsert...
-        
+
         serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
         if serviceRecord is None:
             db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None})
@@ -57,6 +57,7 @@ class Service:
         svc = serviceRecord.Service
         svc.DeleteCachedData(serviceRecord)
         svc.RevokeAuthorization(serviceRecord)
+        cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         db.connections.remove({"_id": serviceRecord._id})
 
     def _mergeConfig(base, config):

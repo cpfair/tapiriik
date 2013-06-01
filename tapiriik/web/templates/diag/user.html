@@ -24,7 +24,7 @@
 		</ul>
 	{% endif %}
 	{% for connection in user.ConnectedServices|svc_populate_conns %}
-		{% with svc=connection|svc_conn_to_provider %}
+		{% with svc=connection.Service %}
 			<h3>{{ connection.Service }}</h3>
 			<ul style="list-style:none;margin:0;padding:0;">
 				<li><b>ID:</b> <tt>{{ connection|dict_get:'_id' }}</tt></li>

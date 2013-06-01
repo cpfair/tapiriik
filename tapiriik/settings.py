@@ -159,6 +159,9 @@ PAYMENT_CURRENCY = "USD"
 # empty means no invites
 INVITE_KEYS = []
 
+# hidden from regular signup
+SOFT_LAUNCH_SERVICES = ["garminconnect"]
+
 # set at startup
 SITE_VER = "unknown"
 

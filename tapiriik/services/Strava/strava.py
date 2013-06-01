@@ -160,7 +160,7 @@ class StravaService(ServiceBase):
                             ])
         req = {"token": serviceRecord.Authorization["Token"],
                 "type": "json",
-                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"],
+                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
                 "data_fields": fields,
                 "data": points,
                 "activity_name": activity.Name,

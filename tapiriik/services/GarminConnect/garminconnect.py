@@ -60,8 +60,8 @@ class GarminConnectService(ServiceBase):
     def _get_cookies(self, email, password=None):
         if password is None:
             #  longing for C style overloads...
-            password = email["ExtendedAuthorization"]["Password"]
-            email = email["ExtendedAuthorization"]["Email"]
+            password = email.ExtendedAuthorization["Password"]
+            email = email.ExtendedAuthorization["Email"]
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
@@ -97,24 +97,30 @@ class GarminConnectService(ServiceBase):
         while True:
             res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", data={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
             res = res.json()["results"]
+            if "activities" not in res:
+                break  # No activities on this page - empty account.
             for act in res["activities"]:
                 act = act["activity"]
                 activity = UploadedActivity()
+
                 try:
                     activity.TZ = pytz.timezone(act["activityTimeZone"]["key"])
                 except pytz.exceptions.UnknownTimeZoneError:
                     activity.TZ = pytz.FixedOffset(float(act["activityTimeZone"]["offset"]) * 60)
 
-                activity.StartTime = datetime.fromtimestamp(float(act["beginTimestamp"]["millis"])/1000)
+                if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled":
+                    activity.Name = act["activityName"]["value"]
+                # beginTimestamp is in UTC
+                activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
                 activity.EndTime = activity.StartTime + timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
-                activity.DefineTZ()
+                activity.AdjustTZ()
                 activity.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1)
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["activityId"]}]
                 activities.append(activity)
-            if not exhaustive or res["search"]["totalPages"] == page:
+            if not exhaustive or int(res["search"]["totalPages"]) == page:
                 break
             else:
                 page += 1
@@ -128,6 +134,37 @@ class GarminConnectService(ServiceBase):
         TCXIO.Parse(res.content, activity)
         return activity
 
+    def UploadActivity(self, serviceRecord, activity):
+        #/proxy/upload-service-1.1/json/upload/.tcx
+        activity.EnsureTZ()
+        tcx_file = TCXIO.Dump(activity)
+        files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_file)}
+        cookies = self._get_cookies(serviceRecord)
+        res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
+        res = res.json()["detailedImportResult"]
+
+        if len(res["successes"]) != 1:
+            raise APIException("Unable to upload activity")
+        actid = res["successes"][0]["internalId"]
+
+        if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
+            # Set the legit activity type - whatever it is, it's not supported by the TCX schema
+            acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
+            if len(sportId) == 0:
+                raise ValueError("GarminConnect does not support activity type " + activity.Type)
+            else:
+                acttype = acttype[0]
+            res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
+            res = res.json()
+            if "actvityType" not in res or res["activityType"]["key"] != res:
+                raise APIException("Unable to set activity type")
+
+
+
     def RevokeAuthorization(self, serviceRecord):
-        #  nothing to do here...
+        # nothing to do here...
+        pass
+
+    def DeleteCachedData(self, serviceRecord):
+        # nothing cached...
         pass

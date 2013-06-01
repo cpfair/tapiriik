@@ -3,7 +3,7 @@ from pytz import UTC
 import copy
 import dateutil.parser
 from datetime import datetime
-from .interchange import WaypointType, Activity, Waypoint, Location
+from .interchange import WaypointType, Activity, ActivityType, Waypoint, Location
 
 
 class TCXIO:
@@ -30,6 +30,11 @@ class TCXIO:
 
 
         xact = root.find("tcx:Activities", namespaces=ns).find("tcx:Activity", namespaces=ns)
+
+        if xact.attrib["Sport"] == "Biking":
+            act.Type = ActivityType.Cycling
+        elif xact.attrib["Sport"] == "Running":
+            act.Type = ActivityType.Running
 
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
@@ -59,7 +64,7 @@ class TCXIO:
                     wp.Location.Altitude = float(eleEl.text)
                 hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
                 if hrEl is not None:
-                    wp.HR = int(hrEl.text)
+                    wp.HR = int(hrEl.find("tcx:Value", namespaces=ns).text)
                 cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
                 if cadEl is not None:
                     wp.Cadence = int(cadEl.text)
@@ -96,7 +101,14 @@ class TCXIO:
 
         if activity.Name is not None:
             etree.SubElement(act, "Notes").text = activity.Name
-        act.attrib["Sport"] = "Other"
+
+        if activity.Type == ActivityType.Cycling:
+            act.attrib["Sport"] = "Biking"
+        elif activity.Type == ActivityType.Running:
+            act.attrib["Sport"] = "Running"
+        else:
+            act.attrib["Sport"] = "Other"
+
         etree.SubElement(act, "Id").text = activity.StartTime.astimezone(UTC).strftime(dateFormat)
         lap = track = None
         inPause = False
@@ -134,9 +146,9 @@ class TCXIO:
                 if inPause:
                     continue  # this used to be an exception, but I don't think that was merited
                 inPause = True
-            if inPause and wp.Type != WaypointType.Pause:
+            if inPause and wp.Type != WaypointType.Pause or wp.Type == WaypointType.Lap:
+                # Make a new lap when they unpause
                 inPause = False
-            if wp.Type == WaypointType.Lap:
                 finishLap(wp)
                 newLap(wp)
             trkpt = etree.SubElement(track, "Trackpoint")
@@ -150,7 +162,9 @@ class TCXIO:
             if wp.Location.Altitude is not None:
                 etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
             if wp.HR is not None:
-                etree.SubElement(trkpt, "HeartRateBpm").text = str(int(wp.HR))
+                xhr = etree.SubElement(trkpt, "HeartRateBpm")
+                xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
+                etree.SubElement(xhr, "Value").text = str(int(wp.HR))
             if wp.Cadence is not None:
                 etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
         finishLap(wp)
