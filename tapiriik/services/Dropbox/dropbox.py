@@ -154,7 +154,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         act = GPXIO.Parse(f.read())
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
-        activity.AdjustTZ()
+        act.AdjustTZ()
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
