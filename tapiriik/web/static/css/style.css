@@ -677,6 +677,26 @@ form.dropboxConfig {
 	text-align: center;
 	padding-right:20px; /* sort of account for scrollbar */
 }
+
+.faqBlocks {
+}
+
+.faqBlocks div {
+	display: inline-block;
+	width:45%;
+	margin: 0 2%;
+	float:left;
+	clear:none;
+}
+
+.faqBlocks h3 {
+	border-bottom:1px dotted #aaa;
+}
+
+.faqBlocks h3, .faqBlocks h3 a {
+	color: #aaa;
+}
+
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {
 		width:90%;

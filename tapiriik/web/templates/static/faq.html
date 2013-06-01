@@ -1,43 +1,65 @@
 {% extends "site.html" %}
 {% block title %}FAQ{% endblock %}
 {% block content %}
-<div style="text-align:left;">
+<div style="text-align:left;" class="faqBlocks">
 <h1>Questions: Answered</h1>
-<h3>What do I have to do to use tapiriik?</h3>
-Just sign in to all the services you would like to sync between, click &quot;Synchronize now,&quot; then forget ever reading this sentence. 
+<div>
+	<h3>What do I have to do to use tapiriik?</h3>
+	Just sign in to all the services you would like to sync between, click &quot;Synchronize now,&quot; then forget ever reading this sentence.
+</div>
 
-<h3>Do I need to visit tapiriik.com to synchronize activities?</h3>
-<b>For $2/year, synchronization is fully automatic.</b> If you can't manage that, you can visit <a href="https://tapiriik.com">tapiriik.com</a> as often as you want to manually trigger a synchronization.
+<div>
+	<h3>Do I need to visit tapiriik.com to sync activities?</h3>
+	<b>For $2/year, synchronization is fully automatic.</b> If you can't manage that, you can visit <a href="https://tapiriik.com">tapiriik.com</a> as often as you want to manually trigger a synchronization.
+</div>
 
-<h3>$2?! <a href="http://theoatmeal.com/blog/apps" target="_new">Gee, I should really call my accountant first&hellip;</a></h3>
-Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. You paying <b>$2 a year covers these costs so tapiriik will always run smoothly</b>.
+<div>
+	<h3>$2?! <a href="http://theoatmeal.com/blog/apps" target="_new">I should really call my accountant first&hellip;</a></h3>
+	Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. You paying <b>$2 a year covers these costs so tapiriik will always run smoothly</b>.
+</div>
 
-<h3>Which activities get synchronized?</h3>
-Activities are synchronized <b>only to services that handle them</b> (e.g. no swimming in your Strava account... <a href="https://strava.zendesk.com/entries/22144301-Add-Garmin-Swim-upload-to-Strava" target="_blank">yet</a>). <b>All supported activities in your account are synchronized</b>, not just new ones. Stationary activities are currently not being synchronized.
+<div>
+	<h3>Which activities get synchronized?</h3>
+	Activities are synchronized <b>only to services that handle them</b> (e.g. no swimming in your Strava account... <a href="https://strava.zendesk.com/entries/22144301-Add-Garmin-Swim-upload-to-Strava" target="_blank">yet</a>). <b>All supported activities in your account are synchronized</b>, not just new ones. Stationary activities are currently not being synchronized.
+</div>
 
-<h3>What data gets synchronized?</h3>
-As much as possible: in addition to your path, tapiriik will also sync <b>heart rate, cadence, power, calories burned, and even temperature</b> between all services which support them.
+<div>
+	<h3>What data gets synchronized?</h3>
+	As much as possible: in addition to your path, tapiriik will also sync <b>heart rate, cadence, power, calories burned, and even temperature</b> between all services which support them.
+</div>
 
-<h3>Can I sync in only one direction?</h3>
-Yes: <b>before triggering a sync</b>, open up the options for the service in question and tweak as desired. These preferences are applied to all activities - even after they've been synchronized to other services.
+<div>
+	<h3>Can I sync in only one direction?</h3>
+	Yes: <b>before triggering a sync</b>, open up the options for the service in question and tweak as desired. These preferences are applied to all activities - even after they've been synchronized to other services.
+</div>
 
-<h3>What are "untagged activites" and why do I care?</h3>
-<b>tapiriik can't automatically determine what activity you were performing while synchronizing a gpx file from your Dropbox</b>. You need to put the <a href="/supported-activities">name of the activity</a> in the file name, or place the file in an <a href="/supported-activities">appropriately named folder</a>.
+<div>
+	<h3>What are "untagged activites" and why do I care?</h3>
+	<b>tapiriik can't automatically determine what activity you were performing while synchronizing a gpx file from your Dropbox</b>. You need to put the <a href="/supported-activities">name of the activity</a> in the file name, or place the file in an <a href="/supported-activities">appropriately named folder</a>.
+</div>
 
-<h3>I've already connected a few services, but I want to add more, how?</h3>
-Just sign into any one of the services you already connected, then sign into the new service (or the other way around, it doesn't matter). The new service will automatically be synchronized with all the others.
+<div>
+	<h3>How do I connect more services?</h3>
+	Just sign into any one of the services you already connected, then sign into the new service (or the other way around, it doesn't matter). The new service will automatically be synchronized with all the others.
+</div>
 
-<h3>What if I already uploaded the same activity to multiple services?</h3>
-No worries - <b>even if you tracked the same activity with multiple apps,</b> tapiriik will see that and <b>won't create any duplicate activities</b>.
+<div>
+	<h3>Will tapiriik create duplicate activities?</h3>
+	Nope - <b>even if you tracked the same activity on multiple devices, or with multiple apps,</b> tapiriik will see that and <b>won't create any duplicate activities</b>.
+</div>
 
-<h3>Does tapiriik ever modify or delete my activities?</h3>
-<b>No.</b> Simple as that.
+<div>
+	<h3>Does tapiriik ever modify or delete my activities?</h3>
+	<b>No.</b> Simple as that.
+</div>
 
-<h3>What data is stored on your servers?</h3>
-As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
+<div>
+	<h3>What data is stored on your servers?</h3>
+	As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
+</div>
 
-<h3>But why?</h3>
-I'm indecisive, and I couldn't stand the tedium of shuttling GPX files between the services I tracked activities with.
+
 
 </div>
+<div style="clear:both;"></div>
 {% endblock %}
