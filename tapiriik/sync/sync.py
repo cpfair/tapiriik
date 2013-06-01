@@ -52,11 +52,11 @@ class Sync:
         """ Returns the most informative (TZ-wise) datetime of those provided - defaulting to the first if they are equivalently descriptive """
         if not b:
             if knownTz and a and not a.tzinfo:
-                return knownTz.localize(a)
+                return a.replace(tzinfo=knownTz)
             return a
         if not a:
             if knownTz and b and not b.tzinfo:
-                return knownTz.localize(b)
+                return b.replace(tzinfo=knownTz)
             return b
         if a.tzinfo and not b.tzinfo:
             return a
@@ -64,7 +64,7 @@ class Sync:
             return b
         else:
             if knownTz and not a.tzinfo:
-                return knownTz.localize(a)
+                return a.replace(tzinfo=knownTz)
             return a
 
     def _accumulateActivities(svc, svcActivities, activityList):
