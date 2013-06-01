@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.api import APIException, APIAuthorizationException, APIWarning
 from tapiriik.services.tcx import TCXIO
 
 from django.core.urlresolvers import reverse
@@ -151,14 +151,14 @@ class GarminConnectService(ServiceBase):
         if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
             # Set the legit activity type - whatever it is, it's not supported by the TCX schema
             acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
-            if len(sportId) == 0:
-                raise ValueError("GarminConnect does not support activity type " + activity.Type)
+            if len(acttype) == 0:
+                raise APIWarning("GarminConnect does not support activity type " + activity.Type)
             else:
                 acttype = acttype[0]
             res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
             res = res.json()
-            if "actvityType" not in res or res["activityType"]["key"] != res:
-                raise APIException("Unable to set activity type")
+            if "activityType" not in res or res["activityType"]["key"] != acttype:
+                raise APIWarning("Unable to set activity type")
 
 
 

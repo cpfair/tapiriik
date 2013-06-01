@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import Service, ServiceRecord, APIException, APIAuthorizationException, ServiceException
+from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, ServiceException, ServiceWarning
 from datetime import datetime, timedelta
 import sys
 import os
@@ -36,7 +36,7 @@ class Sync:
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
         recipientServices = [conn for conn in recipientServices if activity.Type in conn.Service.SupportedActivities
-                                                                and (not hasattr(conn, "SynchronizedActivities") or not [x for x in activity.UIDs if x in conn.SynchronizedActivities])
+                                                                and (not hasattr(conn, "SynchronizedActivities") or not len([x for x in activity.UIDs if x in conn.SynchronizedActivities]))
                                                                 and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
@@ -142,14 +142,12 @@ class Sync:
             try:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
-            except APIAuthorizationException as e:
-                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+            except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
+                etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
+                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                 excludedServices.append(conn._id)
-                continue
-            except ServiceException as e:
-                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                excludedServices.append(conn._id)
-                continue
+                if not issubclass(e.__class__, ServiceWarning):
+                    continue
             except Exception as e:
                 tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
                 excludedServices.append(conn._id)
@@ -243,48 +241,47 @@ class Sync:
                 workingCopy = copy.copy(activity)  # we can hope
                 try:
                     workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
-                except APIAuthorizationException as e:
-                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                    continue
-                except ServiceException as e:
-                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                    continue
+                except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
+                    etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
+                    tempSyncErrors[conn._id].append({"Step": SyncStep.Download, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    if not issubclass(e.__class__, ServiceWarning):
+                        continue
                 except Exception as e:
                     tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
+                if workingCopy.Exclude:
+                    continue  # try again
+                try:
+                    workingCopy.CheckSanity()
+                except:
+                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                    continue
                 else:
-                    if workingCopy.Exclude:
-                        continue  # try again
-                    try:
-                        workingCopy.CheckSanity()
-                    except:
-                        tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
-                        continue
-                    else:
-                        act = workingCopy
-                        break  # succesfully got the activity + passed sanity checks, can stop now
+                    act = workingCopy
+                    break  # succesfully got the activity + passed sanity checks, can stop now
 
             if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                 processedActivities += 1  # we tried
                 continue
 
             for destinationSvcRecord in eligibleServices:
-                destSvc = Service.FromID(destinationSvcRecord["Service"])
+                destSvc = destinationSvcRecord.Service
                 try:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
-                except APIAuthorizationException as e:
-                    tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                except ServiceException as e:
-                    tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
+                    etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
+                    tempSyncErrors[conn._id].append({"Step": SyncStep.Upload, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    if not issubclass(e.__class__, ServiceWarning):
+                        continue
                 except Exception as e:
                     tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc()})
-                else:
-                    # flag as successful
-                    db.connections.update({"_id": destinationSvcRecord._id},
-                                          {"$addToSet": {"SynchronizedActivities": activity.UID}})
+                    continue
+                # flag as successful
+                db.connections.update({"_id": destinationSvcRecord._id},
+                                      {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
-                    db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
+                db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
             act.Waypoints = activity.Waypoints = []  # Free some memory
 
             processedActivities += 1

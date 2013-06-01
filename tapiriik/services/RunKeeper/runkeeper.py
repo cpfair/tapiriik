@@ -1,5 +1,6 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
+from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import cachedb
@@ -55,7 +56,7 @@ class RunKeeperService(ServiceBase):
         # hacky, but also totally their fault for not giving the user id in the token req
         existingRecord = Service.GetServiceRecordWithAuthDetails(self, {"Token": token})
         if existingRecord is None:
-            uid = self._getUserId({"Authorization": {"Token": token}})  # meh
+            uid = self._getUserId(ServiceRecord({"Authorization": {"Token": token}}))  # meh
         else:
             uid = existingRecord.ExternalID
 
