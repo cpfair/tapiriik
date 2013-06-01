@@ -8,6 +8,7 @@ from tapiriik.auth import User
 from datetime import datetime, timedelta
 import random
 import pytz
+import copy
 
 
 class SyncTests(TapiriikTestCase):
@@ -170,6 +171,64 @@ class SyncTests(TapiriikTestCase):
 
         self.assertEqual(len(syncToA), 1)
         self.assertEqual(len(syncToB), 1)
+
+    def test_activity_coalesce(self):
+        ''' ensure that activity data is getting coalesced by _accumulateActivities '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = TestTools.create_random_activity(svcA, tz=pytz.timezone("America/Iqaluit"))
+        actB = Activity()
+        actB.StartTime = actA.StartTime.replace(tzinfo=None)
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actA.Name = "Not this"
+        actB.Name = "Heya"
+        actB.Type = ActivityType.Walking
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+
+        self.assertEqual(len(activities), 1)
+        act = activities[0]
+
+        self.assertEqual(act.StartTime, actA.StartTime)
+        self.assertEqual(act.EndTime, actA.EndTime)
+        self.assertEqual(act.EndTime.tzinfo, actA.StartTime.tzinfo)
+        self.assertEqual(act.StartTime.tzinfo, actA.StartTime.tzinfo)
+        self.assertEqual(act.Waypoints, actA.Waypoints)
+        self.assertEqual(act.Name, actB.Name)  # The first activity takes priority.
+        self.assertEqual(act.Type, actB.Type)  # Same here.
+        self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)
+        self.assertTrue(actA.UploadedTo[0] in act.UploadedTo)
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+
+        self.assertEqual(len(activities), 1)
+        act = activities[0]
+
+        self.assertEqual(act.StartTime, actA.StartTime)
+        self.assertEqual(act.EndTime, actA.EndTime)
+        self.assertEqual(act.EndTime.tzinfo, actA.StartTime.tzinfo)
+        self.assertEqual(act.StartTime.tzinfo, actA.StartTime.tzinfo)
+        self.assertEqual(act.Waypoints, actA.Waypoints)
+        self.assertEqual(act.Name, actA.Name)  # The first activity takes priority.
+        self.assertEqual(act.Type, actB.Type)  # Exception: ActivityType.Other does not take priority
+        self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)
+        self.assertTrue(actA.UploadedTo[0] in act.UploadedTo)
+
+        actA.Type = ActivityType.CrossCountrySkiing
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+
+        self.assertEqual(len(activities), 1)
+        act = activities[0]
+        self.assertEqual(act.Type, actA.Type)  # Here, it will take priority.
+
+
 
     def test_eligibility_excluded(self):
         user = TestTools.create_mock_user()

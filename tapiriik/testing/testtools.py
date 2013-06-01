@@ -73,6 +73,8 @@ class TestTools:
         if tz is True:
             tz = pytz.timezone(pytz.all_timezones[random.randint(0, len(pytz.all_timezones) - 1)])
             act.TZ = tz
+        elif type(tz) is pytz.timezone:
+            act.TZ = tz
 
         if len(act.Waypoints) > 0:
             raise ValueError("Waypoint list already populated")

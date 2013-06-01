@@ -16,6 +16,9 @@ class ServiceRecord:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __deepcopy__(self, x):
+        return ServiceRecord(self.__dict__)
+
     @property
     def Service(self):
         from tapiriik.services import Service

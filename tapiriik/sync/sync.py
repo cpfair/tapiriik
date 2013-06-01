@@ -47,6 +47,25 @@ class Sync:
                 return True
         return False
 
+    def _coalesceDatetime(a, b, knownTz=None):
+        """ Returns the most informative (TZ-wise) datetime of those provided - defaulting to the first if they are equivalently descriptive """
+        if not b:
+            if knownTz and a and not a.tzinfo:
+                return knownTz.localize(a)
+            return a
+        if not a:
+            if knownTz and b and not b.tzinfo:
+                return knownTz.localize(b)
+            return b
+        if a.tzinfo and not b.tzinfo:
+            return a
+        elif b.tzinfo and not a.tzinfo:
+            return b
+        else:
+            if knownTz:
+                return knownTz.localize(a)
+            return a
+
     def _accumulateActivities(svc, svcActivities, activityList):
         activityStartLeewaySeconds = 60 * 3
         from tapiriik.services.interchange import ActivityType
@@ -72,8 +91,9 @@ class Sync:
                 if act.TZ is not None and existElsewhere[0].TZ is None:
                     existElsewhere[0].TZ = act.TZ
                     existElsewhere[0].DefineTZ()
-                existElsewhere[0].StartTime = existElsewhere[0].StartTime if existElsewhere[0].StartTime is not None else act.StartTime
-                existElsewhere[0].EndTime = existElsewhere[0].EndTime if existElsewhere[0].EndTime is not None else act.EndTime
+                # tortuous merging logic is tortuous
+                existElsewhere[0].StartTime = Sync._coalesceDatetime(existElsewhere[0].StartTime, act.StartTime)
+                existElsewhere[0].EndTime = Sync._coalesceDatetime(existElsewhere[0].EndTime, act.EndTime, knownTz=existElsewhere[0].StartTime.tzinfo)
                 existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
                 existElsewhere[0].Type = existElsewhere[0].Type if existElsewhere[0].Type != ActivityType.Other else act.Type
