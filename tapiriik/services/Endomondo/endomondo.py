@@ -167,6 +167,7 @@ class EndomondoService(ServiceBase):
 
         if wptsWithLocation:
             activity.EnsureTZ()
+            activity.AdjustTZ()
             if not wptsWithNonZeroAltitude:  # do this here so, should the activity run near sea level, altitude data won't be spotty
                 for x in activity.Waypoints:  # clear waypoints of altitude data if all of them were logged at 0m (invalid)
                     if x.Location is not None:
