@@ -558,32 +558,36 @@ a img {
 	background-image:url('../img/link.png');
 }
 
+.service .control#reauth {
+	background-image:url('../img/sync-reauth.png');
+}
+
 .service .control#sync-dc {
 	background-image:url('../img/unlink.png');
 }
 
 .service .control#sync-config {
-	background-image:url('../img/sync-settings.png');	
+	background-image:url('../img/sync-settings.png');
 	padding-left:17px;
 	background-position: 0% 65%;
 }
 
 .service .status#sync-ok {
-	background-image:url('../img/sync-ok.png');	
+	background-image:url('../img/sync-ok.png');
 	padding-left:17px;
 }
 
 .service .status#sync-paused {
-	background-image:url('../img/sync-pause.png');	
+	background-image:url('../img/sync-pause.png');
 	padding-left:17px;
 }
 
 .service .status#sync-info {
-	background-image:url('../img/sync-info.png');	
+	background-image:url('../img/sync-info.png');
 }
 
 .service .status#sync-fail {
-	background-image:url('../img/sync-fail.png');	
+	background-image:url('../img/sync-fail.png');
 }
 
 .syncStatus {

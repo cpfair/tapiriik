@@ -36,7 +36,7 @@
 						{% if user.ConnectedServices|length > 1 %}
 							{% if extauth and not hasextauth %}
 								<div class="row">
-									<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reauthorize</span></a>
+									<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="reauth">Reauthorize</span></a>
 								</div>
 							{% endif %}
 								<div class="row">
@@ -52,7 +52,7 @@
 								<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
 							</div>
 							<div class="row">
-								<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="login">Reconnect</span></a>
+								<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="reauth">Reconnect</span></a>
 							</div>
 						{% endif %}
 					{% else %}
