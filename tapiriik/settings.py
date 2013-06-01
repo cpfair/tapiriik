@@ -71,6 +71,9 @@ STATICFILES_FINDERS = (
 # and yes, this is overriden in local_settings.py
 SECRET_KEY = 'vag26gs^t+_y0msoemqo%_5gb*th(i!v$l6##bq9tu2ggcsn13'
 
+# key used in credential storage - please see note in credential_storage.py
+CREDENTIAL_STORAGE_KEY = b"NotTheRealKeyFYI"
+
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
@@ -158,6 +161,9 @@ PAYMENT_CURRENCY = "USD"
 
 # empty means no invites
 INVITE_KEYS = []
+
+# hidden from regular signup
+SOFT_LAUNCH_SERVICES = ["garminconnect"]
 
 # set at startup
 SITE_VER = "unknown"

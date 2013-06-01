@@ -107,14 +107,21 @@ class Activity:
         else:
             self.AdjustTZ()
 
-    def CalculateDistance(self):
+    def CalculateDistance(self, startWpt=None, endWpt=None):
+        self.Distance = self.GetDistance(startWpt, endWpt)
+
+    def GetDistance(self, startWpt=None, endWpt=None):
         import math
         dist = 0
         altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
-        for x in range(1, len(self.Waypoints)):
-            if self.Waypoints[x - 1].Type == WaypointType.Pause:
+        if not startWpt:
+            startWpt = self.Waypoints[0]
+        if not endWpt:
+            endWpt = self.Waypoints[-1]
+        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt)):
+            if self.Waypoints[x].Type == WaypointType.Pause:
                 continue  # don't count distance while paused
-            lastLoc = self.Waypoints[x - 1].Location
+            lastLoc = self.Waypoints[x-1].Location
             if lastLoc is None or lastLoc.Longitude is None or lastLoc.Latitude is None:
                 raise ValueError("Discontinuous track")
             altHold = lastLoc.Altitude if lastLoc.Altitude is not None else altHold
@@ -129,8 +136,7 @@ class Activity:
             else:
                 dz = 0
             dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
-
-        self.Distance = dist
+        return dist
 
     def CheckSanity(self):
         if not hasattr(self, "UploadedTo") or len(self.UploadedTo) == 0:
@@ -175,7 +181,7 @@ class Activity:
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " End " + str(self.EndTime)
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo) + " End " + str(self.EndTime)
     __repr__ = __str__
 
     def __eq__(self, other):
@@ -191,11 +197,12 @@ class UploadedActivity (Activity):
 
 
 class WaypointType:
-    Start = 0
-    Regular = 1
-    Pause = 11
-    Resume = 12
-    End = 100
+    Start = 0   # Start of activity
+    Regular = 1 # Normal
+    Lap = 2     # A new lap starts with this
+    Pause = 11  # All waypoints within a paused period should have this type
+    Resume = 12 # The first waypoint after a paused period
+    End = 100   # End of activity
 
 
 class Waypoint:

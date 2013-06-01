@@ -12,9 +12,9 @@ def sync_status(req):
     conns = User.GetConnectionRecordsByUser(req.user)
     errorCodes = []
     for conn in conns:
-        if "SyncErrors" not in conn:
+        if not hasattr(conn, "SyncErrors"):
             continue
-        for err in conn["SyncErrors"]:
+        for err in conn.SyncErrors:
             if "Code" in err and err["Code"] is not None and len(err["Code"]) > 0:
                 errorCodes.append(err["Code"])
             else:

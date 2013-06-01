@@ -13,7 +13,7 @@
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
 			{% for connection in user.ConnectedServices|svc_populate_conns %}
-			{% with svc=connection|svc_conn_to_provider %}
+			{% with svc=connection.Service %}
 				{% include "service-button.html" with provider=svc connection=connection %}
 				{% if svc.Configurable %}
 					<noscript>
@@ -43,8 +43,10 @@
 	</p>
 	{% comment %} It's entirely possible that the synchronization could be run again after an error - and it will with auto-sync, but it makes more sense that errors need to be resolved before continuing {% endcomment %}
 	{% endif %}
-	<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
-	
+	{% if user.ConnectedServices|length > 1 %}
+		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
+	{% endif %}
+
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}
@@ -54,15 +56,19 @@
 	{% if user.ConnectedServices|svc_providers_except|length != 0 %}
 		<hr>
 		{% for provider in user.ConnectedServices|svc_providers_except %}
-			{% include "service-button.html" with provider=provider inactive=True %} 
+			{% if provider.ID not in config.soft_launch %}
+				{% include "service-button.html" with provider=provider inactive=True %} 
+			{% endif %}
 		{% endfor %}
 	{% endif %}
-	
+
 {% else %}
 <p class="splashPreamble">tapiriik synchronizes your fitness activities between RunKeeper, Strava, Endomondo and Dropbox<br/>
 (your heart rate, cadence, power, and temperature data syncs too)</p> 
 	{% for provider in service_providers %}
-	{% include "service-button.html" with provider=provider %}
+		{% if provider.ID not in config.soft_launch %}
+			{% include "service-button.html" with provider=provider %}
+		{% endif %}
 	{% endfor %}
 <p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
