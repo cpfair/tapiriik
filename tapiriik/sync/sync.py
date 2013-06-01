@@ -22,7 +22,7 @@ def _formatExc():
 class Sync:
 
     SyncInterval = timedelta(hours=1)
-    MinimumSyncInterval = timedelta(minutes=2)
+    MinimumSyncInterval = timedelta(seconds=30)
 
     def ScheduleImmediateSync(user, exhaustive=None):
         if exhaustive is None:
