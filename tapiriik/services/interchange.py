@@ -22,6 +22,25 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     Elliptical = "Elliptical"
     Other = "Other"
 
+    # The right-most element is the "most specific."
+    _hierarchy = [
+        [Cycling, MountainBiking],
+        [Running, Walking, Hiking]
+    ]
+    def PickMostSpecific(types):
+        types = [x for x in types if x and x is not ActivityType.Other]
+        if len(types) == 0:
+            return ActivityType.Other
+        most_specific = types[0]
+        for definition in ActivityType._hierarchy:
+            if len([x for x in types if x in definition]) == len(types):
+                for act_type in types:
+                    if definition.index(most_specific) < definition.index(act_type):
+                        most_specific = act_type
+        return most_specific
+
+
+
 
 class Activity:
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):

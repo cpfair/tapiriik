@@ -47,3 +47,28 @@ class InterchangeTests(TapiriikTestCase):
         record = eSvc._createUploadData(act)
         eSvc._populateActivityFromTrackRecord(act, record)
         self.assertEqual(oldWaypoints, act.Waypoints)
+
+    def test_activity_specificity_resolution(self):
+        # Mountain biking is more specific than just cycling
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Cycling, ActivityType.MountainBiking]), ActivityType.MountainBiking)
+
+        # But not once we mix in an unrelated activity - pick the first
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.Swimming]), ActivityType.Cycling)
+
+        # Duplicates
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.MountainBiking]), ActivityType.MountainBiking)
+
+        # One
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.MountainBiking]), ActivityType.MountainBiking)
+
+        # With None
+        self.assertEqual(ActivityType.PickMostSpecific([None, ActivityType.MountainBiking]), ActivityType.MountainBiking)
+
+        # All None
+        self.assertEqual(ActivityType.PickMostSpecific([None, None]), ActivityType.Other)
+
+        # Never pick 'Other' given a better option
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Other, ActivityType.MountainBiking]), ActivityType.MountainBiking)
+
+        # Normal w/ Other + None
+        self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Other, ActivityType.Cycling, None, ActivityType.MountainBiking]), ActivityType.MountainBiking)
