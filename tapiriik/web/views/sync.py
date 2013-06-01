@@ -18,7 +18,7 @@ def sync_status(req):
         if not hasattr(conn, "SyncErrors"):
             continue
         for err in conn.SyncErrors:
-            syncHash = zlib.adler32(str(err), syncHash)
+            syncHash = zlib.adler32(bytes(str(err), "UTF-8"), syncHash)
             if "Code" in err and err["Code"] is not None and len(err["Code"]) > 0:
                 errorCodes.append(err["Code"])
             else:

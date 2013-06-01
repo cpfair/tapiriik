@@ -4,9 +4,10 @@ register = template.Library()
 
 @register.filter(name="format_meters")
 def meters_to_kms(value):
-    if type(value) is not int:
-        return 0
-    return round(value / 1000)
+    try:
+        return round(value / 1000)
+    except:
+        return "NaN"
 
 
 @register.filter(name='dict_get')
