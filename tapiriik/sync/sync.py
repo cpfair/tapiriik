@@ -256,7 +256,7 @@ class Sync:
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
-            eligibleServices = self._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+            eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
             if not len(eligibleServices):
                 print("\t No eligible destinations")
