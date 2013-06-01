@@ -8,6 +8,8 @@ You're logging into {{ serviceid }}
 <form action="{% url 'auth_simple' service=serviceid %}" method="post">
 <input name="username"/>
 <input name="password" type="password"/>
+<label for="persist">Remember these details</label>
+<input name="persist" id="persist" type="checkbox"/>
 <input type="submit"/>
 {% csrf_token %}
 </form>

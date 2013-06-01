@@ -2,6 +2,7 @@ from .payment import *
 from .totp import *
 from tapiriik.database import db
 from tapiriik.sync import Sync
+from tapiriik.services import ServiceRecord
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 
@@ -23,10 +24,11 @@ class User:
         return db.users.find_one({"_id": uid})
 
     def GetConnectionRecordsByUser(user):
-        return list(db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}}))
+        return [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})]
 
     def GetConnectionRecord(user, svcId):
-        return db.connections.find_one({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"] if x["Service"] == svcId]}})
+        rec = db.connections.find_one({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"] if x["Service"] == svcId]}})
+        return ServiceRecord(rec) if rec else None
 
     def SetEmail(user, email):
         db.users.update({"_id": ObjectId(user["_id"])}, {"$set": {"Email": email}})
@@ -45,7 +47,7 @@ class User:
         return False
 
     def ConnectService(user, serviceRecord):
-        existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord["_id"])})
+        existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord._id)})
         if "ConnectedServices" not in user:
             user["ConnectedServices"] = []
         delta = False
@@ -62,35 +64,43 @@ class User:
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
-            if serviceRecord["_id"] not in [x["ID"] for x in user["ConnectedServices"]]:
-                user["ConnectedServices"].append({"Service": serviceRecord["Service"], "ID": serviceRecord["_id"]})
+            if serviceRecord._id not in [x["ID"] for x in user["ConnectedServices"]]:
+                # we might be connecting a second account for the same service
+                for duplicateConn in [x for x in user["ConnectedServices"] if x["Service"] == serviceRecord.Service.ID]:
+                    dupeRecord = User.GetConnectionRecord(user, serviceRecord.Service.ID)  # this'll just pick the first connection of type, but we repeat the right # of times anyways
+                    Service.DeleteServiceRecord(dupeRecord)
+                    User.DisconnectService(dupeRecord, preserveUser=True)  # preserveUser prevents GCing the user immediately before it's needed
+
+                user["ConnectedServices"].append({"Service": serviceRecord.Service.ID, "ID": serviceRecord._id})
                 delta = True
+
         db.users.update({"_id": user["_id"]}, user)
-        if delta or ("SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
+        if delta or (hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
             Sync.SetNextSyncIsExhaustive(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
-            if "SyncErrors" in serviceRecord and len(serviceRecord["SyncErrors"]) > 0:
+            if hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0:
                 Sync.ScheduleImmediateSync(user)
 
-    def DisconnectService(serviceRecord):
+    def DisconnectService(serviceRecord, preserveUser=False):
         # not that >1 user should have this connection
-        activeUsers = list(db.users.find({"ConnectedServices.ID": serviceRecord["_id"]}))
+        activeUsers = list(db.users.find({"ConnectedServices.ID": serviceRecord._id}))
         if len(activeUsers) == 0:
-            raise Exception("No users found with service " + serviceRecord["_id"])
-        db.users.update({}, {"$pull": {"ConnectedServices": {"ID": serviceRecord["_id"]}}}, multi=True)
-        for user in activeUsers:
-            if len(user["ConnectedServices"]) - 1 == 0:
-                # I guess we're done here?
-                db.users.remove({"_id": user["_id"]})
+            raise Exception("No users found with service " + serviceRecord._id)
+        db.users.update({}, {"$pull": {"ConnectedServices": {"ID": serviceRecord._id}}}, multi=True)
+        if not preserveUser:
+            for user in activeUsers:
+                if len(user["ConnectedServices"]) - 1 == 0:
+                    # I guess we're done here?
+                    db.users.remove({"_id": user["_id"]})
 
     def AuthByService(serviceRecord):
-        return db.users.find_one({"ConnectedServices.ID": serviceRecord["_id"]})
+        return db.users.find_one({"ConnectedServices.ID": serviceRecord._id})
 
     def SetFlowException(user, sourceServiceRecord, targetServiceRecord, flowToTarget=True, flowtoSource=True):
         if "FlowExceptions" not in user:
             user["FlowExceptions"] = []
 
         # flow exceptions are stored in "forward" direction - service-account X will not send activities to service-account Y
-        forwardException = {"Target": {"Service": targetServiceRecord["Service"], "ExternalID": targetServiceRecord["ExternalID"]}, "Source": {"Service": sourceServiceRecord["Service"], "ExternalID": sourceServiceRecord["ExternalID"]}}
+        forwardException = {"Target": {"Service": targetServiceRecord.Service.ID, "ExternalID": targetServiceRecord.ExternalID}, "Source": {"Service": sourceServiceRecord.Service.ID, "ExternalID": sourceServiceRecord.ExternalID}}
         backwardsException = {"Target": forwardException["Source"], "Source": forwardException["Target"]}
         if flowToTarget is not None:
             if flowToTarget:
@@ -111,7 +121,7 @@ class User:
 
     def CheckFlowException(user, sourceServiceRecord, targetServiceRecord):
         ''' returns true if there is a flow exception blocking activities moving from source to destination '''
-        forwardException = {"Target": {"Service": targetServiceRecord["Service"], "ExternalID": targetServiceRecord["ExternalID"]}, "Source": {"Service": sourceServiceRecord["Service"], "ExternalID": sourceServiceRecord["ExternalID"]}}
+        forwardException = {"Target": {"Service": targetServiceRecord.Service.ID, "ExternalID": targetServiceRecord.ExternalID}, "Source": {"Service": sourceServiceRecord.Service.ID, "ExternalID": sourceServiceRecord.ExternalID}}
         return "FlowExceptions" in user and forwardException in user["FlowExceptions"]
 
 

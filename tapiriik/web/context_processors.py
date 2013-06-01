@@ -1,7 +1,7 @@
 from tapiriik.services import Service
 from tapiriik.auth import User
 from tapiriik.sync import Sync
-from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID
+from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES
 from tapiriik.database import db
 import json
 
@@ -11,12 +11,12 @@ def providers(req):
 
 
 def config(req):
-    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}}}
+    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}, "soft_launch": SOFT_LAUNCH_SERVICES}}
 
 
 def js_bridge(req):
     serviceInfo = {}
-    
+
     for svc in Service.List():
         if req.user is not None:
             svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
@@ -25,21 +25,23 @@ def js_bridge(req):
         info = {
             "DisplayName": svc.DisplayName,
             "AuthenticationType": svc.AuthenticationType,
+            "UsesExtendedAuth": svc.RequiresExtendedAuthorizationDetails,
             "AuthorizationURL": svc.UserAuthorizationURL,
             "NoFrame": svc.AuthenticationNoFrame,
             "Configurable": svc.Configurable,
             "RequiresConfiguration": False  # by default
         }
-        if svc.Configurable and svcRec:
-            if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
-                info["AccessLevel"] = "full" if svcRec["Authorization"]["Full"] else "normal"
-            info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
-            info["Configured"] = Service.HasConfiguration(svcRec)
-            info["Config"] = Service.GetConfiguration(svcRec)
+        if svcRec:
+            if svc.Configurable:
+                if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
+                    info["AccessLevel"] = "full" if svcRec.Authorization["Full"] else "normal"
+                info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
+                info["Configured"] = Service.HasConfiguration(svcRec)
+                info["Config"] = Service.GetConfiguration(svcRec)
+            info["HasExtendedAuth"] = svcRec.HasExtendedAuthorizationDetails()
+            info["ExternalID"] = svcRec.ExternalID
         info["BlockFlowTo"] = []
         info["Connected"] = svcRec is not None
-        if svcRec is not None:
-            info["ExternalID"] = svcRec["ExternalID"]
         serviceInfo[svc.ID] = info
     if req.user is not None:
         flowExc = User.GetFlowExceptions(req.user)

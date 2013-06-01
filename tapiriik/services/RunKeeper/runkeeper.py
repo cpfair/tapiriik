@@ -57,18 +57,18 @@ class RunKeeperService(ServiceBase):
         if existingRecord is None:
             uid = self._getUserId({"Authorization": {"Token": token}})  # meh
         else:
-            uid = existingRecord["ExternalID"]
+            uid = existingRecord.ExternalID
 
         return (uid, {"Token": token})
 
     def RevokeAuthorization(self, serviceRecord):
-        resp = requests.post("https://runkeeper.com/apps/de-authorize", data={"access_token": serviceRecord["Authorization"]["Token"]})
+        resp = requests.post("https://runkeeper.com/apps/de-authorize", data={"access_token": serviceRecord.Authorization["Token"]})
         if resp.status_code != 204:
             raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
 
     def _apiHeaders(self, serviceRecord):
-        return {"Authorization": "Bearer " + serviceRecord["Authorization"]["Token"]}
+        return {"Authorization": "Bearer " + serviceRecord.Authorization["Token"]}
 
     def _getAPIUris(self, serviceRecord):
         if hasattr(self, "_uris"):  # cache these for the life of the batch job at least? hope so
@@ -149,7 +149,7 @@ class RunKeeperService(ServiceBase):
                     raise APIAuthorizationException("No authorization to download activity" + activityID)
                 raise APIException("Unable to download activity " + activityID + " response " + str(response) + " " + response.text)
             ridedata = response.json()
-            ridedata["Owner"] = serviceRecord["ExternalID"]
+            ridedata["Owner"] = serviceRecord.ExternalID
             if AGGRESSIVE_CACHE:
                 cachedb.rk_activity_cache.insert(ridedata)
 
@@ -239,4 +239,4 @@ class RunKeeperService(ServiceBase):
         return record
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.rk_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.rk_activity_cache.remove({"Owner": serviceRecord.ExternalID})

@@ -45,11 +45,11 @@ class DropboxService(ServiceBase):
         self.OutstandingReqTokens = {}
 
     def _getClient(self, serviceRec):
-        if serviceRec["Authorization"]["Full"]:
+        if serviceRec.Authorization["Full"]:
             sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
         else:
             sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
-        sess.set_token(serviceRec["Authorization"]["Key"], serviceRec["Authorization"]["Secret"])
+        sess.set_token(serviceRec.Authorization["Key"], serviceRec.Authorization["Secret"])
         return client.DropboxClient(sess)
 
     def WebInit(self):
@@ -57,7 +57,7 @@ class DropboxService(ServiceBase):
         pass
 
     def RequiresConfiguration(self, svcRec):
-        return svcRec["Authorization"]["Full"]
+        return svcRec.Authorization["Full"]
 
     def GenerateUserAuthorizationURL(self, level=None):
         full = level == "full"
@@ -98,7 +98,7 @@ class DropboxService(ServiceBase):
         from tapiriik.auth import User
         if newConfig["SyncRoot"] != oldConfig["SyncRoot"]:
             Sync.ScheduleImmediateSync(User.AuthByService(svcRec), True)
-            cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, {"$unset": {"Structure": None}})
+            cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, {"$unset": {"Structure": None}})
 
     def _raiseDbException(self, e):
         if e.status == 401:
@@ -158,13 +158,13 @@ class DropboxService(ServiceBase):
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
         dbcl = self._getClient(svcRec)
-        if not svcRec["Authorization"]["Full"]:
+        if not svcRec.Authorization["Full"]:
             syncRoot = "/"
         else:
-            syncRoot = svcRec["Config"]["SyncRoot"] 
-        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec["ExternalID"]})
+            syncRoot = svcRec.Config["SyncRoot"]
+        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec.ExternalID})
         if cache is None:
-            cache = {"ExternalID": svcRec["ExternalID"], "Structure": [], "Activities": {}}
+            cache = {"ExternalID": svcRec.ExternalID, "Structure": [], "Activities": {}}
         if "Structure" not in cache:
             cache["Structure"] = []
         self._folderRecurse(cache["Structure"], dbcl, syncRoot)
@@ -174,7 +174,7 @@ class DropboxService(ServiceBase):
         for dir in cache["Structure"]:
             for file in dir["Files"]:
                 path = file["Path"]
-                if svcRec["Authorization"]["Full"]:
+                if svcRec.Authorization["Full"]:
                     relPath = path.replace(syncRoot, "", 1)
                 else:
                     relPath = path.replace("/Apps/tapiriik/", "", 1)  # dropbox api is meh api
@@ -194,27 +194,27 @@ class DropboxService(ServiceBase):
                     # get the full activity
                     act, rev = self._getActivity(dbcl, path)
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
-                act.UploadedTo = [{"Connection": svcRec}]
+                act.UploadedTo = [{"Connection": svcRec, "Path": path}]
                 tagRes = self._tagActivity(relPath)
-                act.DBPath = path
                 act.Tagged = tagRes is not None
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
                 activities.append(act)
 
-        cachedb.dropbox_cache.update({"ExternalID": svcRec["ExternalID"]}, cache, upsert=True)
+        cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, cache, upsert=True)
         return activities
 
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
         if not activity.Tagged:
-            if "UploadUntagged" not in serviceRecord["Config"] or not serviceRecord["Config"]["UploadUntagged"]:
+            if "UploadUntagged" not in serviceRecord.Config or not serviceRecord.Config["UploadUntagged"]:
                 raise ServiceException("Activity untagged", code="UNTAGGED")
 
         # activity might already be populated, if not download it again
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
+            path = [x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
             dbcl = self._getClient(serviceRecord)
-            fullActivity, rev = self._getActivity(dbcl, activity.DBPath)
+            fullActivity, rev = self._getActivity(dbcl, path)
             fullActivity.Tagged = activity.Tagged
             fullActivity.Type = activity.Type
             fullActivity.UploadedTo = activity.UploadedTo
@@ -231,19 +231,19 @@ class DropboxService(ServiceBase):
         if activity.Name is not None and len(activity.Name) > 0:
             fname = activity.Name.replace("/", "_") + "_" + fname
 
-        if not serviceRecord["Authorization"]["Full"]:
+        if not serviceRecord.Authorization["Full"]:
             fpath = "/" + fname
         else:
-            fpath = serviceRecord["Config"]["SyncRoot"] + "/" + fname
+            fpath = serviceRecord.Config["SyncRoot"] + "/" + fname
 
         try:
             metadata = dbcl.put_file(fpath, data.encode("UTF-8"))
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
         # fake this in so we don't immediately redownload the activity next time 'round
-        cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord["ExternalID"]})
+        cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord.ExternalID})
         cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": "/" + fname, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
-        cachedb.dropbox_cache.update({"ExternalID": serviceRecord["ExternalID"]}, cache)  # not upsert, hope the record exists at this time...
+        cachedb.dropbox_cache.update({"ExternalID": serviceRecord.ExternalID}, cache)  # not upsert, hope the record exists at this time...
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.dropbox_cache.remove({"ExternalID": serviceRecord["ExternalID"]})
+        cachedb.dropbox_cache.remove({"ExternalID": serviceRecord.ExternalID})

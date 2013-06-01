@@ -5,3 +5,4 @@ lxml
 dropbox
 http://labix.org/download/python-dateutil/python-dateutil-2.0.tar.gz
 Django==1.5.1
+pycrypto

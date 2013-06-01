@@ -81,7 +81,7 @@ class EndomondoService(ServiceBase):
         resp = requests.get("https://api.mobile.endomondo.com/mobile/auth", params=params)
         print("response: " + resp.text + str(resp.status_code))
         if resp.text.strip() == "USER_UNKNOWN" or resp.text.strip() == "USER_EXISTS_PASSWORD_WRONG":
-            return (None, None)  # maybe raise an exception instead?
+            raise APIAuthorizationException("Invalid login")
         data = self._parseKVP(resp.text)
         return (data["userId"], {"AuthToken": data["authToken"], "SecureToken": data["secureToken"]})
 
@@ -90,7 +90,7 @@ class EndomondoService(ServiceBase):
         pass
 
     def _downloadRawTrackRecord(self, serviceRecord, trackId):
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "trackId": trackId}
+        params = {"authToken": serviceRecord.Authorization["AuthToken"], "trackId": trackId}
         response = requests.get("http://api.mobile.endomondo.com/mobile/readTrack", params=params)
         return response.text
 
@@ -183,7 +183,7 @@ class EndomondoService(ServiceBase):
 
         while True:
             before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-            params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "maxResults": 45, "before": before}
+            params = {"authToken": serviceRecord.Authorization["AuthToken"], "maxResults": 45, "before": before}
             print("Req with " + str(params))
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
@@ -211,7 +211,7 @@ class EndomondoService(ServiceBase):
                 if cachedTrackData is None:
                     data = self._downloadRawTrackRecord(serviceRecord, act["id"])
                     self._populateActivityFromTrackRecord(activity, data, minimumWaypoints=True)
-                    cachedTrackData = {"Owner": serviceRecord["ExternalID"], "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
+                    cachedTrackData = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
                     if not paged or AGGRESSIVE_CACHE:  # Don't cache stuff that we won't need in the immediate future.
                         cachedb.endomondo_activity_cache.insert(cachedTrackData)
                 else:
@@ -251,7 +251,7 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord["Authorization"]["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"], "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000 if activity.Distance is not None else None}
+        params = {"authToken": serviceRecord.Authorization["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000 if activity.Distance is not None else None}
         data = self._createUploadData(activity)
         data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
@@ -275,7 +275,8 @@ class EndomondoService(ServiceBase):
                 WaypointType.Resume: "1",
                 WaypointType.Start: "2",
                 WaypointType.End: "3",
-                WaypointType.Regular: ""
+                WaypointType.Regular: "",
+                WaypointType.Lap: ""  # Endomondo has no lap tracking
                 }[wp.Type])
 
             if wp.Location is not None:
@@ -290,4 +291,4 @@ class EndomondoService(ServiceBase):
         return "\n".join(scsv)
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord.ExternalID})

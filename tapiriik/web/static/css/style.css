@@ -195,6 +195,10 @@ form label {
 	display:block;
 	font-size:140%;
 }
+
+form label[for=persist] {
+	display: inline-block;
+}
 form input {
 	font-size:120%;
 }
@@ -364,7 +368,6 @@ a img {
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
 	overflow:hidden;
-	max-height:25px;
 	height:25px;
 	display: block;
 }
@@ -384,17 +387,23 @@ a img {
 	text-decoration: underline;
 	color:white;
 }
-
 .service .controlsInner {
 	margin-top: 3px;
 	position: relative;
-	-webkit-transition: top 0.2s ease;
-	-moz-transition: top 0.2s ease;
-	transition: top 0.2s ease;
+}
+
+.service .controlsInner, .service .controls {
+	-webkit-transition: top 0.2s ease, height 0.2s ease;
+	-moz-transition: top 0.2s ease, height 0.2s ease;
+	transition: top 0.2s ease, height 0.2s ease;
 }
 
 .service.connected:hover .controlsInner {
 	top:-25px;
+}
+
+.service.connected:hover .controls.multi {
+	height:50px;
 }
 
 .service .config {
@@ -549,28 +558,36 @@ a img {
 	background-image:url('../img/link.png');
 }
 
+.service .control#reauth {
+	background-image:url('../img/sync-reauth.png');
+}
+
 .service .control#sync-dc {
 	background-image:url('../img/unlink.png');
 }
 
 .service .control#sync-config {
-	background-image:url('../img/sync-settings.png');	
+	background-image:url('../img/sync-settings.png');
 	padding-left:17px;
 	background-position: 0% 65%;
 }
 
 .service .status#sync-ok {
-	background-image:url('../img/sync-ok.png');	
+	background-image:url('../img/sync-ok.png');
 	padding-left:17px;
-	background-position: 0% 65%;
+}
+
+.service .status#sync-paused {
+	background-image:url('../img/sync-pause.png');
+	padding-left:17px;
 }
 
 .service .status#sync-info {
-	background-image:url('../img/sync-info.png');	
+	background-image:url('../img/sync-info.png');
 }
 
 .service .status#sync-fail {
-	background-image:url('../img/sync-fail.png');	
+	background-image:url('../img/sync-fail.png');
 }
 
 .syncStatus {

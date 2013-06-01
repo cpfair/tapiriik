@@ -99,11 +99,12 @@ class GPXIO:
         for wp in activity.Waypoints:
             if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 continue  # drop the point
-            if wp.Type == WaypointType.Pause:
+            if wp.Type == WaypointType.Pause or wp.Type == WaypointType.Lap:
+                #  Laps will create new trksegs (the immediate unsetting of inPause is intentional)
                 if inPause:
                     continue  # this used to be an exception, but I don't think that was merited
                 inPause = True
-            if inPause and (wp.Type == WaypointType.Regular or wp.Type == WaypointType.Resume or wp.Type == WaypointType.End):
+            if inPause and wp.Type != WaypointType.Pause:
                 trkseg = etree.SubElement(trk, "trkseg")
                 inPause = False
             trkpt = etree.SubElement(trkseg, "trkpt")

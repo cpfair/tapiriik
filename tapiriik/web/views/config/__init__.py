@@ -22,13 +22,13 @@ def config_flow_save(req, service):
     if not req.user:
         return HttpResponse(status=403)
     conns = User.GetConnectionRecordsByUser(req.user)
-    if service not in [x["Service"] for x in conns]:
+    if service not in [x.Service.ID for x in conns]:
         return HttpResponse(status=404)
-    sourceSvc = [x for x in conns if x["Service"] == service][0]
+    sourceSvc = [x for x in conns if x.Service.ID == service][0]
     #  the JS doesn't resolve the flow exceptions, it just passes in the expanded config flags for the edited service (which will override other flowexceptions)
     flowFlags = json.loads(req.POST["flowFlags"])
-    for destSvc in [x for x in conns if x["Service"] != service]:
-        User.SetFlowException(req.user, sourceSvc, destSvc, destSvc["Service"] in flowFlags["forward"], destSvc["Service"] in flowFlags["backward"])
+    for destSvc in [x for x in conns if x.Service.ID != service]:
+        User.SetFlowException(req.user, sourceSvc, destSvc, destSvc.Service.ID in flowFlags["forward"], destSvc.Service.ID in flowFlags["backward"])
     Sync.SetNextSyncIsExhaustive(req.user, True)  # to pick up any activities left behind
     return HttpResponse()
 

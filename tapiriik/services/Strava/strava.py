@@ -28,7 +28,7 @@ class StravaService(ServiceBase):
         params = {"email": email, "password": password}
         resp = requests.post("https://www.strava.com/api/v2/authentication/login", data=params)
         if resp.status_code != 200:
-            return (None, None)  # maybe raise an exception instead?
+            raise APIAuthorizationException("Invalid login")
         data = resp.json()
         return (data["athlete"]["id"], {"Token": data["token"]})
 
@@ -45,7 +45,7 @@ class StravaService(ServiceBase):
         pgSz = 50  # this is determined by the Strava API
         earliestFirstPageDate = earliestDate = None
         while True:
-            resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord["ExternalID"]))
+            resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord.ExternalID))
             reqdata = resp.json()
             reqdata = reqdata["rides"]
             data += reqdata
@@ -61,7 +61,7 @@ class StravaService(ServiceBase):
                 resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
                 ridedata = resp.json()
                 ridedata = ridedata["ride"]
-                ridedata["Owner"] = svcRecord["ExternalID"]
+                ridedata["Owner"] = svcRecord.ExternalID
             else:
                 cached = True
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
@@ -99,7 +99,7 @@ class StravaService(ServiceBase):
             resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
             ridedata = resp.json()
             ridedata["id"] = activityID
-            ridedata["Owner"] = svcRecord["ExternalID"]
+            ridedata["Owner"] = svcRecord.ExternalID
             if AGGRESSIVE_CACHE:
                 cachedb.strava_activity_cache.insert(ridedata)
 
@@ -175,9 +175,9 @@ class StravaService(ServiceBase):
                             wp.Cadence,
                             wp.Power
                             ])
-        req = {"token": serviceRecord["Authorization"]["Token"],
+        req = {"token": serviceRecord.Authorization["Token"],
                 "type": "json",
-                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"]["Service"],
+                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
                 "data_fields": fields,
                 "data": points,
                 "activity_name": activity.Name,
@@ -190,5 +190,5 @@ class StravaService(ServiceBase):
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text)
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.strava_cache.remove({"Owner": serviceRecord["ExternalID"]})
-        cachedb.strava_activity_cache.remove({"Owner": serviceRecord["ExternalID"]})
+        cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
+        cachedb.strava_activity_cache.remove({"Owner": serviceRecord.ExternalID})

@@ -1,5 +1,5 @@
-from tapiriik.database import db
-from tapiriik.services import Service, APIException, APIAuthorizationException, ServiceException
+from tapiriik.database import db, cachedb
+from tapiriik.services import Service, ServiceRecord, APIException, APIAuthorizationException, ServiceException
 from datetime import datetime, timedelta
 import sys
 import os
@@ -35,15 +35,15 @@ class Sync:
 
     def _determineRecipientServices(activity, allConnections):
         recipientServices = allConnections
-        recipientServices = [conn for conn in recipientServices if activity.Type in Service.FromID(conn["Service"]).SupportedActivities
-                                                                and ("SynchronizedActivities" not in conn or not [x for x in activity.UIDs if x in conn["SynchronizedActivities"]])
+        recipientServices = [conn for conn in recipientServices if activity.Type in conn.Service.SupportedActivities
+                                                                and (not hasattr(conn, "SynchronizedActivities") or not [x for x in activity.UIDs if x in conn.SynchronizedActivities])
                                                                 and conn not in [x["Connection"] for x in activity.UploadedTo]]
         return recipientServices
 
     def _fromSameService(activityA, activityB):
-        otherSvcs = [y["Connection"]["_id"] for y in activityB.UploadedTo]
+        otherSvcs = [y["Connection"]._id for y in activityB.UploadedTo]
         for uploadA in activityA.UploadedTo:
-            if uploadA["Connection"]["_id"] in otherSvcs:
+            if uploadA["Connection"]._id in otherSvcs:
                 return True
         return False
 
@@ -52,8 +52,7 @@ class Sync:
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
-            if len(act.Waypoints) > 0:
-                act.EnsureTZ()
+            # Used to ensureTZ() right here - doubt it's needed any more?
             existElsewhere = [x for x in activityList if x.UID == act.UID
                               or  # check to see if the activities are reasonably close together to be considered duplicate
                               (x.StartTime is not None and
@@ -117,7 +116,8 @@ class Sync:
 
         print ("Beginning sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
 
-        serviceConnections = list(db.connections.find({"_id": {"$in": connectedServiceIds}}))
+        serviceConnections = [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": connectedServiceIds}})]
+        allExtendedAuthDetails = list(cachedb.extendedAuthDetails.find({"ID": {"$in": connectedServiceIds}}))
         activities = []
 
         excludedServices = []
@@ -125,23 +125,34 @@ class Sync:
         tempSyncErrors = {}
 
         for conn in serviceConnections:
-            tempSyncErrors[conn["_id"]] = []
-            conn["SyncErrors"] = []
-            svc = Service.FromID(conn["Service"])
+            tempSyncErrors[conn._id] = []
+            conn.SyncErrors = []
+            svc = conn.Service
+
+            if svc.RequiresExtendedAuthorizationDetails:
+                if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
+                    extAuthDetails = [x["ExtendedAuthorization"] for x in allExtendedAuthDetails if x["ID"] == conn._id]
+                    if not len(extAuthDetails):
+                        print("No extended auth details for " + svc.ID)
+                        excludedServices.append(conn._id)
+                        continue
+                    # the connection never gets saved in full again, so we can sub these in here at no risk
+                    conn.ExtendedAuthorization = extAuthDetails[0]
+
             try:
                 print ("\tRetrieving list from " + svc.ID)
                 svcActivities = svc.DownloadActivityList(conn, exhaustive)
             except APIAuthorizationException as e:
-                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                excludedServices.append(conn["_id"])
+                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                excludedServices.append(conn._id)
                 continue
             except ServiceException as e:
-                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                excludedServices.append(conn["_id"])
+                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                excludedServices.append(conn._id)
                 continue
             except Exception as e:
-                tempSyncErrors[conn["_id"]].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
-                excludedServices.append(conn["_id"])
+                tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
+                excludedServices.append(conn._id)
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
@@ -149,26 +160,26 @@ class Sync:
 
         for activity in activities:
             if len(activity.UploadedTo) == 1:
-                # we can log the origin of this activity
-                if not len([x for x in origins if x["ActivityUID"] == activity.UID]):  # No need to hammer the database updating these when they haven't changed
-                    db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"]["Service"], "ExternalID": activity.UploadedTo[0]["Connection"]["ExternalID"]}}, upsert=True)
-                activity.Origin = activity.UploadedTo[0]["Connection"]
+                if not len(excludedServices):  # otherwise it could be incorrectly recorded
+                    # we can log the origin of this activity
+                    if not len([x for x in origins if x["ActivityUID"] == activity.UID]):  # No need to hammer the database updating these when they haven't changed
+                        db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}}, upsert=True)
+                    activity.Origin = activity.UploadedTo[0]["Connection"]
             else:
                 knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
                 if len(knownOrigin) > 0:
-                    connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x["Service"] and knownOrigin[0]["Origin"]["ExternalID"] == x["ExternalID"]]
+                    connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
                     if len(connectedOrigins) > 0:  # they might have disconnected it
                         activity.Origin = connectedOrigins[0]
                     else:
                         activity.Origin = knownOrigin[0]["Origin"]  # I have it on good authority that this will work
-
-            print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"]["Service"] for x in activity.UploadedTo]))
+            print ("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"].Service.ID for x in activity.UploadedTo]))
 
         totalActivities = len(activities)
         processedActivities = 0
         for activity in activities:
             # we won't need this now, but maybe later
-            db.connections.update({"_id": {"$in": [x["Connection"]["_id"] for x in activity.UploadedTo]}},
+            db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                   {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                   multi=True)
 
@@ -186,12 +197,12 @@ class Sync:
             db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
 
             # download the full activity record
-            print("\tActivity " + str(activity.UID) + " to " + str([x["Service"] for x in recipientServices]))
+            print("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
             eligibleServices = []
             for destinationSvcRecord in recipientServices:
-                if destinationSvcRecord["_id"] in excludedServices:
-                    print("\t\tExcluded " + destinationSvcRecord["Service"])
+                if destinationSvcRecord._id in excludedServices:
+                    print("\t\tExcluded " + destinationSvcRecord.Service.ID)
                     continue  # we don't know for sure if it needs to be uploaded, hold off for now
                 flowException = False
                 if hasattr(activity, "Origin"):
@@ -211,9 +222,9 @@ class Sync:
                                 flowException = False
                                 break
                 if flowException:
-                    print("\t\tFlow exception for " + destinationSvcRecord["Service"])
+                    print("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
                     continue
-                destSvc = Service.FromID(destinationSvcRecord["Service"])
+                destSvc = destinationSvcRecord.Service
                 if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
                     continue  # not configured, so we won't even try
                 eligibleServices.append(destinationSvcRecord)
@@ -223,21 +234,21 @@ class Sync:
                 continue
 
             for dlSvcUploadRec in activity.UploadedTo:
-                dlSvcRecord = dlSvcUploadRec["Connection"]
-                dlSvc = Service.FromID(dlSvcRecord["Service"])
+                dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
+                dlSvc = dlSvcRecord.Service
                 print("\t from " + dlSvc.ID)
                 act = None
                 workingCopy = copy.copy(activity)  # we can hope
                 try:
                     workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                 except APIAuthorizationException as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
                 except ServiceException as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     continue
                 except Exception as e:
-                    tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
                 else:
                     if workingCopy.Exclude:
@@ -245,7 +256,7 @@ class Sync:
                     try:
                         workingCopy.CheckSanity()
                     except:
-                        tempSyncErrors[dlSvcRecord["_id"]].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                         continue
                     else:
                         act = workingCopy
@@ -261,14 +272,14 @@ class Sync:
                     print("\t\tUploading to " + destSvc.ID)
                     destSvc.UploadActivity(destinationSvcRecord, act)
                 except APIAuthorizationException as e:
-                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.NotAuthorized, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                 except ServiceException as e:
-                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.Unknown, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                 except Exception as e:
-                    tempSyncErrors[destinationSvcRecord["_id"]].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc()})
+                    tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc()})
                 else:
                     # flag as successful
-                    db.connections.update({"_id": destinationSvcRecord["_id"]},
+                    db.connections.update({"_id": destinationSvcRecord._id},
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$inc": {"Destinations": 1}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
@@ -278,9 +289,11 @@ class Sync:
 
         allSyncErrors = []
         for conn in serviceConnections:
-            db.connections.update({"_id": conn["_id"]}, {"$set": {"SyncErrors": tempSyncErrors[conn["_id"]]}})
-            allSyncErrors += tempSyncErrors[conn["_id"]]
+            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id]}})
+            allSyncErrors += tempSyncErrors[conn._id]
 
+        # clear non-persisted extended auth details
+        cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
         # unlock the row
         db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors)}})
         print("Finished sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
