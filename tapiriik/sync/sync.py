@@ -7,6 +7,7 @@ import traceback
 import pprint
 import copy
 import pytz
+import random
 
 def _formatExc():
     print("Dumping exception")
@@ -23,6 +24,7 @@ def _formatExc():
 class Sync:
 
     SyncInterval = timedelta(hours=1)
+    SyncIntervalJitter = timedelta(minutes=5)
     MinimumSyncInterval = timedelta(seconds=30)
 
     def ScheduleImmediateSync(user, exhaustive=None):
@@ -156,7 +158,7 @@ class Sync:
             else:
                 nextSync = None
                 if User.HasActivePayment(user):
-                    nextSync = datetime.utcnow() + Sync.SyncInterval
+                    nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
