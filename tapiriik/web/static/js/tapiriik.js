@@ -512,9 +512,10 @@ tapiriik.UpdateSyncCountdown = function(){
 	$.ajax({"url":"/sync/status", success:function(data){
 		tapiriik.NextSync = data.NextSync !== null ? new Date(data.NextSync) : null;
 		tapiriik.LastSync = data.LastSync !== null ? new Date(data.LastSync) : null;
-		if (tapiriik.SyncErrors !== undefined && tapiriik.SyncErrors.toString() != data.Errors.toString()){
-			window.location.reload(); // show them the errors
+		if (tapiriik.SyncHash !== undefined && tapiriik.SyncHash != data.Hash){
+			window.location.reload(); // show them the whatever's new
 		}
+		tapiriik.SyncHash = data.Hash;
 		tapiriik.SyncErrors = data.Errors;
 		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.SynchronizationProgress = data.SynchronizationProgress;
@@ -529,7 +530,7 @@ tapiriik.FormatTimespan = function(spanMillis){
 	}
 };
 tapiriik.RefreshSyncCountdown = function(){
-	if (tapiriik.SyncErrors !== undefined){
+	if (tapiriik.SyncHash !== undefined){
 
 		var delta = tapiriik.NextSync - (new Date());
 		if (delta>0 || tapiriik.NextSync === null){
