@@ -9,6 +9,13 @@ class ServiceRecord:
         self.__dict__.update(dbRec)
     def __repr__(self):
         return "<ServiceRecord> " + str(self.__dict__)
+
+    def __eq__(self, other):
+        return self._id == other._id
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     @property
     def Service(self):
         from tapiriik.services import Service

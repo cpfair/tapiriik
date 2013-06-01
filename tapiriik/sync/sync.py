@@ -226,10 +226,12 @@ class Sync:
                     continue
                 destSvc = destinationSvcRecord.Service
                 if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
+                    print("\t\t" + destSvc.ID + " not configured")
                     continue  # not configured, so we won't even try
                 eligibleServices.append(destinationSvcRecord)
 
             if not len(eligibleServices):
+                print("\t No eligible destinations")
                 totalActivities -= 1  # Again, doesn't really count.
                 continue
 
