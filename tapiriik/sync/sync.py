@@ -63,7 +63,7 @@ class Sync:
         elif b.tzinfo and not a.tzinfo:
             return b
         else:
-            if knownTz:
+            if knownTz and not a.tzinfo:
                 return knownTz.localize(a)
             return a
 
