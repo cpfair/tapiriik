@@ -4,3 +4,4 @@ pytz
 lxml
 https://www.dropbox.com/static/developers/dropbox-python-sdk-1.5.1.zip
 http://labix.org/download/python-dateutil/python-dateutil-2.0.tar.gz
+pycrypto

@@ -4,7 +4,6 @@ from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException
 from tapiriik.services.tcx import TCXIO
-#from tapiriik.auth.password_storage import PasswordStore
 
 from django.core.urlresolvers import reverse
 import pytz
@@ -58,10 +57,11 @@ class GarminConnectService(ServiceBase):
         self._activityHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").json()["dictionary"]
 
     def _get_cookies(self, email, password=None):
+        from tapiriik.auth.credential_storage import CredentialStore
         if password is None:
             #  longing for C style overloads...
-            password = email.ExtendedAuthorization["Password"]
-            email = email.ExtendedAuthorization["Email"]
+            password = CredentialStore.Decrypt(email.ExtendedAuthorization["Password"])
+            email = CredentialStore.Decrypt(email.ExtendedAuthorization["Email"])
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
@@ -73,9 +73,10 @@ class GarminConnectService(ServiceBase):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
 
     def Authorize(self, email, password):
+        from tapiriik.auth.credential_storage import CredentialStore
         cookies = self._get_cookies(email, password)
         username = requests.get("https://connect.garmin.com/user/username", cookies=cookies).json()["username"]
-        return (username, {}, {"Email": email, "Password": password})
+        return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
 
     def _resolveActivityType(self, act_type):
