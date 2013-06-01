@@ -53,10 +53,9 @@
 			{% include "payment.html" %}
 		{% endif %}
 	{% endif %}
-	{% if user.ConnectedServices|svc_providers_except|length != 0 %}
-		<hr>
 		{% for provider in user.ConnectedServices|svc_providers_except %}
 			{% if provider.ID not in config.soft_launch %}
+				{% if forloop.first %}<hr>{% endif %}
 				{% include "service-button.html" with provider=provider inactive=True %} 
 			{% endif %}
 		{% endfor %}
