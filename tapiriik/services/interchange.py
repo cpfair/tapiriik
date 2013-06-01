@@ -143,9 +143,9 @@ class Activity:
             raise ValueError("Unset UploadedTo field")
         srcs = self.UploadedTo  # this is just so I can see the source of the activity in the exception message
         if self.TZ != self.StartTime.tzinfo:
-            raise ValueError("Inconsistent timezone between StartTime and activity")
+            raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ != self.EndTime.tzinfo:
-            raise ValueError("Inconsistent timezone between EndTime and activity")
+            raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
         if len(self.Waypoints) == 0:
             raise ValueError("No waypoints")
         if len(self.Waypoints) == 1:
@@ -165,7 +165,7 @@ class Activity:
         pointsWithoutLocation = 0
         for wp in self.Waypoints:
             if wp.Timestamp.tzinfo != self.TZ:
-                raise ValueError("WP and activity timezone are inconsistent")
+                raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
             if wp.Location:
                 if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                     raise ValueError("Invalid lat/lng")
