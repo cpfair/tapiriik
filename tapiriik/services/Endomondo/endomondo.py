@@ -239,8 +239,7 @@ class EndomondoService(ServiceBase):
         [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
         if len(activity.Waypoints) <= 1:
             activity.Exclude = True
-            return activity
-        return activity  # the activity is fully populated at this point, thanks to meh API design decisions
+        return activity
 
     def UploadActivity(self, serviceRecord, activity):
         #http://api.mobile.endomondo.com/mobile/track?authToken=token&workoutId=2013-02-27%2020:51:45%20EST&sport=18&duration=0.08&calories=0.00&hydration=0.00&goalType=BASIC&goalType=DISTANCE&goalDistance=0.000000&deflate=true&audioMessage=true

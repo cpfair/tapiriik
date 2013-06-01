@@ -95,7 +95,7 @@ class User:
     def AuthByService(serviceRecord):
         return db.users.find_one({"ConnectedServices.ID": serviceRecord._id})
 
-    def SetFlowException(user, sourceServiceRecord, targetServiceRecord, flowToTarget=True, flowtoSource=True):
+    def SetFlowException(user, sourceServiceRecord, targetServiceRecord, flowToTarget=True, flowToSource=True):
         if "FlowExceptions" not in user:
             user["FlowExceptions"] = []
 
@@ -107,10 +107,10 @@ class User:
                 user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != forwardException]
             elif not flowToTarget and forwardException not in user["FlowExceptions"]:
                 user["FlowExceptions"].append(forwardException)
-        if flowtoSource is not None:
-            if flowtoSource:
+        if flowToSource is not None:
+            if flowToSource:
                 user["FlowExceptions"][:] = [x for x in user["FlowExceptions"] if x != backwardsException]
-            elif not flowtoSource and backwardsException not in user["FlowExceptions"]:
+            elif not flowToSource and backwardsException not in user["FlowExceptions"]:
                 user["FlowExceptions"].append(backwardsException)
         db.users.update({"_id": user["_id"]}, {"$set": {"FlowExceptions": user["FlowExceptions"]}})
 

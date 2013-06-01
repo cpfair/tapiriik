@@ -1,19 +1,20 @@
 from unittest import TestCase
 
-from tapiriik.services import Service
+from tapiriik.services import Service, ServiceRecord, ServiceBase
 from tapiriik.services.interchange import Activity, ActivityType, Waypoint, WaypointType, Location
 
 from datetime import datetime, timedelta
 import random
 import pytz
+from tapiriik.database import db
 
 
-class MockServiceA:
+class MockServiceA(ServiceBase):
     ID = "mockA"
     SupportedActivities = [ActivityType.Rowing]
 
 
-class MockServiceB:
+class MockServiceB(ServiceBase):
     ID = "mockB"
     SupportedActivities = [ActivityType.Rowing, ActivityType.Wheelchair]
 
@@ -48,15 +49,26 @@ class TapiriikTestCase(TestCase):
 
 
 class TestTools:
+    def create_mock_user():
+        db.test.insert({"asd":"asdd"})
+        return {"_id": str(random.randint(1, 1000))}
+
     def create_mock_svc_record(svc):
-        return {"Service": svc.ID}
+        return ServiceRecord({"Service": svc.ID, "_id": str(random.randint(1, 1000)), "ExternalID": str(random.randint(1,1000))})
 
-    def create_mock_upload_record(svc):
-        return {"ActivityID": random.randint(1, 1000), "Connection": TestTools.create_mock_svc_record(svc)}
+    def create_mock_upload_record(svc, record=None):
+        return {"ActivityID": random.randint(1, 1000), "Connection": record if record else TestTools.create_mock_svc_record(svc)}
 
-    def create_random_activity(svc, actType=ActivityType.Other, tz=False):
-        ''' creates completely random activity with valid waypoints and data '''
+    def create_blank_activity(svc=None, actType=ActivityType.Other, record=None):
         act = Activity()
+        act.Type = actType
+        if svc:
+            act.UploadedTo = [TestTools.create_mock_upload_record(svc, record)]
+        return act
+
+    def create_random_activity(svc=None, actType=ActivityType.Other, tz=False, record=None):
+        ''' creates completely random activity with valid waypoints and data '''
+        act = TestTools.create_blank_activity(svc, actType, record=record)
 
         if tz is True:
             tz = pytz.timezone(pytz.all_timezones[random.randint(0, len(pytz.all_timezones) - 1)])
@@ -69,7 +81,6 @@ class TestTools:
         if tz is not False:
             act.StartTime = tz.localize(act.StartTime)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
-        act.Type = actType
         act.Distance = random.random() * 10000
         act.Name = str(random.random())
         paused = False

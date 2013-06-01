@@ -84,6 +84,43 @@ class Sync:
                 continue
             activityList.append(act)
 
+    def _determineEligibleRecipientServices(activity, recipientServices, excludedServices, user, silent=False):
+        from tapiriik.auth import User
+        eligibleServices = []
+        for destinationSvcRecord in recipientServices:
+            if destinationSvcRecord in excludedServices:
+                if not silent:  # Should really use legit logging instead of print()
+                    print("\t\tExcluded " + destinationSvcRecord.Service.ID)
+                continue  # we don't know for sure if it needs to be uploaded, hold off for now
+            flowException = False
+            if hasattr(activity, "Origin"):
+                # we know the activity origin - do a more intuitive flow exception check
+                if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
+                    flowException = True
+            else:
+                for src in [x["Connection"] for x in activity.UploadedTo]:
+                    if User.CheckFlowException(user, src, destinationSvcRecord):
+                        flowException = True
+                        break
+                #  this isn't an absolute failure - it's possible we could still take an indirect route
+                #  at this point there's no knowledge of the origin of this activity, so this behaviour would happen anyways at the next sync
+                if flowException:
+                    for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
+                        if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                            flowException = False
+                            break
+            if flowException:
+                if not silent:
+                    print("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
+                continue
+            destSvc = destinationSvcRecord.Service
+            if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
+                if not silent:
+                    print("\t\t" + destSvc.ID + " not configured")
+                continue  # not configured, so we won't even try
+            eligibleServices.append(destinationSvcRecord)
+        return eligibleServices
+
     def PerformGlobalSync():
         from tapiriik.auth import User
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
@@ -102,7 +139,6 @@ class Sync:
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
 
     def PerformUserSync(user, exhaustive=False):
-        from tapiriik.auth import User
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
         if len(connectedServiceIds) <= 1:
@@ -134,7 +170,7 @@ class Sync:
                     extAuthDetails = [x["ExtendedAuthorization"] for x in allExtendedAuthDetails if x["ID"] == conn._id]
                     if not len(extAuthDetails):
                         print("No extended auth details for " + svc.ID)
-                        excludedServices.append(conn._id)
+                        excludedServices.append(conn)
                         continue
                     # the connection never gets saved in full again, so we can sub these in here at no risk
                     conn.ExtendedAuthorization = extAuthDetails[0]
@@ -145,12 +181,12 @@ class Sync:
             except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
                 etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
                 tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
-                excludedServices.append(conn._id)
+                excludedServices.append(conn)
                 if not issubclass(e.__class__, ServiceWarning):
                     continue
             except Exception as e:
                 tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
-                excludedServices.append(conn._id)
+                excludedServices.append(conn)
                 continue
             Sync._accumulateActivities(svc, svcActivities, activities)
 
@@ -197,36 +233,7 @@ class Sync:
             # download the full activity record
             print("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
-            eligibleServices = []
-            for destinationSvcRecord in recipientServices:
-                if destinationSvcRecord._id in excludedServices:
-                    print("\t\tExcluded " + destinationSvcRecord.Service.ID)
-                    continue  # we don't know for sure if it needs to be uploaded, hold off for now
-                flowException = False
-                if hasattr(activity, "Origin"):
-                    # we know the activity origin - do a more intuitive flow exception check
-                    if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
-                        flowException = True
-                else:
-                    for src in [x["Connection"] for x in activity.UploadedTo]:
-                        if User.CheckFlowException(user, src, destinationSvcRecord):
-                            flowException = True
-                            break
-                    #  this isn't an absolute failure - it's possible we could still take an indirect route
-                    #  at this point there's no knowledge of the origin of this activity, so this behaviour would happen anyways at the next sync
-                    if flowException:
-                        for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
-                            if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
-                                flowException = False
-                                break
-                if flowException:
-                    print("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
-                    continue
-                destSvc = destinationSvcRecord.Service
-                if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
-                    print("\t\t" + destSvc.ID + " not configured")
-                    continue  # not configured, so we won't even try
-                eligibleServices.append(destinationSvcRecord)
+            eligibleServices = self._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
             if not len(eligibleServices):
                 print("\t No eligible destinations")

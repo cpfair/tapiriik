@@ -1,17 +1,16 @@
-from unittest import TestCase
-
-from tapiriik.testing.testtools import TestTools
+from tapiriik.testing.testtools import TestTools, TapiriikTestCase
 
 from tapiriik.sync import Sync
 from tapiriik.services import Service
 from tapiriik.services.interchange import Activity, ActivityType
-from tapiriik.sync import Sync
+from tapiriik.auth import User
 
 from datetime import datetime, timedelta
 import random
+import pytz
 
 
-class SyncTests(TestCase):
+class SyncTests(TapiriikTestCase):
 
     def test_svc_level_dupe(self):
         ''' check that service-level duplicate activities are caught (no DB involvement) '''
@@ -21,6 +20,63 @@ class SyncTests(TestCase):
         actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
         actB = Activity()
         actB.StartTime = actA.StartTime
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
+        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+
+        self.assertEqual(len(activities), 1)
+
+    def test_svc_level_dupe_tz_uniform(self):
+        ''' check that service-level duplicate activities with the same TZs are caught '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = Activity()
+        actA.StartTime = pytz.timezone("America/Denver").localize(datetime(1, 2, 3, 4, 5, 6, 7))
+        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actB = Activity()
+        actB.StartTime = actA.StartTime
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
+        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+
+        self.assertEqual(len(activities), 1)
+
+    def test_svc_level_dupe_tz_nonuniform(self):
+        ''' check that service-level duplicate activities with non-uniform TZs are caught '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = Activity()
+        actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
+        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actB = Activity()
+        actB.StartTime = pytz.timezone("America/Denver").localize(actA.StartTime)
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
+        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+
+        self.assertEqual(len(activities), 1)
+
+    def test_svc_level_dupe_tz_irregular(self):
+        ''' check that service-level duplicate activities with irregular TZs are caught '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = Activity()
+        actA.StartTime = pytz.timezone("America/Edmonton").localize(datetime(1, 2, 3, 4, 5, 6, 7))
+        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actB = Activity()
+        actB.StartTime = actA.StartTime.astimezone(pytz.timezone("America/Iqaluit"))
         actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
 
         actA.CalculateUID()
@@ -59,8 +115,8 @@ class SyncTests(TestCase):
         # we need to fake up the service records to avoid having to call the actual sync method where these values are normally preset
         recA = TestTools.create_mock_svc_record(svcA)
         recB = TestTools.create_mock_svc_record(svcB)
-        recA["SynchronizedActivities"] = [actA.UID]
-        recB["SynchronizedActivities"] = [actB.UID]
+        recA.SynchronizedActivities = [actA.UID]
+        recB.SynchronizedActivities = [actB.UID]
 
         recipientServicesA = Sync._determineRecipientServices(actA, [recA, recB])
         recipientServicesB = Sync._determineRecipientServices(actB, [recA, recB])
@@ -114,3 +170,138 @@ class SyncTests(TestCase):
 
         self.assertEqual(len(syncToA), 1)
         self.assertEqual(len(syncToB), 1)
+
+    def test_eligibility_excluded(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        recipientServices = [recA, recB]
+        excludedServices = [recA]
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recA not in eligible)
+
+    def test_eligibility_config(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        svcA.Configurable = True
+        svcA.RequiresConfiguration = lambda x: True
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        recipientServices = [recA, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recA not in eligible)
+
+    def test_eligibility_flowexception(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recA)
+        act.Origin = recA
+        User.SetFlowException(user, recA, recB, flowToTarget=False)
+        recipientServices = [recA, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA in eligible)
+        self.assertFalse(recB in eligible)
+
+    def test_eligibility_flowexception_reverse(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        act.Origin = recB
+        User.SetFlowException(user, recA, recB, flowToSource=False)
+        recipientServices = [recA, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertFalse(recA in eligible)
+        self.assertTrue(recB in eligible)
+
+    def test_eligibility_flowexception_both(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        act.Origin = recB
+        User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
+        recipientServices = [recA, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertFalse(recA in eligible)
+        self.assertTrue(recB in eligible)
+
+        act.Origin = recA
+        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA in eligible)
+        self.assertFalse(recB in eligible)
+
+    def test_eligibility_flowexception_none(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        act.Origin = recB
+        User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
+        recipientServices = [recA]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB not in eligible)
+
+        recipientServices = [recB]
+        act.Origin = recA
+        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB not in eligible)
+
+    def test_eligibility_flowexception_change(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        act = TestTools.create_blank_activity(svcA, record=recB)
+        act.Origin = recB
+
+        recipientServices = [recA]
+        excludedServices = []
+
+
+        User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB not in eligible)
+
+        recipientServices = [recB]
+        act.Origin = recA
+        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
+        User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=False)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB not in eligible)
+
+        User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB not in eligible)
+
+        recipientServices = [recA, recB]
+        User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA in eligible)
+        self.assertTrue(recB in eligible)
+
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        self.assertTrue(recA in eligible)
+        self.assertTrue(recB in eligible)

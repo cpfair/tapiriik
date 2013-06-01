@@ -66,7 +66,7 @@ class Service:
     def HasConfiguration(svcRec):
         if not svcRec.Service.Configurable:
             return False  # of course not
-        return "Config" in svcRec and len(svcRec.Config.values()) > 0
+        return hasattr(svcRec, "Config") and len(svcRec.Config.values()) > 0
 
     def GetConfiguration(svcRec):
         svc = svcRec.Service
