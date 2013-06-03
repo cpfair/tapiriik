@@ -304,7 +304,7 @@ class Sync:
                 try:
                     workingCopy.CheckSanity()
                 except:
-                    Sync._accumulateExclusions(dlSvc, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
+                    Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
                     continue
                 else:
                     act = workingCopy
