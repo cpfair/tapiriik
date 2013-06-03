@@ -95,6 +95,7 @@ class GarminConnectService(ServiceBase):
         page = 1
         pageSz = 50
         activities = []
+        exclusions = []
         while True:
             res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", data={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
             res = res.json()["results"]
@@ -125,7 +126,7 @@ class GarminConnectService(ServiceBase):
                 break
             else:
                 page += 1
-        return activities
+        return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
         #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
