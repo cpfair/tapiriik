@@ -277,7 +277,7 @@ class Sync:
                 print("\t No eligible destinations")
                 totalActivities -= 1  # Again, doesn't really count.
                 continue
-
+            act = None
             for dlSvcUploadRec in activity.UploadedTo:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = dlSvcRecord.Service
@@ -285,7 +285,6 @@ class Sync:
                 if activity.UID in dlSvcRecord.ExcludedActivities:
                     print("\t\t has activity exclusion logged")
                     continue
-                act = None
                 workingCopy = copy.copy(activity)  # we can hope
                 try:
                     workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
