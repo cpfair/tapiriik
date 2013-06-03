@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, ServiceException, ServiceWarning
+from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
 from datetime import datetime, timedelta
 import sys
 import os
@@ -304,7 +304,7 @@ class Sync:
                 try:
                     workingCopy.CheckSanity()
                 except:
-                    Sync._accumulateExclusions(dlSvc, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
+                    Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
                     continue
                 else:
                     act = workingCopy
