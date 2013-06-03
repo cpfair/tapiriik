@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.api import APIException, APIAuthorizationException, ServiceException
+from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
@@ -170,6 +170,7 @@ class DropboxService(ServiceBase):
         self._folderRecurse(cache["Structure"], dbcl, syncRoot)
 
         activities = []
+        exclusions = []
 
         for dir in cache["Structure"]:
             for file in dir["Files"]:
@@ -202,7 +203,7 @@ class DropboxService(ServiceBase):
                 activities.append(act)
 
         cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, cache, upsert=True)
-        return activities
+        return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
@@ -219,6 +220,9 @@ class DropboxService(ServiceBase):
             fullActivity.Type = activity.Type
             fullActivity.UploadedTo = activity.UploadedTo
             activity = fullActivity
+
+        if len(activity.Waypoints) <= 1:
+            raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         return activity
 

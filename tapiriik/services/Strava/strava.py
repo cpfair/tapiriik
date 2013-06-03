@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ class StravaService(ServiceBase):
     DisplayName = "Strava"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     UserProfileURL = "http://www.strava.com/athletes/{0}"
+    UserActivityURL = "http://app.strava.com/activities/{1}"
 
     SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
     SupportsHR = True
@@ -40,6 +41,7 @@ class StravaService(ServiceBase):
         # grumble grumble strava api sucks grumble grumble
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
+        exclusions = []
         data = []
         offset = 0
         pgSz = 50  # this is determined by the Strava API
@@ -66,8 +68,10 @@ class StravaService(ServiceBase):
                 cached = True
                 ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
             if ridedata["start_latlng"] is None or ridedata["end_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
+                exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
                 continue  # stationary activity - no syncing for now
             if ridedata["start_latlng"] == ridedata["end_latlng"]:
+                exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
                 continue  # Only one waypoint, one would assume.
             activity = UploadedActivity()
             activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
@@ -89,7 +93,7 @@ class StravaService(ServiceBase):
             ct += 1
         if not AGGRESSIVE_CACHE:
             cachedb.strava_cache.remove({"Owner": svcRecord.ExternalID, "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
-        return activities
+        return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
         # thanks to Cosmo Catalano for the API reference code
@@ -155,7 +159,7 @@ class StravaService(ServiceBase):
                 waypoint.Power = ridedata["watts"][idx] if "watts" in ridedata else ridedata["watts_calc"][idx]
             activity.Waypoints.append(waypoint)
         if not hasLocation:
-            activity.Exclude = True
+            raise APIExcludeActivity("No waypoints with location", activityId=activityID)
         return activity
 
     def UploadActivity(self, serviceRecord, activity):

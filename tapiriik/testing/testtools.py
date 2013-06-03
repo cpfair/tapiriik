@@ -64,6 +64,9 @@ class TestTools:
         act.Type = actType
         if svc:
             act.UploadedTo = [TestTools.create_mock_upload_record(svc, record)]
+        act.StartTime = datetime.now()
+        act.EndTime = act.StartTime + timedelta(seconds=42)
+        act.CalculateUID()
         return act
 
     def create_random_activity(svc=None, actType=ActivityType.Other, tz=False, record=None):

@@ -31,7 +31,9 @@
 				<li><b>Ext ID:</b> {% if svc.UserProfileURL %}<a target="_blank" href="{{ svc.UserProfileURL|format:connection.ExternalID }}">{% endif %} <tt>{{ connection.ExternalID }}</tt>{% if svc.UserProfileURL %} &raquo;</a>{% endif %}</li>
 				<li><b>Synced Activity Count:</b> <tt>{{ connection.SynchronizedActivities|length }}</tt></li>
 				<li><b>Auth:</b> <tt> {{ connection.Authorization }}</tt></li>
-				<li><b>Controls:</b> <form action="" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>
+				<li><b>Controls:</b> <form action="" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+
+				{% if connection.ExcludedActivities.items|length %}<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>{% endif %}
 				{% if connection.SyncErrors|length > 0 %}
 				<li><b>Sync Errors:</b>
 					<ul>
@@ -39,6 +41,19 @@
 							<li>
 								<tt>{{ err.Type }}</tt> @ <tt>{{ err.Step }}</tt><br/>
 								{{ err.Message|linebreaks }}
+							</li>
+						{% endfor %}
+					</ul>
+
+				</li>
+				{% endif %}
+				{% if connection.ExcludedActivities.items|length > 0 %}
+				<li><b>Sync Exclusions:</b>
+					<ul>
+						{% for id, exc in connection.ExcludedActivities.items %}
+							<li>
+								<tt>{{ exc.Message }}</tt> {% if id|length == 25 %}@ <tt>{{ id }}</tt> {% endif %} (ext ID <tt>{% if svc.UserActivityURL %}<a target="_blank" href="{% stringformat svc.UserActivityURL connection.ExternalID exc.ExternalActivityID %}">{% endif %}{{ exc.ExternalActivityID }}{% if svc.UserActivityURL %}&raquo;</a>{% endif %}</tt>)</tt> [{% if exc.Permanent %}permanent{% else %}transient{% endif %}]
+								{% if exc.Activity %}<br/>{{ exc.Activity }}{% endif %}
 							</li>
 						{% endfor %}
 					</ul>

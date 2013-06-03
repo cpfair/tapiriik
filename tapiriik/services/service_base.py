@@ -13,7 +13,7 @@ class ServiceBase:
 
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
     UserAuthorizationURL = None
-    UserProfileURL = None
+    UserProfileURL = UserActivityURL = None
     AuthenticationNoFrame = False
     ConfigurationDefaults = {}
 

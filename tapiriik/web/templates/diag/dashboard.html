@@ -33,6 +33,16 @@
 			</ul>
 			{% endif %}
 		</li>
+		<li><b>Users with exclusions:</b> {{ exclusionUsers|length }}
+			{% if exclusionUsers|length > 0 %}
+			<ul>{% for exclusionUser in exclusionUsers %}
+					{% with userId=exclusionUser|dict_get:'_id' %}
+					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a></li>
+					{% endwith %}
+				{% endfor %}
+			</ul>
+			{% endif %}
+		</li>
 	</ul>
 </div>
 

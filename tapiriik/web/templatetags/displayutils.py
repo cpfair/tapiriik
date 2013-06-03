@@ -20,3 +20,7 @@ def dict_get(tdict, key):
 @register.filter(name='format')
 def format(format, var):
     return format.format(var)
+
+@register.simple_tag
+def stringformat(value, *args):
+    return value.format(*args)

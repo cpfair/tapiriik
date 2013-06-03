@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
@@ -114,17 +114,21 @@ class RunKeeperService(ServiceBase):
             pageUri = "https://api.runkeeper.com" + data["next"]
 
         activities = []
+        exclusions = []
         for act in allItems:
             if "has_path" in act and act["has_path"] is False:
+                exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
                 continue  # No points = no sync.
             if "is_live" in act and act["is_live"] is True:
+                exclusions.append(APIExcludeActivity("Not complete", activityId=act["uri"], permanent=False))
                 continue  # Otherwise we end up with partial activities.
             activity = self._populateActivity(act)
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
+                exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
             activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["uri"]}]
             activities.append(activity)
-        return activities
+        return activities, exclusions
 
     def _populateActivity(self, rawRecord):
         ''' Populate the 1st level of the activity object with all details required for UID from RK API data '''
@@ -157,7 +161,7 @@ class RunKeeperService(ServiceBase):
         self._populateActivityWaypoints(ridedata, activity)
 
         if len(activity.Waypoints) <= 1:
-            activity.Exclude = True
+            raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
         return activity
 

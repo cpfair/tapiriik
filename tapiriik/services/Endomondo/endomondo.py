@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException
+from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -19,6 +19,7 @@ class EndomondoService(ServiceBase):
     DisplayName = "Endomondo"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     UserProfileURL = "http://www.endomondo.com/profile/{0}"
+    UserActivityURL = "http://www.endomondo.com/workouts/{1}/{0}"
 
     _activityMappings = {
         0:  ActivityType.Running,
@@ -177,6 +178,7 @@ class EndomondoService(ServiceBase):
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
         activities = []
+        exclusions = []
         earliestDate = None
         earliestFirstPageDate = None
         paged = False
@@ -198,9 +200,11 @@ class EndomondoService(ServiceBase):
                 print("activity pre")
                 if not act["has_points"]:
                     print("\t no pts")
-                    continue  # it'll break strava, which needs waypoints to find TZ. Meh
+                    exclusions.append(APIExcludeActivity("No points", activityId=act["id"]))
+                    continue # it'll break strava, which needs waypoints to find TZ. Meh
                 if "tracking" in act and act["tracking"]:
                     print("\t tracking")
+                    exclusions.append(APIExcludeActivity("In progress", activityId=act["id"]), permanent=False)
                     continue  # come back once they've completed the activity
                 activity = UploadedActivity()
                 activity.StartTime = startTime
@@ -231,14 +235,15 @@ class EndomondoService(ServiceBase):
                 paged = True
         if not AGGRESSIVE_CACHE:
             cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord.ExternalID, "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
-        return activities
+        return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
-        activityData = [x["ActivityData"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        uploadRecord = [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityData = uploadRecord["ActivityData"]
         self._populateActivityFromTrackRecord(activity, activityData)
         [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
         if len(activity.Waypoints) <= 1:
-            activity.Exclude = True
+            raise APIExcludeActivity("Too few waypoints", activityId=uploadRecord["ActivityID"])
         return activity
 
     def UploadActivity(self, serviceRecord, activity):

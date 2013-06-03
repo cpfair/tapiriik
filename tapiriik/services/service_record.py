@@ -19,6 +19,7 @@ class ServiceRecord:
     def __deepcopy__(self, x):
         return ServiceRecord(self.__dict__)
 
+    ExcludedActivities = {}
     @property
     def Service(self):
         from tapiriik.services import Service

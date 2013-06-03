@@ -2,6 +2,7 @@ from tapiriik.testing.testtools import TestTools, TapiriikTestCase
 
 from tapiriik.sync import Sync
 from tapiriik.services import Service
+from tapiriik.services.api import APIExcludeActivity
 from tapiriik.services.interchange import Activity, ActivityType
 from tapiriik.auth import User
 
@@ -184,6 +185,42 @@ class SyncTests(TapiriikTestCase):
 
         self.assertEqual(len(syncToA), 1)
         self.assertEqual(len(syncToB), 1)
+
+    def test_accumulate_exclusions(self):
+        svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+
+        # regular
+        exc = APIExcludeActivity("Messag!e", activityId=3.14)
+        Sync._accumulateExclusions(recA, exc)
+        self.assertTrue("3.14" in recA.ExcludedActivities)
+        self.assertEqual(recA.ExcludedActivities["3.14"]["Message"], "Messag!e")
+        self.assertEqual(recA.ExcludedActivities["3.14"]["Activity"], None)
+        self.assertEqual(recA.ExcludedActivities["3.14"]["ExternalActivityID"], 3.14)
+        self.assertEqual(recA.ExcludedActivities["3.14"]["Permanent"], True)
+
+        # updating
+        act = TestTools.create_blank_activity(svcA)
+        act.UID = "3.14"  # meh
+        exc = APIExcludeActivity("Messag!e2", activityId=42, permanent=False, activity=act)
+        Sync._accumulateExclusions(recA, exc)
+        self.assertTrue("3.14" in recA.ExcludedActivities)
+        self.assertEqual(recA.ExcludedActivities["3.14"]["Message"], "Messag!e2")
+        self.assertNotEqual(recA.ExcludedActivities["3.14"]["Activity"], None)  # Who knows what the string format will be down the road?
+        self.assertEqual(recA.ExcludedActivities["3.14"]["ExternalActivityID"], 42)
+        self.assertEqual(recA.ExcludedActivities["3.14"]["Permanent"], False)
+
+        # multiple, retaining existing
+        exc2 = APIExcludeActivity("INM", activityId=13)
+        exc3 = APIExcludeActivity("FNIM", activityId=37)
+        Sync._accumulateExclusions(recA, [exc2, exc3])
+        self.assertTrue("3.14" in recA.ExcludedActivities)
+        self.assertTrue("37" in recA.ExcludedActivities)
+        self.assertTrue("13" in recA.ExcludedActivities)
+
+        # don't allow with no identifiers
+        exc4 = APIExcludeActivity("nooooo")
+        self.assertRaises(ValueError, Sync._accumulateExclusions, recA, [exc4])
 
     def test_activity_coalesce_normaltz(self):
         ''' ensure that we can't coalesce activities with non-pytz timezones '''

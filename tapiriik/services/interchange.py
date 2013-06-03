@@ -51,7 +51,6 @@ class Activity:
         self.Distance = distance
         self.TZ = tz
         self.Name = name
-        self.Exclude = False
 
     def CalculateUID(self):
         if not self.StartTime:

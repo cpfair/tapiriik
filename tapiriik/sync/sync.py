@@ -146,6 +146,15 @@ class Sync:
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
+    def _accumulateExclusions(serviceRecord, exclusions):
+        if type(exclusions) is not list:
+            exclusions = [exclusions]
+        for exclusion in exclusions:
+            identifier = exclusion.Activity.UID if exclusion.Activity else exclusion.ExternalActivityID
+            if not identifier:
+                raise ValueError("Activity excluded with no identifying information")
+            serviceRecord.ExcludedActivities[str(identifier)] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
+
     def PerformGlobalSync():
         from tapiriik.auth import User
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
@@ -188,6 +197,9 @@ class Sync:
         for conn in serviceConnections:
             tempSyncErrors[conn._id] = []
             conn.SyncErrors = []
+            conn.ExcludedActivities = conn.ExcludedActivities if conn.ExcludedActivities else {}
+            # Remove temporary exclusions (live tracking etc).
+            conn.ExcludedActivities = dict((k, v) for k, v in conn.ExcludedActivities.items() if v["Permanent"])
             svc = conn.Service
 
             if svc.RequiresExtendedAuthorizationDetails:
@@ -202,7 +214,7 @@ class Sync:
 
             try:
                 print ("\tRetrieving list from " + svc.ID)
-                svcActivities = svc.DownloadActivityList(conn, exhaustive)
+                svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
             except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
                 etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
                 tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
@@ -213,6 +225,7 @@ class Sync:
                 tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
                 excludedServices.append(conn)
                 continue
+            Sync._accumulateExclusions(conn, svcExclusions)
             Sync._accumulateActivities(svc, svcActivities, activities)
 
         origins = db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}})
@@ -269,6 +282,9 @@ class Sync:
                 dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                 dlSvc = dlSvcRecord.Service
                 print("\t from " + dlSvc.ID)
+                if activity.UID in dlSvcRecord.ExcludedActivities:
+                    print("\t\t has activity exclusion logged")
+                    continue
                 act = None
                 workingCopy = copy.copy(activity)  # we can hope
                 try:
@@ -278,15 +294,17 @@ class Sync:
                     tempSyncErrors[conn._id].append({"Step": SyncStep.Download, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                     if not issubclass(e.__class__, ServiceWarning):
                         continue
+                except APIExcludeActivity as e:
+                    e.Activity = workingCopy
+                    Sync._accumulateExclusions(dlSvc, e)
+                    continue
                 except Exception as e:
                     tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
                     continue
-                if workingCopy.Exclude:
-                    continue  # try again
                 try:
                     workingCopy.CheckSanity()
                 except:
-                    tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                    Sync._accumulateExclusions(dlSvc, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
                     continue
                 else:
                     act = workingCopy
@@ -319,14 +337,16 @@ class Sync:
             processedActivities += 1
 
         allSyncErrors = []
+        syncExclusionCount = 0
         for conn in serviceConnections:
-            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id]}})
+            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": conn.ExcludedActivities}})
             allSyncErrors += tempSyncErrors[conn._id]
+            syncExclusionCount += len(conn.ExcludedActivities.items())
 
         # clear non-persisted extended auth details
         cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
         # unlock the row
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors)}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}})
         print("Finished sync for " + str(user["_id"]) + " at " + datetime.now().ctime())
 
 

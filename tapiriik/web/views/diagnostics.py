@@ -42,8 +42,9 @@ def diag_dashboard(req):
     autosyncCt = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
     errorUsers = list(db.users.find({"SyncErrorCount": {"$gt": 0}}))
+    exclusionUsers = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
 
-    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "lockedSyncUsers": lockedSyncUsers, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt, "errorUsers": errorUsers})
+    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "lockedSyncUsers": lockedSyncUsers, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt, "errorUsers": errorUsers, "exclusionUsers": exclusionUsers})
 
 
 @diag_requireAuth
@@ -72,6 +73,12 @@ def diag_user(req, user):
         except:
             pass
         delta = True
+    elif "svc_clearexc" in req.POST:
+        from tapiriik.services import Service
+        from tapiriik.auth import User
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"ExcludedActivities": 1}})
+        delta = True
+
     if delta:
         return redirect("diagnostics_user", user=user)
     return render(req, "diag/user.html", {"user": userRec})
