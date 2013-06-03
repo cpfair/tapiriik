@@ -296,7 +296,7 @@ class Sync:
                         continue
                 except APIExcludeActivity as e:
                     e.Activity = workingCopy
-                    Sync._accumulateExclusions(dlSvc, e)
+                    Sync._accumulateExclusions(dlSvcRecord, e)
                     continue
                 except Exception as e:
                     tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
