@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, ServiceException, ServiceWarning
+from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
 from datetime import datetime, timedelta
 import sys
 import os
