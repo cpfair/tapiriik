@@ -6,11 +6,13 @@ import copy
 
 # Really don't know why I didn't make most of this part of the ServiceBase.
 class Service:
-    _serviceMappings = {"runkeeper": RunKeeper,
+    _serviceMappings = {
+                        "runkeeper": RunKeeper,
                         "strava": Strava,
                         "endomondo": Endomondo,
                         "dropbox": Dropbox,
-                        "garminconnect": GarminConnect}
+                        "garminconnect": GarminConnect
+                        }
 
     def FromID(id):
         if id in Service._serviceMappings:
@@ -18,7 +20,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo, Dropbox, GarminConnect]
+        return [RunKeeper, Strava, Endomondo, GarminConnect, Dropbox]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
