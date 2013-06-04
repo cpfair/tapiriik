@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException, APIWarning
+from tapiriik.services.api import APIException, APIAuthorizationException, APIWarning, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
 
 from django.core.urlresolvers import reverse
@@ -103,6 +103,9 @@ class GarminConnectService(ServiceBase):
                 break  # No activities on this page - empty account.
             for act in res["activities"]:
                 act = act["activity"]
+                if "beginLatitude" not in act or "endLatitude" not in act or (act["beginLatitude"] is act["endLatitude"] and act["beginLongitude"] is act["endLongitude"]):
+                    exclusions.append(APIExcludeActivity("No points", activityId=act["activityId"]))
+                    continue
                 activity = UploadedActivity()
 
                 try:
@@ -114,7 +117,11 @@ class GarminConnectService(ServiceBase):
                     activity.Name = act["activityName"]["value"]
                 # beginTimestamp is in UTC
                 activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
-                activity.EndTime = activity.StartTime + timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
+                if "sumElapsedDuration" in act:
+                    duration = timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
+                else:
+                    duration = timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1]))
+                activity.EndTime = activity.StartTime + duration
                 activity.AdjustTZ()
                 activity.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1)
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
