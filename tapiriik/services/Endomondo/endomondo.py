@@ -257,10 +257,11 @@ class EndomondoService(ServiceBase):
             sportId = sportId[0]
         params = {"authToken": serviceRecord.Authorization["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID, "deflate": "true", "duration": (activity.EndTime - activity.StartTime).total_seconds(), "distance": activity.Distance / 1000 if activity.Distance is not None else None}
         data = self._createUploadData(activity)
-        data = zlib.compress(data.encode("ASCII"))
-        response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=data)
+        compressed_data = zlib.compress(data.encode("ASCII"))
+        response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=compressed_data)
         print(response.text)
         if response.status_code != 200:
+            del compressed_data  # keep the error logs clean - automatically scrapes for local variables
             raise APIException("Could not upload activity " + response.text)
 
     def _createUploadData(self, activity):
