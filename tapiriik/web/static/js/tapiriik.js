@@ -210,7 +210,7 @@ tapiriik.OpenDeauthDialog = function(svcId){
 };
 
 tapiriik.CreateDirectLoginForm = function(svcId){
-	var form = $("<form><div class=\"error\">There was a problem logging you in</div><label for=\"email\">Email</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><span class=\"persist-controls\"><input type=\"checkbox\" id=\"persist\"/><label for=\"persist\">Save these details</label><br/></span><center><button type=\"submit\" >Log in</button></center></form>");
+	var form = $("<form novalidate><div class=\"error\">There was a problem logging you in</div><label for=\"email\">Email</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><span class=\"persist-controls\"><input type=\"checkbox\" id=\"persist\"/><label for=\"persist\">Save these details</label><br/></span><center><button type=\"submit\" >Log in</button></center></form>");
 	if (!tapiriik.ServiceInfo[svcId].UsesExtendedAuth){
 		$(".persist-controls",form).hide();
 	}
