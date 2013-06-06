@@ -210,10 +210,6 @@ class EndomondoService(ServiceBase):
                 if earliestDate is None or startTime < earliestDate:  # probably redundant, I would assume it works out the TZes...
                     earliestDate = startTime
                 logger.debug("activity pre")
-                if not act["has_points"]:
-                    logger.warning("\t no pts")
-                    exclusions.append(APIExcludeActivity("No points", activityId=act["id"]))
-                    continue # it'll break strava, which needs waypoints to find TZ. Meh
                 if "tracking" in act and act["tracking"]:
                     logger.warning("\t tracking")
                     exclusions.append(APIExcludeActivity("In progress", activityId=act["id"], permanent=False))
@@ -281,8 +277,6 @@ class EndomondoService(ServiceBase):
 
         self._populateActivityFromTrackData(activity, trackData)
         [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
-        if len(activity.Waypoints) <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=uploadRecord["ActivityID"])
         return activity
 
     def UploadActivity(self, serviceRecord, activity):

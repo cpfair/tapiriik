@@ -119,9 +119,6 @@ class GarminConnectService(ServiceBase):
                 break  # No activities on this page - empty account.
             for act in res["activities"]:
                 act = act["activity"]
-                if "beginLatitude" not in act or "endLatitude" not in act or (act["beginLatitude"] is act["endLatitude"] and act["beginLongitude"] is act["endLongitude"]):
-                    exclusions.append(APIExcludeActivity("No points", activityId=act["activityId"]))
-                    continue
                 if "sumDistance" not in act:
                     exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"]))
                     continue

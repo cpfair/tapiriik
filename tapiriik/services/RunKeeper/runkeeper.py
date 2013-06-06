@@ -119,9 +119,6 @@ class RunKeeperService(ServiceBase):
         activities = []
         exclusions = []
         for act in allItems:
-            if "has_path" in act and act["has_path"] is False:
-                exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
-                continue  # No points = no sync.
             try:
                 activity = self._populateActivity(act)
             except KeyError as e:
@@ -171,9 +168,6 @@ class RunKeeperService(ServiceBase):
             raise APIExcludeActivity("Not the user's own activity", activityId=activityID)
 
         self._populateActivityWaypoints(ridedata, activity)
-
-        if len(activity.Waypoints) <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
         activity.Private = ridedata["share"] == "Just Me"
         return activity

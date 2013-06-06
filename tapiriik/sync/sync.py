@@ -141,6 +141,7 @@ class Sync:
                 if act.TZ is not None and existElsewhere[0].TZ is None:
                     existElsewhere[0].TZ = act.TZ
                     existElsewhere[0].DefineTZ()
+                existElsewhere[0].FallbackTZ = existElsewhere[0].FallbackTZ if existElsewhere[0].FallbackTZ else act.FallbackTZ
                 # tortuous merging logic is tortuous
                 existElsewhere[0].StartTime = Sync._coalesceDatetime(existElsewhere[0].StartTime, act.StartTime)
                 existElsewhere[0].EndTime = Sync._coalesceDatetime(existElsewhere[0].EndTime, act.EndTime, knownTz=existElsewhere[0].StartTime.tzinfo)
@@ -149,9 +150,6 @@ class Sync:
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
 
-                prerenderedFormats = act.PrerenderedFormats
-                prerenderedFormats.update(existElsewhere[0].PrerenderedFormats)
-                existElsewhere[0].PrerenderedFormats = prerenderedFormats  # I bet this is gonna kill the RAM usage.
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
                 act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters
@@ -332,8 +330,13 @@ class Sync:
                 # The fallback TZ is used when there are no points to determine the TZ with.
                 # It's set before _accumulateActivities to make the deduplication more reliable, since _accumulateActivities takes TZs into account.
                 if "Timezone" in user:
-                    for act in activities:
-                        act.FallbackTZ = user["Timezone"]
+                    try:
+                        fallbackTZ = pytz.timezone(user["Timezone"])
+                    except:
+                        pass
+                    else:
+                        for act in svcActivities:
+                            act.FallbackTZ = fallbackTZ
                 Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
                 Sync._accumulateActivities(svc, svcActivities, activities)
 

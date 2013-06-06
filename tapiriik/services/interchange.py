@@ -103,6 +103,7 @@ class Activity:
         if self.TZ and not recalculate:
             return self.TZ
         if len(self.Waypoints) == 0 and loc is None and self.FallbackTZ is None:
+            import pdb; pdb.set_trace()
             raise Exception("Can't find TZ without waypoints")
         if loc is None:
             for wp in self.Waypoints:
@@ -212,10 +213,6 @@ class Activity:
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
-        if len(self.Waypoints) == 0:
-            raise ValueError("No waypoints")
-        if len(self.Waypoints) == 1:
-            raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
@@ -248,7 +245,7 @@ class Activity:
                     altHigh = wp.Location.Altitude
             if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 pointsWithoutLocation += 1
-        if len(self.Waypoints) - pointsWithoutLocation == 0:
+        if len(self.Waypoints) - pointsWithoutLocation == 0 and len(self.Waypoints):
             raise ValueError("No points have location")
         if len(self.Waypoints) - pointsWithoutLocation == 1:
             raise ValueError("Only one point has location")

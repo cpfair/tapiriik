@@ -79,6 +79,7 @@ class User:
                 user["AncestorAccounts"] = []
             user["AncestorAccounts"] += existingUser["AncestorAccounts"] if "AncestorAccounts" in existingUser else []
             user["AncestorAccounts"] += [existingUser["_id"]]
+            user["Timezone"] = user["Timezone"] if user["Timezone"] else existingUser["Timezone"]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:

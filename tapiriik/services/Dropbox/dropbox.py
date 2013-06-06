@@ -260,8 +260,6 @@ class DropboxService(ServiceBase):
             fullActivity.UploadedTo = activity.UploadedTo
             activity = fullActivity
 
-        if len(activity.Waypoints) <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         return activity
 
