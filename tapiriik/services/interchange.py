@@ -42,13 +42,16 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 class Activity:
     ImplicitPauseTime = timedelta(minutes=1, seconds=5)
 
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False):
+
+class Activity:
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
         self.Waypoints = waypointList if waypointList is not None else []
         self.Distance = distance
         self.TZ = tz
+        self.FallbackTZ = fallbackTz
         self.Name = name
         self.Private = private
         self.PrerenderedFormats = {}
@@ -96,17 +99,24 @@ class Activity:
                 wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
         self.CalculateUID()
 
-    def CalculateTZ(self, loc=None):
-        if len(self.Waypoints) == 0 and loc is None:
+    def CalculateTZ(self, loc=None, recalculate=False):
+        if self.TZ and not recalculate:
+            return self.TZ
+        if len(self.Waypoints) == 0 and loc is None and self.FallbackTZ is None:
             raise Exception("Can't find TZ without waypoints")
         if loc is None:
             for wp in self.Waypoints:
                 if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
                     loc = wp.Location
                     break
-            if loc is None:
+            if loc is None and self.FallbackTZ is None:
                 raise Exception("Can't find TZ without a waypoint with a location")
-
+        if loc is None:
+            # At this point, we'll resort to the fallback TZ.
+            if self.FallbackTZ is None:
+                raise Exception("Can't find TZ without a waypoint with a location, specified location, or fallback TZ")
+            self.TZ = self.FallbackTZ
+            return self.TZ
         # I guess at some point it will be faster to perform a full lookup than digging through this table.
         cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
         if cachedTzData is None:
@@ -120,8 +130,8 @@ class Activity:
             self.TZ = pytz.timezone(cachedTzData["TZ"])
         return self.TZ
 
-    def EnsureTZ(self):
-        self.CalculateTZ()
+    def EnsureTZ(self, recalculate=False):
+        self.CalculateTZ(recalculate=recalculate)
         if self.StartTime.tzinfo is None:
             self.DefineTZ()
         else:

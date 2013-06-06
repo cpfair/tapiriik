@@ -329,6 +329,11 @@ class Sync:
                     tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
                     excludedServices.append(conn)
                     continue
+                # The fallback TZ is used when there are no points to determine the TZ with.
+                # It's set before _accumulateActivities to make the deduplication more reliable, since _accumulateActivities takes TZs into account.
+                if "Timezone" in user:
+                    for act in activities:
+                        act.FallbackTZ = user["Timezone"]
                 Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
                 Sync._accumulateActivities(svc, svcActivities, activities)
 
