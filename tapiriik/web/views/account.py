@@ -10,3 +10,10 @@ def account_setemail(req):
         return HttpResponse(status=403)
     User.SetEmail(req.user, req.POST["email"])
     return redirect("dashboard")
+
+@require_POST
+def account_settimezone(req):
+    if not req.user:
+        return HttpResponse(status=403)
+    User.SetTimezone(req.user, req.POST["timezone"])
+    return HttpResponse()

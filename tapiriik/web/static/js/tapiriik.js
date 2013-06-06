@@ -77,6 +77,14 @@ tapiriik.Init = function(){
 	$.address.change(tapiriik.AddressChanged);
 	tapiriik.AddressChanged();
 
+	// Detect TZ.
+	if (tapiriik.User){
+		var tz = jstz.determine().name();
+		if (tz != tapiriik.User.Timezone){
+			$.post("/account/settz", {timezone: tz});
+			tapiriik.User.Timezone = tz;
+		}
+	}
 };
 
 tapiriik.AddressChanged=function(){
@@ -764,7 +772,10 @@ tapiriik.RefreshSyncCountdown = function(){
 tapiriik.ShowDebugInfo = function(){
 	if ($(".debugInfo").length>0 || window.location.pathname != "/") return;
 	var infoPane = $("<div class=\"debugInfo\"><h3>Diagnostics</h3></div>");
-	if (tapiriik.User !== undefined) infoPane.append($("<div><b>User ID:</b> <tt>" + tapiriik.User.ID + "</tt></div>"));
+	if (tapiriik.User !== undefined) {
+		infoPane.append($("<div><b>User ID:</b> <tt>" + tapiriik.User.ID + "</tt></div>"));
+		infoPane.append($("<div><b>User TZ:</b> <tt>" + tapiriik.User.Timezone + "</tt></div>"));
+	}
 	infoPane.append($("<div><b>System:</b> <tt>" + tapiriik.SiteVer + "</tt></div>"));
 	infoPane.hide();
 	$(".content").append(infoPane);
