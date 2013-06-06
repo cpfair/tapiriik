@@ -302,7 +302,13 @@ class EndomondoService(ServiceBase):
 
         #same format as they're downloaded afaik
         scsv = []
-        for wp in activity.Waypoints:
+        waypts = activity.Waypoints
+        if not len(waypts):
+            # No really, this is how their app uploads these activities
+            waypts.append(Waypoint(timestamp=activity.StartTime, ptType=WaypointType.Start))
+            waypts.append(Waypoint(timestamp=activity.EndTime, ptType=WaypointType.End))
+
+        for wp in waypts:
             line = []
             for x in range(9):
                 line.append("")
@@ -326,6 +332,7 @@ class EndomondoService(ServiceBase):
             if wp.HR is not None:
                 line[7] = str(int(wp.HR))
             scsv.append(";".join(line))
+
         return "\n".join(scsv)
 
     def DeleteCachedData(self, serviceRecord):
