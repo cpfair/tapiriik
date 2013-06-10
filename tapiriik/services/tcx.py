@@ -59,7 +59,8 @@ class TCXIO:
                 if endTime is None or wp.Timestamp > endTime:
                     endTime = wp.Timestamp
                 xpos = xtrkpt.find("tcx:Position", namespaces=ns)
-                wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
+                if xpos:
+                    wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
                 eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
                 if eleEl is not None:
                     wp.Location.Altitude = float(eleEl.text)
@@ -156,9 +157,10 @@ class TCXIO:
             if wp.Timestamp.tzinfo is None:
                 raise ValueError("TCX export requires TZ info")
             etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
-            pos = etree.SubElement(trkpt, "Position")
-            etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
-            etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
+            if wp.Location:
+                pos = etree.SubElement(trkpt, "Position")
+                etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
+                etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
 
             if wp.Location.Altitude is not None:
                 etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
