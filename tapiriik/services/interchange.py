@@ -136,7 +136,7 @@ class Activity:
             startWpt = self.Waypoints[0]
         if not endWpt:
             endWpt = self.Waypoints[-1]
-        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt)):
+        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
             if self.Waypoints[x].Type == WaypointType.Pause:
                 continue  # don't count distance while paused
             lastLoc = self.Waypoints[x-1].Location
@@ -155,6 +155,32 @@ class Activity:
                 dz = 0
             dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
         return dist
+
+    def GetDuration(self, startWpt=None, endWpt=None):
+        if len(self.Waypoints) < 3:
+            # Either no waypoints, or one at the start and one at the end - just use regular time elapsed
+            return self.EndTime - self.StartTime
+        duration = timedelta(0)
+        if not startWpt:
+            startWpt = self.Waypoints[0]
+        if not endWpt:
+            endWpt = self.Waypoints[-1]
+        lastTimestamp = None
+        encountered_implicit_pauses = False
+        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
+            wpt = self.Waypoints[x]
+            delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
+            lastTimestamp =wpt.Timestamp
+            if wpt.Type is WaypointType.Pause:
+                lastTimestamp = None
+            elif delta and delta.total_seconds() > 11:
+                delta = None  # Implicit pauses
+                encountered_implicit_pauses = True
+            if delta:
+                duration += delta
+        if encountered_implicit_pauses and abs((self.EndTime - self.StartTime - duration).total_seconds()) / (self.EndTime - self.StartTime).total_seconds() > 0.33:
+            raise ValueError("Calculated duration " + str(duration) + " is very different than elapsed time " + str(self.EndTime - self.StartTime))
+        return duration
 
     def CheckSanity(self):
         if not hasattr(self, "UploadedTo") or len(self.UploadedTo) == 0:
