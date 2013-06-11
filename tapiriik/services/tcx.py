@@ -63,6 +63,7 @@ class TCXIO:
                     wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
                 eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
                 if eleEl is not None:
+                    wp.Location = wp.Location if wp.Location else Location(None, None, None)
                     wp.Location.Altitude = float(eleEl.text)
                 hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
                 if hrEl is not None:
