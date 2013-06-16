@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import requests
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class StravaService(ServiceBase):
     ID = "strava"
