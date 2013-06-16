@@ -308,7 +308,7 @@ class SyncTests(TapiriikTestCase):
         act = TestTools.create_blank_activity(svcA, record=recB)
         recipientServices = [recA, recB]
         excludedServices = [recA]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recB in eligible)
         self.assertTrue(recA not in eligible)
 
@@ -322,7 +322,7 @@ class SyncTests(TapiriikTestCase):
         act = TestTools.create_blank_activity(svcA, record=recB)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recB in eligible)
         self.assertTrue(recA not in eligible)
 
@@ -336,7 +336,7 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToTarget=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
 
@@ -350,7 +350,7 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertFalse(recA in eligible)
         self.assertTrue(recB in eligible)
 
@@ -364,13 +364,13 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertFalse(recA in eligible)
         self.assertTrue(recB in eligible)
 
         act.Origin = recA
         act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
 
@@ -384,14 +384,14 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
         recipientServices = [recA]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         recipientServices = [recB]
         act.Origin = recA
         act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
@@ -408,7 +408,7 @@ class SyncTests(TapiriikTestCase):
 
 
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=True)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
@@ -416,21 +416,21 @@ class SyncTests(TapiriikTestCase):
         act.Origin = recA
         act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
         User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=False)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         recipientServices = [recA, recB]
         User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=True)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertTrue(recB in eligible)
 
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user, silent=True)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertTrue(recB in eligible)

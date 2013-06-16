@@ -170,6 +170,9 @@ INVITE_KEYS = []
 # hidden from regular signup
 SOFT_LAUNCH_SERVICES = ["garminconnect"]
 
+# where to put per-user sync logs
+USER_SYNC_LOGS = "./"
+
 # set at startup
 SITE_VER = "unknown"
 

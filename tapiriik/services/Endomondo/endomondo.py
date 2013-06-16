@@ -11,7 +11,9 @@ import pytz
 import re
 import zlib
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 class EndomondoService(ServiceBase):
@@ -80,7 +82,6 @@ class EndomondoService(ServiceBase):
         params = {"email": email, "password": password, "v": "2.4", "action": "pair", "deviceId": "TAP-SYNC-" + email.lower(), "country": "N/A"}  # note to future self: deviceId can't change intra-account otherwise we'll get different tokens back
 
         resp = requests.get("https://api.mobile.endomondo.com/mobile/auth", params=params)
-        print("response: " + resp.text + str(resp.status_code))
         if resp.text.strip() == "USER_UNKNOWN" or resp.text.strip() == "USER_EXISTS_PASSWORD_WRONG":
             raise APIAuthorizationException("Invalid login")
         data = self._parseKVP(resp.text)
@@ -186,7 +187,7 @@ class EndomondoService(ServiceBase):
         while True:
             before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             params = {"authToken": serviceRecord.Authorization["AuthToken"], "maxResults": 45, "before": before}
-            print("Req with " + str(params))
+            logger.info("Req with " + str(params))
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
@@ -197,19 +198,19 @@ class EndomondoService(ServiceBase):
                 startTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
                 if earliestDate is None or startTime < earliestDate:  # probably redundant, I would assume it works out the TZes...
                     earliestDate = startTime
-                print("activity pre")
+                logger.info("activity pre")
                 if not act["has_points"]:
-                    print("\t no pts")
+                    logger.warning("\t no pts")
                     exclusions.append(APIExcludeActivity("No points", activityId=act["id"]))
                     continue # it'll break strava, which needs waypoints to find TZ. Meh
                 if "tracking" in act and act["tracking"]:
-                    print("\t tracking")
+                    logger.warning("\t tracking")
                     exclusions.append(APIExcludeActivity("In progress", activityId=act["id"]), permanent=False)
                     continue  # come back once they've completed the activity
                 activity = UploadedActivity()
                 activity.StartTime = startTime
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
-                print ("\tActivity s/t " + str(activity.StartTime))
+                logger.info("\tActivity s/t " + str(activity.StartTime))
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
@@ -259,7 +260,7 @@ class EndomondoService(ServiceBase):
         data = self._createUploadData(activity)
         compressed_data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=compressed_data)
-        print(response.text)
+        logger.info("Upload result " + response.text)
         if response.status_code != 200:
             del compressed_data  # keep the error logs clean - automatically scrapes for local variables
             raise APIException("Could not upload activity " + response.text)
