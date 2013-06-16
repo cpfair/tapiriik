@@ -40,9 +40,9 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
         return most_specific
 
 
-
-
 class Activity:
+    ImplicitPauseTime = timedelta(seconds=11)
+
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
         self.StartTime = startTime
         self.EndTime = endTime
@@ -125,35 +125,49 @@ class Activity:
         else:
             self.AdjustTZ()
 
-    def CalculateDistance(self, startWpt=None, endWpt=None):
-        self.Distance = self.GetDistance(startWpt, endWpt)
+    def CalculateDistance(self):
+        self.Distance = self.GetDistance()
 
     def GetDistance(self, startWpt=None, endWpt=None):
         import math
         dist = 0
         altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
+        lastTimestamp = lastLoc = None
+
         if not startWpt:
             startWpt = self.Waypoints[0]
         if not endWpt:
             endWpt = self.Waypoints[-1]
+
         for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
-            if self.Waypoints[x].Type == WaypointType.Pause:
-                continue  # don't count distance while paused
-            lastLoc = self.Waypoints[x-1].Location
-            if lastLoc is None or lastLoc.Longitude is None or lastLoc.Latitude is None:
-                raise ValueError("Discontinuous track")
-            altHold = lastLoc.Altitude if lastLoc.Altitude is not None else altHold
+            timeDelta = self.Waypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
+            lastTimestamp = self.Waypoints[x].Timestamp
+
+            if self.Waypoints[x].Type == WaypointType.Pause or (timeDelta and timeDelta > self.ImplicitPauseTime):
+                lastLoc = None  # don't count distance while paused
+                continue
+
             loc = self.Waypoints[x].Location
-            latRads = loc.Latitude * math.pi / 180
-            meters_lat_degree = 1000 * 111.13292 + 1.175 * math.cos(4 * latRads) - 559.82 * math.cos(2 * latRads)
-            meters_lon_degree = 1000 * 111.41284 * math.cos(latRads) - 93.5 * math.cos(3 * latRads)
-            dx = (loc.Longitude - lastLoc.Longitude) * meters_lon_degree
-            dy = (loc.Latitude - lastLoc.Latitude) * meters_lat_degree
-            if loc.Altitude is not None and altHold is not None:  # incorporate the altitude when possible
-                dz = loc.Altitude - altHold
-            else:
-                dz = 0
-            dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+            if loc is None or loc.Longitude is None or loc.Latitude is None:
+                # Used to throw an exception in this case, but the TCX schema allows for location-free waypoints, so we'll just patch over it.
+                continue
+
+            if loc and lastLoc:
+                altHold = lastLoc.Altitude if lastLoc.Altitude is not None else altHold
+                latRads = loc.Latitude * math.pi / 180
+                meters_lat_degree = 1000 * 111.13292 + 1.175 * math.cos(4 * latRads) - 559.82 * math.cos(2 * latRads)
+                meters_lon_degree = 1000 * 111.41284 * math.cos(latRads) - 93.5 * math.cos(3 * latRads)
+                dx = (loc.Longitude - lastLoc.Longitude) * meters_lon_degree
+                dy = (loc.Latitude - lastLoc.Latitude) * meters_lat_degree
+                if loc.Altitude is not None and altHold is not None:  # incorporate the altitude when possible
+                    dz = loc.Altitude - altHold
+                else:
+                    dz = 0
+                dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+            lastLoc = loc
+
+        if dist == 0:
+            raise ValueError("0 distance")
         return dist
 
     def GetDuration(self, startWpt=None, endWpt=None):
@@ -170,10 +184,10 @@ class Activity:
         for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
             wpt = self.Waypoints[x]
             delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp =wpt.Timestamp
+            lastTimestamp = wpt.Timestamp
             if wpt.Type is WaypointType.Pause:
                 lastTimestamp = None
-            elif delta and delta.total_seconds() > 11:
+            elif delta and delta > self.ImplicitPauseTime:
                 delta = None  # Implicit pauses
                 encountered_implicit_pauses = True
             if delta:
