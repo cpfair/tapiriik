@@ -117,13 +117,15 @@ class GarminConnectService(ServiceBase):
 
                 if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled":
                     activity.Name = act["activityName"]["value"]
-                # beginTimestamp is in UTC
+                # beginTimestamp/endTimestamp is in UTC
                 activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
                 if "sumElapsedDuration" in act:
-                    duration = timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
+                    activity.EndTime = activity.StartTime + timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
+                elif "sumDuration" in act:
+                    activity.EndTime = activity.StartTime + timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1]))
                 else:
-                    duration = timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1]))
-                activity.EndTime = activity.StartTime + duration
+                    activity.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["endTimestamp"]["millis"])/1000))
+
                 activity.AdjustTZ()
                 activity.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1)
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
