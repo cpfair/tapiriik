@@ -205,7 +205,7 @@ class EndomondoService(ServiceBase):
                     continue # it'll break strava, which needs waypoints to find TZ. Meh
                 if "tracking" in act and act["tracking"]:
                     logger.warning("\t tracking")
-                    exclusions.append(APIExcludeActivity("In progress", activityId=act["id"]), permanent=False)
+                    exclusions.append(APIExcludeActivity("In progress", activityId=act["id"], permanent=False))
                     continue  # come back once they've completed the activity
                 activity = UploadedActivity()
                 activity.StartTime = startTime

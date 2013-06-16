@@ -30,7 +30,7 @@ def _formatExc():
         tb = tb.tb_next
     frame = tb.tb_frame
     exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + pprint.pformat(v) for k, v in frame.f_locals.items()])
-    logger.exception()
+    logger.exception("Service exception")
     return exc
 
 class Sync:
@@ -252,7 +252,7 @@ class Sync:
                     if not len(excludedServices):  # otherwise it could be incorrectly recorded
                         # we can log the origin of this activity
                         if not len([x for x in origins if x["ActivityUID"] == activity.UID]):  # No need to hammer the database updating these when they haven't changed
-                            db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}}, upsert=True)
+                            db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}})
                         activity.Origin = activity.UploadedTo[0]["Connection"]
                 else:
                     knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
