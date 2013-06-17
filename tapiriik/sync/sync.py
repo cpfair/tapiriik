@@ -245,23 +245,25 @@ class Sync:
                 Sync._accumulateExclusions(conn, svcExclusions)
                 Sync._accumulateActivities(svc, svcActivities, activities)
 
-            origins = db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}})
-
+            origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
+            activitiesWithOrigins = [x["ActivityUID"] for x in origins]
             for activity in activities:
+                updated_database = False
                 if len(activity.UploadedTo) == 1:
                     if not len(excludedServices):  # otherwise it could be incorrectly recorded
                         # we can log the origin of this activity
-                        if not len([x for x in origins if x["ActivityUID"] == activity.UID]):  # No need to hammer the database updating these when they haven't changed
-                            db.activity_origins.update({"ActivityID": activity.UID}, {"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}})
+                        if activity.UID not in activitiesWithOrigins:  # No need to hammer the database updating these when they haven't changed
+                            logger.info("\t\t Updating db with origin for proceeding activity")
+                            db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}})
                         activity.Origin = activity.UploadedTo[0]["Connection"]
                 else:
-                    knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
-                    if len(knownOrigin) > 0:
+                    if activity.UID in activitiesWithOrigins:
+                        knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
                         connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
                         if len(connectedOrigins) > 0:  # they might have disconnected it
                             activity.Origin = connectedOrigins[0]
                         else:
-                            activity.Origin = knownOrigin[0]["Origin"]  # I have it on good authority that this will work
+                            activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
                 logger.info("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"].Service.ID for x in activity.UploadedTo]))
 
             totalActivities = len(activities)
