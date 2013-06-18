@@ -51,7 +51,8 @@ db.sync_status_stats.insert({
         "Locked": lockedSyncRecords,
         "Pending": pendingSynchronizations,
         "ErrorUsers": usersWithErrors,
-        "TotalErrors": totalErrors
+        "TotalErrors": totalErrors,
+        "SyncTimeUsed": TotalSyncTimeUsed
 })
 
 db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
