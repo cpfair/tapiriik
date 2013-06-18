@@ -41,7 +41,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    ImplicitPauseTime = timedelta(seconds=11)
+    ImplicitPauseTime = timedelta(minutes=1, seconds=5)
 
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
         self.StartTime = startTime
