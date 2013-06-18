@@ -123,28 +123,6 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=30))]
         self.assertEqual(act.GetDuration(), timedelta(seconds=26))
 
-        # checking for large discrepencies - if there are no implicit pauses, accept anything
-        act.EndTime = act.StartTime + timedelta(minutes=23)
-        act.Waypoints = [Waypoint(timestamp=act.StartTime),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=2)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=6)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=20), ptType=WaypointType.Pause),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=24), ptType=WaypointType.Resume),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=30))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=26))
-
-        # checking for large discrepencies - if there are implicit pauses, limit paused time to a fraction of total duration
-        act.EndTime = act.StartTime + timedelta(minutes=23)
-        act.Waypoints = [Waypoint(timestamp=act.StartTime),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=2)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=6)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=20)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=24)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=30))]
-        self.assertRaises(ValueError, act.GetDuration)
-
-
-
     def test_activity_specificity_resolution(self):
         # Mountain biking is more specific than just cycling
         self.assertEqual(ActivityType.PickMostSpecific([ActivityType.Cycling, ActivityType.MountainBiking]), ActivityType.MountainBiking)

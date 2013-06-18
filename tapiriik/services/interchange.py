@@ -180,7 +180,6 @@ class Activity:
         if not endWpt:
             endWpt = self.Waypoints[-1]
         lastTimestamp = None
-        encountered_implicit_pauses = False
         for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
             wpt = self.Waypoints[x]
             delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
@@ -189,11 +188,10 @@ class Activity:
                 lastTimestamp = None
             elif delta and delta > self.ImplicitPauseTime:
                 delta = None  # Implicit pauses
-                encountered_implicit_pauses = True
             if delta:
                 duration += delta
-        if encountered_implicit_pauses and abs((self.EndTime - self.StartTime - duration).total_seconds()) / (self.EndTime - self.StartTime).total_seconds() > 0.33:
-            raise ValueError("Calculated duration " + str(duration) + " is very different than elapsed time " + str(self.EndTime - self.StartTime))
+        if duration.total_seconds() == 0:
+            raise ValueError("Zero-duration activity")
         return duration
 
     def CheckSanity(self):
