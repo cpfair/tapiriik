@@ -75,7 +75,7 @@ class GarminConnectService(ServiceBase):
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
         cookies = self._get_cookies(email, password)
-        username = requests.get("https://connect.garmin.com/user/username", cookies=cookies).json()["username"]
+        username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         if not len(username):
             raise APIAuthorizationException("Unable to retrieve username")
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
