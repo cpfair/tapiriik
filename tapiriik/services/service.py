@@ -44,7 +44,7 @@ class Service:
         if serviceRecord is None:
             db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None})
             serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
-        elif serviceRecord.Authorization != authDetails or (serviceRecord.ExtendedAuthorization != extendedAuthDetails and persistExtendedAuthDetails):
+        elif serviceRecord.Authorization != authDetails or (hasattr(serviceRecord, "ExtendedAuthorization") and serviceRecord.ExtendedAuthorization != extendedAuthDetails):
             db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None}})
 
         # if not persisted, these details are stored in the cache db so they don't get backed up
