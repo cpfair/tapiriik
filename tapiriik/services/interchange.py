@@ -237,7 +237,7 @@ class Activity:
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo) + " End " + str(self.EndTime) + " " + str(len(self.Waypoints)) + " WPs"
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Waypoints)) + " WPs"
     __repr__ = __str__
 
     def __eq__(self, other):
