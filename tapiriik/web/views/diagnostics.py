@@ -76,6 +76,13 @@ def diag_user(req, user):
         except:
             pass
         delta = True
+    elif "svc_marksync" in req.POST:
+        from tapiriik.services import Service
+        from tapiriik.auth import User
+        db.connections.update({"_id": ObjectId(req.POST["id"])},
+                              {"$addToSet": {"SynchronizedActivities": req.POST["uid"]}},
+                              multi=False)
+        delta = True
     elif "svc_clearexc" in req.POST:
         from tapiriik.services import Service
         from tapiriik.auth import User
