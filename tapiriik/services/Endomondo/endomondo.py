@@ -187,7 +187,7 @@ class EndomondoService(ServiceBase):
         while True:
             before = "" if earliestDate is None else earliestDate.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             params = {"authToken": serviceRecord.Authorization["AuthToken"], "maxResults": 45, "before": before}
-            logger.info("Req with " + str(params))
+            logger.debug("Req with " + str(params))
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
@@ -198,7 +198,7 @@ class EndomondoService(ServiceBase):
                 startTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
                 if earliestDate is None or startTime < earliestDate:  # probably redundant, I would assume it works out the TZes...
                     earliestDate = startTime
-                logger.info("activity pre")
+                logger.debug("activity pre")
                 if not act["has_points"]:
                     logger.warning("\t no pts")
                     exclusions.append(APIExcludeActivity("No points", activityId=act["id"]))
@@ -210,7 +210,7 @@ class EndomondoService(ServiceBase):
                 activity = UploadedActivity()
                 activity.StartTime = startTime
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
-                logger.info("\tActivity s/t " + str(activity.StartTime))
+                logger.debug("\tActivity s/t " + str(activity.StartTime))
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
                 if cachedTrackData is None:
@@ -260,7 +260,7 @@ class EndomondoService(ServiceBase):
         data = self._createUploadData(activity)
         compressed_data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=compressed_data)
-        logger.info("Upload result " + response.text)
+        logger.debug("Upload result " + response.text)
         if response.status_code != 200:
             del compressed_data  # keep the error logs clean - automatically scrapes for local variables
             raise APIException("Could not upload activity " + response.text)

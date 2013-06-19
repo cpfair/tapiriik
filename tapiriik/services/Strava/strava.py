@@ -50,6 +50,7 @@ class StravaService(ServiceBase):
         pgSz = 50  # this is determined by the Strava API
         earliestFirstPageDate = earliestDate = None
         while True:
+            logger.debug("Req http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord.ExternalID))
             resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord.ExternalID))
             reqdata = resp.json()
             reqdata = reqdata["rides"]
