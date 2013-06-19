@@ -139,6 +139,9 @@ class Activity:
         if not endWpt:
             endWpt = self.Waypoints[-1]
 
+        if startWpt.Location == endWpt.Location:
+            return 0
+
         for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
             timeDelta = self.Waypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
             lastTimestamp = self.Waypoints[x].Timestamp
