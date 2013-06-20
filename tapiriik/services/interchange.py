@@ -169,8 +169,6 @@ class Activity:
                 dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
             lastLoc = loc
 
-        if dist == 0:
-            raise ValueError("0 distance")
         return dist
 
     def GetDuration(self, startWpt=None, endWpt=None):
