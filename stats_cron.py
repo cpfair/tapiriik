@@ -42,7 +42,7 @@ totalErrors = db.users.aggregate([
 ])
 
 if len(totalErrors["result"]) > 0:
-    totalErrors = totalErrors["result"][0]["sum"]
+    totalErrors = totalErrors["result"][0]["total"]
 else:
     totalErrors = 0
 
@@ -52,7 +52,7 @@ db.sync_status_stats.insert({
         "Pending": pendingSynchronizations,
         "ErrorUsers": usersWithErrors,
         "TotalErrors": totalErrors,
-        "SyncTimeUsed": TotalSyncTimeUsed
+        "SyncTimeUsed": timeUsed
 })
 
 db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
