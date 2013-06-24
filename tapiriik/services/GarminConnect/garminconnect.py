@@ -12,6 +12,9 @@ import requests
 import json
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+
 class GarminConnectService(ServiceBase):
     ID = "garminconnect"
     DisplayName = "Garmin Connect"
@@ -99,6 +102,7 @@ class GarminConnectService(ServiceBase):
         activities = []
         exclusions = []
         while True:
+            logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
             res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", data={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
             res = res.json()["results"]
             if "activities" not in res:
@@ -125,7 +129,7 @@ class GarminConnectService(ServiceBase):
                     activity.EndTime = activity.StartTime + timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1]))
                 else:
                     activity.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["endTimestamp"]["millis"])/1000))
-
+                logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
                 activity.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1)
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
@@ -133,6 +137,7 @@ class GarminConnectService(ServiceBase):
                 activity.CalculateUID()
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["activityId"]}]
                 activities.append(activity)
+            logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
             if not exhaustive or int(res["search"]["totalPages"]) == page:
                 break
             else:
