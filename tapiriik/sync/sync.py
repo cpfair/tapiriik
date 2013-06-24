@@ -339,7 +339,7 @@ class Sync:
                         destSvc.UploadActivity(destinationSvcRecord, act)
                     except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
                         etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
-                        tempSyncErrors[conn._id].append({"Step": SyncStep.Upload, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                        tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
                         if not issubclass(e.__class__, ServiceWarning):
                             continue
                     except Exception as e:
