@@ -103,7 +103,7 @@ class GarminConnectService(ServiceBase):
         exclusions = []
         while True:
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
-            res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", data={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
+            res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
             res = res.json()["results"]
             if "activities" not in res:
                 break  # No activities on this page - empty account.
