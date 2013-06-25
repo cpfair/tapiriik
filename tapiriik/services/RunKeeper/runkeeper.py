@@ -119,9 +119,6 @@ class RunKeeperService(ServiceBase):
             if "has_path" in act and act["has_path"] is False:
                 exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
                 continue  # No points = no sync.
-            if "is_live" in act and act["is_live"] is True:
-                exclusions.append(APIExcludeActivity("Not complete", activityId=act["uri"], permanent=False))
-                continue  # Otherwise we end up with partial activities.
             activity = self._populateActivity(act)
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
@@ -157,6 +154,9 @@ class RunKeeperService(ServiceBase):
             ridedata["Owner"] = serviceRecord.ExternalID
             if AGGRESSIVE_CACHE:
                 cachedb.rk_activity_cache.insert(ridedata)
+
+        if "is_live" in ridedata and ridedata["is_live"] is True:
+            raise APIExcludeActivity("Not complete", activityId=activityID, permanent=False)
 
         self._populateActivityWaypoints(ridedata, activity)
 
