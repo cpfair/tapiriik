@@ -38,6 +38,7 @@ class Sync:
     SyncInterval = timedelta(hours=1)
     SyncIntervalJitter = timedelta(minutes=5)
     MinimumSyncInterval = timedelta(seconds=30)
+    MaximumIntervalBeforeExhaustiveSync = timedelta(days=14)  # Based on the general page size of 50 activites, this would be >3/day...
 
     _logFormat = '[%(levelname)-8s] %(asctime)s (%(name)s:%(lineno)d) %(message)s'
     _logDateFormat = '%Y-%m-%d %H:%M:%S'
@@ -172,8 +173,16 @@ class Sync:
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             syncStart = datetime.utcnow()
+
+            # Always to an exhaustive sync if there were errors
+            #   Sometimes services report that uploads failed even when they succeeded.
+            #   So we need to verify the full state of the accounts.
+            exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
+            if "SyncErrorCount" in user and user["SyncErrorCount"] > 0:
+                exhaustive = True
+
             try:
-                Sync.PerformUserSync(user, "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True)
+                Sync.PerformUserSync(user, exhaustive)
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
@@ -201,7 +210,7 @@ class Sync:
         logging_file_handler.setFormatter(logging.Formatter(Sync._logFormat, Sync._logDateFormat))
         _global_logger.addHandler(logging_file_handler)
 
-        logger.info("Beginning sync for " + str(user["_id"]))
+        logger.info("Beginning sync for " + str(user["_id"]) + "(exhaustive: " + str(exhaustive) + ")")
         try:
             serviceConnections = [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": connectedServiceIds}})]
             allExtendedAuthDetails = list(cachedb.extendedAuthDetails.find({"ID": {"$in": connectedServiceIds}}))

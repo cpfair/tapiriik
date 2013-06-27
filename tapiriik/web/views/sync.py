@@ -36,5 +36,8 @@ def sync_schedule_immediate(req):
         return HttpResponse(status=401)
     if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None and datetime.utcnow() - req.user["LastSynchronization"] < Sync.MinimumSyncInterval:
         return HttpResponse(status=403)
-    Sync.ScheduleImmediateSync(req.user)
+    exhaustive = None
+    if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None and datetime.utcnow() - req.user["LastSynchronization"] > Sync.MaximumIntervalBeforeExhaustiveSync:
+        exhaustive = True
+    Sync.ScheduleImmediateSync(req.user, exhaustive)
     return HttpResponse()
