@@ -159,14 +159,14 @@ class Sync:
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
-    def _accumulateExclusions(serviceRecord, exclusions):
+    def _accumulateExclusions(serviceRecord, exclusions, tempSyncExclusions):
         if type(exclusions) is not list:
             exclusions = [exclusions]
         for exclusion in exclusions:
             identifier = exclusion.Activity.UID if exclusion.Activity else exclusion.ExternalActivityID
             if not identifier:
                 raise ValueError("Activity excluded with no identifying information")
-            serviceRecord.ExcludedActivities[str(identifier)] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
+            tempSyncExclusions[serviceRecord._id][str(identifier)] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
 
     def PerformGlobalSync():
         from tapiriik.auth import User
@@ -219,13 +219,15 @@ class Sync:
             excludedServices = []
 
             tempSyncErrors = {}
+            tempSyncExclusions = {}
 
             for conn in serviceConnections:
                 tempSyncErrors[conn._id] = []
                 conn.SyncErrors = []
-                conn.ExcludedActivities = conn.ExcludedActivities if conn.ExcludedActivities else {}
+
                 # Remove temporary exclusions (live tracking etc).
-                conn.ExcludedActivities = dict((k, v) for k, v in conn.ExcludedActivities.items() if v["Permanent"])
+                tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
+                del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
                 svc = conn.Service
 
                 if svc.RequiresExtendedAuthorizationDetails:
@@ -251,7 +253,7 @@ class Sync:
                     tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
                     excludedServices.append(conn)
                     continue
-                Sync._accumulateExclusions(conn, svcExclusions)
+                Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
                 Sync._accumulateActivities(svc, svcActivities, activities)
 
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
@@ -310,7 +312,7 @@ class Sync:
                     dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
                     dlSvc = dlSvcRecord.Service
                     logger.info("\t from " + dlSvc.ID)
-                    if activity.UID in dlSvcRecord.ExcludedActivities:
+                    if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
                         logger.info("\t\t has activity exclusion logged")
                         continue
                     workingCopy = copy.copy(activity)  # we can hope
@@ -323,7 +325,7 @@ class Sync:
                             continue
                     except APIExcludeActivity as e:
                         e.Activity = workingCopy
-                        Sync._accumulateExclusions(dlSvcRecord, e)
+                        Sync._accumulateExclusions(dlSvcRecord, e, tempSyncExclusions)
                         continue
                     except Exception as e:
                         tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
@@ -331,7 +333,7 @@ class Sync:
                     try:
                         workingCopy.CheckSanity()
                     except:
-                        Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
+                        Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy), tempSyncExclusions)
                         continue
                     else:
                         act = workingCopy
@@ -366,9 +368,9 @@ class Sync:
             allSyncErrors = []
             syncExclusionCount = 0
             for conn in serviceConnections:
-                db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": conn.ExcludedActivities}})
+                db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": tempSyncExclusions[conn._id]}})
                 allSyncErrors += tempSyncErrors[conn._id]
-                syncExclusionCount += len(conn.ExcludedActivities.items())
+                syncExclusionCount += len(tempSyncExclusions[conn._id].items())
 
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
