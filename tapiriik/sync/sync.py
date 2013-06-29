@@ -227,7 +227,8 @@ class Sync:
 
                 # Remove temporary exclusions (live tracking etc).
                 tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
-                del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
+                if conn.ExcludedActivities:
+                    del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
                 svc = conn.Service
 
                 if svc.RequiresExtendedAuthorizationDetails:
