@@ -70,4 +70,7 @@
 	{% endfor %}
 <p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
+<p><b style="color:#800;">Service Advisory:</b> The interface (API) that tapiriik uses to synchronize activities with Strava is <strong>scheduled to be retired on June 30<sup>th</sup></strong>. When this happens, <b>tapiriik will {% if user != None %}no longer be able to synchronize your activities to or from your Strava account.{% else %} no longer be able to connect to your Strava account to synchronize your activities{% endif %}</b>.</p>
+
+<p>If this makes you sad, <strong>please email <a href="mailto:support@strava.com?subject=Give tapiriik.com access to your new API!">support@strava.com</a> to suggest that tapiriik be given access to the new Strava API.</strong></p>
 {% endblock %}

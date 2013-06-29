@@ -170,6 +170,9 @@ INVITE_KEYS = []
 # hidden from regular signup
 SOFT_LAUNCH_SERVICES = ["garminconnect"]
 
+# visibly disabled + excluded from synchronization
+DISABLED_SERVICES = []
+
 # where to put per-user sync logs
 USER_SYNC_LOGS = "./"
 

@@ -1,6 +1,6 @@
 from tapiriik.database import db, cachedb
 from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
-from tapiriik.settings import USER_SYNC_LOGS
+from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES
 from datetime import datetime, timedelta
 import sys
 import os
@@ -222,6 +222,11 @@ class Sync:
             tempSyncExclusions = {}
 
             for conn in serviceConnections:
+                svc = conn.Service
+                if svc.ID in DISABLED_SERVICES:
+                    excludedServices.append(conn)
+                    continue
+
                 tempSyncErrors[conn._id] = []
                 conn.SyncErrors = []
 
@@ -229,7 +234,6 @@ class Sync:
                 tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
                 if conn.ExcludedActivities:
                     del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
-                svc = conn.Service
 
                 if svc.RequiresExtendedAuthorizationDetails:
                     if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
