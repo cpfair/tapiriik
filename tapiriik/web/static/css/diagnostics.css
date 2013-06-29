@@ -1,0 +1,42 @@
+
+.contentOuter {
+	width:auto;
+	height:auto;
+	display:block;
+	position: relative;
+	padding:0;
+	margin:0;
+}
+
+.contentWrap {
+	display: block;
+}
+
+.content {
+}
+
+.logo {
+	text-align: left;
+	margin-left:30px;
+	margin-top:-120px;
+	width:auto;
+}
+
+.logo .sub {
+	display: none;
+}
+
+.logoPad {
+	margin-top:120px;
+}
+
+.contentOuterBorder {
+	margin:20px;
+	left:0;
+	right:0;
+	width:auto;
+}
+
+.footers {
+	display: none;
+}

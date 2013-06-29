@@ -29,7 +29,7 @@ $.ajaxSetup({
     }
 });
 
-tapiriik = {};
+tapiriik = typeof(tapiriik) == "undefined" ? {} : tapiriik;
 tapiriik.PreviousURLComponents = [];
 
 tapiriik.Init = function(){
@@ -77,7 +77,9 @@ tapiriik.Init = function(){
 	tapiriik.AddressChanged();
 
 };
-$.address.wrap(true);
+if (tapiriik.diagnostics !== true){
+	$.address.wrap(true);
+}
 
 tapiriik.AddressChanged=function(){
 	var components = $.address.pathNames();
