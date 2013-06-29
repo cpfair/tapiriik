@@ -20,6 +20,7 @@ class TCXIO:
         ns = copy.deepcopy(TCXIO.Namespaces)
         ns["tcx"] = ns[None]
         del ns[None]
+        
         act = act if act else Activity()
         act.Distance = None
 
@@ -44,6 +45,9 @@ class TCXIO:
         for xlap in xlaps:
             beginSeg = True
             xtrkseg = xlap.find("tcx:Track", namespaces=ns)
+            if not xtrkseg:
+                # Some TCX files have laps with no track - not sure if it's valid or not.
+                continue
             for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
                 wp = Waypoint()
                 if len(act.Waypoints) == 0:
