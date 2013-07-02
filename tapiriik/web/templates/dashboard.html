@@ -56,13 +56,13 @@
 	{% for provider in user.ConnectedServices|svc_providers_except %}
 		{% if provider.ID not in config.soft_launch %}
 			{% if forloop.first %}<hr>{% endif %}
-			{% include "service-button.html" with provider=provider inactive=True %} 
+			{% include "service-button.html" with provider=provider inactive=True %}
 		{% endif %}
 	{% endfor %}
 
 {% else %}
 <p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, RunKeeper, Strava, Endomondo and Dropbox<br/>
-(your heart rate, cadence, power, and temperature data syncs too)</p> 
+(your heart rate, cadence, power, and temperature data syncs too)</p>
 	{% for provider in service_providers %}
 		{% if provider.ID not in config.soft_launch %}
 			{% include "service-button.html" with provider=provider %}
@@ -70,7 +70,6 @@
 	{% endfor %}
 <p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
-<p><b style="color:#800;">Service Advisory:</b> The interface (API) that tapiriik uses to synchronize activities with Strava is <strong>scheduled to be retired on June 30<sup>th</sup></strong>. When this happens, <b>tapiriik will {% if user != None %}no longer be able to synchronize your activities to or from your Strava account.{% else %} no longer be able to connect to your Strava account to synchronize your activities{% endif %}</b>.</p>
+<p><b style="color:#800;">Service Advisory:</b> The interface (API) that tapiriik uses to synchronize activities with Strava was <strong>retired on June 30<sup>th</sup></strong>. <b>tapiriik will {% if user != None %}no longer be able to synchronize your activities to or from your Strava account.{% else %} no longer be able to connect to your Strava account to synchronize your activities{% endif %}</b>. There is currently no timeline for resuming Strava synchronizations.</p>
 
-<p>If this makes you sad, <strong>please email <a href="mailto:support@strava.com?subject=Give tapiriik.com access to your new API!">support@strava.com</a> to suggest that tapiriik be given access to the new Strava API.</strong></p>
 {% endblock %}
