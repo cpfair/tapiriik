@@ -70,6 +70,6 @@
 	{% endfor %}
 <p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
-<p><b style="color:#800;">Service Advisory:</b> The interface (API) that tapiriik uses to synchronize activities with Strava was <strong>retired on June 30<sup>th</sup></strong>. <b>tapiriik will {% if user != None %}no longer be able to synchronize your activities to or from your Strava account.{% else %} no longer be able to connect to your Strava account to synchronize your activities{% endif %}</b>. There is currently no timeline for resuming Strava synchronizations.</p>
+<p><b style="color:#800;">Service Advisory:</b> The interface (API) that tapiriik uses to synchronize activities with Strava was <strong>retired on June 30<sup>th</sup></strong>. <b>tapiriik will {% if user != None %}no longer be able to synchronize your activities to or from your Strava account.{% else %} no longer be able to connect to your Strava account to synchronize your activities{% endif %}</b>. The <a href="http://engineering.strava.com/strava-v1v2-api-retired/">official statement on the Strava blog</a> looks grim, but I'm investigating other options.</p>
 
 {% endblock %}
