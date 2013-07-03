@@ -1,5 +1,6 @@
-from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
+from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
+from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
@@ -10,6 +11,8 @@ import requests
 import json
 import os
 import logging
+import pytz
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +23,33 @@ class StravaService(ServiceBase):
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
 
-    SupportedActivities = [ActivityType.Cycling]  # runs don't actually work with the API I'm using
-    SupportsHR = True
-    SupportsPower = True
+    SupportedActivities = [ActivityType.Cycling, ActivityType.Running]
+    SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
+
+    _activityTypeMappings = {
+        ActivityType.Cycling: "Ride",
+        ActivityType.Running: "Run"
+    }
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})
 
+    def _apiHeaders(self, serviceRecord):
+        return {"Authorization": "access_token " + serviceRecord.Authorization["OAuthToken"]}
+
     def Authorize(self, email, password):
-        # https://www.strava.com/api/v2/authentication/login
-        params = {"email": email, "password": password}
-        resp = requests.post("https://www.strava.com/api/v2/authentication/login", data=params)
+        # https://www.strava.com/api/v3/oauth/internal/token
+        params = {"email": email, "password": password, "client_secret": STRAVA_CLIENT_SECRET, "client_id": STRAVA_CLIENT_ID}
+        resp = requests.post("https://www.strava.com/api/v3/oauth/internal/token", data=params)
         if resp.status_code != 200:
             raise APIAuthorizationException("Invalid login")
         data = resp.json()
-        return (data["athlete"]["id"], {"Token": data["token"]})
+
+        authorizationData = {"OAuthToken": data["access_token"]}
+        # Retrieve the user ID, meh.
+        id_resp = requests.get("https://www.strava.com/api/v3/athlete", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
+
+        return (id_resp.json()["id"], authorizationData)
 
     def RevokeAuthorization(self, serviceRecord):
         #  you can't revoke the tokens strava distributes :\
@@ -45,73 +60,56 @@ class StravaService(ServiceBase):
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
         exclusions = []
-        data = []
-        offset = 0
-        pgSz = 50  # this is determined by the Strava API
-        earliestFirstPageDate = earliestDate = None
+        before =  None
+        earliestDate = None
+        pageSz = 50  # ??
         while True:
-            logger.debug("Req http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord.ExternalID))
-            resp = requests.get("http://app.strava.com/api/v1/rides?offset=" + str(offset) + "&athleteId=" + str(svcRecord.ExternalID))
+            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord))
             reqdata = resp.json()
-            reqdata = reqdata["rides"]
-            data += reqdata
-            if not exhaustive or len(reqdata) < pgSz:  # api returns 50 rows at a time, so once we start getting <50 we're done
+
+            for ride in reqdata:
+                if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
+                    exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
+                    continue  # stationary activity - no syncing for now
+                if ride["start_latlng"] == ride["end_latlng"]:
+                    exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
+                    continue  # Only one waypoint, one would assume.
+                activity = UploadedActivity()
+                activity.TZ = pytz.timezone(re.sub("^\([^\)]+\)\s*", "", ride["timezone"]))  # Comes back as "(GMT -13:37) The Stuff/We Want""
+                activity.StartTime = pytz.utc.localize(datetime.strptime(ride["start_date"], "%Y-%m-%dT%H:%M:%SZ"))
+                activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
+                activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
+
+                actType = [k for k, v in self._activityTypeMappings.items() if v == ride["type"]]
+                if not len(actType):
+                    exclusions.append(APIExcludeActivity("Unsupported activity type", activityId=ride["id"]))
+                    continue
+
+                activity.Type = actType[0]
+                activity.Distance = ride["distance"]
+                activity.Name = ride["name"]
+                activity.AdjustTZ()
+                activity.CalculateUID()
+                activities.append(activity)
+                if not earliestDate or activity.StartTime < earliestDate:
+                    earliestDate = activity.StartTime
+                    before = ride["start_date"]  # As opposed to converting it back into their date format...
+
+            if not exhaustive or len(reqdata) < pageSz:
                 break
-            offset += pgSz
 
-        cachedRides = list(cachedb.strava_cache.find({"id": {"$in": [int(x["id"]) for x in data]}}))
-        ct = 0
-        for ride in data:
-            cached = False
-            if ride["id"] not in [x["id"] for x in cachedRides]:
-                resp = requests.get("http://www.strava.com/api/v2/rides/" + str(ride["id"]))
-                ridedata = resp.json()
-                ridedata = ridedata["ride"]
-                ridedata["Owner"] = svcRecord.ExternalID
-            else:
-                cached = True
-                ridedata = [x for x in cachedRides if x["id"] == ride["id"]][0]
-            if ridedata["start_latlng"] is None or ridedata["end_latlng"] is None or ridedata["distance"] is None or ridedata["distance"] == 0:
-                exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
-                continue  # stationary activity - no syncing for now
-            if ridedata["start_latlng"] == ridedata["end_latlng"]:
-                exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
-                continue  # Only one waypoint, one would assume.
-            activity = UploadedActivity()
-            activity.StartTime = datetime.strptime(ridedata["start_date_local"], "%Y-%m-%dT%H:%M:%SZ")
-            activity.EndTime = activity.StartTime + timedelta(0, ridedata["elapsed_time"])
-            activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
-            activity.Type = ActivityType.Cycling  # change me once the API stops sucking
-            activity.Distance = ridedata["distance"]
-            activity.Name = ridedata["name"]
-            activity.CalculateUID()
-            activities.append(activity)
-            if not earliestDate or activity.StartTime < earliestDate:
-                earliestDate = activity.StartTime
-            if ct == pgSz - 1:
-                earliestFirstPageDate = earliestDate
-            if not cached and (AGGRESSIVE_CACHE or ct < pgSz):  # Only cache the details we'll be needing immediately (on the 1st page of results)
-                ridedata["StartTime"] = activity.StartTime
-                cachedb.strava_cache.insert(ridedata)
-
-            ct += 1
-        if not AGGRESSIVE_CACHE:
-            cachedb.strava_cache.remove({"Owner": svcRecord.ExternalID, "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
         # thanks to Cosmo Catalano for the API reference code
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
 
-        if AGGRESSIVE_CACHE:
-            ridedata = cachedb.strava_activity_cache.find_one({"id": activityID})
-        if not AGGRESSIVE_CACHE or ridedata is None:
-            resp = requests.get("http://app.strava.com/api/v1/streams/" + str(activityID), headers={"User-Agent": "Tapiriik-Sync"})
-            ridedata = resp.json()
-            ridedata["id"] = activityID
-            ridedata["Owner"] = svcRecord.ExternalID
-            if AGGRESSIVE_CACHE:
-                cachedb.strava_activity_cache.insert(ridedata)
+        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
+        streamdata = streamdata.json()
+
+        ridedata = {}
+        for stream in streamdata:
+            ridedata[stream["type"]] = stream["data"]
 
         activity.Waypoints = []
 
@@ -137,7 +135,7 @@ class StravaService(ServiceBase):
             if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
                 waypoint.Location.Longitude = None
                 waypoint.Location.Latitude = None
-            else:  # strava only returns 0 as invalid coords, so no need to check for null
+            else:  # strava only returns 0 as invalid coords, so no need to check for null (update: ??)
                 hasLocation = True
             if hasAltitude:
                 waypoint.Location.Altitude = float(ridedata["altitude"][idx])
