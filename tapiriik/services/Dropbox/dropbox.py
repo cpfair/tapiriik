@@ -152,7 +152,10 @@ class DropboxService(ServiceBase):
             f, metadata = dbcl.get_file_and_metadata(path)
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
-        act = GPXIO.Parse(f.read())
+        try:
+            act = GPXIO.Parse(f.read())
+        except ValueError:
+            raise APIExcludeActivity("Invalid GPX", activityId=path)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
@@ -193,7 +196,11 @@ class DropboxService(ServiceBase):
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
                 else:
                     # get the full activity
-                    act, rev = self._getActivity(dbcl, path)
+                    try:
+                        act, rev = self._getActivity(dbcl, path)
+                    except APIException as e:
+                        exclusions.append(e)
+                        continue
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 act.UploadedTo = [{"Connection": svcRec, "Path": path}]
                 tagRes = self._tagActivity(relPath)
