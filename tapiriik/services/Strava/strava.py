@@ -7,12 +7,15 @@ from tapiriik.services.api import APIException, APIAuthorizationException, APIEx
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
+import time
 import requests
 import json
 import os
 import logging
 import pytz
 import re
+import zlib
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -165,37 +168,36 @@ class StravaService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        # http://www.strava.com/api/v2/upload
-        # POST token=asd&type=json&data_fields=[field1, field2, ...]&points=[[field1value, field2value, ...]...]&type=ride|run&name=name
-        # hasHR = hasCadence = hasPower = False does Strava care?
-        fields = ["time", "latitude", "longitude", "elevation", "cmd", "heartrate", "cadence", "watts"]
+        fields = ["time", "latlng", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
         points = []
         logger.info("activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
         activity.EnsureTZ()
         for wp in activity.Waypoints:
-            wpTime = wp.Timestamp - wp.Timestamp.utcoffset()  # strava y u do timezones wrong??
-            points.append([wpTime.strftime("%Y-%m-%dT%H:%M:%S"),
-                            wp.Location.Latitude if wp.Location is not None else "",
-                            wp.Location.Longitude if wp.Location is not None else "",
+            points.append([time.mktime(wp.Timestamp.timetuple()),
+                            [wp.Location.Latitude if wp.Location is not None else "", wp.Location.Longitude if wp.Location is not None else ""],
                             wp.Location.Altitude if wp.Location is not None else "",
                             "pause" if wp.Type == WaypointType.Pause else None,
                             wp.HR,
                             wp.Cadence,
-                            wp.Power
+                            wp.Power,
+                            wp.Temp
                             ])
-        req = {"token": serviceRecord.Authorization["Token"],
-                "type": "json",
-                "id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
-                "data_fields": fields,
-                "data": points,
+        req = { "id": 0,
+                "activity_id": 0,
+                "sample_rate": 0,
+                "start_date": points[0][0],
+                "data_type": "json",
+                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
+                "data": json.dumps([{"fields": fields, "values": points}]),
                 "activity_name": activity.Name,
-                "activity_type": "run" if activity.Type == ActivityType.Running else "ride"}
+                "activity_type": self._activityTypeMappings[activity.Type],
+                "time_series_field": "time"}
 
-        response = requests.post("http://www.strava.com/api/v2/upload", data=json.dumps(req), headers={"Content-Type": "application/json"})
+        response = requests.post("http://www.strava.com/api/v3/uploads", data=req, headers=self._apiHeaders(serviceRecord)) #{"Content-Type": "application/json"}
         if response.status_code != 200:
             if response.status_code == 401:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text)
-            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text)
+                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
+            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
