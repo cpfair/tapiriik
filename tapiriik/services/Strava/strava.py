@@ -168,13 +168,14 @@ class StravaService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        fields = ["time", "latlng", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
+        fields = ["time", "latlng", "v_accuracy", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
         points = []
         logger.info("activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
         activity.EnsureTZ()
         for wp in activity.Waypoints:
             points.append([time.mktime(wp.Timestamp.timetuple()),
                             [wp.Location.Latitude if wp.Location is not None else "", wp.Location.Longitude if wp.Location is not None else ""],
+                            "1",
                             wp.Location.Altitude if wp.Location is not None else "",
                             "pause" if wp.Type == WaypointType.Pause else None,
                             wp.HR,
