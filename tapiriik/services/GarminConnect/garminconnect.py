@@ -152,7 +152,11 @@ class GarminConnectService(ServiceBase):
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
         cookies = self._get_cookies(serviceRecord)
         res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
-        TCXIO.Parse(res.content, activity)
+        try:
+            TCXIO.Parse(res.content, activity)
+        except ValueError as e:
+            raise APIExcludeActivity("TCX parse error " + str(e))
+
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
