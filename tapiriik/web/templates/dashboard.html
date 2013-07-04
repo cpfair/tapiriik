@@ -28,7 +28,7 @@
 		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
 	{% endif %}
 	{% if user.SyncErrorCount > 0 %}
-		<a href="{% url 'faq' %}#partial" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a>
+		<a href="{% url 'faq' %}#partial" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
 	{% endif %}
 
 	{% if user.ConnectedServices|length > 1 %}
