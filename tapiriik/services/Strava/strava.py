@@ -7,15 +7,13 @@ from tapiriik.services.api import APIException, APIAuthorizationException, APIEx
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
-import time
+import calendar
 import requests
 import json
 import os
 import logging
 import pytz
 import re
-import zlib
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +65,12 @@ class StravaService(ServiceBase):
         earliestDate = None
         pageSz = 50  # ??
         while True:
-            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord))
+            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
+
             reqdata = resp.json()
+
+            if not len(reqdata):
+                break  # No more activities to see
 
             for ride in reqdata:
                 if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
@@ -96,9 +98,9 @@ class StravaService(ServiceBase):
                 activities.append(activity)
                 if not earliestDate or activity.StartTime < earliestDate:
                     earliestDate = activity.StartTime
-                    before = ride["start_date"]  # As opposed to converting it back into their date format...
+                    before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
-            if not exhaustive or len(reqdata) < pageSz:
+            if not exhaustive:
                 break
 
         return activities, exclusions
@@ -168,14 +170,14 @@ class StravaService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        fields = ["time", "latlng", "v_accuracy", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
+        fields = ["time", "latlng", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
         points = []
-        logger.info("activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
+        logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
         activity.EnsureTZ()
         for wp in activity.Waypoints:
-            points.append([time.mktime(wp.Timestamp.timetuple()),
+            wpTime = wp.Timestamp.astimezone(pytz.utc)
+            points.append([calendar.timegm(wpTime.timetuple()),
                             [wp.Location.Latitude if wp.Location is not None else "", wp.Location.Longitude if wp.Location is not None else ""],
-                            "1",
                             wp.Location.Altitude if wp.Location is not None else "",
                             "pause" if wp.Type == WaypointType.Pause else None,
                             wp.HR,
@@ -183,6 +185,7 @@ class StravaService(ServiceBase):
                             wp.Power,
                             wp.Temp
                             ])
+        logger.info("First wp unix ts " + str(points[0][0]))
         req = { "id": 0,
                 "activity_id": 0,
                 "sample_rate": 0,
