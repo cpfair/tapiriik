@@ -684,9 +684,15 @@ form.dropboxConfig {
 .faqBlocks div {
 	display: inline-block;
 	width:45%;
-	margin: 0 2%;
+	margin: 0 2.5%;
 	float:left;
 	clear:none;
+	clear:left;
+}
+
+.faqBlocks div.right {
+	float:right;
+	clear:right;
 }
 
 .faqBlocks h3 {
