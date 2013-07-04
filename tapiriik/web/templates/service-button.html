@@ -29,7 +29,7 @@
 								{% elif connection.SyncErrors.0.Code == "UNTAGGED" %}
 									<span class="status" id="sync-info">Untagged activities</span>
 								{% else %}
-									<span class="status" id="sync-fail">Sync Failure</span>
+									<span class="status" id="sync-ok">Connected</span>
 								{% endif %}
 							{% else %}
 								{% if extauth and not hasextauth %}
