@@ -66,7 +66,7 @@ class StravaService(ServiceBase):
         pageSz = 50  # ??
         while True:
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
-
+            logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
             reqdata = resp.json()
 
             if not len(reqdata):
@@ -100,7 +100,7 @@ class StravaService(ServiceBase):
                     earliestDate = activity.StartTime
                     before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
-            if not exhaustive:
+            if not exhaustive or not earliestDate:
                 break
 
         return activities, exclusions
