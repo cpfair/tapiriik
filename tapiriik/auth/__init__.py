@@ -55,6 +55,8 @@ class User:
             # merge merge merge
             user["ConnectedServices"] += existingUser["ConnectedServices"]
             if "Payments" in existingUser:
+                if "Payments" not in user:
+                    user["Payments"] = []
                 user["Payments"] += existingUser["Payments"]
             if "FlowExceptions" in existingUser:
                 user["FlowExceptions"] += existingUser["FlowExceptions"]
