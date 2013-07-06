@@ -12,6 +12,7 @@ import re
 import zlib
 import os
 import logging
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -221,11 +222,11 @@ class EndomondoService(ServiceBase):
                     if not activity.TZ:
                         exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=act["id"]))
                         continue
-                    cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": str(activity.TZ), "StartTime": activity.StartTime}
+                    cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": pickle.dumps(activity.TZ), "StartTime": activity.StartTime}
                     cachedb.endomondo_activity_cache.insert(cachedTrackRecord)
                 else:
                     if "TZ" in cachedTrackRecord:
-                        activity.TZ = pytz.timezone(cachedTrackRecord["TZ"])
+                        activity.TZ = pickle.loads(cachedTrackRecord["TZ"])
                         activity.AdjustTZ()  # Everything returned is in UTC
                     else:
                         # Old-style records include the full track data
