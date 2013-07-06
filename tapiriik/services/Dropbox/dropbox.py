@@ -198,7 +198,7 @@ class DropboxService(ServiceBase):
                     # get the full activity
                     try:
                         act, rev = self._getActivity(dbcl, path)
-                    except APIException as e:
+                    except APIExcludeActivity as e:
                         exclusions.append(e)
                         continue
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
