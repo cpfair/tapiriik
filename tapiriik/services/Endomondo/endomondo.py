@@ -218,6 +218,9 @@ class EndomondoService(ServiceBase):
                 if cachedTrackRecord is None:
                     cachedTrackData = self._downloadRawTrackRecord(serviceRecord, act["id"])
                     self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
+                    if not activity.TZ:
+                        exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=act["id"]))
+                        continue
                     cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": str(activity.TZ), "StartTime": activity.StartTime}
                     cachedb.endomondo_activity_cache.insert(cachedTrackRecord)
                 else:
