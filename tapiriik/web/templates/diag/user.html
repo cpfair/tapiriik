@@ -8,6 +8,9 @@
 	<h3>Details</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
 		<li><b>Created:</b> {{ user.Created }} UTC</li>
+		{% if user.AncestorAccounts %}
+			<li><b>Ancestor accounts:</b> {% for ancestor in user.AncestorAccounts %}<tt>{{ ancestor }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+		{% endif %}
 		<li><b>Email:</b> {% if user.Email %}<a href="mailto:{{ user.Email }}">{{ user.Email }}</a>{% else %}Not given{% endif %}</li>
 		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>

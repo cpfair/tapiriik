@@ -64,6 +64,10 @@ class User:
             user["SyncErrorCount"] = (user["SyncErrorCount"] if "SyncErrorCount" in user and user["SyncErrorCount"] is not None else 0) + (existingUser["SyncErrorCount"] if "SyncErrorCount" in existingUser and existingUser["SyncErrorCount"] is not None else 0)
             user["SyncExclusionCount"] = (user["SyncExclusionCount"] if "SyncExclusionCount" in user and user["SyncExclusionCount"] is not None else 0) + (existingUser["SyncExclusionCount"] if "SyncExclusionCount" in existingUser and existingUser["SyncExclusionCount"] is not None else 0)
             user["Created"] = user["Created"] if user["Created"] < existingUser["Created"] else existingUser["Created"]
+            if "AncestorAccounts" not in user:
+                user["AncestorAccounts"] = []
+            user["AncestorAccounts"] += existingUser["AncestorAccounts"] if "AncestorAccounts" in existingUser else []
+            user["AncestorAccounts"] += [existingUser["_id"]]
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
