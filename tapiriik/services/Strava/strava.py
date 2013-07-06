@@ -61,27 +61,36 @@ class StravaService(ServiceBase):
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
         exclusions = []
-        before =  None
-        earliestDate = None
-        pageSz = 50  # ??
+        before = None
+
         while True:
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
+
+            earliestDate = None
+
             reqdata = resp.json()
 
             if not len(reqdata):
                 break  # No more activities to see
 
             for ride in reqdata:
+                activity = UploadedActivity()
+                activity.TZ = pytz.timezone(re.sub("^\([^\)]+\)\s*", "", ride["timezone"]))  # Comes back as "(GMT -13:37) The Stuff/We Want""
+                activity.StartTime = pytz.utc.localize(datetime.strptime(ride["start_date"], "%Y-%m-%dT%H:%M:%SZ"))
+
+                if not earliestDate or activity.StartTime < earliestDate:
+                    earliestDate = activity.StartTime
+                    before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
+
                 if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
                     exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
                     continue  # stationary activity - no syncing for now
                 if ride["start_latlng"] == ride["end_latlng"]:
                     exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
                     continue  # Only one waypoint, one would assume.
-                activity = UploadedActivity()
-                activity.TZ = pytz.timezone(re.sub("^\([^\)]+\)\s*", "", ride["timezone"]))  # Comes back as "(GMT -13:37) The Stuff/We Want""
-                activity.StartTime = pytz.utc.localize(datetime.strptime(ride["start_date"], "%Y-%m-%dT%H:%M:%SZ"))
+
+
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
                 activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
 
@@ -96,9 +105,6 @@ class StravaService(ServiceBase):
                 activity.AdjustTZ()
                 activity.CalculateUID()
                 activities.append(activity)
-                if not earliestDate or activity.StartTime < earliestDate:
-                    earliestDate = activity.StartTime
-                    before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
             if not exhaustive or not earliestDate:
                 break
