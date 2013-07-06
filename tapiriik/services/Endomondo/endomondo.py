@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE
+from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
@@ -96,7 +96,7 @@ class EndomondoService(ServiceBase):
         response = requests.get("http://api.mobile.endomondo.com/mobile/readTrack", params=params)
         return response.text
 
-    def _populateActivityFromTrackRecord(self, activity, recordText, minimumWaypoints=False):
+    def _populateActivityFromTrackData(self, activity, recordText, minimumWaypoints=False):
         activity.Waypoints = []
         ###       1ST RECORD      ###
         # userID;
@@ -211,21 +211,29 @@ class EndomondoService(ServiceBase):
                 activity.StartTime = startTime
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
                 logger.debug("\tActivity s/t " + str(activity.StartTime))
+
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
-                cachedTrackData = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
-                if cachedTrackData is None:
-                    data = self._downloadRawTrackRecord(serviceRecord, act["id"])
-                    self._populateActivityFromTrackRecord(activity, data, minimumWaypoints=True)
-                    cachedTrackData = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "Data": data, "StartTime": activity.StartTime}
-                    if not paged or AGGRESSIVE_CACHE:  # Don't cache stuff that we won't need in the immediate future.
-                        cachedb.endomondo_activity_cache.insert(cachedTrackData)
+                cachedTrackData = None
+                cachedTrackRecord = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
+                if cachedTrackRecord is None:
+                    cachedTrackData = self._downloadRawTrackRecord(serviceRecord, act["id"])
+                    self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
+                    cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": str(activity.TZ), "StartTime": activity.StartTime}
+                    cachedb.endomondo_activity_cache.insert(cachedTrackRecord)
                 else:
-                    self._populateActivityFromTrackRecord(activity, cachedTrackData["Data"], minimumWaypoints=True)
+                    if "TZ" in cachedTrackRecord:
+                        activity.TZ = pytz.timezone(cachedTrackRecord["TZ"])
+                        activity.AdjustTZ()  # Everything returned is in UTC
+                    else:
+                        # Old-style records include the full track data
+                        self._populateActivityFromTrackData(activity, cachedTrackRecord["Data"], minimumWaypoints=True)
+                        cachedTrackData = cachedTrackRecord["Data"]
+
                 activity.Waypoints = []
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
 
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"], "ActivityData": cachedTrackData["Data"]}]
+                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"], "ActivityData": cachedTrackData}]
                 activity.CalculateUID()
                 activities.append(activity)
             if not paged:
@@ -234,14 +242,17 @@ class EndomondoService(ServiceBase):
                 break
             else:
                 paged = True
-        if not AGGRESSIVE_CACHE:
-            cachedb.endomondo_activity_cache.remove({"Owner": serviceRecord.ExternalID, "$or":[{"StartTime":{"$lt": earliestFirstPageDate}}, {"StartTime":{"$exists": False}}]})
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
         uploadRecord = [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        activityData = uploadRecord["ActivityData"]
-        self._populateActivityFromTrackRecord(activity, activityData)
+        trackData = uploadRecord["ActivityData"]
+
+        if not trackData:
+            # If this is a new activity, we will already have the track data, otherwise download it.
+            trackData = self._downloadRawTrackRecord(serviceRecord, uploadRecord["ActivityID"])
+
+        self._populateActivityFromTrackData(activity, trackData)
         [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
         if len(activity.Waypoints) <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=uploadRecord["ActivityID"])

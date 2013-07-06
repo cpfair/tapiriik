@@ -45,7 +45,7 @@ class InterchangeTests(TapiriikTestCase):
         oldWaypoints = act.Waypoints
         self.assertEqual(oldWaypoints[0].Calories, None)
         record = eSvc._createUploadData(act)
-        eSvc._populateActivityFromTrackRecord(act, record)
+        eSvc._populateActivityFromTrackData(act, record)
         self.assertEqual(oldWaypoints, act.Waypoints)
 
     def test_duration_calculation(self):
