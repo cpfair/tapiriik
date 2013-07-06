@@ -61,7 +61,7 @@ class StravaService(ServiceBase):
         # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
         exclusions = []
-        before = None
+        before = earliestDate = None
 
         while True:
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
