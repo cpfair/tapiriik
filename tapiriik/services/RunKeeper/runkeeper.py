@@ -119,7 +119,12 @@ class RunKeeperService(ServiceBase):
             if "has_path" in act and act["has_path"] is False:
                 exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
                 continue  # No points = no sync.
-            activity = self._populateActivity(act)
+            try:
+                activity = self._populateActivity(act)
+            except KeyError as e:
+                exclusions.append(APIExcludeActivity("Missing key in activity data " + str(e), activityId=act["uri"]))
+                continue
+
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
