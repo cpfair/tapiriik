@@ -46,8 +46,11 @@ def diag_dashboard(req):
     context["errorUsers"] = list(db.users.find({"SyncErrorCount": {"$gt": 0}}))
     context["exclusionUsers"] = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
 
-    context["activeWorkers"] = db.sync_workers.find({"Heartbeat": {"$gt": datetime.utcnow() - timedelta(minutes=10)}})
-    context["stalledWorkers"] = db.sync_workers.find({"Heartbeat": {"$lt": datetime.utcnow() - timedelta(minutes=10)}})
+    context["allWorkers"] = list(db.sync_workers.find())
+    context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
+    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(minutes=10)]
+    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(minutes=10)]
+
 
     return render(req, "diag/dashboard.html", context)
 

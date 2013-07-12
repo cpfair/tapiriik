@@ -18,7 +18,7 @@
 			{% if lockedSyncRecords > 0 %}
 			<ul>{% for lockedUser in lockedSyncUsers %}
 					{% with userId=lockedUser|dict_get:'_id' %}
-					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a></li>
+					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a>{% if lockedUser.SynchronizationWorker not in allWorkerPIDs %} (orphaned){% endif %}</li>
 					{% endwith %}
 				{% endfor %}
 			</ul>
