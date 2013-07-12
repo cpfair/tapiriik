@@ -188,7 +188,7 @@ class Sync:
                 exhaustive = True
 
             try:
-                Sync.PerformUserSync(user, exhaustive)
+                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True)
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
@@ -199,7 +199,7 @@ class Sync:
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
 
-    def PerformUserSync(user, exhaustive=False):
+    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False):
         # And thus begins the monolithic sync function that's a pain to test.
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
@@ -386,7 +386,12 @@ class Sync:
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
-            db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}})
+            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}}
+            if null_next_sync_on_unlock:
+                # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
+                # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
+                update_values["$unset"]["NextSynchronization"] = None
+            db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, update_values)
         except:
             # oops.
             logger.exception("Core sync exception")
