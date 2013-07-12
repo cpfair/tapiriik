@@ -103,14 +103,14 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=20), ptType=WaypointType.End)]
         self.assertEqual(act.GetDuration(), timedelta(seconds=13))
 
-        # implicit pauses (>11s)
+        # implicit pauses (>1m5s)
         act.EndTime = act.StartTime + timedelta(seconds=20)
         act.Waypoints = [Waypoint(timestamp=act.StartTime),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=2)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=6)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=20)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=24)),
-                         Waypoint(timestamp=act.StartTime + timedelta(seconds=30))]
+                         Waypoint(timestamp=act.StartTime + timedelta(seconds=120)),
+                         Waypoint(timestamp=act.StartTime + timedelta(seconds=124)),
+                         Waypoint(timestamp=act.StartTime + timedelta(seconds=130))]
         self.assertEqual(act.GetDuration(), timedelta(seconds=16))
 
         # mixed pauses - would this ever happen?? Either way, the explicit pause should override the implicit one and cause otherwise-ignored time to be counted

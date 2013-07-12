@@ -190,40 +190,41 @@ class SyncTests(TapiriikTestCase):
         svcA, svcB = TestTools.create_mock_services()
         recA = TestTools.create_mock_svc_record(svcA)
 
+        exclusionstore = {recA._id: {}}
         # regular
         exc = APIExcludeActivity("Messag!e", activityId=3.14)
-        Sync._accumulateExclusions(recA, exc)
-        self.assertTrue("3.14" in recA.ExcludedActivities)
-        self.assertEqual(recA.ExcludedActivities["3.14"]["Message"], "Messag!e")
-        self.assertEqual(recA.ExcludedActivities["3.14"]["Activity"], None)
-        self.assertEqual(recA.ExcludedActivities["3.14"]["ExternalActivityID"], 3.14)
-        self.assertEqual(recA.ExcludedActivities["3.14"]["Permanent"], True)
+        Sync._accumulateExclusions(recA, exc, exclusionstore)
+        self.assertTrue("3.14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e")
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 3.14)
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], True)
 
         # updating
         act = TestTools.create_blank_activity(svcA)
         act.UID = "3.14"  # meh
         exc = APIExcludeActivity("Messag!e2", activityId=42, permanent=False, activity=act)
-        Sync._accumulateExclusions(recA, exc)
-        self.assertTrue("3.14" in recA.ExcludedActivities)
-        self.assertEqual(recA.ExcludedActivities["3.14"]["Message"], "Messag!e2")
-        self.assertNotEqual(recA.ExcludedActivities["3.14"]["Activity"], None)  # Who knows what the string format will be down the road?
-        self.assertEqual(recA.ExcludedActivities["3.14"]["ExternalActivityID"], 42)
-        self.assertEqual(recA.ExcludedActivities["3.14"]["Permanent"], False)
+        Sync._accumulateExclusions(recA, exc, exclusionstore)
+        self.assertTrue("3.14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e2")
+        self.assertNotEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)  # Who knows what the string format will be down the road?
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 42)
+        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], False)
 
         # multiple, retaining existing
         exc2 = APIExcludeActivity("INM", activityId=13)
         exc3 = APIExcludeActivity("FNIM", activityId=37)
-        Sync._accumulateExclusions(recA, [exc2, exc3])
-        self.assertTrue("3.14" in recA.ExcludedActivities)
-        self.assertTrue("37" in recA.ExcludedActivities)
-        self.assertTrue("13" in recA.ExcludedActivities)
+        Sync._accumulateExclusions(recA, [exc2, exc3], exclusionstore)
+        self.assertTrue("3.14" in exclusionstore[recA._id])
+        self.assertTrue("37" in exclusionstore[recA._id])
+        self.assertTrue("13" in exclusionstore[recA._id])
 
         # don't allow with no identifiers
         exc4 = APIExcludeActivity("nooooo")
-        self.assertRaises(ValueError, Sync._accumulateExclusions, recA, [exc4])
+        self.assertRaises(ValueError, Sync._accumulateExclusions, recA, [exc4], exclusionstore)
 
-    def test_activity_coalesce_normaltz(self):
-        ''' ensure that we can't coalesce activities with non-pytz timezones '''
+    def test_activity_deduplicate_normaltz(self):
+        ''' ensure that we can't deduplicate activities with non-pytz timezones '''
         svcA, svcB = TestTools.create_mock_services()
         actA = TestTools.create_random_activity(svcA, tz=UTC())
 
