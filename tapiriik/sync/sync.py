@@ -29,7 +29,13 @@ def _formatExc():
     while tb.tb_next:
         tb = tb.tb_next
     frame = tb.tb_frame
-    exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join([str(k) + "=" + pprint.pformat(v) for k, v in frame.f_locals.items()])
+    locals_trimmed = []
+    for local_name, local_val in frame.f_locals.items():
+        value_full = pprint.pformat(local_val)
+        if len(value_full) > 1000:
+            value_full = value_full[:500] + "..." + value_full[-500:]
+        locals_trimmed.append(str(local_name) + "=" + value_full)
+    exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join(locals_trimmed)
     logger.exception("Service exception")
     return exc
 
