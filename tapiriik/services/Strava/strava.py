@@ -78,6 +78,9 @@ class StravaService(ServiceBase):
                 activity = UploadedActivity()
                 activity.TZ = pytz.timezone(re.sub("^\([^\)]+\)\s*", "", ride["timezone"]))  # Comes back as "(GMT -13:37) The Stuff/We Want""
                 activity.StartTime = pytz.utc.localize(datetime.strptime(ride["start_date"], "%Y-%m-%dT%H:%M:%SZ"))
+                if activity.StartTime.replace(tzinfo=None) != datetime.strptime(ride["start_date_local"], "%Y-%m-%dT%H:%M:%SZ"):
+                    raise APIException("Failed to resolve activity timezone to reported local start date")
+    
                 logger.debug("\tActivity s/t " + str(activity.StartTime))
                 if not earliestDate or activity.StartTime < earliestDate:
                     earliestDate = activity.StartTime
