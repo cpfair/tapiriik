@@ -9,7 +9,9 @@ import subprocess
 
 Run = True
 
-WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE).communicate()[0].strip()
+oldCwd = os.getcwd()
+WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
+os.chdir(oldCwd)
 
 def sync_interrupt(signal, frame):
     global Run
