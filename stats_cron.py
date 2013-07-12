@@ -56,3 +56,7 @@ db.sync_status_stats.insert({
 })
 
 db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
+
+
+# Misc cleanup
+db.sync_workers.remove({"Heartbeat": {"$lt": datetime.utcnow()-timedelta(hours=48)}})

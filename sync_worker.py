@@ -5,8 +5,11 @@ import datetime
 import os
 import signal
 import sys
+import subprocess
 
 Run = True
+
+WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE).communicate()[0].strip()
 
 def sync_interrupt(signal, frame):
     global Run
@@ -15,13 +18,16 @@ def sync_interrupt(signal, frame):
 signal.signal(signal.SIGINT, sync_interrupt)
 
 print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
+db.sync_workers.update({"Process": os.getpid()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Version": WorkerVersion}, upsert=True)
 sys.stdout.flush()
 
 while Run:
     Sync.PerformGlobalSync()
+
     time.sleep(5)
-    db.users.update({"$or": [{"SynchronizationWorker": os.getpid()},
-                            {"LastSynchronization": {"$lt": datetime.datetime.utcnow() - datetime.timedelta(minutes=30)}}]},  # auto-release after 30 minutes
-                            {"$unset": {"SynchronizationWorker": None}})
+
+    db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow()}})
+
 print("Sync worker shutting down cleanly")
+db.sync_workers.remove({"Process": os.getpid()})
 sys.stdout.flush()

@@ -5,7 +5,7 @@ from tapiriik.sync import Sync
 from tapiriik.auth import TOTP
 from bson.objectid import ObjectId
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def diag_requireAuth(view):
@@ -18,33 +18,37 @@ def diag_requireAuth(view):
 
 @diag_requireAuth
 def diag_dashboard(req):
+
+    context = {}
     lockedSyncRecords = db.users.aggregate([
                                            {"$match": {"SynchronizationWorker": {"$ne": None}}},
                                            {"$group": {"_id": None, "count": {"$sum": 1}}}
                                            ])
     if len(lockedSyncRecords["result"]) > 0:
-        lockedSyncRecords = lockedSyncRecords["result"][0]["count"]
-        lockedSyncUsers = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
+        context["lockedSyncRecords"] = lockedSyncRecords["result"][0]["count"]
+        context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     else:
-        lockedSyncRecords = 0
-        lockedSyncUsers = []
+        context["lockedSyncRecords"] = 0
+        context["lockedSyncUsers"] = []
 
     pendingSynchronizations = db.users.aggregate([
                                                  {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
                                                  {"$group": {"_id": None, "count": {"$sum": 1}}}
                                                  ])
     if len(pendingSynchronizations["result"]) > 0:
-        pendingSynchronizations = pendingSynchronizations["result"][0]["count"]
+        context["pendingSynchronizations"] = pendingSynchronizations["result"][0]["count"]
     else:
-        pendingSynchronizations = 0
+        context["pendingSynchronizations"] = 0
 
-    userCt = db.users.count()
-    autosyncCt = db.users.find({"NextSynchronization": {"$ne": None}}).count()
+    context["userCt"] = db.users.count()
+    context["autosyncCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
-    errorUsers = list(db.users.find({"SyncErrorCount": {"$gt": 0}}))
-    exclusionUsers = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
+    context["errorUsers"] = list(db.users.find({"SyncErrorCount": {"$gt": 0}}))
+    context["exclusionUsers"] = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
 
-    return render(req, "diag/dashboard.html", {"lockedSyncRecords": lockedSyncRecords, "lockedSyncUsers": lockedSyncUsers, "pendingSynchronizations": pendingSynchronizations, "userCt": userCt, "autosyncCt": autosyncCt, "errorUsers": errorUsers, "exclusionUsers": exclusionUsers})
+    context["activeWorkers"] = db.sync_workers.find({"Heartbeat": {"$gt": datetime.utcnow() - timedelta(minutes=10)}})
+
+    return render(req, "diag/dashboard.html", context)
 
 
 @diag_requireAuth
