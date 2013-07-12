@@ -59,4 +59,4 @@ db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncT
 
 
 # Misc cleanup
-db.sync_workers.remove({"Heartbeat": {"$lt": datetime.utcnow()-timedelta(hours=48)}})
+db.sync_workers.remove({"Heartbeat": {"$lt": datetime.utcnow()-timedelta(days=7)}})

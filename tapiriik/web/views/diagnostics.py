@@ -47,6 +47,7 @@ def diag_dashboard(req):
     context["exclusionUsers"] = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
 
     context["activeWorkers"] = db.sync_workers.find({"Heartbeat": {"$gt": datetime.utcnow() - timedelta(minutes=10)}})
+    context["stalledWorkers"] = db.sync_workers.find({"Heartbeat": {"$lt": datetime.utcnow() - timedelta(minutes=10)}})
 
     return render(req, "diag/dashboard.html", context)
 

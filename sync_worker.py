@@ -17,16 +17,18 @@ def sync_interrupt(signal, frame):
 
 signal.signal(signal.SIGINT, sync_interrupt)
 
+def sync_heartbeat():
+	db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow()}})
+
 print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
 db.sync_workers.update({"Process": os.getpid()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Version": WorkerVersion}, upsert=True)
 sys.stdout.flush()
 
 while Run:
-    Sync.PerformGlobalSync()
+    Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
 
     time.sleep(5)
-
-    db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow()}})
+    sync_heartbeat()
 
 print("Sync worker shutting down cleanly")
 db.sync_workers.remove({"Process": os.getpid()})
