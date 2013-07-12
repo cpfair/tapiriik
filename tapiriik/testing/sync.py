@@ -241,6 +241,40 @@ class SyncTests(TapiriikTestCase):
         Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
         self.assertRaises(ValueError, Sync._accumulateActivities, Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
 
+    def test_activity_deduplicate_tzerror(self):
+        ''' Test that probably-duplicate activities with starttimes like 09:12:22 and 15:12:22 (on the same day) are recognized as one '''
+        svcA, svcB = TestTools.create_mock_services()
+        actA = TestTools.create_random_activity(svcA, tz=pytz.timezone("America/Iqaluit"))
+        actB = Activity()
+        actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=5)
+        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actA.Name = "Not this"
+        actB.Name = "Heya"
+        actB.Type = ActivityType.Walking
+        actA.CalculateUID()
+        actB.CalculateUID()
+
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+
+        self.assertEqual(len(activities), 1)
+
+        # Ensure that it is an exact match
+        actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=5, seconds=1)
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+
+        self.assertEqual(len(activities), 2)
+
+        # Ensure that overly large differences >14hr - not possible via TZ differences - are not deduplicated
+        actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=15)
+        activities = []
+        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+
+        self.assertEqual(len(activities), 2)
 
     def test_activity_coalesce(self):
         ''' ensure that activity data is getting coalesced by _accumulateActivities '''

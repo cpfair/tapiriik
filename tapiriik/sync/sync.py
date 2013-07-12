@@ -92,7 +92,9 @@ class Sync:
             return a
 
     def _accumulateActivities(svc, svcActivities, activityList):
-        activityStartLeewaySeconds = 60 * 3
+        # Yep, abs() works on timedeltas
+        activityStartLeeway = timedelta(minutes=3)
+        timezoneErrorPeriod = timedelta(hours=14)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
@@ -104,14 +106,25 @@ class Sync:
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
-                               abs((act.StartTime-x.StartTime).total_seconds()) < activityStartLeewaySeconds
+                               abs(act.StartTime-x.StartTime) < activityStartLeeway
                               )
                               or  # try comparing the time as if it were TZ-aware and in the expected TZ (this won't actually change the value of the times being compared)
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
-                               abs((act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)).total_seconds()) < activityStartLeewaySeconds
+                               abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < activityStartLeeway
                               )
+                              or
+                              # Sometimes wacky stuff happens and we get two activities with the same mm:ss but different hh, because of a TZ issue somewhere along the line
+                              # So, we check for any activities +/- 14 hours that have the same minutes and seconds values
+                              #  (14 hours because Kiribati)
+                              # There's a 1/3600 chance that two activities in the same 14 hour period would intersect and be merged together
+                              # But, given the fact that most users have maybe 0.05 activities per this period, it's an acceptable tradeoff
+                              (x.StartTime is not None and
+                               act.StartTime is not None and
+                               abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
+                               act.StartTime.replace(tzinfo=None).time().replace(hour=0) == x.StartTime.replace(tzinfo=None).time().replace(hour=0)
+                               )
                               ]
             if len(existElsewhere) > 0:
                 # we don't merge the exclude values here, since at this stage the services have the option of just not returning those activities
