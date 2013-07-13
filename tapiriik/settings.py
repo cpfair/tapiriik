@@ -162,6 +162,7 @@ PP_WEBSCR = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 PP_BUTTON_ID = "XD6G9Z7VMRM3Q"
 PP_RECEIVER_ID = "NR6NTNSRT7NDJ"
 PAYMENT_AMOUNT = 2
+PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
 
 # empty means no invites

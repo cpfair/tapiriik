@@ -42,8 +42,12 @@ class User:
         if "Payments" not in user:
             return False
         for payment in user["Payments"]:
-            if payment["Timestamp"] > (datetime.utcnow() - timedelta(days=365.25)):
-                return True
+            if "Expiry" in payment:
+                if payment["Expiry"] < datetime.utcnow():
+                    return True
+            else:
+                if payment["Timestamp"] > (datetime.utcnow() - timedelta(days=365.25)):
+                    return True
         return False
 
     def ConnectService(user, serviceRecord):

@@ -1,11 +1,49 @@
 {% load displayutils %}
+<script>
+function validatePrice() {
+	var amount = $(".paymentForm input[type=text]").val();
+	var valid = amount==+amount && amount && amount > 0;
+	if (valid) {
+		$(".paymentForm button[name=submit]").removeClass("disabled");
+	} else {
+		$(".paymentForm button[name=submit]").addClass("disabled");
+	}
+}
+function preSubmit(){
+	if ($(".paymentForm button[name=submit]").hasClass("disabled")) return false;
+	var amount = $(".paymentForm input[type=text]").val();
+	var prorated = Math.min(365, Math.round(amount / 2 * 365));
+	$(".paymentForm input[name=item_name]").val("Automatic tapiriik synchronization (" + prorated + " days)");
+	if (prorated < 365) {
+		alert("Seriously, it's just $2. Your account will be automatically synchronized for the next " + prorated + " days.");
+	}
+}
+$(function(){
+	$(".paymentForm input[type=text]").keyup(validatePrice);
+})
+</script>
 <a href="#" style="display:block;overflow:hidden;" class="paymentButton">Automatic synchronization</a>
-<form action="{{ config.pp.url }}" method="post" class="paymentForm" style="text-align:center;display:none;">
+<form action="{{ config.pp.url }}" method="post" class="paymentForm" style="text-align:center;display:none;" onsubmit="preSubmit()">
 	<hr/>
 	<h3>Why do I want your money?</h3>
-	<p>Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. <b>$2 a year</b> covers these costs so tapiriik will always run smoothly.</p>
-	<input type="hidden" name="cmd" value="_s-xclick">
-	<input type="hidden" name="hosted_button_id" value="{{ config.pp.buttonId }}">
+	<p>Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. <b>$2 a year</b> covers these costs so tapiriik will always run smoothly. Of course, I'd be much obliged if you threw in something extra.</p>
+	<input type="hidden" name="cmd" value="_xclick">
+	<input type="hidden" name="business" value="GZYUSWR6MQVGJ">
+	<input type="hidden" name="lc" value="CA">
+	<input type="hidden" name="item_name" value="Automatic tapiriik synchronization (365 days)">
+	<span style="font-size: 150%;">$</span> <input type="text" name="amount" value="2.00" style="width:75px; text-align:center;"><br/>
+	<input type="hidden" name="currency_code" value="USD">
+	<input type="hidden" name="button_subtype" value="services">
+	<input type="hidden" name="no_note" value="1">
+	<input type="hidden" name="no_shipping" value="1">
+	<input type="hidden" name="rm" value="1">
+	<input type="hidden" name="return" value="https://tapiriik.com/payments/return">
+	<input type="hidden" name="cancel_return" value="https://tapiriik.com/">
+	<input type="hidden" name="tax_rate" value="0.000">
+	<input type="hidden" name="shipping" value="0.00">
+	<input type="hidden" name="bn" value="PP-BuyNowBF:btn_buynowCC_LG.gif:NonHosted">
+	<input type="hidden" name="notify_url" value="https://tapiriik.com/payments/ipn">
+	<input type="hidden" name="page_style" value="tapiriik">
 	<input type="hidden" name="custom" value="{{ user|dict_get:'_id' }}">
 	<button type="submit" name="submit">Yeah, I guess</button>
 	<p><a href="{% url 'payments_claim' %}" class="reclaimButton">I already paid / I want to transfer my payment</a></p>

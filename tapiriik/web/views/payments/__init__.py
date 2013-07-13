@@ -13,11 +13,11 @@ def payments_ipn(req):
     response = requests.post(PP_WEBSCR, data=data)
     if response.text != "VERIFIED":
         return HttpResponse(status=403)
-    if req.POST["receiver_id"] != PP_RECEIVER_ID or float(req.POST["mc_gross"]) != PAYMENT_AMOUNT or req.POST["mc_currency"] != PAYMENT_CURRENCY:
+    if req.POST["receiver_id"] != PP_RECEIVER_ID or req.POST["mc_currency"] != PAYMENT_CURRENCY:
         return HttpResponse(status=400)
     if req.POST["payment_status"] != "Completed":
         return HttpResponse()
-    payment = Payments.LogPayment(req.POST["txn_id"])
+    payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"])
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
     return HttpResponse()
