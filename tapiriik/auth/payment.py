@@ -6,7 +6,7 @@ from tapiriik.settings import PAYMENT_AMOUNT, PAYMENT_SYNC_DAYS
 class Payments:
     def LogPayment(id, amount=None):
         # pro-rate their expiry date
-        expires_in_days = min(PAYMENT_SYNC_DAYS, amount / PAYMENT_AMOUNT * PAYMENT_SYNC_DAYS)
+        expires_in_days = min(PAYMENT_SYNC_DAYS, float(amount) / float(PAYMENT_AMOUNT) * float(PAYMENT_SYNC_DAYS))
         # would use upsert, except that would reset the timestamp value
         existingRecord = db.payments.find_one({"Txn": id})
         if existingRecord is None:
