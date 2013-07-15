@@ -154,8 +154,8 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         try:
             act = GPXIO.Parse(f.read())
-        except ValueError:
-            raise APIExcludeActivity("Invalid GPX", activityId=path)
+        except ValueError as e:
+            raise APIExcludeActivity("Invalid GPX " + str(e), activityId=path)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
