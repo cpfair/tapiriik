@@ -11,6 +11,7 @@ import pytz
 import random
 import logging
 import logging.handlers
+import pymongo
 
 # Set this up seperate from the logger used in this scope, so services logging messages are caught and logged into user's files.
 _global_logger = logging.getLogger("tapiriik")
@@ -185,7 +186,8 @@ class Sync:
             identifier = exclusion.Activity.UID if exclusion.Activity else exclusion.ExternalActivityID
             if not identifier:
                 raise ValueError("Activity excluded with no identifying information")
-            tempSyncExclusions[serviceRecord._id][str(identifier)] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
+            identifier = str(identifier).replace(".", "_")
+            tempSyncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
 
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
