@@ -76,9 +76,12 @@ class GPXIO:
                             wp.Temp = float(tempEl.text)
                 act.Waypoints.append(wp)
 
-
+            if not len(act.Waypoints):
+                raise ValueError("Track with no points")
             act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.Pause
 
+        if not len(act.Waypoints):
+            raise ValueError("GPX with no tracks")
         act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
         act.TZ = act.Waypoints[0].Timestamp.tzinfo
         act.StartTime = startTime
