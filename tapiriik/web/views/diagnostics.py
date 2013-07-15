@@ -50,6 +50,7 @@ def diag_dashboard(req):
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
     context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(minutes=10)]
     context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(minutes=10)]
+    context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
 
     return render(req, "diag/dashboard.html", context)
