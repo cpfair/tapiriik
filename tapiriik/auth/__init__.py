@@ -43,7 +43,7 @@ class User:
             return False
         for payment in user["Payments"]:
             if "Expiry" in payment:
-                if payment["Expiry"] < datetime.utcnow():
+                if payment["Expiry"] > datetime.utcnow():
                     return True
             else:
                 if payment["Timestamp"] > (datetime.utcnow() - timedelta(days=365.25)):
