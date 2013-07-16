@@ -19,6 +19,9 @@ def diag_requireAuth(view):
 @diag_requireAuth
 def diag_dashboard(req):
 
+    if "deleteStalledWorker" in request.POST:
+        db.sync_workers.remove({"Process": request.POST["pid"]})
+
     context = {}
     lockedSyncRecords = db.users.aggregate([
                                            {"$match": {"SynchronizationWorker": {"$ne": None}}},
