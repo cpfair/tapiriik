@@ -9,6 +9,7 @@ from django.core.urlresolvers import reverse
 from bson.binary import Binary
 import zlib
 import re
+import lxml
 from datetime import datetime
 
 class DropboxService(ServiceBase):
@@ -156,6 +157,8 @@ class DropboxService(ServiceBase):
             act = GPXIO.Parse(f.read())
         except ValueError as e:
             raise APIExcludeActivity("Invalid GPX " + str(e), activityId=path)
+        except lxml.etree.XMLSyntaxError as e:
+            raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
