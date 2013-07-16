@@ -118,6 +118,9 @@ class StravaService(ServiceBase):
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
         streamdata = streamdata.json()
 
+        if "message" in streamdata and streamdata["message"] == "Record Not Found":
+            raise APIException("Could not find activity")
+
         ridedata = {}
         for stream in streamdata:
             ridedata[stream["type"]] = stream["data"]
