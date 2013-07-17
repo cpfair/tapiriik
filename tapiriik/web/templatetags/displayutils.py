@@ -24,3 +24,9 @@ def format(format, var):
 @register.simple_tag
 def stringformat(value, *args):
     return value.format(*args)
+
+@register.filter(name="percentage")
+def percentage(value, *args):
+    if not value:
+        return "NaN"
+    return str(round(float(value) * 100)) + "%"
