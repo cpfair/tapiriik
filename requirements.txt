@@ -3,6 +3,6 @@ pymongo
 pytz
 lxml
 dropbox
-http://labix.org/download/python-dateutil/python-dateutil-2.0.tar.gz
+python-dateutil
 Django==1.5.1
 pycrypto
