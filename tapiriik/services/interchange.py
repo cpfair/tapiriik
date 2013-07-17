@@ -229,8 +229,10 @@ class Activity:
                     altHigh = wp.Location.Altitude
             if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 pointsWithoutLocation += 1
-        if pointsWithoutLocation == len(self.Waypoints):
+        if len(self.Waypoints) - pointsWithoutLocation == 0:
             raise ValueError("No points have location")
+        if len(self.Waypoints) - pointsWithoutLocation == 1:
+            raise ValueError("Only one point has location")
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 

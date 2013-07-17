@@ -51,8 +51,8 @@ def diag_dashboard(req):
 
     context["allWorkers"] = list(db.sync_workers.find())
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
-    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(minutes=10)]
-    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(minutes=10)]
+    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(seconds=30)]
+    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(seconds=30)]
     context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
 
