@@ -203,7 +203,7 @@ class Sync:
                 exhaustive = True
 
             try:
-                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True)
+                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
             except SynchronizationConcurrencyException:
                 pass  # another worker picked them
             else:
@@ -216,7 +216,7 @@ class Sync:
             if heartbeat_callback:
                 heartbeat_callback()
 
-    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False):
+    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
         # And thus begins the monolithic sync function that's a pain to test.
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
@@ -245,6 +245,8 @@ class Sync:
             tempSyncExclusions = {}
 
             for conn in serviceConnections:
+                if heartbeat_callback:
+                    heartbeat_callback()
                 svc = conn.Service
                 tempSyncErrors[conn._id] = []
                 conn.SyncErrors = []
@@ -308,6 +310,8 @@ class Sync:
             totalActivities = len(activities)
             processedActivities = 0
             for activity in activities:
+                if heartbeat_callback:
+                    heartbeat_callback()
                 # we won't need this now, but maybe later
                 db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                       {"$addToSet": {"SynchronizedActivities": activity.UID}},
