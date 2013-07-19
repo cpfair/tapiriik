@@ -77,9 +77,6 @@ tapiriik.Init = function(){
 	tapiriik.AddressChanged();
 
 };
-if (tapiriik.diagnostics !== true){
-	$.address.wrap(true);
-}
 
 tapiriik.AddressChanged=function(){
 	var components = $.address.pathNames();
