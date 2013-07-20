@@ -163,6 +163,9 @@ class RunKeeperService(ServiceBase):
         if "is_live" in ridedata and ridedata["is_live"] is True:
             raise APIExcludeActivity("Not complete", activityId=activityID, permanent=False)
 
+        if "userID" in ridedata and int(ridedata["userID"]) != int(serviceRecord.ExternalID):
+            raise APIExcludeActivity("Not the user's own activity", activityId=activityID)
+
         self._populateActivityWaypoints(ridedata, activity)
 
         if len(activity.Waypoints) <= 1:
