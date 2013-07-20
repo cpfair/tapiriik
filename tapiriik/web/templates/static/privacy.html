@@ -13,10 +13,11 @@
 
 <div style="clear:both;"></div>
 <h1>What about my email and password?</h1>
-<p><strong>In most cases, tapiriik never stores (or even knows) your email or password.</strong></p>
+<p><strong>In most cases,</strong> tapiriik <strong>never stores</strong> (or even knows) your email or password.</p>
+<p><strong>Garmin Connect and SportTracks.mobi</strong> credentials are stored<sup>‡</sup> only <strong>if you opt in.</strong></p>
 
-<p>The <span style="font-style:italic;font-weight:bold;color:red;">only</span> exception to this is <strong>if you connect your Garmin Connect account</strong>: there's no way for tapiriik to access your account without your username and password. In this case, and only this case, your credentials will be stored in an encrypted<sup>‡</sup> form on the tapiriik server. <strong>If you opt to have your Garmin Connect credentials remembered, they will be retained until you disconnect your account. If you do not opt to have them remembered &mdash; <i>the default</i> &mdash; they will be erased after your account's next synchronization.</strong></p>
 
-<p><sup>‡</sup> I've done a good deal to keep your Garmin Connect credentials safe, but <strong>"encrypted" does not mean "100% secure."</strong> There has to be a way for tapiriik to decrypt them to sync your account, and therefore anyone with enough access and resources could decrypt them, too.</p>
+
+<p><sup>‡</sup> I've done a good deal to keep these credentials safe, but there has to be a way for tapiriik to use them to sync your account. Therefore, anyone with enough access and resources to the tapiriik database and servers could use them, too.</p>
 
 {% endblock %}
