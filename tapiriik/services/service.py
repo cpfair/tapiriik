@@ -11,7 +11,8 @@ class Service:
                         "strava": Strava,
                         "endomondo": Endomondo,
                         "dropbox": Dropbox,
-                        "garminconnect": GarminConnect
+                        "garminconnect": GarminConnect,
+                        "sporttracks": SportTracks
                         }
 
     def FromID(id):
@@ -20,7 +21,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo, GarminConnect, Dropbox]
+        return [RunKeeper, Strava, Endomondo, GarminConnect, Dropbox, SportTracks]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
