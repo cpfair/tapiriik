@@ -213,7 +213,7 @@ class StravaService(ServiceBase):
                 "time_series_field": "time"}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, headers=self._apiHeaders(serviceRecord)) #{"Content-Type": "application/json"}
-        if response.status_code != 200:
+        if response.status_code != 201:
             if response.status_code == 401:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
