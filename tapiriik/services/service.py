@@ -21,7 +21,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo, GarminConnect, Dropbox, SportTracks]
+        return [RunKeeper, Strava, Endomondo, GarminConnect, SportTracks, Dropbox]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
