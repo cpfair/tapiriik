@@ -24,10 +24,16 @@ class StravaService(ServiceBase):
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
 
-    SupportedActivities = [ActivityType.Cycling, ActivityType.Running]
+    SupportedActivities = [ActivityType.Cycling, ActivityType.Running, ActivityType.MountainBiking]
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
     _activityTypeMappings = {
+        ActivityType.Cycling: "Ride",
+        ActivityType.MountainBiking: "Ride",
+        ActivityType.Running: "Run"
+    }
+
+    _reverseActivityTypeMappings = {
         ActivityType.Cycling: "Ride",
         ActivityType.Running: "Run"
     }
@@ -94,7 +100,7 @@ class StravaService(ServiceBase):
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
                 activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
 
-                actType = [k for k, v in self._activityTypeMappings.items() if v == ride["type"]]
+                actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
                 if not len(actType):
                     exclusions.append(APIExcludeActivity("Unsupported activity type", activityId=ride["id"]))
                     continue
