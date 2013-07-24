@@ -218,7 +218,7 @@ class DropboxService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
         if not activity.Tagged:
-            if "UploadUntagged" not in serviceRecord.Config or not serviceRecord.Config["UploadUntagged"]:
+            if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
                 raise ServiceException("Activity untagged", code="UNTAGGED")
 
         # activity might already be populated, if not download it again
