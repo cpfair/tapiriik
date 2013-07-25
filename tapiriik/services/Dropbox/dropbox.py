@@ -58,7 +58,7 @@ class DropboxService(ServiceBase):
         pass
 
     def RequiresConfiguration(self, svcRec):
-        return svcRec.Authorization["Full"]
+        return svcRec.Authorization["Full"] and ("SyncRoot" not in svcRec.Config or not len(svcRec.Config["SyncRoot"]))
 
     def GenerateUserAuthorizationURL(self, level=None):
         full = level == "full"

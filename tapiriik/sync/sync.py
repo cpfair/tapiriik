@@ -173,7 +173,7 @@ class Sync:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
                 continue
             destSvc = destinationSvcRecord.Service
-            if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
+            if destSvc.RequiresConfiguration(destinationSvcRecord):
                 logger.info("\t\t" + destSvc.ID + " not configured")
                 continue  # not configured, so we won't even try
             eligibleServices.append(destinationSvcRecord)
