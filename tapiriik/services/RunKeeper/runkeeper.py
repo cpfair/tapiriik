@@ -171,6 +171,7 @@ class RunKeeperService(ServiceBase):
         if len(activity.Waypoints) <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
+        activity.Private = ridedata["share"] == "Just Me"
         return activity
 
     def _populateActivityWaypoints(self, rawData, activity):

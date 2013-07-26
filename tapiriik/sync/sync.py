@@ -153,7 +153,7 @@ class Sync:
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
-            if hasattr(activity, "Origin"):
+            if hasattr(activity, "Origin") and not activity.Origin.GetConfiguration()["dont_block_activities_with_alternate_routes"]:
                 # we know the activity origin - do a more intuitive flow exception check
                 if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
                     flowException = True
@@ -162,11 +162,15 @@ class Sync:
                     if User.CheckFlowException(user, src, destinationSvcRecord):
                         flowException = True
                         break
-                #  this isn't an absolute failure - it's possible we could still take an indirect route
-                #  at this point there's no knowledge of the origin of this activity, so this behaviour would happen anyways at the next sync
+                # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
+                # But only if they've allowed it
                 if flowException:
-                    for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
-                        if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                    # Eventual destinations, since it'd eventually be synced from these anyways
+                    secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
+                    # Other places this activity exists - the alternate routes
+                    secondLevelSources += [x["Connection"] for x in activity.UploadedTo]
+                    for secondLevelSrc in secondLevelSources:
+                        if secondLevelSrc.GetConfiguration()["dont_block_activities_with_alternate_routes"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
                             flowException = False
                             break
             if flowException:
@@ -361,6 +365,9 @@ class Sync:
                         continue
                     except Exception as e:
                         tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        continue
+                    if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
+                        logger.info("\t\t is private and restricted from sync")  # Sync exclusion instead?
                         continue
                     try:
                         workingCopy.CheckSanity()

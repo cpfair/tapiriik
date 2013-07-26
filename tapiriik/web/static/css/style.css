@@ -703,6 +703,65 @@ form.dropboxConfig {
 	color: #aaa;
 }
 
+.settingsTable
+{
+	border-spacing: 0;
+}
+.settingsTable th
+{
+	background-color:#8ec1da;
+	padding:5px 10px;
+	border-right:1px solid #749EB3;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.settingsTable tr.even {
+	background-color:#E6F7FF;
+}
+
+.settingsTable td
+{
+	border-right:1px solid #c0deed;
+	text-align: center;
+}
+.settingsTable td h3 {
+	margin-top:0;
+}
+.settingsTable td p {
+	margin-top:0;
+	margin-bottom:5px;
+}
+.settingsTable td:first-child
+{
+	text-align: left;
+	border-left:1px solid #c0deed;
+	padding-left:10px;
+}
+
+.settingsTable th:first-child
+{
+	border-top-left-radius:5px;
+}
+
+.settingsTable th:last-child
+{
+	border-top-right-radius:5px;
+	border:none;
+}
+
+.settingsTable tr.footer th:first-child
+{
+	border-radius: 0;
+	border-bottom-left-radius:5px;
+}
+
+.settingsTable tr.footer th:last-child
+{
+	border-radius: 0;
+	border-bottom-right-radius:5px;
+}
+
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {
 		width:90%;
