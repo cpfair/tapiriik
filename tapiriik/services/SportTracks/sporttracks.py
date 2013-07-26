@@ -99,7 +99,7 @@ class SportTracksService(ServiceBase):
                 logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.Distance = float(act["total_distance"])
 
-                types = [x.trim().lower() for x in act["type"].split(":")]
+                types = [x.strip().lower() for x in act["type"].split(":")]
                 types.reverse()  # The incoming format is like "walking: hiking" and we want the most specific first
                 activity.Type = None
                 for type_key in types:
