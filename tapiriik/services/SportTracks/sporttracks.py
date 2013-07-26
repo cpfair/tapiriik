@@ -98,7 +98,16 @@ class SportTracksService(ServiceBase):
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.Distance = float(act["total_distance"])
-                activity.Type = self._activityMappings[act["type"].lower()]
+
+                types = [x.trim().lower() for x in act["type"].split(":")]
+                types.reverse()  # The incoming format is like "walking: hiking" and we want the most specific first
+                activity.Type = None
+                for type_key in types:
+                    if type_key in self._activityMappings:
+                        activity.Type = self._activityMappings[type_key]
+                        break
+                if not activity.Type:
+                    raise APIException("Unknown activity type %s" % act["type"])
 
                 activity.CalculateUID()
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
@@ -149,7 +158,7 @@ class SportTracksService(ServiceBase):
         for idx in range(0, len(activityData["location"]), 2):
             # Pick the nearest indices in the parallel streams
             for parallel_stream, parallel_index in parallel_indices.items():
-                if parallel_index + 1 == parallel_stream_lengths[parallel_stream]:
+                if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
                     continue  # We're at the end of this stream
                 # Is the next datapoint a better choice than the current?
                 if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
