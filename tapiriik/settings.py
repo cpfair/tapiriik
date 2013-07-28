@@ -169,7 +169,7 @@ PAYMENT_CURRENCY = "USD"
 INVITE_KEYS = []
 
 # hidden from regular signup
-SOFT_LAUNCH_SERVICES = ["garminconnect"]
+SOFT_LAUNCH_SERVICES = []
 
 # visibly disabled + excluded from synchronization
 DISABLED_SERVICES = []

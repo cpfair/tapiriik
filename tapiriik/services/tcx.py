@@ -20,7 +20,7 @@ class TCXIO:
         ns = copy.deepcopy(TCXIO.Namespaces)
         ns["tcx"] = ns[None]
         del ns[None]
-        
+
         act = act if act else Activity()
         act.Distance = None
 
@@ -32,10 +32,11 @@ class TCXIO:
 
         xact = root.find("tcx:Activities", namespaces=ns).find("tcx:Activity", namespaces=ns)
 
-        if xact.attrib["Sport"] == "Biking":
-            act.Type = ActivityType.Cycling
-        elif xact.attrib["Sport"] == "Running":
-            act.Type = ActivityType.Running
+        if not act.Type:
+            if xact.attrib["Sport"] == "Biking":
+                act.Type = ActivityType.Cycling
+            elif xact.attrib["Sport"] == "Running":
+                act.Type = ActivityType.Running
 
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
