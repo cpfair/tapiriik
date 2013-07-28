@@ -236,6 +236,10 @@ class DropboxService(ServiceBase):
 
         return activity
 
+    def _clean_activity_name(self, name):
+        # https://www.dropbox.com/help/145/en
+        return re.sub("[><:\"|?*]", "", re.sub("[/\\]", "-", name))
+
     def UploadActivity(self, serviceRecord, activity):
         activity.EnsureTZ()
         data = GPXIO.Dump(activity)
@@ -243,7 +247,7 @@ class DropboxService(ServiceBase):
         dbcl = self._getClient(serviceRecord)
         fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
         if activity.Name is not None and len(activity.Name) > 0:
-            fname = activity.Name.replace("/", "_") + "_" + fname
+            fname = self._clean_activity_name(activity.Name) + "_" + fname
 
         if not serviceRecord.Authorization["Full"]:
             fpath = "/" + fname
