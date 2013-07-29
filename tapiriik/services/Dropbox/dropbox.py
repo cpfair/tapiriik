@@ -238,7 +238,7 @@ class DropboxService(ServiceBase):
 
     def _clean_activity_name(self, name):
         # https://www.dropbox.com/help/145/en
-        return re.sub("[><:\"|?*]", "", re.sub("[/\\]", "-", name))
+        return re.sub("[><:\"|?*]", "", re.sub("[/\\\]", "-", name))
 
     def UploadActivity(self, serviceRecord, activity):
         activity.EnsureTZ()
