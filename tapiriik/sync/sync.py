@@ -153,26 +153,26 @@ class Sync:
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
-            if hasattr(activity, "Origin") and not activity.Origin.GetConfiguration()["dont_block_activities_with_alternate_routes"]:
-                # we know the activity origin - do a more intuitive flow exception check
-                if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
+
+            sources = [x["Connection"] for x in activity.UploadedTo]
+            if hasattr(activity, "Origin"):
+                sources = [activity.Origin]
+            for src in sources:
+                if User.CheckFlowException(user, src, destinationSvcRecord):
                     flowException = True
-            else:
-                for src in [x["Connection"] for x in activity.UploadedTo]:
-                    if User.CheckFlowException(user, src, destinationSvcRecord):
-                        flowException = True
+                    break
+            # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
+            # But only if they've allowed it
+            if flowException:
+                # Eventual destinations, since it'd eventually be synced from these anyways
+                secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
+                # Other places this activity exists - the alternate routes
+                secondLevelSources += [x["Connection"] for x in activity.UploadedTo]
+                for secondLevelSrc in secondLevelSources:
+                    if secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                        flowException = False
                         break
-                # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
-                # But only if they've allowed it
-                if flowException:
-                    # Eventual destinations, since it'd eventually be synced from these anyways
-                    secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
-                    # Other places this activity exists - the alternate routes
-                    secondLevelSources += [x["Connection"] for x in activity.UploadedTo]
-                    for secondLevelSrc in secondLevelSources:
-                        if secondLevelSrc.GetConfiguration()["dont_block_activities_with_alternate_routes"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
-                            flowException = False
-                            break
+
             if flowException:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
                 continue

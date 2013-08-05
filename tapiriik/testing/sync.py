@@ -375,6 +375,37 @@ class SyncTests(TapiriikTestCase):
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
 
+    def test_eligibility_flowexception_shortcircuit(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        svcC = TestTools.create_mock_service("mockC")
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        recC = TestTools.create_mock_svc_record(svcC)
+        act = TestTools.create_blank_activity(svcA, record=recA)
+        User.SetFlowException(user, recA, recC, flowToTarget=False)
+
+        # Behaviour with known origin and no override set
+        act.Origin = recA
+        recipientServices = [recC, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recC not in eligible)
+
+        # Enable alternate routing
+        recB.SetConfiguration({"allow_activity_flow_exception_bypass_via_self":True}, no_save=True)
+        self.assertTrue(recB.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"])
+        # We should now be able to arrive at recC via recB
+        act.Origin = recA
+        recipientServices = [recC, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recC in eligible)
+
     def test_eligibility_flowexception_reverse(self):
         user = TestTools.create_mock_user()
         svcA, svcB = TestTools.create_mock_services()

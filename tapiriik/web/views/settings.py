@@ -3,9 +3,9 @@ from tapiriik.auth import User
 
 def settings(request):
     available_settings = {
-        "dont_block_activities_with_alternate_routes":
-            {"Title": "Short-circuit routing",
-            "Description": "Allows activities to take the shortest route between services, even if one of the activity's origins has a flow exception.",
+        "allow_activity_flow_exception_bypass_via_self":
+            {"Title": "Route activities via",
+            "Description": "Allows activities to flow through this service to avoid a flow exception that would otherwise prevent them arriving at a destination.",
             "Field": "checkbox"
             },
         "sync_private":

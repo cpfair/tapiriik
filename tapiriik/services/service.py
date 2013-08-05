@@ -17,7 +17,7 @@ class Service:
     # These options are used as the back for all service record's configurations
     _globalConfigurationDefaults = {
         "sync_private": True,
-        "dont_block_activities_with_alternate_routes": False
+        "allow_activity_flow_exception_bypass_via_self": False
     }
 
     def FromID(id):

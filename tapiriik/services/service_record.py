@@ -43,7 +43,7 @@ class ServiceRecord:
         config.update(self.Config)
         return config
 
-    def SetConfiguration(self, config):
+    def SetConfiguration(self, config, no_save=False):
         from tapiriik.services import Service
         sparseConfig = copy.deepcopy(config)
         svc = self.Service
@@ -51,4 +51,6 @@ class ServiceRecord:
         for k, v in config.items():
             if (k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v) or (k in Service._globalConfigurationDefaults and Service._globalConfigurationDefaults[k] == v):
                 del sparseConfig[k]  # it's the default, we can not store it
-        db.connections.update({"_id": self._id}, {"$set": {"Config": sparseConfig}})
+        self.Config = sparseConfig
+        if not no_save:
+            db.connections.update({"_id": self._id}, {"$set": {"Config": sparseConfig}})

@@ -133,6 +133,12 @@ class TestTools:
             raise ValueError("No waypoints populated")
         return act
 
+    def create_mock_service(id):
+        mock = MockServiceA()
+        mock.ID = id
+        Service._serviceMappings[id] = mock
+        return mock
+
     def create_mock_services():
         mockA = MockServiceA()
         mockB = MockServiceB()
