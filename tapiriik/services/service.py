@@ -2,7 +2,6 @@ from tapiriik.services import *
 from .service_record import ServiceRecord
 from tapiriik.database import db, cachedb
 from bson.objectid import ObjectId
-import copy
 
 # Really don't know why I didn't make most of this part of the ServiceBase.
 class Service:
@@ -14,6 +13,12 @@ class Service:
                         "garminconnect": GarminConnect,
                         "sporttracks": SportTracks
                         }
+
+    # These options are used as the back for all service record's configurations
+    _globalConfigurationDefaults = {
+        "sync_private": True,
+        "allow_activity_flow_exception_bypass_via_self": False
+    }
 
     def FromID(id):
         if id in Service._serviceMappings:
@@ -62,26 +67,3 @@ class Service:
         svc.RevokeAuthorization(serviceRecord)
         cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         db.connections.remove({"_id": serviceRecord._id})
-
-    def _mergeConfig(base, config):
-        return dict(list(base.items()) + list(config.items()))
-
-    def HasConfiguration(svcRec):
-        if not svcRec.Service.Configurable:
-            return False  # of course not
-        return hasattr(svcRec, "Config") and len(svcRec.Config.values()) > 0
-
-    def GetConfiguration(svcRec):
-        svc = svcRec.Service
-        if not svc.Configurable:
-            raise ValueError("Passed service is not configurable")
-        return Service._mergeConfig(svc.ConfigurationDefaults, svcRec.Config) if hasattr(svcRec, "Config") else svc.ConfigurationDefaults
-
-    def SetConfiguration(config, svcRec):
-        sparseConfig = copy.deepcopy(config)
-        svc = svcRec.Service
-        svc.ConfigurationUpdating(svcRec, config, Service.GetConfiguration(svcRec))
-        for k, v in config.items():
-            if k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v:
-                del sparseConfig[k]  # it's the default, we can not store it
-        db.connections.update({"_id": svcRec._id}, {"$set": {"Config": sparseConfig}})

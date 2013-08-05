@@ -194,28 +194,28 @@ class SyncTests(TapiriikTestCase):
         # regular
         exc = APIExcludeActivity("Messag!e", activityId=3.14)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e")
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 3.14)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], True)
+        self.assertTrue("3_14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e")
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Activity"], None)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["ExternalActivityID"], 3.14)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Permanent"], True)
 
         # updating
         act = TestTools.create_blank_activity(svcA)
-        act.UID = "3.14"  # meh
+        act.UID = "3_14"  # meh
         exc = APIExcludeActivity("Messag!e2", activityId=42, permanent=False, activity=act)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e2")
-        self.assertNotEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)  # Who knows what the string format will be down the road?
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 42)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], False)
+        self.assertTrue("3_14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e2")
+        self.assertNotEqual(exclusionstore[recA._id]["3_14"]["Activity"], None)  # Who knows what the string format will be down the road?
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["ExternalActivityID"], 42)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Permanent"], False)
 
         # multiple, retaining existing
         exc2 = APIExcludeActivity("INM", activityId=13)
         exc3 = APIExcludeActivity("FNIM", activityId=37)
         Sync._accumulateExclusions(recA, [exc2, exc3], exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
+        self.assertTrue("3_14" in exclusionstore[recA._id])
         self.assertTrue("37" in exclusionstore[recA._id])
         self.assertTrue("13" in exclusionstore[recA._id])
 
@@ -285,6 +285,7 @@ class SyncTests(TapiriikTestCase):
         actB.StartTime = actA.StartTime.replace(tzinfo=None)
         actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
         actA.Name = "Not this"
+        actA.Private = True
         actB.Name = "Heya"
         actB.Type = ActivityType.Walking
         actA.CalculateUID()
@@ -302,6 +303,7 @@ class SyncTests(TapiriikTestCase):
         self.assertEqual(act.EndTime.tzinfo, actA.StartTime.tzinfo)
         self.assertEqual(act.StartTime.tzinfo, actA.StartTime.tzinfo)
         self.assertEqual(act.Waypoints, actA.Waypoints)
+        self.assertTrue(act.Private)  # Most restrictive setting
         self.assertEqual(act.Name, actB.Name)  # The first activity takes priority.
         self.assertEqual(act.Type, actB.Type)  # Same here.
         self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)
@@ -374,6 +376,37 @@ class SyncTests(TapiriikTestCase):
         eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
+
+    def test_eligibility_flowexception_shortcircuit(self):
+        user = TestTools.create_mock_user()
+        svcA, svcB = TestTools.create_mock_services()
+        svcC = TestTools.create_mock_service("mockC")
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+        recC = TestTools.create_mock_svc_record(svcC)
+        act = TestTools.create_blank_activity(svcA, record=recA)
+        User.SetFlowException(user, recA, recC, flowToTarget=False)
+
+        # Behaviour with known origin and no override set
+        act.Origin = recA
+        recipientServices = [recC, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recC not in eligible)
+
+        # Enable alternate routing
+        recB.SetConfiguration({"allow_activity_flow_exception_bypass_via_self":True}, no_save=True)
+        self.assertTrue(recB.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"])
+        # We should now be able to arrive at recC via recB
+        act.Origin = recA
+        recipientServices = [recC, recB]
+        excludedServices = []
+        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        self.assertTrue(recA not in eligible)
+        self.assertTrue(recB in eligible)
+        self.assertTrue(recC in eligible)
 
     def test_eligibility_flowexception_reverse(self):
         user = TestTools.create_mock_user()

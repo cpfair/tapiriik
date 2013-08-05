@@ -1,0 +1,52 @@
+{% extends "site.html" %}
+{% load services %}
+{% load users %}
+{% load displayutils %}
+{% block title %}Advanced settings{% endblock %}
+
+{% block content %}
+<div style="text-align:left">
+<h1>Advanced settings</h1>
+<form method="POST" action="">
+	{% csrf_token %}
+	<table class="settingsTable">
+	<tr><th></th>
+		{% for connection in user.ConnectedServices|svc_populate_conns %}
+			{% with svc=connection.Service %}
+				<th><img src="{{ STATIC_URL }}img/services/{{ svc.ID }}.png" alt="{{ svc.DisplayName }}"></th>
+			{% endwith %}
+		{% endfor %}
+	</tr>
+
+	{% for key, setting in settings.items %}
+	<tr class="{% cycle '' 'even' %}">
+		<td>
+			<h3>{{ setting.Title }}</h3>
+			<p>{{ setting.Description }}</p>
+			{% for connection in user.ConnectedServices|svc_populate_conns %}
+					<td>
+						{% if connection.Service.ID in setting.Available or not setting.Available %}
+							{% if setting.Field == "checkbox" %}
+								<input type="checkbox" {% if setting.Values|dict_get:connection.Service.ID %}checked{% endif %} name="{{ key }}_{{ connection.Service.ID }}"/>
+							{% else %}
+								<input type="{{ setting.Field }}" value="{{ setting.Values|dict_get:connection.Service.ID }}" name="{{ key }}_{{ connection.Service.ID }}"/>
+							{% endif %}
+						{% endif %}
+					</td>
+			{% endfor %}
+		</td>
+	</tr>
+	{% endfor %}
+
+	<tr class="footer"><th>&nbsp;</th>
+		{% for connection in user.ConnectedServices %}
+				<th></th>
+		{% endfor %}
+	</tr>
+	</table>
+<div style="text-align:right">
+	<button type="submit">Save</button>
+</div>
+</form>
+</div>
+{% endblock %}

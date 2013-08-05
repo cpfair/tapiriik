@@ -63,15 +63,13 @@ class StravaService(ServiceBase):
         pass
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
-        # grumble grumble strava api sucks grumble grumble
-        # http://app.strava.com/api/v1/rides?athleteId=id
         activities = []
         exclusions = []
         before = earliestDate = None
 
         while True:
-            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
+            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
 
             earliestDate = None
 
@@ -108,6 +106,7 @@ class StravaService(ServiceBase):
                 activity.Type = actType[0]
                 activity.Distance = ride["distance"]
                 activity.Name = ride["name"]
+                activity.Private = ride["private"]
                 activity.AdjustTZ()
                 activity.CalculateUID()
                 activities.append(activity)
@@ -210,7 +209,8 @@ class StravaService(ServiceBase):
                 "data": json.dumps([{"fields": fields, "values": points}]),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
-                "time_series_field": "time"}
+                "time_series_field": "time",
+                "private": activity.Private}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, headers=self._apiHeaders(serviceRecord)) #{"Content-Type": "application/json"}
         if response.status_code != 201:

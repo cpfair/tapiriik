@@ -43,7 +43,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 class Activity:
     ImplicitPauseTime = timedelta(minutes=1, seconds=5)
 
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -51,6 +51,7 @@ class Activity:
         self.Distance = distance
         self.TZ = tz
         self.Name = name
+        self.Private = private
 
     def CalculateUID(self):
         if not self.StartTime:

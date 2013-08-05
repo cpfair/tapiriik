@@ -444,13 +444,26 @@ a img {
 	margin-bottom:0;
 }
 
+.service .config input
+{
+	font-size: 100%;
+	vertical-align: middle;
+}
+
+.service .config label
+{
+	font-size:100%;
+	display: inline-block;
+}
+
+
 .service .config .fineprint {
 	font-size:70%;
 }
-.service .config .configSection { 
+.service .config .configSection {
 	background-color: #9ec5d9;
-	margin:0 -5px;
-	padding: 0 5px;
+	margin:10px -5px;
+	padding: 5px;
 }
 
 .service .config button#save {
@@ -701,6 +714,65 @@ form.dropboxConfig {
 
 .faqBlocks h3, .faqBlocks h3 a {
 	color: #aaa;
+}
+
+.settingsTable
+{
+	border-spacing: 0;
+}
+.settingsTable th
+{
+	background-color:#8ec1da;
+	padding:5px 10px;
+	border-right:1px solid #749EB3;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.settingsTable tr.even {
+	background-color:#E6F7FF;
+}
+
+.settingsTable td
+{
+	border-right:1px solid #c0deed;
+	text-align: center;
+}
+.settingsTable td h3 {
+	margin-top:0;
+}
+.settingsTable td p {
+	margin-top:0;
+	margin-bottom:5px;
+}
+.settingsTable td:first-child
+{
+	text-align: left;
+	border-left:1px solid #c0deed;
+	padding-left:10px;
+}
+
+.settingsTable th:first-child
+{
+	border-top-left-radius:5px;
+}
+
+.settingsTable th:last-child
+{
+	border-top-right-radius:5px;
+	border:none;
+}
+
+.settingsTable tr.footer th:first-child
+{
+	border-radius: 0;
+	border-bottom-left-radius:5px;
+}
+
+.settingsTable tr.footer th:last-child
+{
+	border-radius: 0;
+	border-bottom-right-radius:5px;
 }
 
 @media only screen and (max-device-width: 480px) {

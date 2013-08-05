@@ -114,7 +114,7 @@ tapiriik.AddressChanged=function(){
 			return;
 		}
 		tapiriik.DoDismissServiceDialog();
-		tapiriik.OpenFlowConfigPanel(components[1]);
+		tapiriik.OpenServiceConfigPanel(components[1]);
 		return;
 	} else if (components[0] == "dropbox") {
 		if (components[1] == "info"){
@@ -241,10 +241,10 @@ tapiriik.ActivateSetupDialog = function(svcId){
 	$.address.value("configure/" + svcId + "/setup");
 };
 
-tapiriik.OpenFlowConfigPanel = function(svcId){
+tapiriik.OpenServiceConfigPanel = function(svcId){
 	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
 	tapiriik.DoDismissConfigPanel();
-	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">X</button></form>");
+	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">X</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
@@ -258,9 +258,20 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 		$("input", destRow).attr("service", i);
 		$("table", configPanel).append(destRow);
 	}
+	if (svcId == "strava" || svcId == "runkeeper")
+	{
+		if (tapiriik.ServiceInfo[svcId].Config.sync_private)
+		{
+			$("#sync_private", configPanel).attr("checked", 1);
+		}
+	} else {
+		$("#sync_private_section", configPanel).hide();
+	}
 	$("button#save", configPanel).click(function(){
 		if ($(this).hasClass("disabled")) return;
 		$(this).addClass("disabled");
+
+		tapiriik.ServiceInfo[svcId].Config.sync_private = $("#sync_private", configPanel).is(":checked");
 
 		var flowFlags = {"forward":[],"backward":[]};
 		var flags = $("input[type=checkbox]", configPanel);
@@ -273,10 +284,13 @@ tapiriik.OpenFlowConfigPanel = function(svcId){
 				}
 			}
 		}
-		$.post("/configure/flow/save/"+svcId, {"flowFlags":JSON.stringify(flowFlags)}, function(){
-			$.address.value("");
+		$.post("/configure/flow/save/"+svcId, {"flowFlags": JSON.stringify(flowFlags)}, function(){
+			$.post("/configure/save/" + svcId, {"config": JSON.stringify(tapiriik.ServiceInfo[svcId].Config)}, function(){
+				$.address.value("");
 			setTimeout(function(){window.location.reload();}, 400); //would be possible to resolve the changes in JS to avoid a reload, I'll leave that for later
+			})
 		});
+
 		return false;
 	});
 	$("button#disconnect", configPanel).click(function(){

@@ -171,6 +171,7 @@ class RunKeeperService(ServiceBase):
         if len(activity.Waypoints) <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
+        activity.Private = ridedata["share"] == "Just Me"
         return activity
 
     def _populateActivityWaypoints(self, rawData, activity):
@@ -220,6 +221,8 @@ class RunKeeperService(ServiceBase):
             record["total_distance"] = activity.Distance  # RK calculates this itself, so we probably don't care
         record["notes"] = activity.Name  # not symetric, but better than nothing
         record["path"] = []
+        if activity.Private:
+            record["share"] = "Just Me"
         for waypoint in activity.Waypoints:
             timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 

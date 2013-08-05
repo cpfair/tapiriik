@@ -138,6 +138,7 @@ class Sync:
                 existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
+                existElsewhere[0].Private = existElsewhere[0].Private or act.Private
 
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
@@ -153,27 +154,31 @@ class Sync:
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
+
+            sources = [x["Connection"] for x in activity.UploadedTo]
             if hasattr(activity, "Origin"):
-                # we know the activity origin - do a more intuitive flow exception check
-                if User.CheckFlowException(user, activity.Origin, destinationSvcRecord):
+                sources = [activity.Origin]
+            for src in sources:
+                if User.CheckFlowException(user, src, destinationSvcRecord):
                     flowException = True
-            else:
-                for src in [x["Connection"] for x in activity.UploadedTo]:
-                    if User.CheckFlowException(user, src, destinationSvcRecord):
-                        flowException = True
+                    break
+            # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
+            # But only if they've allowed it
+            if flowException:
+                # Eventual destinations, since it'd eventually be synced from these anyways
+                secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
+                # Other places this activity exists - the alternate routes
+                secondLevelSources += [x["Connection"] for x in activity.UploadedTo]
+                for secondLevelSrc in secondLevelSources:
+                    if secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                        flowException = False
                         break
-                #  this isn't an absolute failure - it's possible we could still take an indirect route
-                #  at this point there's no knowledge of the origin of this activity, so this behaviour would happen anyways at the next sync
-                if flowException:
-                    for secondLevelSrc in [x for x in recipientServices if x != destinationSvcRecord]:
-                        if not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
-                            flowException = False
-                            break
+
             if flowException:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
                 continue
             destSvc = destinationSvcRecord.Service
-            if destSvc.RequiresConfiguration(destinationSvcRecord) and not Service.HasConfiguration(destinationSvcRecord):
+            if destSvc.RequiresConfiguration(destinationSvcRecord):
                 logger.info("\t\t" + destSvc.ID + " not configured")
                 continue  # not configured, so we won't even try
             eligibleServices.append(destinationSvcRecord)
@@ -361,6 +366,9 @@ class Sync:
                         continue
                     except Exception as e:
                         tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        continue
+                    if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
+                        logger.info("\t\t is private and restricted from sync")  # Sync exclusion instead?
                         continue
                     try:
                         workingCopy.CheckSanity()

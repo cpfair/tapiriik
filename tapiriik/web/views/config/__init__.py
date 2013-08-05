@@ -14,7 +14,7 @@ def config_save(req, service):
     conn = User.GetConnectionRecord(req.user, service)
     if not conn:
         return HttpResponse(status=404)
-    Service.SetConfiguration(json.loads(req.POST["config"]), conn)
+    conn.SetConfiguration(json.loads(req.POST["config"]))
     return HttpResponse()
 
 
@@ -45,9 +45,9 @@ def dropbox(req):
     if req.method == "POST":
         form = DropboxConfigForm(req.POST)
         if form.is_valid():
-            Service.SetConfiguration({"SyncRoot": form.cleaned_data['path'], "UploadUntagged": form.cleaned_data['syncUntagged']}, conn)
+            conn.SetConfiguration({"SyncRoot": form.cleaned_data['path'], "UploadUntagged": form.cleaned_data['syncUntagged']})
             return redirect("dashboard")
     else:
-        conf = Service.GetConfiguration(conn)
+        conf = conn.GetConfiguration()
         form = DropboxConfigForm({"path": conf["SyncRoot"], "syncUntagged": conf["UploadUntagged"]})
     return render(req, "config/dropbox.html", {"form": form})
