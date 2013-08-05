@@ -285,6 +285,7 @@ class SyncTests(TapiriikTestCase):
         actB.StartTime = actA.StartTime.replace(tzinfo=None)
         actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
         actA.Name = "Not this"
+        actA.Private = True
         actB.Name = "Heya"
         actB.Type = ActivityType.Walking
         actA.CalculateUID()
@@ -302,6 +303,7 @@ class SyncTests(TapiriikTestCase):
         self.assertEqual(act.EndTime.tzinfo, actA.StartTime.tzinfo)
         self.assertEqual(act.StartTime.tzinfo, actA.StartTime.tzinfo)
         self.assertEqual(act.Waypoints, actA.Waypoints)
+        self.assertTrue(act.Private)  # Most restrictive setting
         self.assertEqual(act.Name, actB.Name)  # The first activity takes priority.
         self.assertEqual(act.Type, actB.Type)  # Same here.
         self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)

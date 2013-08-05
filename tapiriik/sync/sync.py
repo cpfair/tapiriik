@@ -138,6 +138,7 @@ class Sync:
                 existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
+                existElsewhere[0].Private = existElsewhere[0].Private or act.Private
 
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
