@@ -21,15 +21,94 @@ class SportTracksService(ServiceBase):
     OpenFitEndpoint = SPORTTRACKS_OPENFIT_ENDPOINT
     SupportsHR = True
 
+    """ Other   Basketball
+        Other   Boxing
+        Other   Climbing
+        Other   Driving
+        Other   Flying
+        Other   Football
+        Other   Gardening
+        Other   Kitesurf
+        Other   Sailing
+        Other   Soccer
+        Other   Tennis
+        Other   Volleyball
+        Other   Windsurf
+        Running Hashing
+        Running Hills
+        Running Intervals
+        Running Orienteering
+        Running Race
+        Running Road
+        Running Showshoe
+        Running Speed
+        Running Stair
+        Running Track
+        Running Trail
+        Running Treadmill
+        Cycling Hills
+        Cycling Indoor
+        Cycling Intervals
+        Cycling Mountain
+        Cycling Race
+        Cycling Road
+        Cycling Rollers
+        Cycling Spinning
+        Cycling Track
+        Cycling Trainer
+        Swimming    Open Water
+        Swimming    Pool
+        Swimming    Race
+        Walking Geocaching
+        Walking Hiking
+        Walking Nordic
+        Walking Photography
+        Walking Snowshoe
+        Walking Treadmill
+        Skiing  Alpine
+        Skiing  Nordic
+        Skiing  Roller
+        Skiing  Snowboard
+        Rowing  Canoe
+        Rowing  Kayak
+        Rowing  Kitesurf
+        Rowing  Ocean Kayak
+        Rowing  Rafting
+        Rowing  Rowing Machine
+        Rowing  Sailing
+        Rowing  Standup Paddling
+        Rowing  Windsurf
+        Skating Board
+        Skating Ice
+        Skating Inline
+        Skating Race
+        Skating Track
+        Gym Aerobics
+        Gym Elliptical
+        Gym Plyometrics
+        Gym Rowing Machine
+        Gym Spinning
+        Gym Stair Climber
+        Gym Stationary Bike
+        Gym Strength
+        Gym Stretching
+        Gym Treadmill
+        Gym Yoga
+    """
+
     _activityMappings = {
         "running": ActivityType.Running,
         "cycling": ActivityType.Cycling,
+        "mountain": ActivityType.MountainBiking,
         "walking": ActivityType.Walking,
         "hiking": ActivityType.Hiking,
-        "skiing": ActivityType.CrossCountrySkiing,
+        "snowboarding": ActivityType.Snowboarding,
+        "skiing": ActivityType.DownhillSkiing,
+        "nordic": ActivityType.CrossCountrySkiing,
         "skating": ActivityType.Skating,
         "swimming": ActivityType.Swimming,
         "rowing": ActivityType.Rowing,
+        "elliptical": ActivityType.Elliptical,
         "other": ActivityType.Other
     }
 
@@ -37,12 +116,15 @@ class SportTracksService(ServiceBase):
         ActivityType.Running: "running",
         ActivityType.Cycling: "cycling",
         ActivityType.Walking: "walking",
-        ActivityType.Hiking: "hiking",
-        ActivityType.CrossCountrySkiing: "skiing",
+        ActivityType.MountainBiking: "cycling: mountain",
+        ActivityType.Hiking: "walking: hiking",
+        ActivityType.CrossCountrySkiing: "skiing: nordic",  #  Equipment.Bindings.IsToeOnly ??
         ActivityType.DownhillSkiing: "skiing",
+        ActivityType.Snowboarding: "skiing: snowboarding",
         ActivityType.Skating: "skating",
         ActivityType.Swimming: "swimming",
         ActivityType.Rowing: "rowing",
+        ActivityType.Elliptical: "gym: elliptical",
         ActivityType.Other: "other"
     }
 
@@ -193,6 +275,7 @@ class SportTracksService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
+        activity.EnsureTZ()
         activityData = {}
         # Props to the SportTracks API people for seamlessly supprting activities with or without TZ data.
         activityData["start_time"] = activity.StartTime.isoformat()
