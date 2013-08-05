@@ -194,28 +194,28 @@ class SyncTests(TapiriikTestCase):
         # regular
         exc = APIExcludeActivity("Messag!e", activityId=3.14)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e")
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 3.14)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], True)
+        self.assertTrue("3_14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e")
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Activity"], None)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["ExternalActivityID"], 3.14)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Permanent"], True)
 
         # updating
         act = TestTools.create_blank_activity(svcA)
-        act.UID = "3.14"  # meh
+        act.UID = "3_14"  # meh
         exc = APIExcludeActivity("Messag!e2", activityId=42, permanent=False, activity=act)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Message"], "Messag!e2")
-        self.assertNotEqual(exclusionstore[recA._id]["3.14"]["Activity"], None)  # Who knows what the string format will be down the road?
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["ExternalActivityID"], 42)
-        self.assertEqual(exclusionstore[recA._id]["3.14"]["Permanent"], False)
+        self.assertTrue("3_14" in exclusionstore[recA._id])
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e2")
+        self.assertNotEqual(exclusionstore[recA._id]["3_14"]["Activity"], None)  # Who knows what the string format will be down the road?
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["ExternalActivityID"], 42)
+        self.assertEqual(exclusionstore[recA._id]["3_14"]["Permanent"], False)
 
         # multiple, retaining existing
         exc2 = APIExcludeActivity("INM", activityId=13)
         exc3 = APIExcludeActivity("FNIM", activityId=37)
         Sync._accumulateExclusions(recA, [exc2, exc3], exclusionstore)
-        self.assertTrue("3.14" in exclusionstore[recA._id])
+        self.assertTrue("3_14" in exclusionstore[recA._id])
         self.assertTrue("37" in exclusionstore[recA._id])
         self.assertTrue("13" in exclusionstore[recA._id])
 
