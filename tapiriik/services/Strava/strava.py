@@ -209,7 +209,8 @@ class StravaService(ServiceBase):
                 "data": json.dumps([{"fields": fields, "values": points}]),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
-                "time_series_field": "time"}
+                "time_series_field": "time",
+                "private": activity.Private}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, headers=self._apiHeaders(serviceRecord)) #{"Content-Type": "application/json"}
         if response.status_code != 201:

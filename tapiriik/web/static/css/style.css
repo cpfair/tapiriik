@@ -444,13 +444,26 @@ a img {
 	margin-bottom:0;
 }
 
+.service .config input
+{
+	font-size: 100%;
+	vertical-align: middle;
+}
+
+.service .config label
+{
+	font-size:100%;
+	display: inline-block;
+}
+
+
 .service .config .fineprint {
 	font-size:70%;
 }
-.service .config .configSection { 
+.service .config .configSection {
 	background-color: #9ec5d9;
-	margin:0 -5px;
-	padding: 0 5px;
+	margin:10px -5px;
+	padding: 5px;
 }
 
 .service .config button#save {

@@ -37,7 +37,7 @@ def js_bridge(req):
                 if svc.ID == "dropbox":  # dirty hack alert, but better than dumping the auth details in their entirety
                     info["AccessLevel"] = "full" if svcRec.Authorization["Full"] else "normal"
                     info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
-                info["Config"] = svcRec.GetConfiguration()
+            info["Config"] = svcRec.GetConfiguration()
             info["HasExtendedAuth"] = svcRec.HasExtendedAuthorizationDetails()
             info["ExternalID"] = svcRec.ExternalID
         info["BlockFlowTo"] = []
