@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 class StravaService(ServiceBase):
     ID = "strava"
     DisplayName = "Strava"
-    AuthenticationType = ServiceAuthenticationType.UsernamePassword
+    AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
+    AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
 
     SupportedActivities = [ActivityType.Cycling, ActivityType.Running, ActivityType.MountainBiking]
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
@@ -39,18 +40,19 @@ class StravaService(ServiceBase):
     }
 
     def WebInit(self):
-        self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": "strava"})
+        self.UserAuthorizationURL = "https://www.strava.com/oauth/authorize?scope=write%20view_private&client_id=" + STRAVA_CLIENT_ID + "&response_type=code&redirect_uri=http://tapiriik.com"  + reverse("oauth_return", kwargs={"service": "strava"})
 
     def _apiHeaders(self, serviceRecord):
         return {"Authorization": "access_token " + serviceRecord.Authorization["OAuthToken"]}
 
-    def Authorize(self, email, password):
-        # https://www.strava.com/api/v3/oauth/internal/token
-        params = {"email": email, "password": password, "client_secret": STRAVA_CLIENT_SECRET, "client_id": STRAVA_CLIENT_ID}
-        resp = requests.post("https://www.strava.com/api/v3/oauth/internal/token", data=params)
-        if resp.status_code != 200:
-            raise APIAuthorizationException("Invalid login")
-        data = resp.json()
+    def RetrieveAuthorizationToken(self, req, level):
+        code = req.GET.get("code")
+        params = {"grant_type": "authorization_code", "code": code, "client_id": STRAVA_CLIENT_ID, "client_secret": STRAVA_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})}
+
+        response = requests.post("https://www.strava.com/oauth/token", data=params)
+        if response.status_code != 200:
+            raise APIAuthorizationException("Invalid code")
+        data = response.json()
 
         authorizationData = {"OAuthToken": data["access_token"]}
         # Retrieve the user ID, meh.
