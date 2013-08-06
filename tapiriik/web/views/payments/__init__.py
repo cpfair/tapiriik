@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 def payments_ipn(req):
     data = req.POST.dict()
     data["cmd"] = "_notify-validate"
+    for k, v in data.items():
+        data[k] = v.encode('utf-8')  # Maybe will fix issues with unicode characters in people's names?
     response = requests.post(PP_WEBSCR, data=data)
     if response.text != "VERIFIED":
         logger.error("IPN request %s not validated - response %s" % (req.POST, response.text))
