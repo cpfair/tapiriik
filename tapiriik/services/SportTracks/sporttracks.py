@@ -189,7 +189,8 @@ class SportTracksService(ServiceBase):
                         activity.Type = self._activityMappings[type_key]
                         break
                 if not activity.Type:
-                    raise APIException("Unknown activity type %s" % act["type"])
+                    exclusions.append(APIExcludeActivity("Unknown activity type %s" % act["type"], activityId=act["uri"]))
+                    continue
 
                 activity.CalculateUID()
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
