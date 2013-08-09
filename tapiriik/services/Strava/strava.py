@@ -25,18 +25,20 @@ class StravaService(ServiceBase):
     UserActivityURL = "http://app.strava.com/activities/{1}"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
 
-    SupportedActivities = [ActivityType.Cycling, ActivityType.Running, ActivityType.MountainBiking]
+    SupportedActivities = [ActivityType.Cycling, ActivityType.Running, ActivityType.MountainBiking, ActivityType.Hiking]
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
     _activityTypeMappings = {
         ActivityType.Cycling: "Ride",
         ActivityType.MountainBiking: "Ride",
+        ActivityType.Hiking: "Hike",
         ActivityType.Running: "Run"
     }
 
     _reverseActivityTypeMappings = {
         ActivityType.Cycling: "Ride",
-        ActivityType.Running: "Run"
+        ActivityType.Running: "Run",
+        ActivityType.Hiking: "Hike"
     }
 
     def WebInit(self):
@@ -102,7 +104,7 @@ class StravaService(ServiceBase):
 
                 actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
                 if not len(actType):
-                    exclusions.append(APIExcludeActivity("Unsupported activity type", activityId=ride["id"]))
+                    exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"]))
                     continue
 
                 activity.Type = actType[0]
