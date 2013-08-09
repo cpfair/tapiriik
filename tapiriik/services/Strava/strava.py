@@ -42,7 +42,7 @@ class StravaService(ServiceBase):
         ActivityType.Swimming: "Swim"
     }
 
-    # For uploads, the other way around
+    # For mapping common->Strava
     _reverseActivityTypeMappings = {
         ActivityType.Cycling: "Ride",
         ActivityType.MountainBiking: "MountainBiking",
@@ -55,7 +55,7 @@ class StravaService(ServiceBase):
         ActivityType.Skating: "IceSkate"
     }
 
-    SupportedActivities = list(_reverseActivityTypeMappings.values())
+    SupportedActivities = list(_reverseActivityTypeMappings.keys())
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://www.strava.com/oauth/authorize?scope=write%20view_private&client_id=" + STRAVA_CLIENT_ID + "&response_type=code&redirect_uri=http://tapiriik.com"  + reverse("oauth_return", kwargs={"service": "strava"})
