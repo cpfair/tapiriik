@@ -77,7 +77,6 @@ class TCXIO:
                 if cadEl is not None:
                     wp.Cadence = int(cadEl.text)
                 act.Waypoints.append(wp)
-            act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.Pause
         if not len(act.Waypoints):
             raise ValueError("No waypoints in TCX")
 

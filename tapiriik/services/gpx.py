@@ -47,7 +47,7 @@ class GPXIO:
                 if len(act.Waypoints) == 0:
                     wp.Type = WaypointType.Start
                 elif beginSeg:
-                    wp.Type = WaypointType.Resume
+                    wp.Type = WaypointType.Lap
                 beginSeg = False
 
                 wp.Timestamp = dateutil.parser.parse(xtrkpt.find("gpx:time", namespaces=ns).text)
@@ -78,7 +78,6 @@ class GPXIO:
 
             if not len(act.Waypoints):
                 raise ValueError("Track with no points")
-            act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.Pause
 
         if not len(act.Waypoints):
             raise ValueError("GPX with no tracks")
