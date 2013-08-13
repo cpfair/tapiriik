@@ -269,8 +269,8 @@ class SyncTests(TapiriikTestCase):
 
         self.assertEqual(len(activities), 2)
 
-        # Ensure that overly large differences >14hr - not possible via TZ differences - are not deduplicated
-        actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=15)
+        # Ensure that overly large differences >38hr - not possible via TZ differences & shamefully bad import/export code on the part of some services - are not deduplicated
+        actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=50)
         activities = []
         Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
         Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)

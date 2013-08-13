@@ -95,7 +95,7 @@ class Sync:
     def _accumulateActivities(svc, svcActivities, activityList):
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
-        timezoneErrorPeriod = timedelta(hours=14)
+        timezoneErrorPeriod = timedelta(hours=38)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
@@ -116,11 +116,11 @@ class Sync:
                                abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < activityStartLeeway
                               )
                               or
-                              # Sometimes wacky stuff happens and we get two activities with the same mm:ss but different hh, because of a TZ issue somewhere along the line
-                              # So, we check for any activities +/- 14 hours that have the same minutes and seconds values
-                              #  (14 hours because Kiribati)
-                              # There's a 1/3600 chance that two activities in the same 14 hour period would intersect and be merged together
-                              # But, given the fact that most users have maybe 0.05 activities per this period, it's an acceptable tradeoff
+                              # Sometimes wacky stuff happens and we get two activities with the same mm:ss but different hh, because of a TZ issue somewhere along the line.
+                              # So, we check for any activities +/- 14, wait, 38 hours that have the same minutes and seconds values.
+                              #  (14 hours because Kiribati, and later, 38 hours because of some really terrible import code that existed on a service that shall not be named).
+                              # There's a very low chance that two activities in this period would intersect and be merged together.
+                              # But, given the fact that most users have maybe 0.05 activities per this period, it's an acceptable tradeoff.
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
@@ -293,6 +293,9 @@ class Sync:
 
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
+
+            # Makes reading the logs much easier.
+            activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None))
             for activity in activities:
                 updated_database = False
                 if len(activity.UploadedTo) == 1:
