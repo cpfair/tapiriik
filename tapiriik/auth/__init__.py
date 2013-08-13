@@ -63,6 +63,8 @@ class User:
                     user["Payments"] = []
                 user["Payments"] += existingUser["Payments"]
             if "FlowExceptions" in existingUser:
+                if "FlowExceptions" not in user:
+                    user["FlowExceptions"] = []
                 user["FlowExceptions"] += existingUser["FlowExceptions"]
             user["Email"] = user["Email"] if "Email" in user and user["Email"] is not None else (existingUser["Email"] if "Email" in existingUser else None)
             user["SyncErrorCount"] = (user["SyncErrorCount"] if "SyncErrorCount" in user and user["SyncErrorCount"] is not None else 0) + (existingUser["SyncErrorCount"] if "SyncErrorCount" in existingUser and existingUser["SyncErrorCount"] is not None else 0)
