@@ -1,22 +1,24 @@
-from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_AMOUNT, PAYMENT_CURRENCY
+from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_CURRENCY
 from tapiriik.auth import Payments, User
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
-import requests
+import urllib.request
 import logging
 
 logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def payments_ipn(req):
-    data = req.POST.dict()
-    data["cmd"] = "_notify-validate"
-    for k, v in data.items():
-        data[k] = v.encode('utf-8')  # Maybe will fix issues with unicode characters in people's names?
-    response = requests.post(PP_WEBSCR, data=data)
-    if response.text != "VERIFIED":
-        logger.error("IPN request %s not validated - response %s" % (req.POST, response.text))
+    raw_data = req.body
+    raw_data += "&cmd=_notify-validate"
+    req = urllib.request.Request(PP_WEBSCR)
+    req.add_header("Content-type", "application/x-www-form-urlencoded")
+    result = urllib.request.urlopen(req, raw_data)
+    response = result.read().decode("utf-8")
+
+    if response != "VERIFIED":
+        logger.error("IPN request %s not validated - response %s" % (req.body, response))
         return HttpResponse(status=403)
     if req.POST["receiver_id"] != PP_RECEIVER_ID or req.POST["mc_currency"] != PAYMENT_CURRENCY:
         logger.error("IPN request %s has incorrect details" % req.POST )
