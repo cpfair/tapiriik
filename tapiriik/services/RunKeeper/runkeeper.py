@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import requests
 import urllib.parse
 import json
+import logging
+logger = logging.getLogger(__name__)
 
 
 class RunKeeperService(ServiceBase):
@@ -125,6 +127,7 @@ class RunKeeperService(ServiceBase):
                 exclusions.append(APIExcludeActivity("Missing key in activity data " + str(e), activityId=act["uri"]))
                 continue
 
+            logger.debug("\tActivity s/t " + str(activity.StartTime))
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
@@ -212,6 +215,7 @@ class RunKeeperService(ServiceBase):
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
+        activity.EnsureTZ()
         record = {}
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
