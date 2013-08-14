@@ -7,6 +7,7 @@ from django.core.urlresolvers import reverse
 import pytz
 from datetime import timedelta
 import dateutil.parser
+from dateutil.tz import tzutc
 import requests
 import json
 
@@ -170,13 +171,29 @@ class SportTracksService(ServiceBase):
             res = res.json()
             for act in res["items"]:
                 activity = UploadedActivity()
+                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
 
                 if len(act["name"].strip()):
                     activity.Name = act["name"]
                 activity.StartTime = dateutil.parser.parse(act["start_time"])
-                activity.TZ = pytz.FixedOffset(activity.StartTime.tzinfo._offset.total_seconds() / 60)  # Convert the dateutil lame timezones into pytz awesome timezones.
+                if isinstance(activity.StartTime.tzinfo, tzutc):
+                    activity.TZ = pytz.utc # The dateutil tzutc doesn't have an _offset value.
+                else:
+                    activity.TZ = pytz.FixedOffset(activity.StartTime.tzinfo._offset.total_seconds() / 60)  # Convert the dateutil lame timezones into pytz awesome timezones.
+
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
+
+                # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
+                if activity.TZ == pytz.utc:
+                    # So, we get the first location in the activity and calculate the TZ from that.
+                    try:
+                        firstLocation = self._downloadActivity(serviceRecord, activity, returnFirstLocation=True)
+                    except APIExcludeActivity:
+                        pass
+                    else:
+                        activity.CalculateTZ(firstLocation)
+                        activity.AdjustTZ()
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.Distance = float(act["total_distance"])
@@ -193,7 +210,6 @@ class SportTracksService(ServiceBase):
                     continue
 
                 activity.CalculateUID()
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
                 activities.append(activity)
             if not exhaustive or "next" not in res or not len(res["next"]):
                 break
@@ -201,7 +217,7 @@ class SportTracksService(ServiceBase):
                 pageUri = res["next"]
         return activities, exclusions
 
-    def DownloadActivity(self, serviceRecord, activity):
+    def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
         activityURI = [x["ActivityURI"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
         cookies = self._get_cookies(serviceRecord)
         activityData = requests.get(activityURI, cookies=cookies)
@@ -252,6 +268,9 @@ class SportTracksService(ServiceBase):
             if "elevation" in parallel_indices:
                 waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
 
+            if returnFirstLocation:
+                return waypoint.Location
+
             if "heartrate" in parallel_indices:
                 waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
 
@@ -271,9 +290,15 @@ class SportTracksService(ServiceBase):
 
             activity.Waypoints.append(waypoint)
 
+        if returnFirstLocation:
+            return None  # I guess there were no waypoints?
+
         activity.Waypoints[0].Type = WaypointType.Start
         activity.Waypoints[-1].Type = WaypointType.End
         return activity
+
+    def DownloadActivity(self, serviceRecord, activity):
+        return self._downloadActivity(serviceRecord, activity)
 
     def UploadActivity(self, serviceRecord, activity):
         activity.EnsureTZ()
