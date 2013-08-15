@@ -58,5 +58,26 @@ db.sync_status_stats.insert({
 db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
 
 
+def aggregateCommonErrors():
+    from bson.code import Code
+    # The exception message always appears right before "LOCALS:"
+    map_operation = Code(
+        "function(){"
+            "var errorMatch = new RegExp(/\\n([^\\n]+)\\n\\nLOCALS:/);"
+            "if (!this.SyncErrors) return;"
+            "this.SyncErrors.forEach(function(error){"
+                "emit(error.Message.match(errorMatch)[1],1);"
+            "});"
+        "}"
+        )
+    reduce_operation = Code(
+        "function(key, counts){"
+            "return Array.sum(counts);"
+        "}")
+    db.connections.map_reduce(map_operation, reduce_operation, "common_sync_errors")
+    # We don't need to do anything with the result right now, just leave it there to appear in the dashboard
+
+aggregateCommonErrors()
+
 # Misc cleanup
 db.sync_workers.remove({"Heartbeat": {"$lt": datetime.utcnow()-timedelta(days=7)}})

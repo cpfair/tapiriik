@@ -25,6 +25,12 @@
 			{% endif %}
 		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
+		<li><b>Sync errors:</b>
+			<ul>{% for error in syncErrorSummary %}
+				<li>{{ error|dict_get:'_id' }} ({{ error.value }})</li>
+				{% endfor %}
+			</ul>
+		</li>
 		<li><b>Users with errors:</b> {{ errorUsers|length }}
 			{% if errorUsers|length > 0 %}
 			<ul>{% for errorUser in errorUsers %}

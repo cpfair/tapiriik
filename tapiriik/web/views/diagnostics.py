@@ -55,6 +55,8 @@ def diag_dashboard(req):
     context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(seconds=30)]
     context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
+    context["syncErrorSummary"] = db.common_sync_errors.find().sort("value", -1)
+
 
     return render(req, "diag/dashboard.html", context)
 
