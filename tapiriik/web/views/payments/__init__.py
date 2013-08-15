@@ -10,13 +10,12 @@ logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def payments_ipn(req):
-    raw_data = req.body
+    raw_data = req.body.decode("utf-8")
     raw_data += "&cmd=_notify-validate"
-    req = urllib.request.Request(PP_WEBSCR)
-    req.add_header("Content-type", "application/x-www-form-urlencoded")
-    result = urllib.request.urlopen(req, raw_data)
+    ipnreq = urllib.request.Request(PP_WEBSCR)
+    ipnreq.add_header("Content-type", "application/x-www-form-urlencoded")
+    result = urllib.request.urlopen(ipnreq, raw_data.encode("utf-8"))
     response = result.read().decode("utf-8")
-
     if response != "VERIFIED":
         logger.error("IPN request %s not validated - response %s" % (req.body, response))
         return HttpResponse(status=403)
