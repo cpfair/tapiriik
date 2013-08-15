@@ -55,9 +55,16 @@ def diag_dashboard(req):
     context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(seconds=30)]
     context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
-    context["syncErrorSummary"] = db.common_sync_errors.find().sort("value", -1)
+    syncErrorListing = list(db.common_sync_errors.find().sort("value", -1))
+    syncErrorsAffectingServices = [service for error in syncErrorListing for service in error["value"]["connections"]]
+    syncErrorsAffectingUsers = list(db.users.find({"ConnectedServices.ID": {"$in": syncErrorsAffectingServices}}))
+    syncErrorSummary = []
+    for error in syncErrorListing:
+        serviceSet = set(error["value"]["connections"])
+        affected_users = [user["_id"] for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet]
+        syncErrorSummary.append({"message": error["_id"], "count": int(error["value"]["count"]), "affected_users": affected_users})
 
-
+    context["syncErrorSummary"] = syncErrorSummary
     return render(req, "diag/dashboard.html", context)
 
 

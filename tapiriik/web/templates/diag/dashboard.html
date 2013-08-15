@@ -27,7 +27,7 @@
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
 		<li><b>Sync errors:</b>
 			<ul>{% for error in syncErrorSummary %}
-				<li>{{ error|dict_get:'_id' }} ({{ error.value }})</li>
+				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user %}">{{ affected_user }}</a> {% endfor %}</li>
 				{% endfor %}
 			</ul>
 		</li>
