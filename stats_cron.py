@@ -91,6 +91,3 @@ def aggregateCommonErrors():
     # We don't need to do anything with the result right now, just leave it there to appear in the dashboard
 
 aggregateCommonErrors()
-
-# Misc cleanup
-db.sync_workers.remove({"Heartbeat": {"$lt": datetime.utcnow()-timedelta(days=7)}})
