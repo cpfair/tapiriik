@@ -14,6 +14,7 @@ import os
 import logging
 import pytz
 import re
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +238,15 @@ class StravaService(ServiceBase):
             if response.status_code == 401:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
+
+
+        upload_id = response.json()["id"]
+        while "processed" in response.json()["status"]:
+            time.sleep(1)
+            response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+            logger.debug("Waiting for upload - status %s" % response.json()["status"] )
+            if response.json()["error"]:
+                raise APIException("Strava failed while processing activity - last status %s" % response.text)
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
