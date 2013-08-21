@@ -209,7 +209,6 @@ class StravaService(ServiceBase):
         fields = ["time", "latlng", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
         points = []
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
-        activity.EnsureTZ()
 
         req = { "id": 0,
                 "data_type": "tcx",
@@ -218,7 +217,13 @@ class StravaService(ServiceBase):
                 "activity_type": self._activityTypeMappings[activity.Type],
                 "private": activity.Private}
 
-        tcxData = TCXIO.Dump(activity)
+        if "tcx" in activity.PrerenderedFormats:
+            logger.debug("Using prerendered TCX")
+            tcxData = activity.PrerenderedFormats["tcx"]
+        else:
+            activity.EnsureTZ()
+            tcxData = TCXIO.Dump(activity)
+        # TODO: put the tcx back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
         files = {"file":(req["external_id"] + ".tcx", tcxData)}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
@@ -229,7 +234,7 @@ class StravaService(ServiceBase):
 
 
         upload_id = response.json()["id"]
-        while "processed" in response.json()["status"]:
+        while not response.json()["activity_id"]:
             time.sleep(1)
             response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
             logger.debug("Waiting for upload - status %s" % response.json()["status"] )

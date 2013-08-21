@@ -140,6 +140,9 @@ class Sync:
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
 
+                prerenderedFormats = act.PrerenderedFormats
+                prerenderedFormats.update(existElsewhere[0].PrerenderedFormats)
+                existElsewhere[0].PrerenderedFormats = prerenderedFormats  # I bet this is gonna kill the RAM usage.
                 existElsewhere[0].UploadedTo += act.UploadedTo
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
                 act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters

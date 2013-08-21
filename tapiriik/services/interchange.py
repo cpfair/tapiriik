@@ -52,6 +52,7 @@ class Activity:
         self.TZ = tz
         self.Name = name
         self.Private = private
+        self.PrerenderedFormats = {}
 
     def CalculateUID(self):
         if not self.StartTime:
