@@ -10,7 +10,7 @@ class TCXIO:
     Namespaces = {
         None: "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2",
         "ns2": "http://www.garmin.com/xmlschemas/UserProfile/v2",
-        "ns3": "http://www.garmin.com/xmlschemas/ActivityExtension/v2",
+        "tpx": "http://www.garmin.com/xmlschemas/ActivityExtension/v2",
         "ns4": "http://www.garmin.com/xmlschemas/ProfileExtension/v1",
         "ns5": "http://www.garmin.com/xmlschemas/ActivityGoals/v1",
         "xsi": "http://www.w3.org/2001/XMLSchema-instance"
@@ -46,7 +46,7 @@ class TCXIO:
         for xlap in xlaps:
             beginSeg = True
             xtrkseg = xlap.find("tcx:Track", namespaces=ns)
-            if not xtrkseg:
+            if xtrkseg is None:
                 # Some TCX files have laps with no track - not sure if it's valid or not.
                 continue
             for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
@@ -64,7 +64,7 @@ class TCXIO:
                 if endTime is None or wp.Timestamp > endTime:
                     endTime = wp.Timestamp
                 xpos = xtrkpt.find("tcx:Position", namespaces=ns)
-                if xpos:
+                if xpos is not None:
                     wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
                 eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
                 if eleEl is not None:
@@ -76,6 +76,13 @@ class TCXIO:
                 cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
                 if cadEl is not None:
                     wp.Cadence = int(cadEl.text)
+                extsEl = xtrkpt.find("tcx:Extensions", namespaces=ns)
+                if extsEl is not None:
+                    tpxEl = extsEl.find("tpx:TPX", namespaces=ns)
+                    if tpxEl is not None:
+                        powerEl = tpxEl.find("tpx:Watts", namespaces=ns)
+                        if powerEl is not None:
+                            wp.Power = float(powerEl.text)
                 act.Waypoints.append(wp)
         if not len(act.Waypoints):
             raise ValueError("No waypoints in TCX")
@@ -89,6 +96,8 @@ class TCXIO:
         return act
 
     def Dump(activity):
+
+        TRKPTEXT = "{%s}" % TCXIO.Namespaces["tpx"]
         root = etree.Element("TrainingCenterDatabase", nsmap=TCXIO.Namespaces)
         activities = etree.SubElement(root, "Activities")
         act = etree.SubElement(activities, "Activity")
@@ -177,5 +186,9 @@ class TCXIO:
                 etree.SubElement(xhr, "Value").text = str(int(wp.HR))
             if wp.Cadence is not None:
                 etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
+            if wp.Power is not None:
+                exts = etree.SubElement(trkpt, "Extensions")
+                gpxtpxexts = etree.SubElement(exts, TRKPTEXT + "TPX")
+                etree.SubElement(gpxtpxexts, TRKPTEXT + "Watts").text = str(int(wp.Power))
         finishLap(wp)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
