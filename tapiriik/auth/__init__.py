@@ -51,6 +51,7 @@ class User:
         return False
 
     def ConnectService(user, serviceRecord):
+        from tapiriik.sevices import Service
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord._id)})
         if "ConnectedServices" not in user:
             user["ConnectedServices"] = []
