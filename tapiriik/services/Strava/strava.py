@@ -4,6 +4,7 @@ from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.tcx import TCXIO
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -209,31 +210,18 @@ class StravaService(ServiceBase):
         points = []
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
         activity.EnsureTZ()
-        for wp in activity.Waypoints:
-            wpTime = wp.Timestamp.astimezone(pytz.utc)
-            points.append([calendar.timegm(wpTime.timetuple()),
-                            [wp.Location.Latitude if wp.Location is not None else "", wp.Location.Longitude if wp.Location is not None else ""],
-                            wp.Location.Altitude if wp.Location is not None else "",
-                            "pause" if wp.Type == WaypointType.Pause else None,
-                            wp.HR,
-                            wp.Cadence,
-                            wp.Power,
-                            wp.Temp
-                            ])
-        logger.info("First wp unix ts " + str(points[0][0]))
+
         req = { "id": 0,
-                "activity_id": 0,
-                "sample_rate": 0,
-                "start_date": points[0][0],
-                "data_type": "json",
+                "data_type": "tcx",
                 "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
-                "data": json.dumps([{"fields": fields, "values": points}]),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
-                "time_series_field": "time",
                 "private": activity.Private}
 
-        response = requests.post("http://www.strava.com/api/v3/uploads", data=req, headers=self._apiHeaders(serviceRecord)) #{"Content-Type": "application/json"}
+        tcxData = TCXIO.Dump(activity)
+        files = {"file":(req["external_id"] + ".tcx", tcxData)}
+
+        response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
         if response.status_code != 201:
             if response.status_code == 401:
                 raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
