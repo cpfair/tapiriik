@@ -71,6 +71,12 @@ def diag_dashboard(req):
 @diag_requireAuth
 def diag_user(req, user):
     userRec = db.users.find_one({"_id": ObjectId(user)})
+    if not userRec:
+        userRec = db.users.find_one({"AncestorAccounts": ObjectId(user)})
+        if userRec:
+            return redirect("diagnostics_user", user=userRec["_id"])
+    if not userRec:
+        return render(req, "diag/error_user_not_found.html")
     delta = False
     if "sync" in req.POST:
         Sync.ScheduleImmediateSync(userRec, req.POST["sync"] == "Full")
