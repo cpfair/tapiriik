@@ -130,6 +130,12 @@ def diag_unsu(req):
     else:
         return redirect("dashboard")
 
+@diag_requireAuth
+def diag_payments(req):
+    payments = list(db.payments.find())
+    for payment in payments:
+        payment["Accounts"] = [x["_id"] for x in db.users.find({"Payments.Txn": payment["Txn"]}, {"_id":1})]
+    return render(req, "diag/payments.html", {"payments": payments})
 
 def diag_login(req):
     if "password" in req.POST:

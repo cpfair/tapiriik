@@ -1,0 +1,23 @@
+{% extends "site.html" %}
+{% load displayutils %}
+{% block title %}payments{% endblock %}
+{% block content %}
+
+<table>
+	<tr>
+		<th>Txn</th>
+		<th>Timestamp</th>
+		<th>Expiry</th>
+		<th>Associated accounts</th>
+	</tr>
+	{% for payment in payments %}
+	<tr>
+		<td>{{ payment.Txn }}</td>
+		<td>{{ payment.Timestamp }}</td>
+		<td>{{ payment.Expiry }}</td>
+		<td>{% for account in payment.Accounts %}<a href="{% url 'diagnostics_user' user=account %}">{{ account }} </a>{% endfor %}</td>
+	</tr>
+	{% endfor %}
+</table>
+
+{% endblock %}
