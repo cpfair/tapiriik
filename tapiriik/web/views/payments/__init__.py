@@ -26,7 +26,7 @@ def payments_ipn(req):
         logger.error("IPN request %s not complete" % req.POST)
         return HttpResponse()
     logger.info("IPN request %s OK" % str(req.POST))
-    payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"])
+    payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"], rawIPNData=raw_data, initialAssociatedAccount=req.POST["custom"])
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
     return HttpResponse()

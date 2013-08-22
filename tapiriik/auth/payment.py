@@ -4,13 +4,13 @@ from tapiriik.settings import PAYMENT_AMOUNT, PAYMENT_SYNC_DAYS
 
 
 class Payments:
-    def LogPayment(id, amount=None):
+    def LogPayment(id, amount, rawIPNData, initialAssociatedAccount):
         # pro-rate their expiry date
         expires_in_days = min(PAYMENT_SYNC_DAYS, float(amount) / float(PAYMENT_AMOUNT) * float(PAYMENT_SYNC_DAYS))
         # would use upsert, except that would reset the timestamp value
         existingRecord = db.payments.find_one({"Txn": id})
         if existingRecord is None:
-            existingRecord = {"Txn": id, "Timestamp": datetime.utcnow(), "Expiry": datetime.utcnow() + timedelta(days=expires_in_days)}
+            existingRecord = {"Txn": id, "Timestamp": datetime.utcnow(), "Expiry": datetime.utcnow() + timedelta(days=expires_in_days), "Amount": amount, "IPN": rawIPNData, "InitialAssociatedAccount": initialAssociatedAccount}
             db.payments.insert(existingRecord)
         return existingRecord
 
