@@ -219,8 +219,10 @@ class DropboxService(ServiceBase):
                     try:
                         act, rev = self._getActivity(svcRec, dbcl, path)
                     except APIExcludeActivity as e:
+                        logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(e)
                         continue
+                    del act.Waypoints
                     act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 act.UploadedTo = [{"Connection": svcRec, "Path": path}]
