@@ -228,6 +228,9 @@ class DropboxService(ServiceBase):
                 act.Tagged = tagRes is not None
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
+
+                logger.debug("Activity s/t %s" % act.StartTime)
+
                 activities.append(act)
 
         cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, cache, upsert=True)
