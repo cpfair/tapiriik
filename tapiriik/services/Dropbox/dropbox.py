@@ -6,11 +6,11 @@ from tapiriik.services.gpx import GPXIO
 from tapiriik.database import cachedb
 from dropbox import client, rest, session
 from django.core.urlresolvers import reverse
-from bson.binary import Binary
-import zlib
 import re
 import lxml
 from datetime import datetime
+import logging
+logger = logging.getLogger(__name__)
 
 class DropboxService(ServiceBase):
     ID = "dropbox"
@@ -148,13 +148,30 @@ class DropboxService(ServiceBase):
                 return act
         return None
 
-    def _getActivity(self, dbcl, path):
+    def _getActivity(self, serviceRecord, dbcl, path):
+        activityData = None
+
         try:
             f, metadata = dbcl.get_file_and_metadata(path)
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
+
+        cachedActivityRecord = cachedb.dropbox_activity_cache.find_one({"ExternalID":serviceRecord.ExternalID, "Path": path})
+        if cachedActivityRecord:
+            if cachedActivityRecord["Rev"] != metadata["rev"]:
+                logger.debug("Outdated cache hit on %s" % path)
+                cachedb.dropbox_activity_cache.remove(cachedActivityRecord)
+            else:
+                logger.debug("Cache hit on %s" % path)
+                activityData = cachedActivityRecord["Data"]
+                cachedb.dropbox_activity_cache.update(cachedActivityRecord, {"$set":{"Valid": datetime.utcnow()}})
+
+        if not activityData:
+            activityData = f.read()
+            cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
+
         try:
-            act = GPXIO.Parse(f.read())
+            act = GPXIO.Parse(activityData)
         except ValueError as e:
             raise APIExcludeActivity("Invalid GPX " + str(e), activityId=path)
         except lxml.etree.XMLSyntaxError as e:
@@ -200,10 +217,11 @@ class DropboxService(ServiceBase):
                 else:
                     # get the full activity
                     try:
-                        act, rev = self._getActivity(dbcl, path)
+                        act, rev = self._getActivity(svcRec, dbcl, path)
                     except APIExcludeActivity as e:
                         exclusions.append(e)
                         continue
+                    act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 act.UploadedTo = [{"Connection": svcRec, "Path": path}]
                 tagRes = self._tagActivity(relPath)
@@ -225,7 +243,7 @@ class DropboxService(ServiceBase):
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
             path = [x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
             dbcl = self._getClient(serviceRecord)
-            fullActivity, rev = self._getActivity(dbcl, path)
+            fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
             fullActivity.Tagged = activity.Tagged
             fullActivity.Type = activity.Type
             fullActivity.UploadedTo = activity.UploadedTo
@@ -265,3 +283,4 @@ class DropboxService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.dropbox_cache.remove({"ExternalID": serviceRecord.ExternalID})
+        cachedb.dropbox_activity_cache.remove({"ExternalID": serviceRecord.ExternalID})
