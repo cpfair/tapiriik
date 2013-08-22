@@ -32,7 +32,7 @@ class GPXIO:
                 act.Name = xname.text
         xtrk = root.find("gpx:trk", namespaces=ns)
 
-        if not xtrk:
+        if xtrk is not None:
             raise ValueError("Invalid GPX")
 
         xtrksegs = xtrk.findall("gpx:trkseg", namespaces=ns)
