@@ -188,4 +188,7 @@ DIAG_AUTH_TOTP_SECRET = DIAG_AUTH_PASSWORD = None
 
 SPORTTRACKS_OPENFIT_ENDPOINT = "http://demo.openfitapi.com/openfitapi/api"
 
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = './sent_emails'
+
 from .local_settings import *

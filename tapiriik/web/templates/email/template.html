@@ -1,0 +1,111 @@
+{% if not plaintext %}<html>
+	<head>
+		<style>
+		body, html {
+			margin:0;
+			padding:0;
+			font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
+			background-color:#c0deed;
+		}
+		a {
+			color:#444;
+		}
+		table, tr, td, img {
+			border-spacing: 0;
+			border-collapse: collapse;
+			vertical-align: bottom;
+			border:0;
+			outline:0;
+			padding:0;
+		}
+		table {
+			width:100%;
+		}
+		td {
+			vertical-align: top;
+			text-align: left;
+		}
+		img {
+			display: block;
+		}
+		.outerBorder {
+			background-color:#d3e9f2;
+		}
+		.corner {
+			height:24px;
+			width:24px;
+			min-width:24px;
+			max-width:24px;
+			min-height:24px;
+			max-height:24px;
+		}
+
+		</style>
+	</head>
+<body>
+	<table bgcolor="#c0deed">
+		<tr>
+			<td style="height:50px;">&nbsp;</td>
+		</tr>
+		<tr>
+			<td style="width:50%">&nbsp;</td> <!--  pad -->
+			<td>&nbsp;</td> <!--  outer -->
+			<td>&nbsp;</td> <!--  inner pad -->
+			<td style="min-width:500px">
+				<center><img width="300" height="128" src="{{ STATIC_URL }}img/email/tapiriik-wordmark.gif" alt="tapiriik" style="width:300px;" /></center>
+			</td>
+			<td>&nbsp;</td> <!--  inner pad -->
+			<td>&nbsp;</td> <!--  outer -->
+			<td style="width:50%">&nbsp;</td> <!--  pad -->
+		</tr>
+		<tr>
+			<td style="height:10px;">&nbsp;</td>
+		</tr>
+		<tr style="font-size:1px">
+			<td>&nbsp;</td>
+			<td class="corner" rowspan="2" colspan="2"><img src="{{ STATIC_URL }}img/email/corner_tl.gif"/></td>
+			<td class="outerBorder" height="15px;">&nbsp;</td>
+			<td class="corner" rowspan="2" colspan="2"><img src="{{ STATIC_URL }}img/email/corner_tr.gif"/></td>
+		</tr>
+		<tr style="font-size:1px">
+			<td>&nbsp;</td>
+			<td style="background-color:white">&nbsp;</td>
+		</tr>
+
+		<tr>
+			<td>&nbsp;</td>
+			<td class="outerBorder" width="15px">&nbsp;</td>
+			<td style="background-color:white; width:9px">&nbsp;</td>
+			<td style="background-color:white;"><div style="margin:20px;text-align:center;">
+				{% block content %}{% endblock %}
+			</div></td>
+			<td style="background-color:white; width:9px">&nbsp;</td>
+			<td class="outerBorder" width="15px">&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+
+		<tr style="font-size:1px;min-height:9px;height:9px;max-height:9px;">
+			<td>&nbsp;</td>
+			<td class="corner" rowspan="2" colspan="2"><img src="{{ STATIC_URL }}img/email/corner_bl.gif"/></td>
+			<td style="background-color:white;height:9px;"><img src="{{ STATIC_URL }}img/email/trans.gif" height="9px"/></td>
+			<td class="corner" rowspan="2" colspan="2"><img src="{{ STATIC_URL }}img/email/corner_br.gif"/></td>
+		</tr>
+
+		<tr style="font-size:1px">
+			<td>&nbsp;</td>
+			<td class="outerBorder" style="height:15px;">&nbsp;</td>
+		</tr>
+		<tr>
+			<td style="height:10px;">&nbsp;</td>
+		</tr>
+		<tr>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td style="text-align:center;color:white;">Questions? <a style="color:white" href="mailto:contact@tapiriik.com">Email me</a> or reply to this email.</td><br/>&nbsp;
+		</tr>
+	</table>
+</html>{% else %}{% block plaintextcontent %}{% endblock %}
+
+
+Questions? Email me at contact@tapiriik.com{% endif %}
