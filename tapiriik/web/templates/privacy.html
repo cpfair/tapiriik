@@ -1,0 +1,58 @@
+{% extends "site.html" %}
+{% block title %}privacy{% endblock %}
+{% block content %}
+<div class="privacyPage">
+<h1>tapiriik stores...</h1>
+<table class="privacyTable">
+	<tr class="headers">
+		<th></th>
+		<th>Your <b>email</b></th>
+		<th>Your <b>password</b><sup>1</sup></th>
+		<th>Access <b>tokens</b></th>
+		<th>Activity <b>metadata</b></th>
+		<th>Activity <b>data</b></th>
+	</tr>
+	{% for service in services %}
+	<tr class="{% cycle 'odd' '' %}">
+		<td class="serviceCol"><img src="{{ STATIC_URL }}img/services/{{ service.ID }}.png" alt="{{ service.DisplayName }}"></td>
+		<td>{{ service.email|safe }}</td>
+		<td>{{ service.password|safe }}</td>
+		<td>{{ service.tokens|safe }}</td>
+		<td>{{ service.metadata|safe }}</td>
+		<td>{{ service.data|safe }}</td>
+	</tr>
+	{% endfor %}
+	<tr class="{% if services|length|divisibleby:2 %}odd{% endif %}">
+		<td class="serviceCol" style="font-size:140%">Automatic Sync</td>
+		<td><span class="policy yes">Yes</span><sup>2</sup></td>
+		<td colspan="4">N/A</td>
+	</tr>
+</table>
+
+<h2>...until you disconnect your account or they are no longer needed, whichever is sooner</h2>
+
+<div class="explanations">
+	<div class="explanation">
+	<div class="header"><span>What are</span>Access tokens?</div>
+	<p>Access tokens allow tapiriik to <b>perform actions on your behalf</b>. By using access tokens, tapiriiknever needs to store your username or password. In order to obtain an access token, tapiriik may need to ask for your credentials - which are erased immediately after being exchanged for an access token.</p>
+	</div>
+
+	<div class="explanation">
+	<div class="header"><span>What is</span>Activity metadata?</div>
+	<p>Activity Medatada are the basic details of any activity: <b>start time, time zone, duration, distance, and type</b>. tapiriik needs to store this information to determine which activities should be synchronized to each of your accounts.</p>
+	</div>
+
+	<div class="explanation">
+	<div class="header"><span>What constitutes</span>Activity data?</div>
+	<p>Activity data is the complete record of an activity: <b>the GPS track, sensor data, and all metadata</b>. To improve synchronization performance, tapiriik temporarily stores (caches) this data from your DropBox account.</p>
+	</div>
+</div>
+
+<div style="clear:both;"></div>
+
+<p style="text-align:left;"><sup>1</sup> I've done a good deal to keep your password safe, but there has to be a way for tapiriik to use it to sync your account. Therefore, anyone with enough access and resources to the tapiriik database and servers could access it, too.</p>
+
+<p style="text-align:left;"><sup>2</sup> The email address you used to pay is stored until the payment expires, allowing you to transfer or recover your payment.</p>
+
+</div>
+{% endblock %}

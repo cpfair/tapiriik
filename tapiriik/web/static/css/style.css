@@ -775,6 +775,97 @@ form.dropboxConfig {
 	border-bottom-right-radius:5px;
 }
 
+.privacyTable {
+	width:100%;
+	border-spacing: 0;
+}
+
+.privacyTable .headers {
+	background-color:#8ec1da;
+	vertical-align: bottom;
+}
+
+.privacyTable th {
+	color:white;
+	font-weight: normal;
+	font-size:25px;
+	padding:10px 0;
+}
+
+.privacyTable .serviceCol {
+	color:white;
+	background-color:#8ec1da;
+	padding:10px 0;
+	width:190px;
+	height:38px;
+}
+
+.privacyTable tr.odd .serviceCol {
+	opacity:0.9;
+}
+
+.privacyTable tr.odd {
+	background-color:#E6F7FF;
+}
+
+.privacyTable tr:first-child th:first-child {
+	border-top-left-radius: 5px;
+}
+
+.privacyTable tr:first-child th:last-child {
+	border-top-right-radius: 5px;
+}
+
+.privacyTable tr:last-child td:first-child {
+	border-bottom-left-radius: 5px;
+}
+
+.privacyTable tr:last-child td:last-child {
+	border-bottom-right-radius: 5px;
+}
+
+.privacyTable .policy {
+	padding-left:18px;
+	background-repeat: no-repeat;
+	background-position: left center;
+}
+.privacyTable .policy.optin {
+	background-image:url('../img/privacy-optin.png');
+}
+
+.privacyTable .policy.no {
+	display: inline-block;
+	background-image:url('../img/privacy-no.png');
+	text-indent:-9999px;
+}
+
+.privacyTable .policy.yes {
+	display: inline-block;
+	background-image:url('../img/privacy-yes.png');
+	text-indent:-9999px;
+}
+
+.privacyTable .policy.cached {
+	background-image:url('../img/privacy-cached.png');
+}
+
+.privacyPage .explanation {
+	width:29%;
+	margin:0 2%;
+	float:left;
+	text-align: left;
+}
+
+.privacyPage .explanation .header {
+	font-size:30px;
+	margin-bottom:-15px;
+}
+
+.privacyPage .explanation .header span {
+	display:block;
+	font-size:70%;
+}
+
 @media only screen and (max-device-width: 480px) {
 	.contentOuterBorder {
 		width:90%;

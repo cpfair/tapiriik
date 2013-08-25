@@ -45,8 +45,9 @@ urlpatterns = patterns('',
     url(r'^payments/return$', 'tapiriik.web.views.payments_return', {}, name='payments_return'),
     url(r'^payments/ipn$', 'tapiriik.web.views.payments_ipn', {}, name='payments_ipn'),
 
+    url(r'^privacy$', 'tapiriik.web.views.privacy.privacy', name='privacy'),
+
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
-    url(r'^privacy$', TemplateView.as_view(template_name='static/privacy.html'), name='privacy'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),
     # Examples:
     # url(r'^$', 'tapiriik.views.home', name='home'),
