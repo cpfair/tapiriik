@@ -1,0 +1,13 @@
+{% extends "email/template.html" %}
+{% block content %}
+<h1><a href="{{ url|safe }}">Click here to reclaim your payment</a></h1>
+<p>Your payment will be reclaimed &amp; associated with the services you are currently connected to, and any you connect in the future.</p>
+{% endblock %}
+{% block plaintextcontent %}
+Use the following link to to reclaim your payment:
+
+{{ url|safe }}
+
+Your payment will be reclaimed & transferred to the services you are currently connected to, and any you connect in the future.
+
+{% endblock %}

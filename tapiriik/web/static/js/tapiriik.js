@@ -97,6 +97,9 @@ tapiriik.AddressChanged=function(){
 	} else if (components[0]=="payments" && components[1]=="claim"){
 		tapiriik.OpenPaymentReclaimDialog();
 		return;
+	} else if (components[0]=="payments" && components[1]=="claimed"){
+		tapiriik.OpenPaymentReclaimCompletedDialog();
+		return;
 	} else if (components[0]=="configure") {
 		if (components[1]=="dropbox" && components[2]=="setup"){
 			if (tapiriik.ServiceInfo.dropbox.AccessLevel == "full"){
@@ -427,7 +430,7 @@ tapiriik.PaymentReclaimDialogLinkClicked = function(){
 };
 
 tapiriik.OpenPaymentReclaimDialog = function(){
-	var form = $("<form><center><div class=\"error\">Unknown Transaction ID</div><label for=\"txn\" style=\"margin-bottom:7px\">PayPal Transaction ID</label><input type=\"text\" style=\"width:220px;text-align:center;\" placeholder=\"VADE0B248932\" id=\"txn\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>Your payment will be reassociated with the accounts you a currently connected to</p></center></form>");
+	var form = $("<form><center><div class=\"error\">Unknown email address</div><label for=\"email\" style=\"margin-bottom:7px\">Your PayPal email address</label><input type=\"text\" autofocus style=\"width:300px;text-align:center;\" placeholder=\"remycarrier@gmail.com\" id=\"email\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>Your payment will be reassociated with the accounts you<br/>are currently connected to, and any you connect in the future.</p></center></form>");
 	var pending = false;
 	form.bind("submit", function(){
 		if (pending) return false;
@@ -435,10 +438,9 @@ tapiriik.OpenPaymentReclaimDialog = function(){
 		$("button",form).addClass("disabled");
 		$.ajax({url:"/payments/claim-ajax",
 				type:"POST",
-				data:{txn: $("#txn",form).val()},
+				data:{email: $("#email",form).val()},
 				success: function(){
-					$.address.value("/");
-					window.location.reload();
+					tapiriik.OpenPaymentReclaimInitiatedDialog($("#email",form).val());
 				},
 				error: function(data){
 					$(".error",form).show();
@@ -446,6 +448,30 @@ tapiriik.OpenPaymentReclaimDialog = function(){
 				pending = false;
 				}});
 		return false;
+	});
+	tapiriik.CreateServiceDialog("tapiriik",form);
+};
+
+tapiriik.OpenPaymentReclaimInitiatedDialog = function(email){
+	var form = $("<center><h1>The email is on its way</h1>An email has been sent to <b><span class=\"email\"></span></b> with a link to reclaim your payment.<br/>Don't have access to <b><span class=\"email\"></span></b> any more? <a href=\"mailto:contact@tapiriik.com\">Get in touch</a><br/><button id=\"acknowledge\">I'll be waiting</button></center>");
+	$(".email", form).text(email);
+	$("#acknowledge", form).click(function(){
+		$.address.value("");
+	});
+	setInterval(function(){
+		$.ajax({"url":"/payments/claim-wait-ajax", success:function(data){
+			if (!data.claimed) return;
+			$.address.value("");
+			window.location.reload();
+		}});
+	}, 1000);
+	tapiriik.CreateServiceDialog("tapiriik",form);
+};
+
+tapiriik.OpenPaymentReclaimCompletedDialog = function(){
+	var form = $("<center><h1>You're good to go!</h1>Your payment has been reclaimed &amp; associated with the services you are currently connected to, and any you connect in the future.<br/><button id=\"acknowledge\">Great</button></center>");
+	$("#acknowledge", form).click(function(){
+		$.address.value("");
 	});
 	tapiriik.CreateServiceDialog("tapiriik",form);
 };
@@ -466,9 +492,15 @@ tapiriik.DoDismissConfigPanel = function(){
 	});
 };
 
+tapiriik.PageOpened = new Date();
+
 tapiriik.CreateServiceDialog = function(serviceID, contents) {
+	var animationMultiplier = 1;
+	if ((new Date()) - tapiriik.PageOpened < 1000){
+		animationMultiplier = 0;
+	}
 	if ($(".dialogWrap").size()>0){
-		$(".dialogWrap").fadeOut(100, function(){
+		$(".dialogWrap").fadeOut(100 * animationMultiplier, function(){
 			$(".dialogWrap").remove();
 			tapiriik.CreateServiceDialog(serviceID, contents);
 		});
@@ -486,8 +518,8 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 	popover.css({"position":"relative", "width":"100%"});
 	var dialogWrap = $("<div>").addClass("dialogWrap").append(icon).append(popover).hide();
 	$(".contentWrap").append(dialogWrap);
-	$(".mainBlock").fadeOut(250, function(){
-		$(dialogWrap).fadeIn();
+	$(".mainBlock").fadeOut(250 * animationMultiplier, function(){
+		$(dialogWrap).fadeIn(250 * animationMultiplier);
 	});
 };
 

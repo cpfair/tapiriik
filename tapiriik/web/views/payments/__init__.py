@@ -3,8 +3,11 @@ from tapiriik.auth import Payments, User
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.core.urlresolvers import reverse
 import urllib.request
 import logging
+import json
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ def payments_ipn(req):
         logger.error("IPN request %s not complete" % req.POST)
         return HttpResponse()
     logger.info("IPN request %s OK" % str(req.POST))
-    payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"], rawIPNData=raw_data, initialAssociatedAccount=req.POST["custom"])
+    payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"], initialAssociatedAccount=req.POST["custom"], email=req.POST["payer_email"])
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
     return HttpResponse()
@@ -42,21 +45,38 @@ def payments_claim(req):
     err = False
     if req.user is None:
         return redirect("/")
-    if "txn" in req.POST:
-        if payments_claim_do(req.user, req.POST["txn"]):
+    if "email" in req.POST:
+        if payments_claim_initiate(req, req.user, req.POST["email"]):
             return redirect("/")
         else:
             err = True
     return render(req, "payments/claim.html", {"err": err})
 
 def payments_claim_ajax(req):
-    if req.user is None or not payments_claim_do(req.user, req.POST["txn"]):
-        return HttpResponse(status=403)
+    if req.user is None or not payments_claim_initiate(req, req.user, req.POST["email"]):
+        return HttpResponse(status=404)
     return HttpResponse()
 
-def payments_claim_do(user, txnId):
-    payment = Payments.GetPayment(txnId)
+def payments_claim_initiate(request, user, email):
+    payment = Payments.GetPayment(email=email)
     if payment is None:
         return False
-    User.AssociatePayment(user, payment)
+    claim_code = Payments.GenerateClaimCode(user, payment)
+    reclaim_url = request.build_absolute_uri(reverse("payments_claim_return", kwargs={"code": claim_code}))
+    from tapiriik.web.email import generate_message_from_template, send_email
+    message, plaintext_message = generate_message_from_template("email/payment_reclaim.html", {"url":reclaim_url})
+    send_email(email, "Reclaim your payment on tapiriik.com", message, plaintext_message=plaintext_message)
     return True
+
+def payments_claim_wait_ajax(request):
+    if request.user is None:
+        return HttpResponse(status=404)
+    return HttpResponse(json.dumps({"claimed": not Payments.HasOutstandingClaimCode(request.user)}), content_type="application/json")
+
+def payments_claim_return(request, code):
+    user, payment = Payments.ConsumeClaimCode(code)
+    if not payment:
+        return render(request, "payments/claim_return_fail.html")
+    User.AssociatePayment(user, payment)
+    User.Login(user, request)  # In case they somehow managed to log out - they've proved their identity.
+    return redirect("/#/payments/claimed")
