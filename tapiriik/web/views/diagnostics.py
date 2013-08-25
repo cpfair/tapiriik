@@ -62,7 +62,7 @@ def diag_dashboard(req):
     for error in syncErrorListing:
         serviceSet = set(error["value"]["connections"])
         affected_users = [user["_id"] for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet]
-        syncErrorSummary.append({"message": error["_id"], "count": int(error["value"]["count"]), "affected_users": affected_users})
+        syncErrorSummary.append({"message": error["exemplar"], "count": int(error["value"]["count"]), "affected_users": affected_users})
 
     context["syncErrorSummary"] = syncErrorSummary
     return render(req, "diag/dashboard.html", context)

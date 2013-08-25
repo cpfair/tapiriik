@@ -67,7 +67,8 @@ def aggregateCommonErrors():
             "if (!this.SyncErrors) return;"
             "var id = this._id;"
             "this.SyncErrors.forEach(function(error){"
-                "emit(error.Message.match(errorMatch)[1],{count:1, connections:[id]});"
+                "var message = error.Message.match(errorMatch)[1];"
+                "emit(message.substring(0, 60),{count:1, connections:[id], exemplar:message});"
             "});"
         "}"
         )
@@ -75,17 +76,13 @@ def aggregateCommonErrors():
         "function(key, item){"
             "var reduced = {count:0, connections:[]};"
             "var connection_collections = [];"
-            "print('reducing');"
             "item.forEach(function(error){"
                 "reduced.count+=error.count;"
+                "reduced.exemplar = error.exemplar;"
                 "connection_collections.push(error.connections);"
             "});"
             "reduced.connections = reduced.connections.concat.apply(reduced.connections, connection_collections);"
             "return reduced;"
-        "}")
-    finalize_operation = Code(
-        "function(key, contents){"
-            "return contents.count;"
         "}")
     db.connections.map_reduce(map_operation, reduce_operation, "common_sync_errors") #, finalize=finalize_operation
     # We don't need to do anything with the result right now, just leave it there to appear in the dashboard
