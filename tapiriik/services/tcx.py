@@ -30,7 +30,13 @@ class TCXIO:
             root = etree.fromstring(tcxData)
 
 
-        xact = root.find("tcx:Activities", namespaces=ns).find("tcx:Activity", namespaces=ns)
+        xacts = root.find("tcx:Activities", namespaces=ns)
+        if xacts is None:
+            raise ValueError("No activities element in TCX")
+
+        xact = xacts.find("tcx:Activity", namespaces=ns)
+        if xact is None:
+            raise ValueError("No activity element in TCX")
 
         if not act.Type:
             if xact.attrib["Sport"] == "Biking":
