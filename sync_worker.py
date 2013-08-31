@@ -1,4 +1,5 @@
 from tapiriik.sync import Sync
+from tapiriik.sync.requests_lib import patch_requests_with_default_timeout
 from tapiriik.database import db
 import time
 import datetime
@@ -25,6 +26,8 @@ def sync_heartbeat():
 print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
 db.sync_workers.update({"Process": os.getpid()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Version": WorkerVersion}, upsert=True)
 sys.stdout.flush()
+
+patch_requests_with_default_timeout(timeout=60)
 
 while Run:
     Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
