@@ -225,8 +225,8 @@ class DropboxService(ServiceBase):
                     del act.Waypoints
                     act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
-                act.UploadedTo = [{"Connection": svcRec, "Path": path, "Tagged":act.Tagged}]
                 tagRes = self._tagActivity(relPath)
+                act.UploadedTo = [{"Connection": svcRec, "Path": path, "Tagged":tagRes is not None}]
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
 
