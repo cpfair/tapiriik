@@ -295,6 +295,8 @@ class Location:
         self.Datum = "WGS84"  # might eventually need to make this... better
 
     def __eq__(self, other):
+        if not other:
+            return False
         return self.Latitude == other.Latitude and self.Longitude == other.Longitude and self.Altitude == other.Altitude and self.Datum == other.Datum
 
     def __ne__(self, other):
