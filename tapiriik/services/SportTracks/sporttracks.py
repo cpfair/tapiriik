@@ -337,7 +337,7 @@ class SportTracksService(ServiceBase):
         activityData["elevation"] = elevation_stream
         activityData["heartrate"] = heartrate_stream
         activityData["location"] = location_stream
-        activityData["laps"] = [x.isoformat() for x in lap_starts]
+        activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
         activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
         cookies = self._get_cookies(serviceRecord)
