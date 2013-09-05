@@ -118,15 +118,13 @@ class EndomondoService(ServiceBase):
 
         ###     TRACK RECORDS     ###
         # timestamp;
-        # type (2=start, maybe?, 3=end, 0=pause, 1=resume);
+        # type (2=start, 3=end, 0=pause, 1=resume);
         # latitude;
         # longitude;
         #;
         #;
         # alt;
         # hr;
-        hasStartWpt = False
-        hasEndWpt = False
         wptsWithLocation = False
         wptsWithNonZeroAltitude = False
         rows = recordText.split("\n")
@@ -141,13 +139,9 @@ class EndomondoService(ServiceBase):
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
-                if not hasStartWpt:  # Used to check for type=2, but sometimes the "start" happened twice, or was the second waypoint. Who knows.
+                if split[1] == "2":
                     wp.Type = WaypointType.Start
-                    hasStartWpt = True
                 elif split[1] == "3":
-                    if hasEndWpt:
-                        raise ValueError("Multiple end waypoints")
-                    hasEndWpt = True
                     wp.Type = WaypointType.End
                 elif split[1] == "0":
                     wp.Type = WaypointType.Pause
@@ -173,7 +167,7 @@ class EndomondoService(ServiceBase):
                 activity.Waypoints.append(wp)
                 if wptsWithLocation and minimumWaypoints:
                     break
-
+        activity.Waypoints = sorted(activity.Waypoints, key=lambda v: v.Timestamp)
         if wptsWithLocation:
             activity.EnsureTZ()
             if not wptsWithNonZeroAltitude:  # do this here so, should the activity run near sea level, altitude data won't be spotty
