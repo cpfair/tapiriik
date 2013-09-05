@@ -630,6 +630,10 @@ a img {
 form.dropboxConfig {
 	max-width:377px; /* magic # */
 }
+
+form.dropboxConfig label {
+	margin-top:10px;
+}
 #folderList {
 	margin:10px 0;
 	font-size:130%;
@@ -691,7 +695,15 @@ form.dropboxConfig {
 	padding-right:20px; /* sort of account for scrollbar */
 }
 
-.faqBlocks {
+#reauth_up, #reauth_down, #reauth_up a, #reauth_down a {
+	color:#666;
+	font-size:19px;
+}
+
+.dropboxConfig .format {
+	font-family: monospace;
+	display: inline;
+	font-size:100%;
 }
 
 .faqBlocks div {

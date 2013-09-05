@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.gpx import GPXIO
+from tapiriik.services.tcx import TCXIO
 from tapiriik.database import cachedb
 from dropbox import client, rest, session
 from django.core.urlresolvers import reverse
@@ -36,7 +37,7 @@ class DropboxService(ServiceBase):
         ActivityType.Other: "(other|unknown)"
     }
 
-    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False}
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx"}
 
     SupportsHR = SupportsCadence = True
 
@@ -137,7 +138,7 @@ class DropboxService(ServiceBase):
                 curDirs.append(file["path"])
                 self._folderRecurse(structCache, dbcl, file["path"])
             else:
-                if not file["path"].lower().endswith(".gpx"):
+                if not file["path"].lower().endswith(".gpx") and not file["path"].lower().endswith(".tcx"):
                     continue  # another kind of file
                 existingRecord["Files"].append({"Rev": file["rev"], "Path": file["path"]})
         structCache[:] = (x for x in structCache if x["Path"] in curDirs or x not in children)  # delete ones that don't exist
@@ -170,10 +171,14 @@ class DropboxService(ServiceBase):
             activityData = f.read()
             cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
 
+
         try:
-            act = GPXIO.Parse(activityData)
+            if path.lower().endswith(".tcx"):
+                act = TCXIO.Parse(activityData)
+            else:
+                act = GPXIO.Parse(activityData)
         except ValueError as e:
-            raise APIExcludeActivity("Invalid GPX " + str(e), activityId=path)
+            raise APIExcludeActivity("Invalid GPX/TCX " + str(e), activityId=path)
         except lxml.etree.XMLSyntaxError as e:
             raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
@@ -263,12 +268,25 @@ class DropboxService(ServiceBase):
 
     def UploadActivity(self, serviceRecord, activity):
         activity.EnsureTZ()
-        data = GPXIO.Dump(activity)
+        format = serviceRecord.GetConfiguration()["Format"]
+        if format == "tcx":
+            if "tcx" in activity.PrerenderedFormats:
+                logger.debug("Using prerendered TCX")
+                data = activity.PrerenderedFormats["tcx"]
+            else:
+                data = TCXIO.Dump(activity)
+        else:
+            if "gpx" in activity.PrerenderedFormats:
+                logger.debug("Using prerendered GPX")
+                data = activity.PrerenderedFormats["GPX"]
+            else:
+                data = GPXIO.Dump(activity)
 
         dbcl = self._getClient(serviceRecord)
-        fname = activity.Type + "_" + activity.StartTime.strftime("%d-%m-%Y") + ".gpx"
-        if activity.Name is not None and len(activity.Name) > 0:
+        fname = activity.Type + "." + format
+        if activity.Name is not None and len(activity.Name) > 0 and activity.Name.lower() != activity.Type.lower():
             fname = self._clean_activity_name(activity.Name) + "_" + fname
+        fname = activity.StartTime.strftime("%d-%m-%Y") + "_" + fname
 
         if not serviceRecord.Authorization["Full"]:
             fpath = "/" + fname

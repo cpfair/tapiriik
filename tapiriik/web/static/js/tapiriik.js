@@ -322,9 +322,16 @@ tapiriik.OpenDropboxConfigDialog = function(){
 		<div id=\"folderStackOuter\"><span id=\"syncLocationPreamble\">Will sync to</span> <span id=\"folderStack\"></span></div>\
 		<div id=\"reauth_up\">Want to sync to a different location? You'll need to <a href=\"/auth/redirect/dropbox/full\">authorize tapiriik to access your entire Dropbpx folder</a>.</div>\
 		<div id=\"reauth_down\">Don't want tapiriik to have full access to your Dropbox? <a href=\"/auth/redirect/dropbox\">Restrict tapiriik to <tt>/Apps/tapiriik/</tt></a>.</div>\
-		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/><button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
+		<label>Upload new activites as:</label><input type=\"radio\" name=\"format\" value=\"gpx\" id=\"gpx\"><label for=\"gpx\" class=\"format gpx\">.GPX</label> <input type=\"radio\" name=\"format\" value=\"tcx\" id=\"tcx\"><label for=\"tcx\" class=\"format tcx\">.TCX</label><br/>\
+		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/>\
+		<button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
 	if (tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
+	if (tapiriik.ServiceInfo.dropbox.Config.Format == "tcx") {
+		$("#tcx", configPanel).attr("checked", "");
+	} else {
+		$("#gpx", configPanel).attr("checked", "");
+	}
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
 	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
@@ -356,14 +363,15 @@ tapiriik.OpenDropboxInfoDialog = function(){
 };
 
 tapiriik.SaveDropboxConfig = function(){
-	if (tapiriik.DropboxBrowserPath.length <= 1) {
+	if (tapiriik.DropboxBrowserPath !== undefined && tapiriik.DropboxBrowserPath.length <= 1) {
 		return false; // need to select a directory
 	}
 	if (tapiriik.DropboxSettingsSavePending) return;
 	tapiriik.DropboxSettingsSavePending = true;
 	$("button#OK").addClass("disabled");
-	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath;
+	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath || tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
 	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = $("#syncAll").is(":checked");
+	tapiriik.ServiceInfo.dropbox.Config.Format = $("#gpx").is(":checked") ? "gpx" : "tcx";
 	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
 	return false;
 };
@@ -387,7 +395,6 @@ tapiriik.PopulateDropboxBrowser = function(){
 	}
 
 	if (tapiriik.DropboxBrowserPath == tapiriik.CurrentDropboxBrowserPath && $("#folderList").children().length) return;
-	
 
 	var depth = tapiriik.DropboxBrowserPath.length; //cheap
 
