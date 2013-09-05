@@ -125,6 +125,8 @@ class EndomondoService(ServiceBase):
         #;
         # alt;
         # hr;
+        hasStartWpt = False
+        hasEndWpt = False
         wptsWithLocation = False
         wptsWithNonZeroAltitude = False
         rows = recordText.split("\n")
@@ -139,9 +141,13 @@ class EndomondoService(ServiceBase):
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
-                if split[1] == "2":
+                if split[1] == "2" and not hasStartWpt:
                     wp.Type = WaypointType.Start
+                    hasStartWpt = True
                 elif split[1] == "3":
+                    if hasEndWpt:
+                        raise ValueError("Multiple end waypoints")
+                    hasEndWpt = True
                     wp.Type = WaypointType.End
                 elif split[1] == "0":
                     wp.Type = WaypointType.Pause
