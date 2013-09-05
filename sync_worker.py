@@ -32,7 +32,7 @@ patch_requests_with_default_timeout(timeout=60)
 while Run:
     Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
 
-    time.sleep(5)
+    time.sleep(1)
     sync_heartbeat()
 
 print("Sync worker shutting down cleanly")
