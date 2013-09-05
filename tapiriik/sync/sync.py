@@ -298,7 +298,7 @@ class Sync:
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
 
             # Makes reading the logs much easier.
-            activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None))
+            activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
             for activity in activities:
                 updated_database = False
                 if len(activity.UploadedTo) == 1:
