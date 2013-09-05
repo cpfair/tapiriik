@@ -118,7 +118,7 @@ class EndomondoService(ServiceBase):
 
         ###     TRACK RECORDS     ###
         # timestamp;
-        # type (2=start, 3=end, 0=pause, 1=resume);
+        # type (2=start, maybe?, 3=end, 0=pause, 1=resume);
         # latitude;
         # longitude;
         #;
@@ -141,7 +141,7 @@ class EndomondoService(ServiceBase):
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
-                if split[1] == "2" and not hasStartWpt:
+                if not hasStartWpt:  # Used to check for type=2, but sometimes the "start" happened twice, or was the second waypoint. Who knows.
                     wp.Type = WaypointType.Start
                     hasStartWpt = True
                 elif split[1] == "3":
