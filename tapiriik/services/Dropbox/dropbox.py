@@ -278,7 +278,7 @@ class DropboxService(ServiceBase):
         else:
             if "gpx" in activity.PrerenderedFormats:
                 logger.debug("Using prerendered GPX")
-                data = activity.PrerenderedFormats["GPX"]
+                data = activity.PrerenderedFormats["gpx"]
             else:
                 data = GPXIO.Dump(activity)
 
