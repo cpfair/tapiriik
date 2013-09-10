@@ -223,7 +223,8 @@ class RunKeeperService(ServiceBase):
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
         if activity.Distance is not None:
             record["total_distance"] = activity.Distance  # RK calculates this itself, so we probably don't care
-        record["notes"] = activity.Name  # not symetric, but better than nothing
+        if activity.Name:
+            record["notes"] = activity.Name  # not symetric, but better than nothing
         record["path"] = []
         if activity.Private:
             record["share"] = "Just Me"
