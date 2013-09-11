@@ -122,6 +122,7 @@ class GarminConnectService(ServiceBase):
                 except pytz.exceptions.UnknownTimeZoneError:
                     activity.TZ = pytz.FixedOffset(float(act["activityTimeZone"]["offset"]) * 60)
 
+                logger.debug("Name " + act["activityName"]["value"] + ":")
                 if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled":
                     activity.Name = act["activityName"]["value"]
                 # beginTimestamp/endTimestamp is in UTC
