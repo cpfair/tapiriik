@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
 
@@ -115,14 +115,12 @@ class StravaService(ServiceBase):
                     earliestDate = activity.StartTime
                     before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
+                manual = False  # Determines if we bother to "download" the activity afterwards
                 if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
-                    exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
-                    logger.debug("\t\tNo pts")
-                    continue  # stationary activity - no syncing for now
-
+                    manual = True
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
-                activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"]}]
+                activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"], "Manual": manual}]
 
                 actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
                 if not len(actType):
@@ -132,6 +130,14 @@ class StravaService(ServiceBase):
 
                 activity.Type = actType[0]
                 activity.Stats.Distance = ride["distance"]
+                if "max_speed" in ride or "average_speed" in ride:
+                    activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
+                activity.Stats.MovingTime = ride["moving_time"] if "moving_time" in ride and ride["moving_time"] > 0 else None  # They don't let you manually enter this, and I think it returns 0 for those activities.
+                activity.Stats.Kilocalories = ride["calories"] if "calories" in ride else None
+                if "average_watts" in ride:
+                    activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, ride["average_watts"])
+                if "kilojoules" in ride:
+                    activity.Stats.Energy = ride["kilojoules"]
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
                 activity.AdjustTZ()
@@ -144,7 +150,8 @@ class StravaService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
-        # thanks to Cosmo Catalano for the API reference code
+        if [x["Manual"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]:  # I should really add a param to DownloadActivity for this value as opposed to constantly doing this
+            return activity  # We've got as much information as we're going to get.
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
@@ -233,8 +240,8 @@ class StravaService(ServiceBase):
             tcxData = activity.PrerenderedFormats["tcx"]
         else:
             activity.EnsureTZ()
+            # TODO: put the tcx back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
             tcxData = TCXIO.Dump(activity)
-        # TODO: put the tcx back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
         files = {"file":(req["external_id"] + ".tcx", tcxData)}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))

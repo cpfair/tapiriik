@@ -181,10 +181,18 @@ class Activity:
 
         return dist
 
-    def GetDuration(self, startWpt=None, endWpt=None):
+    def CalculateMovingTime(self, recalculate=False, **kwargs):
+        if self.Stats.MovingTime is None or recalculate:
+            try:
+                self.Stats.MovingTime = self.GetMovingTime(**kwargs)
+            except ValueError:
+                pass  # Oh well.
+        return self.Stats.MovingTime
+
+    def GetMovingTime(self, startWpt=None, endWpt=None):
         if len(self.Waypoints) < 3:
             # Either no waypoints, or one at the start and one at the end - just use regular time elapsed
-            return self.EndTime - self.StartTime
+            raise ValueError("Not enough waypoints to calculate moving time")
         duration = timedelta(0)
         if not startWpt:
             startWpt = self.Waypoints[0]
@@ -268,14 +276,17 @@ class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
 
 class ActivityStatistics:
-    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None):
-        self.Distance = distance
-        self.MovingTime = moving_time
+    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None, energy=None):
+        self.Distance = distance  # Meters
+        self.MovingTime = moving_time  # timedelta()
+        self.Kilocalories = kcal # KCal
+        self.Energy = energy  # KJoules
         self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg_speed, max=max_speed)
         self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, None, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
         self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg_hr, max=max_hr)
         self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg_cadence, max=max_cadence)
         self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg_temp, max=max_temp, min=min_temp)
+        self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg_power, max=max_power)
 
 class ActivityStatistic:
     def __init__(self, units, avg, min=None, max=None, gain=None, loss=None):
@@ -293,6 +304,8 @@ class ActivityStatisticUnit:
     KilometersPerHour = "kmph"
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
+    Kilocalories = "kcal"
+    Watts = "W"
 
 
 class WaypointType:
