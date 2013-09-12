@@ -132,7 +132,7 @@ class RunKeeperService(ServiceBase):
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
-            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["uri"]}]
+            activity.ServiceData = {"ActivityID": act["uri"]}
             activities.append(activity)
         return activities, exclusions
 
@@ -150,7 +150,7 @@ class RunKeeperService(ServiceBase):
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
-        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityID = activity.ServiceData["ActivityID"]
         if AGGRESSIVE_CACHE:
             ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
         if not AGGRESSIVE_CACHE or ridedata is None:

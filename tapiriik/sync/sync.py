@@ -72,13 +72,13 @@ class Sync:
         recipientServices = allConnections
         recipientServices = [conn for conn in recipientServices if activity.Type in conn.Service.SupportedActivities
                                                                 and (not hasattr(conn, "SynchronizedActivities") or not len([x for x in activity.UIDs if x in conn.SynchronizedActivities]))
-                                                                and conn not in [x["Connection"] for x in activity.UploadedTo]]
+                                                                and conn._id not in activity.ServiceDataCollection]
         return recipientServices
 
     def _fromSameService(activityA, activityB):
-        otherSvcs = [y["Connection"]._id for y in activityB.UploadedTo]
-        for uploadA in activityA.UploadedTo:
-            if uploadA["Connection"]._id in otherSvcs:
+        otherSvcIds = activityB.ServiceDataCollection.keys()
+        for uploadAId in activityA.ServiceDataCollection.keys():
+            if uploadAId in otherSvcIds:
                 return True
         return False
 
@@ -101,13 +101,21 @@ class Sync:
                 return a.replace(tzinfo=knownTz)
             return a
 
-    def _accumulateActivities(svc, svcActivities, activityList):
+    def _accumulateActivities(conn, svcActivities, activityList):
+        svc = conn.Service
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
         timezoneErrorPeriod = timedelta(hours=38)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
+            if not hasattr(act, "ServiceDataCollection"):
+                act.ServiceDataCollection = {}
+            if hasattr(act, "ServiceData") and act.ServiceData is not None:
+                act.ServiceDataCollection[conn._id] = act.ServiceData
+                del act.ServiceData
+            else:
+                raise ValueError("Activity returned without ServiceData set")
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
@@ -150,13 +158,16 @@ class Sync:
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
 
-                existElsewhere[0].UploadedTo += act.UploadedTo
+                serviceDataCollection = dict(act.ServiceDataCollection)
+                serviceDataCollection.update(existElsewhere[0].ServiceDataCollection)
+                existElsewhere[0].ServiceDataCollection = serviceDataCollection
+
                 existElsewhere[0].UIDs += act.UIDs  # I think this is merited
                 act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters
                 continue
             activityList.append(act)
 
-    def _determineEligibleRecipientServices(activity, recipientServices, excludedServices, user):
+    def _determineEligibleRecipientServices(activity, connectedServices, recipientServices, excludedServices, user):
         from tapiriik.auth import User
         eligibleServices = []
         for destinationSvcRecord in recipientServices:
@@ -165,7 +176,7 @@ class Sync:
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
 
-            sources = [x["Connection"] for x in activity.UploadedTo]
+            sources = [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
             if hasattr(activity, "Origin"):
                 sources = [activity.Origin]
             for src in sources:
@@ -178,7 +189,7 @@ class Sync:
                 # Eventual destinations, since it'd eventually be synced from these anyways
                 secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
                 # Other places this activity exists - the alternate routes
-                secondLevelSources += [x["Connection"] for x in activity.UploadedTo]
+                secondLevelSources += [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
                 for secondLevelSrc in secondLevelSources:
                     if secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
                         flowException = False
@@ -338,7 +349,7 @@ class Sync:
                         for act in svcActivities:
                             act.FallbackTZ = fallbackTZ
                 Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
-                Sync._accumulateActivities(svc, svcActivities, activities)
+                Sync._accumulateActivities(conn, svcActivities, activities)
 
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
@@ -348,14 +359,13 @@ class Sync:
 
             # Populate origins
             for activity in activities:
-                updated_database = False
-                if len(activity.UploadedTo) == 1:
+                if len(activity.ServiceDataCollection.keys()) == 1:
                     if not len(excludedServices):  # otherwise it could be incorrectly recorded
                         # we can log the origin of this activity
                         if activity.UID not in activitiesWithOrigins:  # No need to hammer the database updating these when they haven't changed
                             logger.info("\t\t Updating db with origin for proceeding activity")
-                            db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": activity.UploadedTo[0]["Connection"].Service.ID, "ExternalID": activity.UploadedTo[0]["Connection"].ExternalID}})
-                        activity.Origin = activity.UploadedTo[0]["Connection"]
+                            db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": [[y for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0].Service.ID, "ExternalID": [[y.ExternalID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]}})
+                        activity.Origin = [[y for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]
                 else:
                     if activity.UID in activitiesWithOrigins:
                         knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
@@ -364,7 +374,7 @@ class Sync:
                             activity.Origin = connectedOrigins[0]
                         else:
                             activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
-                logger.info("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([x["Connection"].Service.ID for x in activity.UploadedTo]))
+                logger.info("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
 
             totalActivities = len(activities)
             processedActivities = 0
@@ -374,13 +384,13 @@ class Sync:
                 # These needs to happen regardless of whether the activity is going to be synchronized.
                 #   Before, I had moved this under all the eligibility/recipient checks, but that could cause persistent duplicate activities when the user had already manually uploaded the same activity to multiple sites.
                 updateServicesWithExistingActivity = False
-                for serviceWithExistingActivityUploadRecord in activity.UploadedTo:
-                    serviceWithExistingActivity = serviceWithExistingActivityUploadRecord["Connection"]
+                for serviceWithExistingActivityId in activity.ServiceDataCollection.keys():
+                    serviceWithExistingActivity = [x for x in serviceConnections if x._id == serviceWithExistingActivityId][0]
                     if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or activity.UID not in serviceWithExistingActivity.SynchronizedActivities:
                         updateServicesWithExistingActivity = True
                         break
                 if updateServicesWithExistingActivity:
-                    db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
+                    db.connections.update({"_id": {"$in": activity.ServiceDataCollection.keys()}},
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                           multi=True)
 
@@ -423,8 +433,8 @@ class Sync:
 
                 # Download the full activity record
                 act = None
-                for dlSvcUploadRec in activity.UploadedTo:
-                    dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1
+                for dlSvcRecId in activity.ServiceDataCollection.keys():
+                    dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId]
                     dlSvc = dlSvcRecord.Service
                     logger.info("\t from " + dlSvc.ID)
                     if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
@@ -435,6 +445,8 @@ class Sync:
                         continue
 
                     workingCopy = copy.copy(activity)  # we can hope
+                    # Load in the service data in the same place they left it.
+                    workingCopy.ServiceData = workingCopy.ServiceDataCollection[dlSvcRecId] if dlSvcRecId in workingCopy.ServiceDataCollection else None
                     try:
                         workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                     except (ServiceException, ServiceWarning) as e:
@@ -451,6 +463,11 @@ class Sync:
                     except Exception as e:
                         tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
                         continue
+                    finally:
+                        # Clear this data now that we're done with it - it should never get used again
+                        activity.ServiceDataCollection[dlSvcUploadRec._id] = None
+
+
                     if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                         logger.info("\t\t is private and restricted from sync")  # Sync exclusion instead?
                         continue

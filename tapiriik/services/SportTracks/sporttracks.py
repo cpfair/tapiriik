@@ -180,7 +180,7 @@ class SportTracksService(ServiceBase):
             res = res.json()
             for act in res["items"]:
                 activity = UploadedActivity()
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
+                activity.ServiceData = {"ActivityURI": act["uri"]}
 
                 if len(act["name"].strip()):
                     activity.Name = act["name"]
@@ -227,7 +227,7 @@ class SportTracksService(ServiceBase):
         return activities, exclusions
 
     def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
-        activityURI = [x["ActivityURI"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityURI = activity.ServiceData["ActivityURI"]
         cookies = self._get_cookies(record=serviceRecord)
         activityData = requests.get(activityURI, cookies=cookies)
         activityData = activityData.json()

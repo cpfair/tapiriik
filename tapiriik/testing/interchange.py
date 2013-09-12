@@ -55,11 +55,11 @@ class InterchangeTests(TapiriikTestCase):
         act.EndTime = act.StartTime + timedelta(hours=3)
 
         # No waypoints
-        self.assertEqual(act.GetMovingTime(), timedelta(hours=3))
+        self.assertRaises(ValueError, act.GetMovingTime)
 
         # Too few waypoints
         act.Waypoints = [Waypoint(timestamp=act.StartTime), Waypoint(timestamp=act.EndTime)]
-        self.assertEqual(act.GetMovingTime(), timedelta(hours=3))
+        self.assertRaises(ValueError, act.GetMovingTime)
 
         # straight-up calculation
         act.EndTime = act.StartTime + timedelta(seconds=14)

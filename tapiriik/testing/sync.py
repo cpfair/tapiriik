@@ -29,98 +29,113 @@ class SyncTests(TapiriikTestCase):
 
     def test_svc_level_dupe(self):
         ''' check that service-level duplicate activities are caught (no DB involvement) '''
+
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
+
         actA = Activity()
         actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actB = Activity()
         actB.StartTime = actA.StartTime
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
 
         actA.CalculateUID()
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+
+
+
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         self.assertEqual(len(activities), 1)
 
     def test_svc_level_dupe_tz_uniform(self):
         ''' check that service-level duplicate activities with the same TZs are caught '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = Activity()
         actA.StartTime = pytz.timezone("America/Denver").localize(datetime(1, 2, 3, 4, 5, 6, 7))
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actB = Activity()
         actB.StartTime = actA.StartTime
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
 
         actA.CalculateUID()
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         self.assertEqual(len(activities), 1)
 
     def test_svc_level_dupe_tz_nonuniform(self):
         ''' check that service-level duplicate activities with non-uniform TZs are caught '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = Activity()
         actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actB = Activity()
         actB.StartTime = pytz.timezone("America/Denver").localize(actA.StartTime)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
 
         actA.CalculateUID()
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         self.assertEqual(len(activities), 1)
 
     def test_svc_level_dupe_tz_irregular(self):
         ''' check that service-level duplicate activities with irregular TZs are caught '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = Activity()
         actA.StartTime = pytz.timezone("America/Edmonton").localize(datetime(1, 2, 3, 4, 5, 6, 7))
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actB = Activity()
         actB.StartTime = actA.StartTime.astimezone(pytz.timezone("America/Iqaluit"))
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
 
         actA.CalculateUID()
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         self.assertEqual(len(activities), 1)
 
     def test_svc_level_dupe_time_leeway(self):
         ''' check that service-level duplicate activities within the defined time leeway are caught '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = Activity()
         actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actA.Type = set(svcA.SupportedActivities).intersection(set(svcB.SupportedActivities)).pop()
         actB = Activity()
         actB.StartTime = datetime(1, 2, 3, 4, 6, 6, 7)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
         actB.Type = actA.Type
 
         actA.CalculateUID()
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [actA], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [actB], activities)
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         self.assertIn(actA.UID, actA.UIDs)
         self.assertIn(actB.UID, actA.UIDs)
@@ -143,26 +158,28 @@ class SyncTests(TapiriikTestCase):
     def test_svc_supported_activity_types(self):
         ''' check that only activities are only sent to services which support them '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         svcA.SupportedActivities = [ActivityType.CrossCountrySkiing]
         svcB.SupportedActivities = [ActivityType.Cycling]
 
         actA = Activity()
         actA.StartTime = datetime(1, 2, 3, 4, 5, 6, 7)
-        actA.UploadedTo = [TestTools.create_mock_upload_record(svcA)]
+        actA.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         actA.Type = svcA.SupportedActivities[0]
         actB = Activity()
         actB.StartTime = datetime(5, 6, 7, 8, 9, 10, 11)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
         actB.Type = [x for x in svcB.SupportedActivities if x != actA.Type][0]
 
         actA.CalculateUID()
         actB.CalculateUID()
 
-        allConns = [actA.UploadedTo[0]["Connection"], actB.UploadedTo[0]["Connection"]]
+        allConns = [recA, recB]
 
         activities = []
-        Sync._accumulateActivities(svcA, [actA], activities)
-        Sync._accumulateActivities(svcB, [actB], activities)
+        Sync._accumulateActivities(recA, [actA], activities)
+        Sync._accumulateActivities(recB, [actB], activities)
 
         syncToA = Sync._determineRecipientServices(actA, allConns)
         syncToB = Sync._determineRecipientServices(actB, allConns)
@@ -226,12 +243,14 @@ class SyncTests(TapiriikTestCase):
     def test_activity_deduplicate_normaltz(self):
         ''' ensure that we can't deduplicate activities with non-pytz timezones '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = TestTools.create_random_activity(svcA, tz=UTC())
 
         actB = Activity()
         actB.StartTime = actA.StartTime.replace(tzinfo=None) + timedelta(seconds=10)
         actB.EndTime = actA.EndTime.replace(tzinfo=None)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB, record=recB)
         actA.Name = "Not this"
         actB.Name = "Heya"
         actB.Type = ActivityType.Walking
@@ -239,16 +258,18 @@ class SyncTests(TapiriikTestCase):
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
-        self.assertRaises(ValueError, Sync._accumulateActivities, Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
+        self.assertRaises(ValueError, Sync._accumulateActivities, recA, [copy.deepcopy(actA)], activities)
 
     def test_activity_deduplicate_tzerror(self):
         ''' Test that probably-duplicate activities with starttimes like 09:12:22 and 15:12:22 (on the same day) are recognized as one '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = TestTools.create_random_activity(svcA, tz=pytz.timezone("America/Iqaluit"))
         actB = Activity()
         actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=5)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB)
         actA.Name = "Not this"
         actB.Name = "Heya"
         actB.Type = ActivityType.Walking
@@ -256,34 +277,36 @@ class SyncTests(TapiriikTestCase):
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
 
         self.assertEqual(len(activities), 1)
 
         # Ensure that it is an exact match
         actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=5, seconds=1)
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
 
         self.assertEqual(len(activities), 2)
 
         # Ensure that overly large differences >38hr - not possible via TZ differences & shamefully bad import/export code on the part of some services - are not deduplicated
         actB.StartTime = actA.StartTime.replace(tzinfo=pytz.timezone("America/Denver")) + timedelta(hours=50)
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
 
         self.assertEqual(len(activities), 2)
 
     def test_activity_coalesce(self):
         ''' ensure that activity data is getting coalesced by _accumulateActivities '''
         svcA, svcB = TestTools.create_mock_services()
+        recA = TestTools.create_mock_svc_record(svcA)
+        recB = TestTools.create_mock_svc_record(svcB)
         actA = TestTools.create_random_activity(svcA, tz=pytz.timezone("America/Iqaluit"))
         actB = Activity()
         actB.StartTime = actA.StartTime.replace(tzinfo=None)
-        actB.UploadedTo = [TestTools.create_mock_upload_record(svcB)]
+        actB.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcB)
         actA.Name = "Not this"
         actA.Private = True
         actB.Name = "Heya"
@@ -292,8 +315,8 @@ class SyncTests(TapiriikTestCase):
         actB.CalculateUID()
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
 
         self.assertEqual(len(activities), 1)
         act = activities[0]
@@ -306,12 +329,12 @@ class SyncTests(TapiriikTestCase):
         self.assertTrue(act.Private)  # Most restrictive setting
         self.assertEqual(act.Name, actB.Name)  # The first activity takes priority.
         self.assertEqual(act.Type, actB.Type)  # Same here.
-        self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)
-        self.assertTrue(actA.UploadedTo[0] in act.UploadedTo)
+        self.assertTrue(list(actB.ServiceDataCollection.keys())[0] in act.ServiceDataCollection)
+        self.assertTrue(list(actA.ServiceDataCollection.keys())[0] in act.ServiceDataCollection)
 
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
 
         self.assertEqual(len(activities), 1)
         act = activities[0]
@@ -323,13 +346,13 @@ class SyncTests(TapiriikTestCase):
         self.assertEqual(act.Waypoints, actA.Waypoints)
         self.assertEqual(act.Name, actA.Name)  # The first activity takes priority.
         self.assertEqual(act.Type, actB.Type)  # Exception: ActivityType.Other does not take priority
-        self.assertTrue(actB.UploadedTo[0] in act.UploadedTo)
-        self.assertTrue(actA.UploadedTo[0] in act.UploadedTo)
+        self.assertTrue(list(actB.ServiceDataCollection.keys())[0] in act.ServiceDataCollection)
+        self.assertTrue(list(actA.ServiceDataCollection.keys())[0] in act.ServiceDataCollection)
 
         actA.Type = ActivityType.CrossCountrySkiing
         activities = []
-        Sync._accumulateActivities(Service.FromID("mockA"), [copy.deepcopy(actA)], activities)
-        Sync._accumulateActivities(Service.FromID("mockB"), [copy.deepcopy(actB)], activities)
+        Sync._accumulateActivities(recA, [copy.deepcopy(actA)], activities)
+        Sync._accumulateActivities(recB, [copy.deepcopy(actB)], activities)
 
         self.assertEqual(len(activities), 1)
         act = activities[0]
@@ -345,7 +368,7 @@ class SyncTests(TapiriikTestCase):
         act = TestTools.create_blank_activity(svcA, record=recB)
         recipientServices = [recA, recB]
         excludedServices = [recA]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recB in eligible)
         self.assertTrue(recA not in eligible)
 
@@ -359,7 +382,7 @@ class SyncTests(TapiriikTestCase):
         act = TestTools.create_blank_activity(svcA, record=recB)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recB in eligible)
         self.assertTrue(recA not in eligible)
 
@@ -373,7 +396,7 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToTarget=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
 
@@ -391,7 +414,7 @@ class SyncTests(TapiriikTestCase):
         act.Origin = recA
         recipientServices = [recC, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB, recC], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB in eligible)
         self.assertTrue(recC not in eligible)
@@ -403,7 +426,7 @@ class SyncTests(TapiriikTestCase):
         act.Origin = recA
         recipientServices = [recC, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB, recC], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB in eligible)
         self.assertTrue(recC in eligible)
@@ -418,7 +441,7 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertFalse(recA in eligible)
         self.assertTrue(recB in eligible)
 
@@ -432,13 +455,13 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
         recipientServices = [recA, recB]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertFalse(recA in eligible)
         self.assertTrue(recB in eligible)
 
         act.Origin = recA
-        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        act.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=recipientServices, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertFalse(recB in eligible)
 
@@ -452,14 +475,14 @@ class SyncTests(TapiriikTestCase):
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
         recipientServices = [recA]
         excludedServices = []
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         recipientServices = [recB]
         act.Origin = recA
-        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        act.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
@@ -476,29 +499,29 @@ class SyncTests(TapiriikTestCase):
 
 
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=True)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         recipientServices = [recB]
         act.Origin = recA
-        act.UploadedTo = [TestTools.create_mock_upload_record(svcA, record=recA)]
+        act.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svcA, record=recA)
         User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=False)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         User.SetFlowException(user, recA, recB, flowToSource=False, flowToTarget=False)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA not in eligible)
         self.assertTrue(recB not in eligible)
 
         recipientServices = [recA, recB]
         User.SetFlowException(user, recA, recB, flowToSource=True, flowToTarget=True)
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertTrue(recB in eligible)
 
-        eligible = Sync._determineEligibleRecipientServices(activity=act, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+        eligible = Sync._determineEligibleRecipientServices(activity=act, connectedServices=[recA, recB], recipientServices=recipientServices, excludedServices=excludedServices, user=user)
         self.assertTrue(recA in eligible)
         self.assertTrue(recB in eligible)

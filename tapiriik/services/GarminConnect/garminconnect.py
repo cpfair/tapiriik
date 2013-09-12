@@ -147,7 +147,7 @@ class GarminConnectService(ServiceBase):
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["activityId"]}]
+                activity.ServiceData = {"ActivityID": act["activityId"]}
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
             if not exhaustive or int(res["search"]["totalPages"]) == page:
@@ -158,7 +158,7 @@ class GarminConnectService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
-        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityID = activity.ServiceData["ActivityID"]
         cookies = self._get_cookies(record=serviceRecord)
         res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
         try:

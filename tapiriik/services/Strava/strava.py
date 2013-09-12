@@ -120,7 +120,7 @@ class StravaService(ServiceBase):
                     manual = True
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
-                activity.UploadedTo = [{"Connection": svcRecord, "ActivityID": ride["id"], "Manual": manual}]
+                activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
 
                 actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
                 if not len(actType):
@@ -150,9 +150,9 @@ class StravaService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
-        if [x["Manual"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]:  # I should really add a param to DownloadActivity for this value as opposed to constantly doing this
+        if activity.ServiceData["Manual"]:  # I should really add a param to DownloadActivity for this value as opposed to constantly doing this
             return activity  # We've got as much information as we're going to get.
-        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
+        activityID = activity.ServiceData["ActivityID"]
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
@@ -230,7 +230,7 @@ class StravaService(ServiceBase):
 
         req = { "id": 0,
                 "data_type": "tcx",
-                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
+                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + str(activity.ServiceDataCollection.keys()[0]),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
                 "private": activity.Private}

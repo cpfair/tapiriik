@@ -41,9 +41,6 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 class Activity:
     ImplicitPauseTime = timedelta(minutes=1, seconds=5)
-
-
-class Activity:
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None):
         self.StartTime = startTime
         self.EndTime = endTime
@@ -214,9 +211,9 @@ class Activity:
         return duration
 
     def CheckSanity(self):
-        if not hasattr(self, "UploadedTo") or len(self.UploadedTo) == 0:
-            raise ValueError("Unset UploadedTo field")
-        srcs = self.UploadedTo  # this is just so I can see the source of the activity in the exception message
+        if not hasattr(self, "ServiceDataCollection") or len(self.ServiceDataCollection.keys()) == 0:
+            raise ValueError("Unset ServiceData/ServiceDataCollection field")
+        srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
         if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
@@ -294,7 +291,7 @@ class ActivityStatistic:
         self.Min = min
         self.Max = max
         self.Gain = gain
-        self.Loss = Loss
+        self.Loss = loss
         self.Units = units
 
 

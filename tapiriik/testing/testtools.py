@@ -56,14 +56,19 @@ class TestTools:
     def create_mock_svc_record(svc):
         return ServiceRecord({"Service": svc.ID, "_id": str(random.randint(1, 1000)), "ExternalID": str(random.randint(1,1000))})
 
-    def create_mock_upload_record(svc, record=None):
-        return {"ActivityID": random.randint(1, 1000), "Connection": record if record else TestTools.create_mock_svc_record(svc)}
+    def create_mock_servicedata(svc, record=None):
+        return {"ActivityID": random.randint(1, 1000), "Connection": record}
+
+    def create_mock_servicedatacollection(svc, record=None):
+        record = record if record else TestTools.create_mock_svc_record(svc)
+        return {record._id: TestTools.create_mock_servicedata(svc, record=record)}
 
     def create_blank_activity(svc=None, actType=ActivityType.Other, record=None):
         act = Activity()
         act.Type = actType
         if svc:
-            act.UploadedTo = [TestTools.create_mock_upload_record(svc, record)]
+            record = record if record else TestTools.create_mock_svc_record(svc)
+            act.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svc, record=record)
         act.StartTime = datetime.now()
         act.EndTime = act.StartTime + timedelta(seconds=42)
         act.CalculateUID()

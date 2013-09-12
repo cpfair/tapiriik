@@ -234,7 +234,7 @@ class DropboxService(ServiceBase):
                     act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 tagRes = self._tagActivity(relPath)
-                act.UploadedTo = [{"Connection": svcRec, "Path": path, "Tagged":tagRes is not None}]
+                act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
 
@@ -247,17 +247,17 @@ class DropboxService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
-        if not [x["Tagged"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]:
+        if not activity.ServiceData["Tagged"]:
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
-                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
+                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServideData["Path"])
 
         # activity might already be populated, if not download it again
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
-            path = [x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+            path = activity.ServiceData["Path"]
             dbcl = self._getClient(serviceRecord)
             fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
             fullActivity.Type = activity.Type
-            fullActivity.UploadedTo = activity.UploadedTo
+            fullActivity.ServiceDataCollection = activity.ServiceDataCollection
             activity = fullActivity
 
 

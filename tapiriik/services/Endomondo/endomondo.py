@@ -224,7 +224,7 @@ class EndomondoService(ServiceBase):
 
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+                activity.ServiceData = {"ActivityID": act["id"]}
 
                 this_page_activities.append(activity)
 
@@ -235,7 +235,7 @@ class EndomondoService(ServiceBase):
             for activity in this_page_activities:
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = None
-                track_id = activity.UploadedTo[0]["ActivityID"]
+                track_id = activity.ServiceData["ActivityID"]
                 if track_id not in cached_track_tzs:
                     logger.debug("\t Resolving TZ for %s" % activity.StartTime)
                     cachedTrackData = self._downloadRawTrackRecord(serviceRecord, track_id)
@@ -256,8 +256,12 @@ class EndomondoService(ServiceBase):
                 else:
                     activity.TZ = pickle.loads(cached_track_tzs[track_id]["TZ"])
                     activity.AdjustTZ()  # Everything returned is in UTC
-                activity.UploadedTo[0]["ActivityData"] = cachedTrackData
+
                 activity.Waypoints = []
+                if int(act["sport"]) in self._activityMappings:
+                    activity.Type = self._activityMappings[int(act["sport"])]
+
+                activity.ServiceData = {"ActivityID": act["id"], "ActivityData": cachedTrackData}
                 activity.CalculateUID()
                 activities.append(activity)
 
@@ -270,15 +274,13 @@ class EndomondoService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
-        uploadRecord = [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        trackData = uploadRecord["ActivityData"]
+        trackData = activity.ServiceData["ActivityData"]
 
         if not trackData:
             # If this is a new activity, we will already have the track data, otherwise download it.
-            trackData = self._downloadRawTrackRecord(serviceRecord, uploadRecord["ActivityID"])
+            trackData = self._downloadRawTrackRecord(serviceRecord, activity.ServiceData["ActivityID"])
 
         self._populateActivityFromTrackData(activity, trackData)
-        [x for x in activity.UploadedTo if x["Connection"] == serviceRecord][0].pop("ActivityData")
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
@@ -294,7 +296,7 @@ class EndomondoService(ServiceBase):
         params = {
             "authToken": serviceRecord.Authorization["AuthToken"],
             "sport": sportId,
-            "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
+            "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + str(activity.ServiceDataCollection.keys()[0]),
             "deflate": "true",
             "duration": activity.Stats.MovingTime.total_seconds() if activity.Stats.MovingTime else (activity.EndTime - activity.StartTime).total_seconds(),
             "distance": activity.Stats.Distance / 1000 if activity.Stats.Distance is not None else None,
