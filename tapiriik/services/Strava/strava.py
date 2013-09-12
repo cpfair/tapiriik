@@ -92,6 +92,8 @@ class StravaService(ServiceBase):
         while True:
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
+            if resp.status_code == 401:
+                raise APIAuthorizationException("No authorization to retrieve activity list")
 
             earliestDate = None
 
@@ -143,6 +145,9 @@ class StravaService(ServiceBase):
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == svcRecord][0]
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
+        if streamdata.status_code == 401:
+            raise APIAuthorizationException("No authorization to download activity")
+
         streamdata = streamdata.json()
 
         if "message" in streamdata and streamdata["message"] == "Record Not Found":
