@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
 
 from django.core.urlresolvers import reverse
@@ -135,7 +135,9 @@ class EndomondoService(ServiceBase):
             if split[2] == "W":
                 # init record
                 activity.Stats.Distance = float(split[8]) * 1000 if split[8] != "" else None
-
+                activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
+                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)
+                activity.Stats.Kilocalories = float(split[12]) if split[12] != "" else None
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
@@ -288,7 +290,16 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord.Authorization["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID, "deflate": "true", "duration": activity.GetDuration().total_seconds(), "distance": activity.Stats.Distance / 1000 if activity.Stats.Distance is not None else None}
+        activity.CalculateMovingTime()
+        params = {
+            "authToken": serviceRecord.Authorization["AuthToken"],
+            "sport": sportId,
+            "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID,
+            "deflate": "true",
+            "duration": activity.Stats.MovingTime.total_seconds() if activity.Stats.MovingTime else (activity.EndTime - activity.StartTime).total_seconds(),
+            "distance": activity.Stats.Distance / 1000 if activity.Stats.Distance is not None else None,
+            "calories": activity.Stats.Kilocalories
+        }
         data = self._createUploadData(activity)
         compressed_data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=compressed_data)
