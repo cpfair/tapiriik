@@ -49,7 +49,7 @@ class Activity:
         self.EndTime = endTime
         self.Type = actType
         self.Waypoints = waypointList if waypointList is not None else []
-        self.Distance = distance
+        self.Stats = ActivityStatistics(distance=distance)
         self.TZ = tz
         self.FallbackTZ = fallbackTz
         self.Name = name
@@ -139,7 +139,7 @@ class Activity:
             self.AdjustTZ()
 
     def CalculateDistance(self):
-        self.Distance = self.GetDistance()
+        self.Stats.Distance = self.GetDistance()
 
     def GetDistance(self, startWpt=None, endWpt=None):
         import math
@@ -213,7 +213,7 @@ class Activity:
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
-        if self.Distance is not None and self.Distance > 1000 * 1000:
+        if self.Stats.Distance is not None and self.Stats.Distance > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
             raise ValueError("Activity is from the future")
@@ -258,7 +258,7 @@ class Activity:
 
     def __eq__(self, other):
         # might need to fix this for TZs?
-        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Distance == other.Distance and self.Name == other.Name
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Stats.Distance == other.Stats.Distance and self.Name == other.Name
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -266,6 +266,33 @@ class Activity:
 
 class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
+
+class ActivityStatistics:
+    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None):
+        self.Distance = distance
+        self.MovingTime = moving_time
+        self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg_speed, max=max_speed)
+        self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, None, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
+        self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg_hr, max=max_hr)
+        self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg_cadence, max=max_cadence)
+        self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg_temp, max=max_temp, min=min_temp)
+
+class ActivityStatistic:
+    def __init__(self, units, avg, min=None, max=None, gain=None, loss=None):
+        self.Average = avg
+        self.Min = min
+        self.Max = max
+        self.Gain = gain
+        self.Loss = Loss
+        self.Units = units
+
+
+class ActivityStatisticUnit:
+    Meters = "m"
+    DegreesCelcius = "ºC"
+    KilometersPerHour = "kmph"
+    BeatsPerMinute = "BPM"
+    RevolutionsPerMinute = "RPM"
 
 
 class WaypointType:

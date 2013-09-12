@@ -22,7 +22,7 @@ class TCXIO:
         del ns[None]
 
         act = act if act else Activity()
-        act.Distance = None
+        act.Stats.Distance = None
 
         try:
             root = etree.XML(tcxData)

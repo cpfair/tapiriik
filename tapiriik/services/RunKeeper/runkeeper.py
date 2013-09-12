@@ -119,6 +119,9 @@ class RunKeeperService(ServiceBase):
         activities = []
         exclusions = []
         for act in allItems:
+            if "has_path" in act and act["has_path"] is False:
+                exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
+                continue  # No points = no sync.
             try:
                 activity = self._populateActivity(act)
             except KeyError as e:
@@ -139,7 +142,7 @@ class RunKeeperService(ServiceBase):
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
-        activity.Distance = rawRecord["total_distance"]
+        activity.Stats.Distance = rawRecord["total_distance"]
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
 
@@ -168,6 +171,9 @@ class RunKeeperService(ServiceBase):
             raise APIExcludeActivity("Not the user's own activity", activityId=activityID)
 
         self._populateActivityWaypoints(ridedata, activity)
+
+        if len(activity.Waypoints) <= 1:
+            raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
         activity.Private = ridedata["share"] == "Just Me"
         return activity
@@ -216,8 +222,8 @@ class RunKeeperService(ServiceBase):
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
-        if activity.Distance is not None:
-            record["total_distance"] = activity.Distance  # RK calculates this itself, so we probably don't care
+        if activity.Stats.Distance is not None:
+            record["total_distance"] = activity.Stats.Distance  # RK calculates this itself, so we probably don't care
         if activity.Name:
             record["notes"] = activity.Name  # not symetric, but better than nothing
         record["path"] = []

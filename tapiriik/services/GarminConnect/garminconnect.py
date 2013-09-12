@@ -143,7 +143,7 @@ class GarminConnectService(ServiceBase):
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
                 # TODO: fix the distance stats to account for the fact that this incorrectly reported km instead of meters for the longest time.
-                activity.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1) * 1000  # In meters...
+                activity.Stats.Distance = float(act["sumDistance"]["value"]) * (1.60934 if act["sumDistance"]["uom"] == "mile" else 1) * 1000  # In meters...
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()

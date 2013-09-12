@@ -134,7 +134,7 @@ class EndomondoService(ServiceBase):
             split = row.split(";")
             if split[2] == "W":
                 # init record
-                activity.Distance = float(split[8]) * 1000 if split[8] != "" else None
+                activity.Stats.Distance = float(split[8]) * 1000 if split[8] != "" else None
 
                 activity.Name = split[4]
             else:
@@ -288,7 +288,7 @@ class EndomondoService(ServiceBase):
             raise ValueError("Endomondo service does not support activity type " + activity.Type)
         else:
             sportId = sportId[0]
-        params = {"authToken": serviceRecord.Authorization["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID, "deflate": "true", "duration": activity.GetDuration().total_seconds(), "distance": activity.Distance / 1000 if activity.Distance is not None else None}
+        params = {"authToken": serviceRecord.Authorization["AuthToken"], "sport": sportId, "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + activity.UploadedTo[0]["Connection"].Service.ID, "deflate": "true", "duration": activity.GetDuration().total_seconds(), "distance": activity.Stats.Distance / 1000 if activity.Stats.Distance is not None else None}
         data = self._createUploadData(activity)
         compressed_data = zlib.compress(data.encode("ASCII"))
         response = requests.get("http://api.mobile.endomondo.com/mobile/track", params=params, data=compressed_data)

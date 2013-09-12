@@ -19,7 +19,7 @@ class GPXIO:
         ns["gpx"] = ns[None]
         del ns[None]
         act = Activity()
-        act.Distance = None
+        act.Stats.Distance = None
 
         try:
             root = etree.XML(gpxData)

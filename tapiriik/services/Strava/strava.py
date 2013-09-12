@@ -131,7 +131,7 @@ class StravaService(ServiceBase):
                     continue
 
                 activity.Type = actType[0]
-                activity.Distance = ride["distance"]
+                activity.Stats.Distance = ride["distance"]
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
                 activity.AdjustTZ()

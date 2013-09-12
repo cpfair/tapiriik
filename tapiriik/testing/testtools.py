@@ -28,7 +28,7 @@ class TapiriikTestCase(TestCase):
             self.assertEqual(a.StartTime, b.StartTime)
             self.assertEqual(a.EndTime, b.EndTime)
             self.assertEqual(a.Type, b.Type)
-            self.assertEqual(a.Distance, b.Distance)
+            self.assertEqual(a.Stats.Distance, b.Stats.Distance)
             self.assertEqual(a.Name, b.Name)
             self.assertEqual(len(a.Waypoints), len(b.Waypoints))
             for idx in range(0, len(a.Waypoints) - 1):
@@ -89,7 +89,7 @@ class TestTools:
             else:
                 act.StartTime = act.StartTime.replace(tzinfo=tz)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
-        act.Distance = random.random() * 10000
+        act.Stats.Distance = random.random() * 10000
         act.Name = str(random.random())
         paused = False
         waypointTime = act.StartTime
