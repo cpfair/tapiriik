@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
-from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, WaypointType, Waypoint, Location
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -119,9 +119,6 @@ class RunKeeperService(ServiceBase):
         activities = []
         exclusions = []
         for act in allItems:
-            if "has_path" in act and act["has_path"] is False:
-                exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
-                continue  # No points = no sync.
             try:
                 activity = self._populateActivity(act)
             except KeyError as e:
@@ -143,6 +140,7 @@ class RunKeeperService(ServiceBase):
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
         activity.Stats.Distance = rawRecord["total_distance"]
+        activity.Stats.Kilocalories = rawRecord["total_calories"] if "total_calories" in rawRecord else None
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
 
@@ -172,6 +170,10 @@ class RunKeeperService(ServiceBase):
 
         self._populateActivityWaypoints(ridedata, activity)
 
+        if "climb" in ridedata:
+            activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, avg=None, gain=float(ridedata["climb"]))
+        if "average_heart_rate" in ridedata:
+            activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
         if len(activity.Waypoints) <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=activityID)
 
@@ -222,41 +224,47 @@ class RunKeeperService(ServiceBase):
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
+        if activity.Stats.HR.Average is not None:
+            record["average_heart_rate"] = int(activity.Stats.HR.Average)
+        if activity.Stats.Kilocalories is not None:
+            record["total_calories"] = activity.Stats.Kilocalories
         if activity.Stats.Distance is not None:
-            record["total_distance"] = activity.Stats.Distance  # RK calculates this itself, so we probably don't care
+            record["total_distance"] = activity.Stats.Distance
         if activity.Name:
             record["notes"] = activity.Name  # not symetric, but better than nothing
-        record["path"] = []
         if activity.Private:
             record["share"] = "Just Me"
-        for waypoint in activity.Waypoints:
-            timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-            if waypoint.Type in self._wayptTypeMappings.values():
-                wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
-            else:
-                wpType = "gps"  # meh
+        record["path"] = []
+        if len(activity.Waypoints) > 1:
+            for waypoint in activity.Waypoints:
+                timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-            if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
-                continue
+                if waypoint.Type in self._wayptTypeMappings.values():
+                    wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
+                else:
+                    wpType = "gps"  # meh
 
-            if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
-                pathPt = {"timestamp": timestamp,
-                          "latitude": waypoint.Location.Latitude,
-                          "longitude": waypoint.Location.Longitude,
-                          "type": wpType}
-                pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
-                record["path"].append(pathPt)
+                if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
+                    continue
 
-            if waypoint.HR is not None:
-                if "heart_rate" not in record:
-                    record["heart_rate"] = []
-                record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
+                if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                    pathPt = {"timestamp": timestamp,
+                              "latitude": waypoint.Location.Latitude,
+                              "longitude": waypoint.Location.Longitude,
+                              "type": wpType}
+                    pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                    record["path"].append(pathPt)
 
-            if waypoint.Calories is not None:
-                if "calories" not in record:
-                    record["calories"] = []
-                record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+                if waypoint.HR is not None:
+                    if "heart_rate" not in record:
+                        record["heart_rate"] = []
+                    record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
+
+                if waypoint.Calories is not None:
+                    if "calories" not in record:
+                        record["calories"] = []
+                    record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
         return record
 
