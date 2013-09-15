@@ -284,6 +284,11 @@ class ActivityStatistics:
         self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg=avg_temp, max=max_temp, min=min_temp)
         self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=avg_power, max=max_power)
 
+    def coalesceWith(self, other_stats):
+        stats = ["Distance", "MovingTime", "Kilocalories", "Speed", "Elevation", "HR", "Cadence", "Temperature", "Power"]
+        for stat in stats:
+            self.__dict__[stat].coalesceWith(other_stats.__dict__[stat])
+
 class ActivityStatistic:
     def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
         self.Value = value
@@ -292,6 +297,15 @@ class ActivityStatistic:
         self.Max = max
         self.Gain = gain
         self.Loss = loss
+
+        self.Samples = {}
+        self.Samples["Value"] = 1 if value is not None else 0
+        self.Samples["Average"] = 1 if avg is not None else 0
+        self.Samples["Min"] = 1 if min is not None else 0
+        self.Samples["Max"] = 1 if max is not None else 0
+        self.Samples["Gain"] = 1 if gain is not None else 0
+        self.Samples["Loss"] = 1 if loss is not None else 0
+
         self.Units = units
 
     def asUnits(self, units):
@@ -300,12 +314,17 @@ class ActivityStatistic:
         newStat = ActivityStatistic(units)
         existing_dict = dict(self.__dict__)
         del existing_dict["Units"]
-        convertUnitsInDict(existing_dict, self.Units, units)
+        del existing_dict["Samples"]
+        ActivityStatistic.convertUnitsInDict(existing_dict, self.Units, units)
         newStat.__dict__ = existing_dict
+        newStat.Units = units
+        newStat.Samples = self.Samples
         return newStat
 
     def convertUnitsInDict(values_dict, from_units, to_units):
         for key, value in values_dict.items():
+            if value is None:
+                continue
             values_dict[key] = ActivityStatistic.convertValue(value, from_units, to_units)
 
     def convertValue(value, from_units, to_units):
@@ -313,32 +332,31 @@ class ActivityStatistic:
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
             (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
-            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Kilometers): 1000,
+            (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
             (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280
         }
         def recurseFindConversionPath(unit, target, stack):
-            stack = list(stack)
             assert(unit != target)
             for transform in conversions.keys():
                 if unit in transform:
                     if transform in stack:
-                        return None  # Prevent circular conversion
-                    stack.push(transform)
+                        continue  # Prevent circular conversion
                     if target in transform:
                         # We've arrived at the end
-                        return stack
+                        return stack + [transform]
                     else:
                         next_unit = transform[0] if transform[1] == unit else transform[1]
-                        return recurseFindConversionPath(next_unit, target, stack)
+                        result = recurseFindConversionPath(next_unit, target, stack + [transform])
+                        if result:
+                            return result
             return None
 
         conversionPath = recurseFindConversionPath(from_units, to_units, [])
         if not conversionPath:
-            raise ValueError("No conversion from %s to %s" % from_units, to_units)
-
+            raise ValueError("No conversion from %s to %s" % (from_units, to_units))
         for transform in conversionPath:
-            if type(conversions[transform]) is float:
+            if type(conversions[transform]) is float or type(conversions[transform]) is int:
                 if from_units == transform[0]:
                     value = value * conversions[transform]
                     from_units = transform[1]
@@ -352,13 +370,31 @@ class ActivityStatistic:
                     from_units = transform[1]
                 else:
                     if type(conversions[transform]) is not tuple:
-                        raise ValueError("No transform function for %s to %s" % from_units, to_units)
+                        raise ValueError("No transform function for %s to %s" % (from_units, to_units))
                     value = conversions[transform][1](value)
                     from_units = transform[0]
         return value
 
-    def coalesce(self, stat):
-        pass
+    def coalesceWith(self, stat):
+        stat = stat.asUnits(self.Units)
+
+        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
+
+        my_items = self.__dict__
+        other_items = stat.__dict__
+        my_samples = self.Samples
+        other_samples = stat.Samples
+        for item in items:
+            # Only average if there's a second value
+            if other_items[item] is not None:
+                if my_items[item] is None:
+                    # We don't have this item's value, nothing to do really.
+                    my_items[item] = other_items[item]
+                    my_samples[item] = other_samples[item]
+                else:
+                    my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
+                    my_samples[item] += other_samples[item]
+
 
     def __eq__(self, other):
         if not other:
@@ -373,7 +409,9 @@ class ActivityStatistic:
 class ActivityStatisticUnit:
     Time = "s"
     Meters = "m"
+    Kilometers = "km"
     Feet = "f"
+    Miles = "mi"
     DegreesCelcius = "ºC"
     DegreesFahrenheit = "ºF"
     KilometersPerHour = "km/h"
