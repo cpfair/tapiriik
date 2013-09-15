@@ -139,8 +139,8 @@ class RunKeeperService(ServiceBase):
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
-        activity.Stats.Distance = rawRecord["total_distance"]
-        activity.Stats.Kilocalories = rawRecord["total_calories"] if "total_calories" in rawRecord else None
+        activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["total_distance"])
+        activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
 
@@ -171,7 +171,7 @@ class RunKeeperService(ServiceBase):
         self._populateActivityWaypoints(ridedata, activity)
 
         if "climb" in ridedata:
-            activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, avg=None, gain=float(ridedata["climb"]))
+            activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(ridedata["climb"]))
         if "average_heart_rate" in ridedata:
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
         if len(activity.Waypoints) <= 1:
@@ -228,8 +228,8 @@ class RunKeeperService(ServiceBase):
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
         if activity.Stats.Kilocalories is not None:
             record["total_calories"] = activity.Stats.Kilocalories
-        if activity.Stats.Distance is not None:
-            record["total_distance"] = activity.Stats.Distance
+        if activity.Stats.Distance.Value is not None:
+            record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
         if activity.Name:
             record["notes"] = activity.Name  # not symetric, but better than nothing
         if activity.Private:

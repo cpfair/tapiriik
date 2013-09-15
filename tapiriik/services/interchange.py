@@ -136,7 +136,7 @@ class Activity:
             self.AdjustTZ()
 
     def CalculateDistance(self):
-        self.Stats.Distance = self.GetDistance()
+        self.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters,value=self.GetDistance())
 
     def GetDistance(self, startWpt=None, endWpt=None):
         import math
@@ -179,9 +179,9 @@ class Activity:
         return dist
 
     def CalculateMovingTime(self, recalculate=False, **kwargs):
-        if self.Stats.MovingTime is None or recalculate:
+        if self.Stats.MovingTime.Value is None or recalculate:
             try:
-                self.Stats.MovingTime = self.GetMovingTime(**kwargs)
+                self.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=self.GetMovingTime(**kwargs))
             except ValueError:
                 pass  # Oh well.
         return self.Stats.MovingTime
@@ -218,7 +218,7 @@ class Activity:
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
-        if self.Stats.Distance is not None and self.Stats.Distance > 1000 * 1000:
+        if self.Stats.Distance.Value is not None and self.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
             raise ValueError("Activity is from the future")
@@ -273,20 +273,20 @@ class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
 
 class ActivityStatistics:
-    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None, energy=None):
-        self.Distance = distance  # Meters
-        self.MovingTime = moving_time  # timedelta()
-        self.Kilocalories = kcal # KCal
-        self.Energy = energy  # KJoules
-        self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg_speed, max=max_speed)
-        self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, None, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
-        self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg_hr, max=max_hr)
-        self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg_cadence, max=max_cadence)
-        self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg_temp, max=max_temp, min=min_temp)
-        self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg_power, max=max_power)
+    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
+        self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
+        self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
+        self.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal) # KCal
+        self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=avg_speed, max=max_speed)
+        self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
+        self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=avg_hr, max=max_hr)
+        self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=avg_cadence, max=max_cadence)
+        self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg=avg_temp, max=max_temp, min=min_temp)
+        self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=avg_power, max=max_power)
 
 class ActivityStatistic:
-    def __init__(self, units, avg, min=None, max=None, gain=None, loss=None):
+    def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
+        self.Value = value
         self.Average = avg
         self.Min = min
         self.Max = max
@@ -294,11 +294,91 @@ class ActivityStatistic:
         self.Loss = loss
         self.Units = units
 
+    def asUnits(self, units):
+        if units == self.Units:
+            return self
+        newStat = ActivityStatistic(units)
+        existing_dict = dict(self.__dict__)
+        del existing_dict["Units"]
+        convertUnitsInDict(existing_dict, self.Units, units)
+        newStat.__dict__ = existing_dict
+        return newStat
+
+    def convertUnitsInDict(values_dict, from_units, to_units):
+        for key, value in values_dict.items():
+            values_dict[key] = ActivityStatistic.convertValue(value, from_units, to_units)
+
+    def convertValue(value, from_units, to_units):
+        conversions = {
+            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
+            (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
+            (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
+            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Kilometers): 1000,
+            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
+            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280
+        }
+        def recurseFindConversionPath(unit, target, stack):
+            stack = list(stack)
+            assert(unit != target)
+            for transform in conversions.keys():
+                if unit in transform:
+                    if transform in stack:
+                        return None  # Prevent circular conversion
+                    stack.push(transform)
+                    if target in transform:
+                        # We've arrived at the end
+                        return stack
+                    else:
+                        next_unit = transform[0] if transform[1] == unit else transform[1]
+                        return recurseFindConversionPath(next_unit, target, stack)
+            return None
+
+        conversionPath = recurseFindConversionPath(from_units, to_units, [])
+        if not conversionPath:
+            raise ValueError("No conversion from %s to %s" % from_units, to_units)
+
+        for transform in conversionPath:
+            if type(conversions[transform]) is float:
+                if from_units == transform[0]:
+                    value = value * conversions[transform]
+                    from_units = transform[1]
+                else:
+                    value = value / conversions[transform]
+                    from_units = transform[0]
+            else:
+                if from_units == transform[0]:
+                    func = conversions[transform][0] if type(conversions[transform]) is tuple else conversions[transform]
+                    value = func(value)
+                    from_units = transform[1]
+                else:
+                    if type(conversions[transform]) is not tuple:
+                        raise ValueError("No transform function for %s to %s" % from_units, to_units)
+                    value = conversions[transform][1](value)
+                    from_units = transform[0]
+        return value
+
+    def coalesce(self, stat):
+        pass
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        return self.Units == other.Units and self.Value == other.Value and self.Average == other.Average and self.Max == other.Max and self.Min == other.Min and self.Gain == other.Gain and self.Loss == other.Loss
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
 
 class ActivityStatisticUnit:
+    Time = "s"
     Meters = "m"
+    Feet = "f"
     DegreesCelcius = "ºC"
-    KilometersPerHour = "kmph"
+    DegreesFahrenheit = "ºF"
+    KilometersPerHour = "km/h"
+    MetersPerSecond = "m/s"
+    MilesPerHour = "mph"
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
     Kilocalories = "kcal"

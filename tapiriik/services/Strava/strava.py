@@ -129,15 +129,13 @@ class StravaService(ServiceBase):
                     continue
 
                 activity.Type = actType[0]
-                activity.Stats.Distance = ride["distance"]
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=ride["distance"])
                 if "max_speed" in ride or "average_speed" in ride:
-                    activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
-                activity.Stats.MovingTime = ride["moving_time"] if "moving_time" in ride and ride["moving_time"] > 0 else None  # They don't let you manually enter this, and I think it returns 0 for those activities.
-                activity.Stats.Kilocalories = ride["calories"] if "calories" in ride else None
+                    activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
+                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(ride["moving_time"]) if "moving_time" in ride and ride["moving_time"] > 0 else None)  # They don't let you manually enter this, and I think it returns 0 for those activities.
+                activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=ride["calories"] if "calories" in ride else None)
                 if "average_watts" in ride:
-                    activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, ride["average_watts"])
-                if "kilojoules" in ride:
-                    activity.Stats.Energy = ride["kilojoules"]
+                    activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=ride["average_watts"])
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
                 activity.AdjustTZ()

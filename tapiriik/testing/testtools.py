@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from tapiriik.services import Service, ServiceRecord, ServiceBase
-from tapiriik.services.interchange import Activity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import Activity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 
 from datetime import datetime, timedelta
 import random
@@ -94,7 +94,7 @@ class TestTools:
             else:
                 act.StartTime = act.StartTime.replace(tzinfo=tz)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
-        act.Stats.Distance = random.random() * 10000
+        act.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=random.random() * 10000)
         act.Name = str(random.random())
         paused = False
         waypointTime = act.StartTime

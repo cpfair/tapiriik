@@ -106,7 +106,7 @@ class Sync:
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
         timezoneErrorPeriod = timedelta(hours=38)
-        from tapiriik.services.interchange import ActivityType
+        from tapiriik.services.interchange import ActivityType, ActivityStatisticUnit
         for act in svcActivities:
             act.UIDs = [act.UID]
             if not hasattr(act, "ServiceDataCollection"):
@@ -114,8 +114,6 @@ class Sync:
             if hasattr(act, "ServiceData") and act.ServiceData is not None:
                 act.ServiceDataCollection[conn._id] = act.ServiceData
                 del act.ServiceData
-            else:
-                raise ValueError("Activity returned without ServiceData set")
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
@@ -511,7 +509,7 @@ class Sync:
                     db.connections.update({"_id": destinationSvcRecord._id},
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
-                    db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": dlSvc.ID}, "$set": {"Distance": activity.Stats.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
+                    db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": dlSvc.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
                 del act
                 del activity
 

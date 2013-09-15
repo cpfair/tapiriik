@@ -3,7 +3,7 @@ from pytz import UTC
 import copy
 import dateutil.parser
 from datetime import datetime
-from .interchange import WaypointType, Activity, ActivityType, Waypoint, Location
+from .interchange import WaypointType, Activity, ActivityStatistic, ActivityType, Waypoint, Location
 
 
 class TCXIO:
@@ -22,7 +22,6 @@ class TCXIO:
         del ns[None]
 
         act = act if act else Activity()
-        act.Stats.Distance = None
 
         try:
             root = etree.XML(tcxData)

@@ -1,9 +1,8 @@
 from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
-
 from django.core.urlresolvers import reverse
 import pytz
 from datetime import timedelta
@@ -192,6 +191,7 @@ class SportTracksService(ServiceBase):
 
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
+                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(float(act["duration"])))  # OpenFit says this excludes paused times.
 
                 # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
                 if activity.TZ == pytz.utc:
@@ -205,7 +205,7 @@ class SportTracksService(ServiceBase):
                         activity.AdjustTZ()
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
-                activity.Stats.Distance = float(act["total_distance"])
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["total_distance"]))
 
                 types = [x.strip().lower() for x in act["type"].split(":")]
                 types.reverse()  # The incoming format is like "walking: hiking" and we want the most specific first
@@ -231,8 +231,20 @@ class SportTracksService(ServiceBase):
         cookies = self._get_cookies(record=serviceRecord)
         activityData = requests.get(activityURI, cookies=cookies)
         activityData = activityData.json()
-        if "location" not in activityData:
-            raise APIExcludeActivity("No points")
+
+        if "clock_duration" in activity:
+            activity.EndTime = activity.StartTime + timedelta(seconds=float(act["clock_duration"]))
+
+        activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(act["calories"]))
+
+        activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(act["elevation_gain"]) if "elevation_gain" in act else None, loss=float(act["elevation_loss"]) if "elevation_loss" in act else None)
+
+        # I guess we'll reverse-engineer the speed here since it isn't provided
+        activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=activity.Stats.Distance / activity.Stats.MovingTime.Value.total_seconds(), max=act["max_speed"] if "max_speed" in act else None)
+
+        activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=act["avg_heartrate"] if "avg_heartrate" in act else None, max=act["max_heartrate"] if "max_heartrate" in act else None)
+        activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_cadence"] if "avg_cadence" in act else None, max=act["max_cadence"] if "max_cadence" in act else None)
+        activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_power"] if "avg_power" in act else None, max=act["max_power"] if "max_power" in act else None)
 
         timerStops = []
         if "timer_stops" in activityData:

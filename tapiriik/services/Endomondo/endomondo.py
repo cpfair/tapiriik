@@ -134,10 +134,10 @@ class EndomondoService(ServiceBase):
             split = row.split(";")
             if split[2] == "W":
                 # init record
-                activity.Stats.Distance = float(split[8]) * 1000 if split[8] != "" else None
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(split[8]) if split[8] != "" else None)
                 activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
                 activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)
-                activity.Stats.Kilocalories = float(split[12]) if split[12] != "" else None
+                activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(split[12]) if split[12] != "" else None)
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
@@ -298,9 +298,9 @@ class EndomondoService(ServiceBase):
             "sport": sportId,
             "workoutId": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + str(activity.ServiceDataCollection.keys()[0]),
             "deflate": "true",
-            "duration": activity.Stats.MovingTime.total_seconds() if activity.Stats.MovingTime else (activity.EndTime - activity.StartTime).total_seconds(),
-            "distance": activity.Stats.Distance / 1000 if activity.Stats.Distance is not None else None,
-            "calories": activity.Stats.Kilocalories
+            "duration": activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value else (activity.EndTime - activity.StartTime).total_seconds(),
+            "distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value if activity.Stats.Distance is not None else None,
+            "calories": activity.Stats.Kilocalories.Value
         }
         data = self._createUploadData(activity)
         compressed_data = zlib.compress(data.encode("ASCII"))
