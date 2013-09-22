@@ -8,7 +8,7 @@ for worker in db.sync_workers.find():
     alive = True
     try:
         os.kill(worker["Process"], 0)
-    except ProcessLookupError:
+    except os.error:
         alive = False
 
     # Has it been stalled for too long?
