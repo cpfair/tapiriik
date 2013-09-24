@@ -156,6 +156,8 @@ LOGGING = {
 
 TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
+MONGO_HOST = "localhost"
+
 WEB_ROOT = 'http://localhost:8000'
 
 PP_WEBSCR = "https://www.sandbox.paypal.com/cgi-bin/webscr"

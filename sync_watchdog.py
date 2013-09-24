@@ -1,9 +1,10 @@
 from tapiriik.database import db
 import os
 import signal
+import socket
 from datetime import timedelta, datetime
 
-for worker in db.sync_workers.find():
+for worker in db.sync_workers.find({"Host": socket.gethostname()}):
     # Does the process still exist?
     alive = True
     try:

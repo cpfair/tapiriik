@@ -4,6 +4,7 @@ from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES
 from datetime import datetime, timedelta
 import sys
 import os
+import socket
 import traceback
 import pprint
 import copy
@@ -220,7 +221,7 @@ class Sync:
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
-                db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "TimeTaken": syncTime})
+                db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
             if heartbeat_callback:
                 heartbeat_callback()
 
@@ -232,8 +233,8 @@ class Sync:
             return  # nothing's going anywhere anyways
 
         # mark this user as in-progress
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationProgress": 0}})
-        lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid()})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationProgress": 0}})
+        lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()})
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
@@ -421,12 +422,12 @@ class Sync:
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
-            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}}
+            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}}
             if null_next_sync_on_unlock:
                 # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
                 # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
                 update_values["$unset"]["NextSynchronization"] = None
-            db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid()}, update_values)
+            db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
         except:
             # oops.
             logger.exception("Core sync exception")
