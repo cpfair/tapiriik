@@ -22,7 +22,7 @@ def sync_interrupt(signal, frame):
 signal.signal(signal.SIGINT, sync_interrupt)
 
 def sync_heartbeat():
-	db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow()}})
+    db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow()}})
 
 print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
 db.sync_workers.update({"Process": os.getpid()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Startup":  datetime.datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname()}, upsert=True)
@@ -31,9 +31,10 @@ sys.stdout.flush()
 patch_requests_with_default_timeout(timeout=60)
 
 while Run:
+    cycleStart = datetime.datetime.utcnow()
     Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
-
-    time.sleep(1)
+    if (datetime.datetime.utcnow() - cycleStart).total_seconds() < 1:
+        time.sleep(1)
     sync_heartbeat()
 
 print("Sync worker shutting down cleanly")
