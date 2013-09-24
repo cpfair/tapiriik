@@ -244,6 +244,9 @@ class StravaService(ServiceBase):
             response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
             logger.debug("Waiting for upload - status %s" % response.json()["status"] )
             if response.json()["error"]:
+                error = response.json()["error"]
+                if "duplicate of activity" in error:
+                    return # I guess we're done here?
                 raise APIException("Strava failed while processing activity - last status %s" % response.text)
 
     def DeleteCachedData(self, serviceRecord):
