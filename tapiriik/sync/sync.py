@@ -200,7 +200,7 @@ class Sync:
 
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
-        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None})  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
+        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None}, timeout=False)  # mongoDB doesn't let you query by size of array to filter 1- and 0-length conn lists :\
         for user in users:
             syncStart = datetime.utcnow()
 
@@ -224,6 +224,7 @@ class Sync:
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
             if heartbeat_callback:
                 heartbeat_callback()
+        users.close()
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
         # And thus begins the monolithic sync function that's a pain to test.
