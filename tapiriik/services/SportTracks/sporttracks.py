@@ -321,10 +321,11 @@ class SportTracksService(ServiceBase):
         elevation_stream = []
         heartrate_stream = []
         for wp in activity.Waypoints:
-            stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
+            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
             if wp.HR:
                 stream_append(heartrate_stream, wp, wp.HR)
-            if wp.Location.Altitude:
+            if wp.Location and wp.Location.Altitude:
                 stream_append(elevation_stream, wp, wp.Location.Altitude)
             if wp.Type == WaypointType.Lap:
                 lap_starts.append(wp.Timestamp)
