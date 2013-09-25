@@ -36,8 +36,7 @@ class DropboxService(ServiceBase):
         ActivityType.Elliptical: "elliptical",
         ActivityType.Other: "(other|unknown)"
     }
-
-    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx", "Filename":"#YYYY-#MM-#DD_#NAME"}
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx", "Filename":"%Y-%m-%d_#NAME"}
 
     SupportsHR = SupportsCadence = True
 
