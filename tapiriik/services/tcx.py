@@ -3,7 +3,7 @@ from pytz import UTC
 import copy
 import dateutil.parser
 from datetime import datetime
-from .interchange import WaypointType, Activity, ActivityStatistic, ActivityType, Waypoint, Location
+from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatisticUnit, ActivityType, Waypoint, Location
 
 
 class TCXIO:
@@ -138,67 +138,122 @@ class TCXIO:
         lap = track = None
         inPause = False
         lapStartWpt = None
-        def newLap(wpt):
-            nonlocal lapStartWpt, lap, track
-            lapStartWpt = wpt
-            lap = etree.SubElement(act, "Lap")
-            lap.attrib["StartTime"] = wpt.Timestamp.astimezone(UTC).strftime(dateFormat)
-            if wpt.Calories and lapStartWpt.Calories:
-                etree.SubElement(lap, "Calories").text = str(wpt.Calories - lapStartWpt.Calories)
-            else:
-                etree.SubElement(lap, "Calories").text = "0"  # meh schema is meh
-            etree.SubElement(lap, "Intensity").text = "Active"
-            etree.SubElement(lap, "TriggerMethod").text = "Manual"  # I assume!
+        if len(activity.Waypoints): # GPS activity.
+            def newLap(wpt):
+                nonlocal lapStartWpt, lap, track
+                lapStartWpt = wpt
+                lap = etree.SubElement(act, "Lap")
+                if wpt: # If not, statistics will be manually inserted.
+                    lap.attrib["StartTime"] = wpt.Timestamp.astimezone(UTC).strftime(dateFormat)
+                    if wpt.Calories and lapStartWpt.Calories:
+                        etree.SubElement(lap, "Calories").text = str(wpt.Calories - lapStartWpt.Calories)
+                    else:
+                        etree.SubElement(lap, "Calories").text = "0"  # meh schema is meh
+                etree.SubElement(lap, "Intensity").text = "Active"
+                etree.SubElement(lap, "TriggerMethod").text = "Manual"  # I assume!
 
-            track = None
+                track = None
 
-        def finishLap(wpt):
-            nonlocal lapStartWpt, lap
-            dist = activity.GetDistance(lapStartWpt, wpt)
-            movingTime = activity.GetDuration(lapStartWpt, wpt)
-            xdist = etree.SubElement(lap, "DistanceMeters")
-            xdist.text = str(dist)
-            totaltime = etree.SubElement(lap, "TotalTimeSeconds")
-            totaltime.text = str(movingTime.total_seconds())
-            lap.insert(0, xdist)
-            lap.insert(0, totaltime)
+            def finishLap(wpt):
+                nonlocal lapStartWpt, lap
+                if not wpt:
+                    return # Well, this was useful.
+                dist = activity.GetDistance(lapStartWpt, wpt)
+                movingTime = activity.GetDuration(lapStartWpt, wpt)
+                xdist = etree.SubElement(lap, "DistanceMeters")
+                xdist.text = str(dist)
+                totaltime = etree.SubElement(lap, "TotalTimeSeconds")
+                totaltime.text = str(movingTime.total_seconds())
+                lap.insert(0, xdist)
+                lap.insert(0, totaltime)
 
-        newLap(activity.Waypoints[0])
-        for wp in activity.Waypoints:
-            if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                continue  # drop the point
-            if wp.Type == WaypointType.Pause:
-                if inPause:
-                    continue  # this used to be an exception, but I don't think that was merited
-                inPause = True
-            if inPause and wp.Type != WaypointType.Pause or wp.Type == WaypointType.Lap:
-                # Make a new lap when they unpause
-                inPause = False
+            newLap(activity.Waypoints[0])
+            for wp in activity.Waypoints:
+                if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                    continue  # drop the point
+                if wp.Type == WaypointType.Pause:
+                    if inPause:
+                        continue  # this used to be an exception, but I don't think that was merited
+                    inPause = True
+                if inPause and wp.Type != WaypointType.Pause or wp.Type == WaypointType.Lap:
+                    # Make a new lap when they unpause
+                    inPause = False
+                    finishLap(wp)
+                    newLap(wp)
+                if track is None:  # Defer creating the track until there are points
+                    track = etree.SubElement(lap, "Track") # TODO - pauses should create new tracks instead of new laps?
+                trkpt = etree.SubElement(track, "Trackpoint")
+                if wp.Timestamp.tzinfo is None:
+                    raise ValueError("TCX export requires TZ info")
+                etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
+                if wp.Location:
+                    pos = etree.SubElement(trkpt, "Position")
+                    etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
+                    etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
+
+                    if wp.Location.Altitude is not None:
+                        etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
+                    if wp.HR is not None:
+                        xhr = etree.SubElement(trkpt, "HeartRateBpm")
+                        xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
+                        etree.SubElement(xhr, "Value").text = str(int(wp.HR))
+                    if wp.Cadence is not None:
+                        etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
+                    if wp.Power is not None:
+                        exts = etree.SubElement(trkpt, "Extensions")
+                        gpxtpxexts = etree.SubElement(exts, "TPX")
+                        gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+                        etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
                 finishLap(wp)
-                newLap(wp)
-            if track is None:  # Defer creating the track until there are points
-                track = etree.SubElement(lap, "Track") # TODO - pauses should create new tracks instead of new laps?
-            trkpt = etree.SubElement(track, "Trackpoint")
-            if wp.Timestamp.tzinfo is None:
-                raise ValueError("TCX export requires TZ info")
-            etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
-            if wp.Location:
-                pos = etree.SubElement(trkpt, "Position")
-                etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
-                etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
+        else: # Stationary activity.
+            newLap(None)
+            # `lap` is now our active lap - fill it in with all the statistics we can.
 
-            if wp.Location.Altitude is not None:
-                etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
-            if wp.HR is not None:
-                xhr = etree.SubElement(trkpt, "HeartRateBpm")
-                xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
-                etree.SubElement(xhr, "Value").text = str(int(wp.HR))
-            if wp.Cadence is not None:
-                etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
-            if wp.Power is not None:
-                exts = etree.SubElement(trkpt, "Extensions")
-                gpxtpxexts = etree.SubElement(exts, "TPX")
-                gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
-                etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
-        finishLap(wp)
+            totaltime = etree.SubElement(lap, "TotalTimeSeconds")
+            totaltime.text = str((act.EndTime - act.StartTime).total_seconds())
+
+            lap.attrib["StartTime"] = act.StartTime.astimezone(UTC).strftime(dateFormat)
+
+            dist = act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
+            if dist is not None:
+                xdist = etree.SubElement(lap, "DistanceMeters")
+                xdist.text = str(dist)
+
+            kcal = act.Stats.Kilocalories.asUnits(ActivityStatisticUnit.Kilocalories).Value
+            if kcal is not None:
+                xcal = etree.SubElement(lap, "Calories")
+                xcal.text = str(int(kcal))
+
+            avgcad = act.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute).Average
+            if avgcad is not None:
+                xavgcad = etree.SubElement(lap, "Cadence")
+                xavgcad.text = str(int(avgcad))
+
+
+            avghr = act.Stats.HR.asUnits(ActivityStatisticUnit.BeatsPerMinute).Value
+            if avghr is not None:
+                xavghr = etree.SubElement(lap, "AverageHeartRateBpm")
+                xavghrval = etree.SubElement(xavghr, "Value")
+                xavghrval.text = str(int(avghr))
+
+            maxhr = act.Stats.HR.asUnits(ActivityStatisticUnit.BeatsPerMinute).Max
+            if maxhr is not None:
+                xmaxhr = etree.SubElement(lap, "MaximumHeartRateBpm")
+                xmaxhrval = etree.SubElement(xmaxhr, "Value")
+                xmaxhrval.text = str(int(maxhr))
+
+            avgspeed = act.Stats.Speed.asUnits(ActivityStatisticUnit.KilometersPerHour).Value
+            maxcad = act.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute).Max
+            if avgspeed is not None or maxcad is not None or avgcad is not None:
+                exts = etree.SubElement(lap, "Extensions")
+                lapext = etree.SubElement(exts, TRKPTEXT + "LX")
+                if avgspeed is not None:
+                    etree.SubElement(lapext, TRKPTEXT + "AvgSpeed").text = str(avgspeed)
+                if maxcad is not None:
+                    etree.SubElement(lapext, TRKPTEXT + "MaxBikeCadence").text = str(int(maxcad))
+                    etree.SubElement(lapext, TRKPTEXT + "MaxRunCadence").text = str(int(maxcad)) # I'll probably never know the point of having these seperate
+                if avgcad is not None:
+                    etree.SubElement(lapext, TRKPTEXT + "AvgRunCadence").text = str(int(avgcad)) # The TCX schema specifically states that "AvgBikeCadence" is actually put into a Cadence element under Lap
+
+            finishLap(None)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
