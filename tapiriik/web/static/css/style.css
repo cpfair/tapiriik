@@ -634,6 +634,17 @@ form.dropboxConfig {
 form.dropboxConfig label {
 	margin-top:10px;
 }
+
+form.dropboxConfig #format {
+	vertical-align: 3px;
+	font-family: monospace;
+}
+
+form.dropboxConfig #filename {
+	font-size:25px;
+	font-family: monospace;
+}
+
 #folderList {
 	margin:10px 0;
 	font-size:130%;

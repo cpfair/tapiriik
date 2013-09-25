@@ -322,16 +322,31 @@ tapiriik.OpenDropboxConfigDialog = function(){
 		<div id=\"folderStackOuter\"><span id=\"syncLocationPreamble\">Will sync to</span> <span id=\"folderStack\"></span></div>\
 		<div id=\"reauth_up\">Want to sync to a different location? You'll need to <a href=\"/auth/redirect/dropbox/full\">authorize tapiriik to access your entire Dropbpx folder</a>.</div>\
 		<div id=\"reauth_down\">Don't want tapiriik to have full access to your Dropbox? <a href=\"/auth/redirect/dropbox\">Restrict tapiriik to <tt>/Apps/tapiriik/</tt></a>.</div>\
-		<label>Upload new activites as:</label><input type=\"radio\" name=\"format\" value=\"gpx\" id=\"gpx\"><label for=\"gpx\" class=\"format gpx\">.GPX</label> <input type=\"radio\" name=\"format\" value=\"tcx\" id=\"tcx\"><label for=\"tcx\" class=\"format tcx\">.TCX</label><br/>\
+		<label>Upload new activites as:</label>\
+			<input type=\"text\" id=\"filename\" style=\"width:300px\"/>\
+			<input type=\"hidden\" id=\"py_filename\" style=\"width:300px\"/>\
+			<select id=\"format\">\
+				<option value=\"tcx\">.tcx</option>\
+				<option value=\"gpx\">.gpx</option>\
+			</select>\
+			<tt><span id=\"exampleName\">test/asd.tcx</span></tt><br/>\
+			(you can include folders, try <tt>/#YYYY/#MMM/#NAME</tt>)<br/>\
 		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/>\
 		<button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
 	if (tapiriik.ServiceInfo.dropbox.Config.UploadUntagged) $("#syncAll", configPanel).attr("checked","");
-	if (tapiriik.ServiceInfo.dropbox.Config.Format == "tcx") {
-		$("#tcx", configPanel).attr("checked", "");
-	} else {
-		$("#gpx", configPanel).attr("checked", "");
-	}
+	$("#format", configPanel).val(tapiriik.ServiceInfo.dropbox.Config.Format);
+	$("#filename", configPanel).val(tapiriik.ConvertDropboxFilenameToDisplay(tapiriik.ServiceInfo.dropbox.Config.Filename));
+	tapiriik.UpdateDropboxFilenamePreview(configPanel);
+
+	$("#filename", configPanel).bind("keyup", function(){
+		tapiriik.UpdateDropboxFilenamePreview(configPanel);
+	});
+
+	$("#format", configPanel).bind("change", function(){
+		tapiriik.UpdateDropboxFilenamePreview(configPanel);
+	});
+
 	$("#OK", configPanel).click(tapiriik.SaveDropboxConfig);
 	$("#cancel", configPanel).click(tapiriik.DismissServiceDialog);
 	if (!tapiriik.ServiceInfo.dropbox.Configured) $("#cancel", configPanel).hide();
@@ -350,6 +365,101 @@ tapiriik.OpenDropboxConfigDialog = function(){
 		$("<a class=\"folder inactive\"/>").text("Apps").appendTo(fstack);
 		$("<a class=\"folder inactive\"/>").text("tapiriik").appendTo(fstack);
 	}
+};
+
+tapiriik.ConvertDropboxFilenameToDisplay = function(input){
+	// Meh.
+	var py_map = {
+		"#YYYY": "%Y",
+		"#YY": "%y",
+		"#MMMM": "%B",
+		"#MMM": "%b",
+		"#MM": "%m",
+		"#DD": "%d",
+		"#HH": "%H",
+		"#MIN": "%M",
+	};
+	for (var key in py_map){
+		input = input.replace(new RegExp(py_map[key], "ig"), key);
+	}
+	return input;
+}
+
+tapiriik.UpdateDropboxFilenamePreview = function(panel){
+	function pad(n, width, z) {
+		z = z || '0';
+		n = n + '';
+		return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+	}
+	// %YYYY / %YY
+	// %M / %MM / %MMM / %MMMM
+	// %DD
+	// %HH
+	// %MIN
+	// %NAME
+	// %TYPE
+	var now = new Date();
+	var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+	var map = {
+		"#YYYY": now.getFullYear(),
+		"#YY": ("" + now.getFullYear()).substring(2),
+		"#MMMM": months[now.getMonth()],
+		"#MMM": months[now.getMonth()].substring(0,3), // I think
+		"#MM": pad("" + (now.getMonth() + 1),2),
+		"#DD": pad("" + now.getDate(),2),
+		"#HH": pad("" + now.getHours(),2),
+		"#MIN": pad("" + now.getMinutes(),2),
+		"#NAME": "Jumpingpound Ridge",
+		"#TYPE": "Cycling"
+	};
+
+	var label_map = {
+		"#YYYY": "year",
+		"#YY": "year",
+		"#MMMM": "month",
+		"#MMM": "month",
+		"#MM": "month",
+		"#DD": "day",
+		"#HH": "hour",
+		"#MIN": "minute",
+	};
+
+	var py_map = {
+		"#YYYY": "%Y",
+		"#YY": "%y",
+		"#MMMM": "%B",
+		"#MMM": "%b",
+		"#MM": "%m",
+		"#DD": "%d",
+		"#HH": "%H",
+		"#MIN": "%M",
+	};
+
+	var input = $("#filename", panel).val();
+	var py_input = input;
+	map_keys = [];
+	for (var key in map){
+		map_keys.push(key);
+	}
+	map_keys.sort(function(a, b){
+		return b.length - a.length;
+	});
+
+	for (var key_idx in map_keys){
+		key = map_keys[key_idx];
+		input = input.replace(new RegExp(key, "ig"), map[key]);
+		if (py_map[key]!==undefined){
+			py_input = py_input.replace(new RegExp(key, "ig"), py_map[key]);
+		}
+	}
+
+	input = input + "." + $("#format", panel).val();
+
+	input = input.replace(/([\W_])\1+/g, "$1"); // Doesn't matter for demo data
+	input = input.replace(/^([\W_])|([\W_])$/g, "");
+
+	$("#exampleName", panel).text(input);
+	$("#py_filename", panel).val(py_input);
 };
 
 tapiriik.OpenDropboxInfoDialog = function(){
@@ -371,7 +481,8 @@ tapiriik.SaveDropboxConfig = function(){
 	$("button#OK").addClass("disabled");
 	tapiriik.ServiceInfo.dropbox.Config.SyncRoot = tapiriik.DropboxBrowserPath || tapiriik.ServiceInfo.dropbox.Config.SyncRoot;
 	tapiriik.ServiceInfo.dropbox.Config.UploadUntagged = $("#syncAll").is(":checked");
-	tapiriik.ServiceInfo.dropbox.Config.Format = $("#gpx").is(":checked") ? "gpx" : "tcx";
+	tapiriik.ServiceInfo.dropbox.Config.Format = $("#format").val();
+	tapiriik.ServiceInfo.dropbox.Config.Filename = $("#py_filename").val();
 	tapiriik.SaveConfig("dropbox", tapiriik.DismissServiceDialog);
 	return false;
 };

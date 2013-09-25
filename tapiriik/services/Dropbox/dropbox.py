@@ -37,7 +37,7 @@ class DropboxService(ServiceBase):
         ActivityType.Other: "(other|unknown)"
     }
 
-    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx"}
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx", "Filename":"#YYYY-#MM-#DD_#NAME"}
 
     SupportsHR = SupportsCadence = True
 
@@ -266,6 +266,14 @@ class DropboxService(ServiceBase):
         # https://www.dropbox.com/help/145/en
         return re.sub("[><:\"|?*]", "", re.sub("[/\\\]", "-", name))
 
+    def _format_file_name(self, format, activity):
+        name = activity.StartTime.strftime(format)
+        name = re.sub("#NAME", activity.Name if activity.Name and len(activity.Name) > 0 and activity.Name.lower() != activity.Type.lower() else "", name)
+        name = re.sub("#TYPE", activity.Type, name)
+        name = re.sub(r"([\W_])\1+", r"\1", name) # To handle cases where the activity is unnamed
+        name = re.sub(r"^([\W_])|([\W_])$", "", name) # To deal with trailing-seperator weirdness (repeated seperator handled by prev regexp)
+        return name
+
     def UploadActivity(self, serviceRecord, activity):
         activity.EnsureTZ()
         format = serviceRecord.GetConfiguration()["Format"]
@@ -283,10 +291,7 @@ class DropboxService(ServiceBase):
                 data = GPXIO.Dump(activity)
 
         dbcl = self._getClient(serviceRecord)
-        fname = activity.Type + "." + format
-        if activity.Name is not None and len(activity.Name) > 0 and activity.Name.lower() != activity.Type.lower():
-            fname = self._clean_activity_name(activity.Name) + "_" + fname
-        fname = activity.StartTime.strftime("%d-%m-%Y") + "_" + fname
+        fname = self._format_file_name(serviceRecord.GetConfiguration()["Filename"], activity) + "." + format
 
         if not serviceRecord.Authorization["Full"]:
             fpath = "/" + fname
