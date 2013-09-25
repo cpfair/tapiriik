@@ -267,7 +267,7 @@ class DropboxService(ServiceBase):
 
     def _format_file_name(self, format, activity):
         name = activity.StartTime.strftime(format)
-        name = re.sub("#NAME", activity.Name if activity.Name and len(activity.Name) > 0 and activity.Name.lower() != activity.Type.lower() else "", name)
+        name = re.sub("#NAME", self._clean_activity_name(activity.Name) if activity.Name and len(activity.Name) > 0 and activity.Name.lower() != activity.Type.lower() else "", name)
         name = re.sub("#TYPE", activity.Type, name)
         name = re.sub(r"([\W_])\1+", r"\1", name) # To handle cases where the activity is unnamed
         name = re.sub(r"^([\W_])|([\W_])$", "", name) # To deal with trailing-seperator weirdness (repeated seperator handled by prev regexp)
