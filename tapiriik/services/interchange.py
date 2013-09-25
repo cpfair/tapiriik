@@ -108,7 +108,7 @@ class Activity:
                     loc = wp.Location
                     break
             if loc is None and self.FallbackTZ is None:
-                raise Exception("Can't find TZ without a waypoint with a location")
+                raise Exception("Can't find TZ without a waypoint with a location, or a fallback TZ")
         if loc is None:
             # At this point, we'll resort to the fallback TZ.
             if self.FallbackTZ is None:

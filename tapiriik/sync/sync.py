@@ -102,11 +102,10 @@ class Sync:
             return a
 
     def _accumulateActivities(conn, svcActivities, activityList):
-        svc = conn.Service
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
         timezoneErrorPeriod = timedelta(hours=38)
-        from tapiriik.services.interchange import ActivityType, ActivityStatisticUnit
+        from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = [act.UID]
             if not hasattr(act, "ServiceDataCollection"):
@@ -155,6 +154,7 @@ class Sync:
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
+                existElsewhere[0].Stats.coalesceWith(act.Stats)
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
                 serviceDataCollection.update(existElsewhere[0].ServiceDataCollection)
