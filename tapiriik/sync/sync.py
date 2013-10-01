@@ -254,6 +254,12 @@ class Sync:
             tempSyncExclusions = {}
 
             for conn in serviceConnections:
+
+                # If we're not going to be doing anything anyways, stop now
+                if len(serviceConnections) - len(excludedServices) <= 1:
+                    excludedServices = excludedServices + serviceConnections
+                    break
+
                 if heartbeat_callback:
                     heartbeat_callback()
                 svc = conn.Service
@@ -322,9 +328,21 @@ class Sync:
             totalActivities = len(activities)
             processedActivities = 0
             for activity in activities:
+
+                if activity.Private:
+                    logger.info("\t\t is private and restricted from sync (pre-download)")  # Sync exclusion instead?
+                    continue
+
                 recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
                 if len(recipientServices) == 0:
                     totalActivities -= 1  # doesn't count
+                    continue
+
+                eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+
+                if not len(eligibleServices):
+                    logger.info("\t No eligible destinations")
+                    totalActivities -= 1  # Again, doesn't really count.
                     continue
 
                 if heartbeat_callback:
@@ -345,12 +363,6 @@ class Sync:
                 # download the full activity record
                 logger.info("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
-                eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
-
-                if not len(eligibleServices):
-                    logger.info("\t No eligible destinations")
-                    totalActivities -= 1  # Again, doesn't really count.
-                    continue
                 act = None
                 for dlSvcUploadRec in activity.UploadedTo:
                     dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
