@@ -4,6 +4,7 @@ from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException, APIWarning, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
+from tapiriik.services.sessioncache import SessionCache
 
 from django.core.urlresolvers import reverse
 import pytz
@@ -56,20 +57,27 @@ class GarminConnectService(ServiceBase):
 
     SupportsHR = SupportsCadence = True
 
+    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
+
     def __init__(self):
         self._activityHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").json()["dictionary"]
 
-    def _get_cookies(self, email, password=None):
+    def _get_cookies(self, record=None, email=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
-        if password is None:
+        if record:
+            cached = self._sessionCache.Get(record.ExternalID)
+            if cached:
+                return cached
             #  longing for C style overloads...
-            password = CredentialStore.Decrypt(email.ExtendedAuthorization["Password"])
-            email = CredentialStore.Decrypt(email.ExtendedAuthorization["Email"])
+            password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
+            email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
         if resp.status_code != 302:  # yep
             raise APIAuthorizationException("Invalid login")
+        if record:
+            self._sessionCache.Set(record.ExternalID, preResp.cookies)
         return preResp.cookies
 
     def WebInit(self):
@@ -77,7 +85,7 @@ class GarminConnectService(ServiceBase):
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        cookies = self._get_cookies(email, password)
+        cookies = self._get_cookies(email=email, password=password)
         username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         if not len(username):
             raise APIAuthorizationException("Unable to retrieve username")
@@ -96,7 +104,7 @@ class GarminConnectService(ServiceBase):
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         #http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities?&start=0&limit=50
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         page = 1
         pageSz = 50
         activities = []
@@ -152,7 +160,7 @@ class GarminConnectService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
         activity.PrerenderedFormats["tcx"] = res.text
         try:
@@ -167,7 +175,7 @@ class GarminConnectService(ServiceBase):
         activity.EnsureTZ()
         tcx_file = TCXIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_file)}
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
         res = res.json()["detailedImportResult"]
 

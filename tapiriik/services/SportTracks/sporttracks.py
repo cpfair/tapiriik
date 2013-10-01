@@ -2,6 +2,7 @@ from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.sessioncache import SessionCache
 
 from django.core.urlresolvers import reverse
 import pytz
@@ -131,27 +132,35 @@ class SportTracksService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.keys())
 
-    def _get_cookies(self, email, password=None):
-        return self._get_cookies_and_uid(email, password)[0]
+    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
 
-    def _get_cookies_and_uid(self, email, password=None):
+    def _get_cookies(self, record=None, email=None, password=None):
+        return self._get_cookies_and_uid(record, email, password)[0]
+
+    def _get_cookies_and_uid(self, record=None, email=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
-        if password is None:
-            #  longing for C style overloads...
-            password = CredentialStore.Decrypt(email.ExtendedAuthorization["Password"])
-            email = CredentialStore.Decrypt(email.ExtendedAuthorization["Email"])
+        if record:
+            cached = self._sessionCache.Get(record.ExternalID)
+            if cached:
+                return cached
+            password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
+            email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
         params = {"username": email, "password": password}
         resp = requests.post(self.OpenFitEndpoint + "/user/login", data=json.dumps(params), allow_redirects=False, headers={"Accept": "application/json", "Content-Type": "application/json"})
         if resp.status_code != 200:
             raise APIAuthorizationException("Invalid login")
-        return resp.cookies, int(resp.json()["user"]["uid"])
+
+        retval = (resp.cookies, int(resp.json()["user"]["uid"]))
+        if record:
+            self._sessionCache.Set(record.ExternalID, retval)
+        return retval
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        cookies, uid = self._get_cookies_and_uid(email, password)
+        cookies, uid = self._get_cookies_and_uid(email=email, password=password)
         return (uid, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
     def RevokeAuthorization(self, serviceRecord):
@@ -161,7 +170,7 @@ class SportTracksService(ServiceBase):
         pass  # No cached data...
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         activities = []
         exclusions = []
         pageUri = self.OpenFitEndpoint + "/fitnessActivities.json"
@@ -219,7 +228,7 @@ class SportTracksService(ServiceBase):
 
     def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
         activityURI = [x["ActivityURI"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         activityData = requests.get(activityURI, cookies=cookies)
         activityData = activityData.json()
         if "location" not in activityData:
@@ -341,7 +350,7 @@ class SportTracksService(ServiceBase):
         activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
         activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
-        cookies = self._get_cookies(serviceRecord)
+        cookies = self._get_cookies(record=serviceRecord)
         upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), cookies=cookies, headers={"Content-Type": "application/json"})
         if upload_resp.status_code != 200:
             raise APIException("Unable to upload activity %s" % upload_resp.text)
