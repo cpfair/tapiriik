@@ -195,6 +195,10 @@ class EndomondoService(ServiceBase):
                     raise APIAuthorizationException("No authorization to retrieve activity list")
                 raise APIException("Unable to retrieve activity list " + str(response))
             data = response.json()
+
+            track_ids = []
+            this_page_activities = []
+
             for act in data["data"]:
                 startTime = pytz.utc.localize(datetime.strptime(act["start_time"], "%Y-%m-%d %H:%M:%S UTC"))
                 if earliestDate is None or startTime < earliestDate:  # probably redundant, I would assume it works out the TZes...
@@ -208,15 +212,27 @@ class EndomondoService(ServiceBase):
                     logger.warning("\t tracking")
                     exclusions.append(APIExcludeActivity("In progress", activityId=act["id"], permanent=False))
                     continue  # come back once they've completed the activity
+                track_ids.append(act["id"])
                 activity = UploadedActivity()
                 activity.StartTime = startTime
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
                 logger.debug("\tActivity s/t " + str(activity.StartTime))
 
+                if int(act["sport"]) in self._activityMappings:
+                    activity.Type = self._activityMappings[int(act["sport"])]
+                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+
+                this_page_activities.append(activity)
+
+            cached_track_tzs = cachedb.endomondo_activity_cache.find({"TrackID":{"$in": track_ids}})
+            cached_track_tzs = dict([(x["TrackID"], x) for x in cached_track_tzs])
+
+            for activity in this_page_activities:
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
                 cachedTrackData = None
-                cachedTrackRecord = cachedb.endomondo_activity_cache.find_one({"TrackID": act["id"]})
-                if cachedTrackRecord is None:
+                track_id = activity.UploadedTo[0]["ActivityID"]
+                if track_id not in cached_track_tzs:
+                    logger.debug("\t Resolving TZ for %s" % activity.StartTime)
                     cachedTrackData = self._downloadRawTrackRecord(serviceRecord, act["id"])
                     self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
                     if not activity.TZ:
@@ -225,21 +241,13 @@ class EndomondoService(ServiceBase):
                     cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": pickle.dumps(activity.TZ), "StartTime": activity.StartTime}
                     cachedb.endomondo_activity_cache.insert(cachedTrackRecord)
                 else:
-                    if "TZ" in cachedTrackRecord:
-                        activity.TZ = pickle.loads(cachedTrackRecord["TZ"])
-                        activity.AdjustTZ()  # Everything returned is in UTC
-                    else:
-                        # Old-style records include the full track data
-                        self._populateActivityFromTrackData(activity, cachedTrackRecord["Data"], minimumWaypoints=True)
-                        cachedTrackData = cachedTrackRecord["Data"]
-
+                    activity.TZ = pickle.loads(cached_track_tzs[track_id]["TZ"])
+                    activity.AdjustTZ()  # Everything returned is in UTC
+                activity.UploadedTo[0]["ActivityData"] = cachedTrackData
                 activity.Waypoints = []
-                if int(act["sport"]) in self._activityMappings:
-                    activity.Type = self._activityMappings[int(act["sport"])]
-
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"], "ActivityData": cachedTrackData}]
                 activity.CalculateUID()
                 activities.append(activity)
+
             if not paged:
                 earliestFirstPageDate = earliestDate
             if not exhaustive or ("more" in data and data["more"] is False):
