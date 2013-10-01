@@ -322,17 +322,17 @@ class Sync:
             totalActivities = len(activities)
             processedActivities = 0
             for activity in activities:
+                recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
+                if len(recipientServices) == 0:
+                    totalActivities -= 1  # doesn't count
+                    continue
+
                 if heartbeat_callback:
                     heartbeat_callback()
                 # we won't need this now, but maybe later
                 db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                       {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                       multi=True)
-
-                recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
-                if len(recipientServices) == 0:
-                    totalActivities -= 1  # doesn't count
-                    continue
 
                 # this is after the above exit point since it's the most frequent case - want to avoid DB churn
                 if totalActivities <= 0:
