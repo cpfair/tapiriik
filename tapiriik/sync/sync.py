@@ -200,7 +200,7 @@ class Sync:
 
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
-        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None}).limit(1)
+        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None}).sort("NextSynchronization").limit(1)
         for user in users:
             syncStart = datetime.utcnow()
 
@@ -233,7 +233,7 @@ class Sync:
             return  # nothing's going anywhere anyways
 
         # mark this user as in-progress
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationProgress": 0}})
+        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationProgress": 0, "SynchronizationStartTime": datetime.utcnow()}})
         lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()})
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
