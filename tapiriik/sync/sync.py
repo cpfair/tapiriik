@@ -222,8 +222,6 @@ class Sync:
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
-            if heartbeat_callback:
-                heartbeat_callback()
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
         # And thus begins the monolithic sync function that's a pain to test.
@@ -271,7 +269,7 @@ class Sync:
                     continue
 
                 if heartbeat_callback:
-                    heartbeat_callback()
+                    heartbeat_callback("sync-list")
 
                 if svc.ID in DISABLED_SERVICES:
                     excludedServices.append(conn)
@@ -348,7 +346,7 @@ class Sync:
                     continue
 
                 if heartbeat_callback:
-                    heartbeat_callback()
+                    heartbeat_callback("sync-download")
                 # we won't need this now, but maybe later
                 db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                       {"$addToSet": {"SynchronizedActivities": activity.UID}},
@@ -405,6 +403,8 @@ class Sync:
                     continue
 
                 for destinationSvcRecord in eligibleServices:
+                    if heartbeat_callback:
+                        heartbeat_callback("sync-upload")
                     destSvc = destinationSvcRecord.Service
                     try:
                         logger.info("\t\tUploading to " + destSvc.ID)

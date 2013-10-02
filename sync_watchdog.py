@@ -13,7 +13,12 @@ for worker in db.sync_workers.find({"Host": socket.gethostname()}):
         alive = False
 
     # Has it been stalled for too long?
-    if alive and worker["Heartbeat"] < datetime.utcnow() - timedelta(minutes=45):  # I don't know what the longest running sync ever was...
+    if worker["State"] == "sync-list":
+        timeout = timedelta(minutes=45)  # This can take a loooooooong time
+    else:
+        timeout = timedelta(minutes=10)  # But everything else shouldn't
+
+    if alive and worker["Heartbeat"] < datetime.utcnow() - timeout:
         os.kill(worker["Process"], signal.SIGKILL)
         alive = False
 
