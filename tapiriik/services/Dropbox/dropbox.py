@@ -245,7 +245,7 @@ class DropboxService(ServiceBase):
         # activity might not be populated at this point, still possible to bail out
         if not [x["Tagged"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]:
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
-                raise ServiceException("Activity untagged", code="UNTAGGED")
+                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         # activity might already be populated, if not download it again
         if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
