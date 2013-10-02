@@ -255,21 +255,23 @@ class Sync:
 
             for conn in serviceConnections:
 
-                # If we're not going to be doing anything anyways, stop now
-                if len(serviceConnections) - len(excludedServices) <= 1:
-                    excludedServices = excludedServices + serviceConnections
-                    break
-
-                if heartbeat_callback:
-                    heartbeat_callback()
                 svc = conn.Service
                 tempSyncErrors[conn._id] = []
                 conn.SyncErrors = []
 
                 # Remove temporary exclusions (live tracking etc).
                 tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
+
                 if conn.ExcludedActivities:
                     del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
+
+                # If we're not going to be doing anything anyways, stop now
+                if len(serviceConnections) - len(excludedServices) <= 1:
+                    excludedServices = excludedServices + serviceConnections
+                    continue
+
+                if heartbeat_callback:
+                    heartbeat_callback()
 
                 if svc.ID in DISABLED_SERVICES:
                     excludedServices.append(conn)
