@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import Service, ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
+from tapiriik.services import ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES
 from datetime import datetime, timedelta
 import sys
@@ -8,11 +8,9 @@ import socket
 import traceback
 import pprint
 import copy
-import pytz
 import random
 import logging
 import logging.handlers
-import pymongo
 
 # Set this up seperate from the logger used in this scope, so services logging messages are caught and logged into user's files.
 _global_logger = logging.getLogger("tapiriik")
@@ -26,20 +24,23 @@ _global_logger.addHandler(logging_console_handler)
 logger = logging.getLogger("tapiriik.sync.worker")
 
 def _formatExc():
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    tb = exc_traceback
-    while tb.tb_next:
-        tb = tb.tb_next
-    frame = tb.tb_frame
-    locals_trimmed = []
-    for local_name, local_val in frame.f_locals.items():
-        value_full = pprint.pformat(local_val)
-        if len(value_full) > 1000:
-            value_full = value_full[:500] + "..." + value_full[-500:]
-        locals_trimmed.append(str(local_name) + "=" + value_full)
-    exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join(locals_trimmed)
-    logger.exception("Service exception")
-    return exc
+    try:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        tb = exc_traceback
+        while tb.tb_next:
+            tb = tb.tb_next
+        frame = tb.tb_frame
+        locals_trimmed = []
+        for local_name, local_val in frame.f_locals.items():
+            value_full = pprint.pformat(local_val)
+            if len(value_full) > 1000:
+                value_full = value_full[:500] + "..." + value_full[-500:]
+            locals_trimmed.append(str(local_name) + "=" + value_full)
+        exc = '\n'.join(traceback.format_exception(exc_type, exc_value, exc_traceback)) + "\nLOCALS:\n" + '\n'.join(locals_trimmed)
+        logger.exception("Service exception")
+        return exc
+    finally:
+        del exc_traceback, exc_value, exc_type
 
 class Sync:
 
