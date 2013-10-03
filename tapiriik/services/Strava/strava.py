@@ -239,10 +239,10 @@ class StravaService(ServiceBase):
 
 
         upload_id = response.json()["id"]
-        while not response.json()["activity_id"]:
+        while not response.json()["activity_id"] and "activity is ready" not in response.json()["status"]:
             time.sleep(1)
             response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
-            logger.debug("Waiting for upload - status %s" % response.json()["status"] )
+            logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
             if response.json()["error"]:
                 error = response.json()["error"]
                 if "duplicate of activity" in error:
