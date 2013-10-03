@@ -385,6 +385,7 @@ class Sync:
                         if not issubclass(e.__class__, ServiceWarning):
                             continue
                     except APIExcludeActivity as e:
+                        logger.info("\t\t excluded by service")
                         e.Activity = workingCopy
                         Sync._accumulateExclusions(dlSvcRecord, e, tempSyncExclusions)
                         continue
@@ -397,6 +398,7 @@ class Sync:
                     try:
                         workingCopy.CheckSanity()
                     except:
+                        logger.info("\t\t failed sanity check")
                         Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy), tempSyncExclusions)
                         continue
                     else:
