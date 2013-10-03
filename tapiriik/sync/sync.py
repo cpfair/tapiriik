@@ -330,20 +330,24 @@ class Sync:
             processedActivities = 0
             for activity in activities:
 
+
                 if activity.Private:
-                    logger.info("\t\t is private and restricted from sync (pre-download)")  # Sync exclusion instead?
+                    logger.info("\t %s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
+                    del activity
                     continue
 
                 recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
                 if len(recipientServices) == 0:
                     totalActivities -= 1  # doesn't count
+                    del activity
                     continue
 
                 eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
                 if not len(eligibleServices):
-                    logger.info("\t No eligible destinations")
+                    logger.info("\t %s has no eligible destinations" % activity.UID)
                     totalActivities -= 1  # Again, doesn't really count.
+                    del activity
                     continue
 
                 if heartbeat_callback:
@@ -401,6 +405,8 @@ class Sync:
 
                 if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                     processedActivities += 1  # we tried
+                    del act
+                    del activity
                     continue
 
                 for destinationSvcRecord in eligibleServices:
@@ -423,21 +429,22 @@ class Sync:
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": dlSvc.ID}, "$set": {"Distance": activity.Distance, "Timestamp": datetime.utcnow()}}, upsert=True)
-                act.Waypoints = activity.Waypoints = []  # Free some memory
+                del act
+                del activity
 
                 processedActivities += 1
 
-            allSyncErrors = []
+            allSyncErrorsCount = 0
             syncExclusionCount = 0
             for conn in serviceConnections:
                 db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": tempSyncExclusions[conn._id]}})
-                allSyncErrors += tempSyncErrors[conn._id]
+                allSyncErrorsCount += len(tempSyncErrors[conn._id])
                 syncExclusionCount += len(tempSyncExclusions[conn._id].items())
 
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
-            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": len(allSyncErrors), "SyncExclusionCount": syncExclusionCount}}
+            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": allSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
             if null_next_sync_on_unlock:
                 # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
                 # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
