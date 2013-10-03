@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from tapiriik.database import cachedb
 import requests
 import hashlib
@@ -264,6 +264,7 @@ class WaypointType:
 
 
 class Waypoint:
+    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "Type"]
     def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, temp=None):
         self.Timestamp = timestamp
         self.Location = location
@@ -288,6 +289,7 @@ class Waypoint:
 
 
 class Location:
+    __slots__ = ["Latitude", "Longitude", "Altitude"]
     def __init__(self, lat, lon, alt):
         self.Latitude = lat
         self.Longitude = lon
