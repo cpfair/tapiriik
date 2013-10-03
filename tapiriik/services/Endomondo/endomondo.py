@@ -233,12 +233,12 @@ class EndomondoService(ServiceBase):
                 track_id = activity.UploadedTo[0]["ActivityID"]
                 if track_id not in cached_track_tzs:
                     logger.debug("\t Resolving TZ for %s" % activity.StartTime)
-                    cachedTrackData = self._downloadRawTrackRecord(serviceRecord, act["id"])
+                    cachedTrackData = self._downloadRawTrackRecord(serviceRecord, track_id)
                     self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
                     if not activity.TZ:
-                        exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=act["id"]))
+                        exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=track_id))
                         continue
-                    cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": act["id"], "TZ": pickle.dumps(activity.TZ), "StartTime": activity.StartTime}
+                    cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": track_id, "TZ": pickle.dumps(activity.TZ), "StartTime": activity.StartTime}
                     cachedb.endomondo_activity_cache.insert(cachedTrackRecord)
                 else:
                     activity.TZ = pickle.loads(cached_track_tzs[track_id]["TZ"])
