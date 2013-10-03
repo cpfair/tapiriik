@@ -90,6 +90,8 @@ class TCXIO:
                         if powerEl is not None:
                             wp.Power = float(powerEl.text)
                 act.Waypoints.append(wp)
+                xtrkpt.clear()
+                del xtrkpt
         if not len(act.Waypoints):
             raise ValueError("No waypoints in TCX")
 
