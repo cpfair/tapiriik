@@ -5,6 +5,7 @@ from tapiriik.sync import Sync
 from tapiriik.auth import TOTP
 from bson.objectid import ObjectId
 import hashlib
+import json
 from datetime import datetime, timedelta
 
 
@@ -90,6 +91,9 @@ def diag_user(req, user):
     elif "substitute" in req.POST:
         req.session["substituteUserid"] = user
         return redirect("dashboard")
+    elif "svc_setauth" in req.POST and len(req.POST["authdetails"]):
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set":{"Authorization": json.loads(req.POST["authdetails"])}})
+        delta = True
     elif "svc_unlink" in req.POST:
         from tapiriik.services import Service
         from tapiriik.auth import User

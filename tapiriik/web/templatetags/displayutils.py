@@ -1,4 +1,5 @@
 from django import template
+import json
 register = template.Library()
 
 
@@ -9,6 +10,9 @@ def meters_to_kms(value):
     except:
         return "NaN"
 
+@register.filter(name='json')
+def jsonit(obj):
+    return json.dumps(obj)
 
 @register.filter(name='dict_get')
 def dict_get(tdict, key):
