@@ -25,8 +25,8 @@ $(function(){
 <a href="#" style="display:block;overflow:hidden;" class="paymentButton">Automatic synchronization</a>
 <form action="{{ config.pp.url }}" method="post" class="paymentForm" style="text-align:center;display:none;" onsubmit="preSubmit()">
 	<hr/>
-	<h3>Why do I want your money?</h3>
-	<p>Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. <b>$2 a year</b> covers these costs so tapiriik will always run smoothly. Of course, I'd be much obliged if you threw in something extra.</p>
+	<h3>Pay what you want for 1 year of automatic synchronization</h3>
+	<p>Running tapiriik costs money: servers, backups, maintenance &amp; more. <b>$2 a year</b> covers these costs so tapiriik will always run smoothly. Of course, I'd be much obliged if you threw in something extra.</p>
 	<input type="hidden" name="cmd" value="_xclick">
 	<input type="hidden" name="business" value="GZYUSWR6MQVGJ">
 	<input type="hidden" name="lc" value="CA">
@@ -45,8 +45,8 @@ $(function(){
 	<input type="hidden" name="notify_url" value="https://tapiriik.com/payments/ipn">
 	<input type="hidden" name="page_style" value="tapiriik">
 	<input type="hidden" name="custom" value="{{ user|dict_get:'_id' }}">
-	<button type="submit" name="submit">Yeah, I guess</button>
+	<button type="submit" name="submit">On to PayPal!</button>
 	<p><a href="{% url 'payments_claim' %}" class="reclaimButton">I already paid / I want to transfer my payment</a></p>
-	<p><b>No auto-renewal</b>, just come back here in a year if you're so inclined. Your payment will apply to <b>all your accounts</b>, present and future, and <b>may be transferred at any time</b>.</p>
+	<p><b>No auto-renewal</b>, I'll just send you an email once the year is up. Your payment will apply to <b>all your accounts</b>, present and future, and <b>may be transferred at any time</b>.</p>
 </form>
 <noscript><style type="text/css">.paymentForm {display:block !important;}</style></noscript>
