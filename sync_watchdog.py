@@ -1,4 +1,5 @@
 from tapiriik.database import db
+from tapiriik.sync import SyncStep
 import os
 import signal
 import socket
@@ -13,7 +14,7 @@ for worker in db.sync_workers.find({"Host": socket.gethostname()}):
         alive = False
 
     # Has it been stalled for too long?
-    if worker["State"] == "sync-list":
+    if worker["State"] == SyncStep.List:
         timeout = timedelta(minutes=45)  # This can take a loooooooong time
     else:
         timeout = timedelta(minutes=10)  # But everything else shouldn't

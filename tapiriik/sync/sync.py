@@ -270,7 +270,7 @@ class Sync:
                     continue
 
                 if heartbeat_callback:
-                    heartbeat_callback("sync-list")
+                    heartbeat_callback(SyncStep.List)
 
                 if svc.ID in DISABLED_SERVICES:
                     excludedServices.append(conn)
@@ -351,18 +351,17 @@ class Sync:
                     continue
 
                 if heartbeat_callback:
-                    heartbeat_callback("sync-download")
-                # we won't need this now, but maybe later
+                    heartbeat_callback(SyncStep.Download)
                 db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                       {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                       multi=True)
 
-                # this is after the above exit point since it's the most frequent case - want to avoid DB churn
+
                 if totalActivities <= 0:
                     syncProgress = 1
                 else:
                     syncProgress = max(0, min(1, processedActivities / totalActivities))
-
+                # This is after the above exit point since it's the most frequent case - want to avoid DB churn
                 db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
 
                 # download the full activity record
@@ -413,7 +412,7 @@ class Sync:
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
-                        heartbeat_callback("sync-upload")
+                        heartbeat_callback(SyncStep.Upload)
                     destSvc = destinationSvcRecord.Service
                     try:
                         logger.info("\t\tUploading to " + destSvc.ID)
