@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity, ServiceException
+from tapiriik.services.api import APIException, ServiceExceptionScope, UserException, UserExceptionType, APIExcludeActivity, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.tcx import TCXIO
@@ -103,7 +103,9 @@ class DropboxService(ServiceBase):
 
     def _raiseDbException(self, e):
         if e.status == 401:
-                raise APIAuthorizationException("Authorization error - status " + str(e.status) + " reason " + str(e.error_msg) + " body " + str(e.body))
+            raise APIException("Authorization error - status " + str(e.status) + " reason " + str(e.error_msg) + " body " + str(e.body), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        if e.status == 507:
+            raise APIException("Dropbox quota error", block=True, user_exception=UserException(UserExceptionType.AccountFull, intervention_required=True))
         raise APIException("API failure - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.error_msg))
 
     def _folderRecurse(self, structCache, dbcl, path):

@@ -3,7 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
 
 from django.core.urlresolvers import reverse
@@ -71,7 +71,7 @@ class StravaService(ServiceBase):
 
         response = requests.post("https://www.strava.com/oauth/token", data=params)
         if response.status_code != 200:
-            raise APIAuthorizationException("Invalid code")
+            raise APIException("Invalid code")
         data = response.json()
 
         authorizationData = {"OAuthToken": data["access_token"]}
@@ -93,7 +93,7 @@ class StravaService(ServiceBase):
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             if resp.status_code == 401:
-                raise APIAuthorizationException("No authorization to retrieve activity list")
+                raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
             earliestDate = None
 
@@ -146,7 +146,7 @@ class StravaService(ServiceBase):
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
-            raise APIAuthorizationException("No authorization to download activity")
+            raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
         streamdata = streamdata.json()
 
@@ -234,7 +234,7 @@ class StravaService(ServiceBase):
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
         if response.status_code != 201:
             if response.status_code == 401:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
+                raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
 

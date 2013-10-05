@@ -27,7 +27,7 @@ else:
     pendingSynchronizations = 0
 
 usersWithErrors = db.users.aggregate([
-                                     {"$match": {"SyncErrorCount": {"$gt": 0}}},
+                                     {"$match": {"NonblockingSyncErrorCount": {"$gt": 0}}},
                                      {"$group": {"_id": None, "count": {"$sum": 1}}}
                                      ])
 if len(usersWithErrors["result"]) > 0:
@@ -38,7 +38,7 @@ else:
 
 totalErrors = db.users.aggregate([
    {"$group": {"_id": None,
-               "total": {"$sum": "$SyncErrorCount"}}}
+               "total": {"$sum": "$NonblockingSyncErrorCount"}}}
 ])
 
 if len(totalErrors["result"]) > 0:

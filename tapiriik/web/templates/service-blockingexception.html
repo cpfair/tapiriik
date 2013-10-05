@@ -1,0 +1,25 @@
+<div class="userException">
+	<h1><img src="{{ STATIC_URL }}img/services/{{ provider.ID }}.png" alt="Error with {{ provider.DisplayName }}"/></h1>
+	<p>
+		{% if exception.UserException.Type == "full" %}
+			There <strong>wasn't enough room in your {{ provider.DisplayName }} account</strong> to synchronize activities. Once you've cleared up some space, hit the button below to re-synchronize your {{ provider.DisplayName }} account.
+		{% elif exception.UserException.Type == "auth" %}
+			There was a <strong>problem accessing your {{ provider.DisplayName }} account</strong>. Use the button below to reauthorize tapiriik to access your account.
+		{% elif exception.UserException.Type == "expired" %}
+			It looks like <strong>your {{ provider.DisplayName }} account has expired</strong>. Once it's back in action, use the button below to re-synchronize your {{ provider.DisplayName }} account.
+		{% endif %}
+	</p>
+	<div class="footer">
+		{% if exception.UserException.Type == "full" or exception.UserException.Type == "expired" %}
+		<button class="clearException" service="{{ provider.ID }}" group="{{ exception.UserException.ClearGroup }}">
+			It's ready to go
+		</button>
+		{% else %}
+		<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}">
+			<button>
+				Reauthorize
+			</button>
+		</a>
+		{% endif %}
+	</div>
+</div>

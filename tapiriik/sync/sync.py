@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import ServiceRecord, APIAuthorizationException, APIExcludeActivity, ServiceException, ServiceWarning
+from tapiriik.services import ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES
 from datetime import datetime, timedelta
 import sys
@@ -41,6 +41,13 @@ def _formatExc():
         return exc
     finally:
         del exc_traceback, exc_value, exc_type
+
+def _packServiceException(step, e):
+    res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope}
+    if e.UserException:
+        res["UserException"] = {"Type": e.UserException.Type, "Extra": e.UserException.Extra, "InterventionRequired": e.UserException.InterventionRequired, "ClearGroup": e.UserException.ClearGroup}
+    return res
+
 
 class Sync:
 
@@ -207,9 +214,15 @@ class Sync:
 
             # Always to an exhaustive sync if there were errors
             #   Sometimes services report that uploads failed even when they succeeded.
+            #   If a partial sync was done, we'd be assuming that the accounts were consistent past the first page
+            #       e.g. If an activity failed to upload far in the past, it would never be attempted again.
             #   So we need to verify the full state of the accounts.
+            # But, we can still do a partial sync if there are *only* blocking errors
+            #   In these cases, the block will protect that service from being improperly manipulated (though tbqh I can't come up with a situation where this would happen, it's more of a performance thing).
+            #   And, when the block is cleared, NextSyncIsExhaustive is set.
+
             exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
-            if "SyncErrorCount" in user and user["SyncErrorCount"] > 0:
+            if "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0:
                 exhaustive = True
 
             try:
@@ -255,8 +268,13 @@ class Sync:
             for conn in serviceConnections:
 
                 svc = conn.Service
-                tempSyncErrors[conn._id] = []
-                conn.SyncErrors = []
+
+                if hasattr(conn, "SyncErrors"):
+                    # Remove non-blocking errors
+                    tempSyncErrors[conn._id] = [x for x in conn.SyncErrors if "Block" in x and x["Block"]]
+                    del conn.SyncErrors
+                else:
+                    tempSyncErrors[conn._id] = []
 
                 # Remove temporary exclusions (live tracking etc).
                 tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
@@ -266,11 +284,21 @@ class Sync:
 
                 # If we're not going to be doing anything anyways, stop now
                 if len(serviceConnections) - len(excludedServices) <= 1:
-                    excludedServices = excludedServices + serviceConnections
-                    continue
+                    activities = []
+                    break
 
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.List)
+
+                # Bail out as appropriate for the entire account (tempSyncErrors contains only blocking errors at this point)
+                if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Account]:
+                    activities = [] # Kinda meh, I'll make it better when I break this into seperate functions, whenever that happens...
+                    break
+
+                # ...and for this specific service
+                if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
+                    excludedServices.append(conn)
+                    continue
 
                 if svc.ID in DISABLED_SERVICES:
                     excludedServices.append(conn)
@@ -289,14 +317,13 @@ class Sync:
                 try:
                     logger.info("\tRetrieving list from " + svc.ID)
                     svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
-                except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
-                    etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
-                    tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                except (ServiceException, ServiceWarning) as e:
+                    tempSyncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
                     excludedServices.append(conn)
                     if not issubclass(e.__class__, ServiceWarning):
                         continue
                 except Exception as e:
-                    tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Type": SyncError.System, "Message": _formatExc()})
+                    tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
                     excludedServices.append(conn)
                     continue
                 Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
@@ -307,6 +334,8 @@ class Sync:
 
             # Makes reading the logs much easier.
             activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
+
+            # Populate origins
             for activity in activities:
                 updated_database = False
                 if len(activity.UploadedTo) == 1:
@@ -330,18 +359,20 @@ class Sync:
             processedActivities = 0
             for activity in activities:
 
-
+                # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
                     logger.info("\t %s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
                     del activity
                     continue
 
+                # recipientServices are services that don't already have this activity
                 recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
                 if len(recipientServices) == 0:
                     totalActivities -= 1  # doesn't count
                     del activity
                     continue
 
+                # eligibleServices are services that are permitted to receive this activity - taking into account flow exceptions, excluded services, unfufilled configuration requirements, etc.
                 eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
                 if not len(eligibleServices):
@@ -352,6 +383,8 @@ class Sync:
 
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.Download)
+
+                # Locally mark this activity as present on the appropriate services.
                 db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
                                       {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                       multi=True)
@@ -364,23 +397,29 @@ class Sync:
                 # This is after the above exit point since it's the most frequent case - want to avoid DB churn
                 db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
 
-                # download the full activity record
+                # The second most important line of logging in the application...
                 logger.info("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
+                # Download the full activity record
                 act = None
                 for dlSvcUploadRec in activity.UploadedTo:
-                    dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1, or at least roll over on error
+                    dlSvcRecord = dlSvcUploadRec["Connection"]  # I guess in the future we could smartly choose which for >1
                     dlSvc = dlSvcRecord.Service
                     logger.info("\t from " + dlSvc.ID)
                     if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
                         logger.info("\t\t has activity exclusion logged")
                         continue
+                    if dlSvcRecord in excludedServices:
+                        logger.info("\t\t service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
+                        continue
+
                     workingCopy = copy.copy(activity)  # we can hope
                     try:
                         workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
-                    except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
-                        etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
-                        tempSyncErrors[conn._id].append({"Step": SyncStep.Download, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    except (ServiceException, ServiceWarning) as e:
+                        tempSyncErrors[conn._id].append(_packServiceException(SyncStep.Download, e))
+                        if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
+                            excludedServices.append(dlSvcRecord)
                         if not issubclass(e.__class__, ServiceWarning):
                             continue
                     except APIExcludeActivity as e:
@@ -389,7 +428,7 @@ class Sync:
                         Sync._accumulateExclusions(dlSvcRecord, e, tempSyncExclusions)
                         continue
                     except Exception as e:
-                        tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Type": SyncError.System, "Message": _formatExc()})
+                        tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
                         continue
                     if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                         logger.info("\t\t is private and restricted from sync")  # Sync exclusion instead?
@@ -417,13 +456,14 @@ class Sync:
                     try:
                         logger.info("\t\tUploading to " + destSvc.ID)
                         destSvc.UploadActivity(destinationSvcRecord, act)
-                    except (APIAuthorizationException, ServiceException, ServiceWarning) as e:
-                        etype = SyncError.NotAuthorized if issubclass(e.__class__, APIAuthorizationException) else SyncError.System
-                        tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": etype, "Message": e.Message + "\n" + _formatExc(), "Code": e.Code})
+                    except (ServiceException, ServiceWarning) as e:
+                        tempSyncErrors[destinationSvcRecord._id].append(_packServiceException(SyncStep.Upload, e))
+                        if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
+                            excludedServices.append(destinationSvcRecord)
                         if not issubclass(e.__class__, ServiceWarning):
                             continue
                     except Exception as e:
-                        tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Type": SyncError.System, "Message": _formatExc()})
+                        tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
                         continue
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord._id},
@@ -435,17 +475,19 @@ class Sync:
 
                 processedActivities += 1
 
-            allSyncErrorsCount = 0
+            nonblockingSyncErrorsCount = 0
+            blockingSyncErrorsCount = 0
             syncExclusionCount = 0
             for conn in serviceConnections:
                 db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": tempSyncExclusions[conn._id]}})
-                allSyncErrorsCount += len(tempSyncErrors[conn._id])
+                nonblockingSyncErrorsCount += len([x for x in tempSyncErrors[conn._id] if "Block" not in x or not x["Block"]])
+                blockingSyncErrorsCount += len([x for x in tempSyncErrors[conn._id] if "Block" in x and x["Block"]])
                 syncExclusionCount += len(tempSyncExclusions[conn._id].items())
 
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
-            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"SyncErrorCount": allSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
+            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
             if null_next_sync_on_unlock:
                 # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
                 # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
@@ -469,8 +511,3 @@ class SyncStep:
     Download = "download"
     Upload = "upload"
 
-
-class SyncError:
-    System = "system"
-    Unknown = "unkown"
-    NotAuthorized = "authorization"

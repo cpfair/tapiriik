@@ -31,6 +31,7 @@ urlpatterns = patterns('',
 
     url(r'^sync/status$', 'tapiriik.web.views.sync_status', {}, name='sync_status'),
     url(r'^sync/schedule/now$', 'tapiriik.web.views.sync_schedule_immediate', {}, name='sync_schedule_immediate'),
+    url(r'^sync/errors/(?P<service>[^/]+)/clear/(?P<group>.+)$', 'tapiriik.web.views.sync_clear_errorgroup', {}, name='sync_clear_errorgroup'),
 
     url(r'^diagnostics/$', 'tapiriik.web.views.diag_dashboard', {}, name='diagnostics_dashboard'),
     url(r'^diagnostics/user/unsu$', 'tapiriik.web.views.diag_unsu', {}, name='diagnostics_unsu'),

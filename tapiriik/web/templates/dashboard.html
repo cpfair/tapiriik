@@ -27,7 +27,7 @@
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
 	{% endif %}
-	{% if user.SyncErrorCount > 0 %}
+	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'faq' %}#partial" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
 	{% endif %}
 
@@ -37,6 +37,17 @@
 			{% include "payment.html" %}
 		{% endif %}
 	{% endif %}
+
+	{% for connection in user.ConnectedServices|svc_populate_conns %}
+		{% with svc=connection.Service %}
+			{% for error in connection.SyncErrors %}
+				{% if error.UserException.InterventionRequired and error.Block %}
+					{% include "service-blockingexception.html" with provider=svc connection=connection exception=error %}
+				{% endif %}
+			{% endfor %}
+		{% endwith %}
+	{% endfor %}
+
 	{% for provider in user.ConnectedServices|svc_providers_except %}
 		{% if provider.ID not in config.soft_launch %}
 			{% if forloop.first %}<hr>{% endif %}

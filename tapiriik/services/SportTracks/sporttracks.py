@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
 
 from django.core.urlresolvers import reverse
@@ -148,7 +148,7 @@ class SportTracksService(ServiceBase):
         params = {"username": email, "password": password}
         resp = requests.post(self.OpenFitEndpoint + "/user/login", data=json.dumps(params), allow_redirects=False, headers={"Accept": "application/json", "Content-Type": "application/json"})
         if resp.status_code != 200:
-            raise APIAuthorizationException("Invalid login")
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
         retval = (resp.cookies, int(resp.json()["user"]["uid"]))
         if record:
@@ -353,6 +353,8 @@ class SportTracksService(ServiceBase):
         cookies = self._get_cookies(record=serviceRecord)
         upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), cookies=cookies, headers={"Content-Type": "application/json"})
         if upload_resp.status_code != 200:
+            if upload_resp.status_code == 401:
+                raise APIException("ST.mobi trial expired", block=True, user_exception=UserException(UserExceptionType.AccountExpired, intervention_required=True))
             raise APIException("Unable to upload activity %s" % upload_resp.text)
 
 

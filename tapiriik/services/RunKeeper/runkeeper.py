@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
@@ -52,7 +52,7 @@ class RunKeeperService(ServiceBase):
 
         response = requests.post("https://runkeeper.com/apps/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if response.status_code != 200:
-            raise APIAuthorizationException("Invalid code")
+            raise APIException("Invalid code")
         token = response.json()["access_token"]
 
         # hacky, but also totally their fault for not giving the user id in the token req
@@ -81,7 +81,7 @@ class RunKeeperService(ServiceBase):
 
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve user URLs")
+                    raise APIException("No authorization to retrieve user URLs", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to retrieve user URLs" + str(response))
 
             uris = response.json()
@@ -107,7 +107,7 @@ class RunKeeperService(ServiceBase):
             response = requests.get(pageUri, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve activity list")
+                    raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to retrieve activity list " + str(response) + " " + response.text)
             data = response.json()
             allItems += data["items"]
@@ -156,7 +156,7 @@ class RunKeeperService(ServiceBase):
             response = requests.get("https://api.runkeeper.com" + activityID, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to download activity" + activityID)
+                    raise APIException("No authorization to download activity" + activityID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to download activity " + activityID + " response " + str(response) + " " + response.text)
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord.ExternalID
@@ -210,7 +210,7 @@ class RunKeeperService(ServiceBase):
 
         if response.status_code != 201:
             if response.status_code == 401 or response.status_code == 403:
-                raise APIAuthorizationException("No authorization to upload activity " + activity.UID)
+                raise APIException("No authorization to upload activity " + activity.UID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
 
     def _createUploadData(self, activity):

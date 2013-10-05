@@ -22,13 +22,13 @@ def auth_login_ajax(req, service):
 
 def auth_do(req, service):
     svc = Service.FromID(service)
-    from tapiriik.services.api import APIAuthorizationException
+    from tapiriik.services.api import APIException
     try:
         if svc.RequiresExtendedAuthorizationDetails:
             uid, authData, extendedAuthData = svc.Authorize(req.POST["username"], req.POST["password"])
         else:
             uid, authData = svc.Authorize(req.POST["username"], req.POST["password"])
-    except APIAuthorizationException:
+    except APIException:
         return False
     if authData is not None:
         serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData, extendedAuthDetails=extendedAuthData if svc.RequiresExtendedAuthorizationDetails else None, persistExtendedAuthDetails=bool(req.POST.get("persist", None)))

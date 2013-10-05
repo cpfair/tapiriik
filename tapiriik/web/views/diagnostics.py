@@ -47,7 +47,7 @@ def diag_dashboard(req):
     context["userCt"] = db.users.count()
     context["autosyncCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
-    context["errorUsers"] = list(db.users.find({"SyncErrorCount": {"$gt": 0}}))
+    context["errorUsers"] = list(db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}))
     context["exclusionUsers"] = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
 
     context["allWorkers"] = list(db.sync_workers.find())

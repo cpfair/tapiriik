@@ -51,7 +51,7 @@ class User:
         return False
 
     def ConnectService(user, serviceRecord):
-        from tapiriik.services import Service
+        from tapiriik.services import Service, UserExceptionType
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord._id)})
         if "ConnectedServices" not in user:
             user["ConnectedServices"] = []
@@ -68,7 +68,8 @@ class User:
                     user["FlowExceptions"] = []
                 user["FlowExceptions"] += existingUser["FlowExceptions"]
             user["Email"] = user["Email"] if "Email" in user and user["Email"] is not None else (existingUser["Email"] if "Email" in existingUser else None)
-            user["SyncErrorCount"] = (user["SyncErrorCount"] if "SyncErrorCount" in user and user["SyncErrorCount"] is not None else 0) + (existingUser["SyncErrorCount"] if "SyncErrorCount" in existingUser and existingUser["SyncErrorCount"] is not None else 0)
+            user["NonblockingSyncErrorCount"] = (user["NonblockingSyncErrorCount"] if "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] is not None else 0) + (existingUser["NonblockingSyncErrorCount"] if "NonblockingSyncErrorCount" in existingUser and existingUser["NonblockingSyncErrorCount"] is not None else 0)
+            user["BlockingSyncErrorCount"] = (user["BlockingSyncErrorCount"] if "BlockingSyncErrorCount" in user and user["BlockingSyncErrorCount"] is not None else 0) + (existingUser["BlockingSyncErrorCount"] if "BlockingSyncErrorCount" in existingUser and existingUser["BlockingSyncErrorCount"] is not None else 0)
             user["SyncExclusionCount"] = (user["SyncExclusionCount"] if "SyncExclusionCount" in user and user["SyncExclusionCount"] is not None else 0) + (existingUser["SyncExclusionCount"] if "SyncExclusionCount" in existingUser and existingUser["SyncExclusionCount"] is not None else 0)
             user["Created"] = user["Created"] if user["Created"] < existingUser["Created"] else existingUser["Created"]
             if "AncestorAccounts" not in user:
@@ -90,6 +91,7 @@ class User:
 
         db.users.update({"_id": user["_id"]}, user)
         if delta or (hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
+            db.connections.update({"_id": serviceRecord._id}, {"$pull": {"SyncErrors": {"UserException.Type": UserExceptionType.Authorization}}}) # Pull all auth-related errors from the service so they don't continue to see them while the sync completes.
             Sync.SetNextSyncIsExhaustive(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
             if hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0:
                 Sync.ScheduleImmediateSync(user)

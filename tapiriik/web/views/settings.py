@@ -22,7 +22,6 @@ def settings(request):
 
     for conn in conns:
         config = conn.GetConfiguration()
-        #import pdb; pdb.set_trace()
         for key, setting in available_settings.items():
             if request.method == "POST":
                 formkey = key + "_" + conn.Service.ID

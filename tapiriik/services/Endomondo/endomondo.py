@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException, APIExcludeActivity
+from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -84,7 +84,7 @@ class EndomondoService(ServiceBase):
 
         resp = requests.get("https://api.mobile.endomondo.com/mobile/auth", params=params)
         if resp.text.strip() == "USER_UNKNOWN" or resp.text.strip() == "USER_EXISTS_PASSWORD_WRONG":
-            raise APIAuthorizationException("Invalid login")
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         data = self._parseKVP(resp.text)
         return (data["userId"], {"AuthToken": data["authToken"], "SecureToken": data["secureToken"]})
 
@@ -190,11 +190,15 @@ class EndomondoService(ServiceBase):
             params = {"authToken": serviceRecord.Authorization["AuthToken"], "maxResults": 45, "before": before}
             logger.debug("Req with " + str(params))
             response = requests.get("http://api.mobile.endomondo.com/mobile/api/workout/list", params=params)
+
             if response.status_code != 200:
                 if response.status_code == 401 or response.status_code == 403:
-                    raise APIAuthorizationException("No authorization to retrieve activity list")
+                    raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to retrieve activity list " + str(response))
             data = response.json()
+
+            if "error" in data and data["error"]["type"] == "AUTH_FAILED":
+                raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
             track_ids = []
             this_page_activities = []

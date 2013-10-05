@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
-from tapiriik.services.api import APIException, APIAuthorizationException, APIWarning, APIExcludeActivity
+from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.tcx import TCXIO
 from tapiriik.services.sessioncache import SessionCache
 
@@ -75,7 +75,7 @@ class GarminConnectService(ServiceBase):
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
         if resp.status_code != 302:  # yep
-            raise APIAuthorizationException("Invalid login")
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         if record:
             self._sessionCache.Set(record.ExternalID, preResp.cookies)
         return preResp.cookies
@@ -88,7 +88,7 @@ class GarminConnectService(ServiceBase):
         cookies = self._get_cookies(email=email, password=password)
         username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         if not len(username):
-            raise APIAuthorizationException("Unable to retrieve username")
+            raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
 

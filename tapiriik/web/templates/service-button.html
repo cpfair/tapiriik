@@ -18,53 +18,33 @@
 			<div class="controls">
 				<div class="controlsInner">
 					{% if provider.ID in config.disabled_services %}
-					Offline
+						Offline
 					{% else %}
 						{% if provider.ID in user.ConnectedServices|svc_ids %}
-						<div class="row">
-							{% if connection.SyncErrors|length > 0 %}
-								{% if connection.SyncErrors.0.Type == "authorization" %}
-
-									<span class="status" id="sync-fail">Authorization Error</span>
-								{% elif connection.SyncErrors.0.Code == "UNTAGGED" %}
-									<span class="status" id="sync-info">Untagged activities</span>
-								{% else %}
-									<span class="status" id="sync-ok">Connected</span>
-								{% endif %}
-							{% else %}
+							<div class="row">
 								{% if extauth and not hasextauth %}
 									<span class="status" id="sync-paused">Paused</span>
 								{% else %}
 									<span class="status" id="sync-ok">Connected</span>
 								{% endif %}
-							{% endif %}
-						</div>
-						{% if connection.SyncErrors|length == 0 or connection.SyncErrors.0.Type != "authorization" %}
+							</div>
 							{% if user.ConnectedServices|length > 1 %}
 								{% if extauth and not hasextauth %}
 									<div class="row">
 										<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="reauth">Reauthorize</span></a>
 									</div>
 								{% endif %}
-									<div class="row">
-										<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
-									</div>
-								{% else %}
-									<div class="row">
-										<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
-									</div>
-								{% endif %}
+								<div class="row">
+									<a href="#" class="configDialog" service="{{ provider.ID }}"><span class="control" id="sync-config">Reconfigure</span></a>
+								</div>
 							{% else %}
 								<div class="row">
 									<a href="{{ provider.UserDisconnectURL }}" class="deauthDialog" service="{{ provider.ID }}"><span class="control" id="sync-dc">Disconnect</span></a>
 								</div>
-								<div class="row">
-									<a href="{{ provider.UserAuthorizationURL }}" class="authDialog" service="{{ provider.ID }}"><span class="control" id="reauth">Reconnect</span></a>
-								</div>
 							{% endif %}
 						{% else %}
 							<div class="row">
-								<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">Connect</a>
+							<a href="{{ provider.UserAuthorizationURL }}" class="authDialog control" id="login" service="{{ provider.ID }}">Connect</a>
 							</div>
 						{% endif %}
 					{% endif %}

@@ -37,9 +37,10 @@ tapiriik.Init = function(){
 	$(".controls").each(function(){if ($(".row",this).length>2) {$(this).addClass("multi");}});
 	// ...
 	$("#syncButton").click(tapiriik.ImmediateSyncRequested);
-	$(".service a.authDialog").click(tapiriik.AuthDialogLinkClicked);
+	$("a.authDialog").click(tapiriik.AuthDialogLinkClicked);
 	$(".service a.configDialog").click(tapiriik.ConfigDialogLinkClicked);
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
+	$("button.clearException").click(tapiriik.ClearExceptionLinkClicked);
 
 	if (tapiriik.User !== undefined){
 		if (tapiriik.User.ConnectedServicesCount > 1){
@@ -660,10 +661,28 @@ tapiriik.CreatePopover = function(contents){
 	return popoverStruct;
 };
 
+tapiriik.ClearExceptionLinkClicked = function(){
+	var service = $(this).attr("service");
+	var group = $(this).attr("group");
+
+	var animationComplete = false;
+	var postComplete = false;
+	$.post("/sync/errors/" + service + "/clear/" + group, function(){
+		postComplete = true;
+		if (animationComplete && postComplete) window.location.reload(); // Imagine AngularJS right here.
+	});
+
+	$(this).closest(".userException").slideUp(function(){
+		animationComplete = true;
+		if (animationComplete && postComplete) window.location.reload();
+	});
+	return false;
+};
+
 tapiriik.ImmediateSyncRequested = function(){
 	if (!$("#syncButton").hasClass("active")) return false;
 
-	$.get("/sync/schedule/now");
+	$.post("/sync/schedule/now");
 	tapiriik.NextSync = new Date();
 	tapiriik.LastSync = new Date();
 
