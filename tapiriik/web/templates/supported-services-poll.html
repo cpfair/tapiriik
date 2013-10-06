@@ -1,0 +1,6 @@
+{% extends "site.html" %}
+{% block title %}vote for new services{% endblock %}
+{% load displayutils %}
+{% block content %}
+<iframe style="border:none;width:100%;height:500px;" src="https://tapiriik.com/polls/index.php?poll=services&voter_key={{ voter_key }}"></iframe>
+{% endblock %}

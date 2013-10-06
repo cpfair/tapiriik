@@ -40,6 +40,7 @@ urlpatterns = patterns('',
     url(r'^diagnostics/login$', 'tapiriik.web.views.diag_login', {}, name='diagnostics_login'),
 
     url(r'^supported-activities$', 'tapiriik.web.views.supported_activities', {}, name='supported_activities'),
+    url(r'^supported-services-poll$', 'tapiriik.web.views.supported_services_poll', {}, name='supported_services_poll'),
 
     url(r'^payments/claim$', 'tapiriik.web.views.payments_claim', {}, name='payments_claim'),
     url(r'^payments/claim-ajax$', 'tapiriik.web.views.payments_claim_ajax', {}, name='payments_claim_ajax'),

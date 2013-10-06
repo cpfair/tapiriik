@@ -253,7 +253,7 @@ button.cancel:active {
 }
 
 button.disabled:active {
-	background-color: #f3f3f3;
+	background-color: #eee;
 }
 
 button.delete:active {
