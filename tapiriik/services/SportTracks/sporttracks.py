@@ -255,7 +255,7 @@ class SportTracksService(ServiceBase):
         # Everything is resampled by nearest-neighbour to the rate of the location stream.
         parallel_indices = {}
         parallel_stream_lengths = {}
-        for secondary_stream in ["elevation", "heartrate"]:
+        for secondary_stream in ["elevation", "heartrate", "power", "cadence"]:
             if secondary_stream in activityData:
                 parallel_indices[secondary_stream] = 0
                 parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
@@ -282,6 +282,12 @@ class SportTracksService(ServiceBase):
 
             if "heartrate" in parallel_indices:
                 waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
+
+            if "power" in parallel_indices:
+                waypoint.Power = activityData["power"][parallel_indices["power"]+1]
+
+            if "cadence" in parallel_indices:
+                waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
 
 
             inPause = isInTimerStop(waypoint.Timestamp)
@@ -329,11 +335,17 @@ class SportTracksService(ServiceBase):
         location_stream = []
         elevation_stream = []
         heartrate_stream = []
+        power_stream = []
+        cadence_stream = []
         for wp in activity.Waypoints:
             if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
                 stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
             if wp.HR:
                 stream_append(heartrate_stream, wp, wp.HR)
+            if wp.Cadence:
+                stream_append(cadence_stream, wp, wp.Cadence)
+            if wp.Power:
+                stream_append(power_stream, wp, wp.Power)
             if wp.Location and wp.Location.Altitude:
                 stream_append(elevation_stream, wp, wp.Location.Altitude)
             if wp.Type == WaypointType.Lap:
@@ -346,6 +358,8 @@ class SportTracksService(ServiceBase):
 
         activityData["elevation"] = elevation_stream
         activityData["heartrate"] = heartrate_stream
+        activityData["power"] = power_stream
+        activityData["cadence"] = cadence_stream
         activityData["location"] = location_stream
         activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
         activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
