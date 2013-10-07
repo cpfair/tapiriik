@@ -196,7 +196,8 @@ class TCXIO:
                 etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
             if wp.Power is not None:
                 exts = etree.SubElement(trkpt, "Extensions")
-                gpxtpxexts = etree.SubElement(exts, TRKPTEXT + "TPX")
-                etree.SubElement(gpxtpxexts, TRKPTEXT + "Watts").text = str(int(wp.Power))
+                gpxtpxexts = etree.SubElement(exts, "TPX")
+                gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+                etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
         finishLap(wp)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
