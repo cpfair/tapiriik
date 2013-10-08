@@ -119,6 +119,12 @@ def diag_user(req, user):
         from tapiriik.auth import User
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"ExcludedActivities": 1}})
         delta = True
+    elif "svc_clearacts" in req.POST:
+        from tapiriik.services import Service
+        from tapiriik.auth import User
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"SynchronizedActivities": 1}})
+        Sync.SetNextSyncIsExhaustive(userRec, True)
+        delta = True
 
     if delta:
         return redirect("diagnostics_user", user=user)
