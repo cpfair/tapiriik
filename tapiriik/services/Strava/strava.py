@@ -113,9 +113,11 @@ class StravaService(ServiceBase):
 
                 if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
                     exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
+                    logger.debug("\t\tNo pts")
                     continue  # stationary activity - no syncing for now
                 if ride["start_latlng"] == ride["end_latlng"]:
                     exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
+                    logger.debug("\t\tOnly 1 pt")
                     continue  # Only one waypoint, one would assume.
 
 
@@ -125,6 +127,7 @@ class StravaService(ServiceBase):
                 actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
                 if not len(actType):
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"]))
+                    logger.debug("\t\tUnknown activity")
                     continue
 
                 activity.Type = actType[0]
@@ -246,6 +249,7 @@ class StravaService(ServiceBase):
             if response.json()["error"]:
                 error = response.json()["error"]
                 if "duplicate of activity" in error:
+                    logger.debug("Duplicate")
                     return # I guess we're done here?
                 raise APIException("Strava failed while processing activity - last status %s" % response.text)
 
