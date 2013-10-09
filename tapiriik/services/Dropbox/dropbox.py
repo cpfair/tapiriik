@@ -183,7 +183,7 @@ class DropboxService(ServiceBase):
         except lxml.etree.XMLSyntaxError as e:
             raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
         if not act.GetFirstWaypointWithLocation():
-            raise APIExcludeActivity("TCX/GPX without any waypoint with location")
+            raise APIExcludeActivity("TCX/GPX without any waypoint with location", activityId=path)
         act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 

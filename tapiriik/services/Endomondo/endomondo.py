@@ -240,7 +240,13 @@ class EndomondoService(ServiceBase):
                 if track_id not in cached_track_tzs:
                     logger.debug("\t Resolving TZ for %s" % activity.StartTime)
                     cachedTrackData = self._downloadRawTrackRecord(serviceRecord, track_id)
-                    self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
+                    try:
+                        self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
+                    except APIExcludeActivity as e:
+                        logger.info("Encountered APIExcludeActivity %s" % str(e), activityId=track_id)
+                        exclusions.append(e)
+                        continue
+
                     if not activity.TZ:
                         exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=track_id))
                         continue
