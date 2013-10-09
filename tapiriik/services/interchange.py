@@ -65,6 +65,14 @@ class Activity:
         csp.update(roundedStartTime.strftime("%Y-%m-%d %H:%M:%S").encode('utf-8'))  # exclude TZ for compat
         self.UID = csp.hexdigest()
 
+    def GetFirstWaypointWithLocation(self):
+        loc_wp = None
+        for wp in self.Waypoints:
+            if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                loc_wp = wp.Location
+                break
+        return loc_wp
+
     def DefineTZ(self):
         """ run localize() on all contained dates (doesn't change values) """
         if self.TZ is None:
@@ -225,6 +233,8 @@ class Activity:
             if wp.Location:
                 if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                     raise ValueError("Invalid lat/lng")
+                if wp.Location.Latitude > 90 or wp.Location.Latitude < -90 or wp.Location.Longitude > 180 or wp.Location.Longitude < 180:
+                    raise ValueError("Out of range lat/lng")
                 if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
                     altLow = wp.Location.Altitude
                 if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):

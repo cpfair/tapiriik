@@ -155,6 +155,8 @@ class EndomondoService(ServiceBase):
                 wp.Timestamp = pytz.utc.localize(datetime.strptime(split[0], "%Y-%m-%d %H:%M:%S UTC"))  # it's like this as opposed to %z so I know when they change things (it'll break)
                 if split[2] != "":
                     wp.Location = Location(float(split[2]), float(split[3]), None)
+                    if wp.Location.Longitude > 180 or wp.Location.Latitude > 90 or wp.Location.Longitude < -180 or wp.Location.Latitude < -90:
+                        raise APIExcludeActivity("Out of range lat/lng")
                     if wp.Location.Latitude is not None and wp.Location.Latitude is not None:
                         wptsWithLocation = True
                     if split[6] != "":
