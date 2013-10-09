@@ -233,7 +233,7 @@ class Activity:
             if wp.Location:
                 if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                     raise ValueError("Invalid lat/lng")
-                if wp.Location.Latitude > 90 or wp.Location.Latitude < -90 or wp.Location.Longitude > 180 or wp.Location.Longitude < 180:
+                if wp.Location.Latitude > 90 or wp.Location.Latitude < -90 or wp.Location.Longitude > 180 or wp.Location.Longitude < -180:
                     raise ValueError("Out of range lat/lng")
                 if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
                     altLow = wp.Location.Altitude
