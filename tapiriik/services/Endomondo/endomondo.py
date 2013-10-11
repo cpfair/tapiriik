@@ -232,6 +232,7 @@ class EndomondoService(ServiceBase):
 
             cached_track_tzs = cachedb.endomondo_activity_cache.find({"TrackID":{"$in": track_ids}})
             cached_track_tzs = dict([(x["TrackID"], x) for x in cached_track_tzs])
+            logger.debug("Have" + str(len(cached_track_tzs.keys())) + "/" + str(len(track_ids)) + " cached TZ records")
 
             for activity in this_page_activities:
                 # attn service makers: why #(*%$ can't you all agree to use naive local time. So much simpler.
@@ -243,11 +244,12 @@ class EndomondoService(ServiceBase):
                     try:
                         self._populateActivityFromTrackData(activity, cachedTrackData, minimumWaypoints=True)
                     except APIExcludeActivity as e:
-                        logger.info("Encountered APIExcludeActivity %s" % str(e), activityId=track_id)
+                        logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(e)
                         continue
 
                     if not activity.TZ:
+                        logger.info("Couldn't determine TZ")
                         exclusions.append(APIExcludeActivity("Couldn't determine TZ", activityId=track_id))
                         continue
                     cachedTrackRecord = {"Owner": serviceRecord.ExternalID, "TrackID": track_id, "TZ": pickle.dumps(activity.TZ), "StartTime": activity.StartTime}
