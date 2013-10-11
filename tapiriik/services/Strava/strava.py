@@ -115,10 +115,6 @@ class StravaService(ServiceBase):
                     exclusions.append(APIExcludeActivity("No path", activityId=ride["id"]))
                     logger.debug("\t\tNo pts")
                     continue  # stationary activity - no syncing for now
-                if ride["start_latlng"] == ride["end_latlng"]:
-                    exclusions.append(APIExcludeActivity("Only one waypoint", activityId=ride["id"]))
-                    logger.debug("\t\tOnly 1 pt")
-                    continue  # Only one waypoint, one would assume.
 
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
