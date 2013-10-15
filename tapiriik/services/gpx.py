@@ -10,6 +10,7 @@ class GPXIO:
     Namespaces = {
         None: "http://www.topografix.com/GPX/1/1",
         "gpxtpx": "http://www.garmin.com/xmlschemas/TrackPointExtension/v1",
+        "gpxdata": "http://www.cluetrust.com/XML/GPXDATA/1/0",
         "gpxext": "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
     }
 
@@ -74,6 +75,13 @@ class GPXIO:
                         tempEl = gpxtpxExtEl.find("gpxtpx:atemp", namespaces=ns)
                         if tempEl is not None:
                             wp.Temp = float(tempEl.text)
+                    gpxdataHR = extEl.find("gpxdata:hr", namespaces=ns)
+                    if gpxdataHR is not None:
+                        wp.HR = float(gpxdataHR.text)
+                    gpxdataCadence = extEl.find("gpxdata:cadence", namespaces=ns)
+                    if gpxdataCadence is not None:
+                        wp.Cadence = float(gpxdataCadence.text)
+
                 act.Waypoints.append(wp)
 
             if not len(act.Waypoints):
