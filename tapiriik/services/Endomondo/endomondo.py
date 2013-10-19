@@ -330,7 +330,7 @@ class EndomondoService(ServiceBase):
                     line[6] = str(wp.Location.Altitude)
 
             if wp.HR is not None:
-                line[7] = str(wp.HR)
+                line[7] = str(int(wp.HR))
             scsv.append(";".join(line))
         return "\n".join(scsv)
 

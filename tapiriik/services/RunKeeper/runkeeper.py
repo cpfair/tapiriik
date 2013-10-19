@@ -250,7 +250,7 @@ class RunKeeperService(ServiceBase):
             if waypoint.HR is not None:
                 if "heart_rate" not in record:
                     record["heart_rate"] = []
-                record["heart_rate"].append({"timestamp": timestamp, "heart_rate": waypoint.HR})
+                record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
 
             if waypoint.Calories is not None:
                 if "calories" not in record:

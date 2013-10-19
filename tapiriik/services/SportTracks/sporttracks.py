@@ -341,9 +341,9 @@ class SportTracksService(ServiceBase):
             if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
                 stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
             if wp.HR:
-                stream_append(heartrate_stream, wp, wp.HR)
+                stream_append(heartrate_stream, wp, int(wp.HR))
             if wp.Cadence:
-                stream_append(cadence_stream, wp, wp.Cadence)
+                stream_append(cadence_stream, wp, int(wp.Cadence))
             if wp.Power:
                 stream_append(power_stream, wp, wp.Power)
             if wp.Location and wp.Location.Altitude:
