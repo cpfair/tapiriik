@@ -161,7 +161,7 @@ class StravaService(ServiceBase):
         hasHR = "heartrate" in ridedata and len(ridedata["heartrate"]) > 0
         hasCadence = "cadence" in ridedata and len(ridedata["cadence"]) > 0
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
-        hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0) or ("watts_calc" in ridedata and len(ridedata["watts_calc"]) > 0)
+        hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0)
         hasAltitude = "altitude" in ridedata and len(ridedata["altitude"]) > 0
         hasRestingData = "resting" in ridedata and len(ridedata["resting"]) > 0
         moving = True
@@ -203,7 +203,7 @@ class StravaService(ServiceBase):
             if hasTemp:
                 waypoint.Temp = ridedata["temp"][idx]
             if hasPower:
-                waypoint.Power = ridedata["watts"][idx] if "watts" in ridedata else ridedata["watts_calc"][idx]
+                waypoint.Power = ridedata["watts"][idx]
             activity.Waypoints.append(waypoint)
         if not hasLocation:
             raise APIExcludeActivity("No waypoints with location", activityId=activityID)
