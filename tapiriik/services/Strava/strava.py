@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, AGGRESSIVE_CACHE, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
+from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
@@ -10,7 +10,6 @@ from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import calendar
 import requests
-import json
 import os
 import logging
 import pytz
@@ -210,8 +209,6 @@ class StravaService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        fields = ["time", "latlng", "elevation", "cmd", "heartrate", "cadence", "watts", "temp"]
-        points = []
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
 
         req = { "id": 0,
