@@ -78,7 +78,7 @@ tapiriik.Init = function(){
 	tapiriik.AddressChanged();
 
 	// Detect TZ.
-	if (tapiriik.User){
+	if (tapiriik.User && !tapiriik.User.Substitute){
 		var tz = jstz.determine().name();
 		if (tz != tapiriik.User.Timezone){
 			$.post("/account/settz", {timezone: tz});
