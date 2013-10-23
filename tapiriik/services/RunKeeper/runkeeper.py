@@ -66,7 +66,7 @@ class RunKeeperService(ServiceBase):
 
     def RevokeAuthorization(self, serviceRecord):
         resp = requests.post("https://runkeeper.com/apps/de-authorize", data={"access_token": serviceRecord.Authorization["Token"]})
-        if resp.status_code != 204:
+        if resp.status_code != 204 and resp.status_code != 200:
             raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
 
