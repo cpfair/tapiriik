@@ -156,11 +156,11 @@ class TCXIO:
         def finishLap(wpt):
             nonlocal lapStartWpt, lap
             dist = activity.GetDistance(lapStartWpt, wpt)
+            movingTime = activity.GetDuration(lapStartWpt, wpt)
             xdist = etree.SubElement(lap, "DistanceMeters")
             xdist.text = str(dist)
-            # I think this is actually supposed to be "unpaused time" - oh well, no way to really tell that.
             totaltime = etree.SubElement(lap, "TotalTimeSeconds")
-            totaltime.text = str((wpt.Timestamp - lapStartWpt.Timestamp).total_seconds())
+            totaltime.text = str(movingTime.total_seconds())
             lap.insert(0, xdist)
             lap.insert(0, totaltime)
 
