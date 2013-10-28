@@ -74,6 +74,8 @@ class GarminConnectService(ServiceBase):
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
+        if resp.status_code >= 500 and resp.status_code<600:
+            raise APIException("Remote API failure")
         if resp.status_code != 302:  # yep
             raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         if record:
