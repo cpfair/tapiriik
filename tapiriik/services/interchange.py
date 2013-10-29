@@ -198,7 +198,7 @@ class Activity:
                 delta = None  # Implicit pauses
             if delta:
                 duration += delta
-        if duration.total_seconds() == 0:
+        if duration.total_seconds() == 0 and startWpt is None and endWpt is None:
             raise ValueError("Zero-duration activity")
         return duration
 
