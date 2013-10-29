@@ -151,7 +151,7 @@ class TCXIO:
             etree.SubElement(lap, "Intensity").text = "Active"
             etree.SubElement(lap, "TriggerMethod").text = "Manual"  # I assume!
 
-            track = etree.SubElement(lap, "Track")
+            track = None
 
         def finishLap(wpt):
             nonlocal lapStartWpt, lap
@@ -177,6 +177,8 @@ class TCXIO:
                 inPause = False
                 finishLap(wp)
                 newLap(wp)
+            if track is None:  # Defer creating the track until there are points
+                track = etree.SubElement(lap, "Track") # TODO - pauses should create new tracks instead of new laps?
             trkpt = etree.SubElement(track, "Trackpoint")
             if wp.Timestamp.tzinfo is None:
                 raise ValueError("TCX export requires TZ info")
