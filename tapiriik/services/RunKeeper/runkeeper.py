@@ -18,6 +18,7 @@ class RunKeeperService(ServiceBase):
     DisplayName = "RunKeeper"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = "http://runkeeper.com/user/{0}/profile"
+    AuthenticationNoFrame = True  # Chrome update broke this
 
     _activityMappings = {"Running": ActivityType.Running,
                          "Cycling": ActivityType.Cycling,
