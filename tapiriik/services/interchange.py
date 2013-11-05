@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from tapiriik.database import cachedb
 import requests
 import hashlib
@@ -216,6 +216,11 @@ class Activity:
             raise ValueError("Only one waypoint")
         if self.Distance is not None and self.Distance > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
+        if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
+            raise ValueError("Activity is from the future")
+        if self.EndTime and self.EndTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5 + 5)): # Based on the 5-day activity length limit imposed later.
+            raise ValueError("Activity ends in the future")
+
         if self.StartTime and self.EndTime:
             # We can only do these checks if the activity has both start and end times (Dropbox)
             if (self.EndTime - self.StartTime).total_seconds() < 0:
