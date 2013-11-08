@@ -264,7 +264,7 @@ class FITMessageGenerator:
 						sanitized_value = int(sanitized_value)
 					result = struct.pack("<" + field_type.PackFormat, sanitized_value)
 			except Exception as e:
-				raise Exception("Failed packing %s - %s" % (field_name, e))
+				raise Exception("Failed packing %s=%s - %s" % (field_name, kwargs[field_name], e))
 			packResult.append(result)
 		self._write(b''.join(packResult))
 

@@ -227,8 +227,8 @@ class RunKeeperService(ServiceBase):
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
         if activity.Stats.HR.Average is not None:
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
-        if activity.Stats.Kilocalories is not None:
-            record["total_calories"] = activity.Stats.Kilocalories
+        if activity.Stats.Kilocalories.Value is not None:
+            record["total_calories"] = activity.Stats.Kilocalories.Value
         if activity.Stats.Distance.Value is not None:
             record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
         if activity.Name:
