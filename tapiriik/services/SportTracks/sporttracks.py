@@ -239,9 +239,6 @@ class SportTracksService(ServiceBase):
 
         activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(act["elevation_gain"]) if "elevation_gain" in act else None, loss=float(act["elevation_loss"]) if "elevation_loss" in act else None)
 
-        # I guess we'll reverse-engineer the speed here since it isn't provided
-        activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=activity.Stats.Distance / activity.Stats.MovingTime.Value.total_seconds(), max=act["max_speed"] if "max_speed" in act else None)
-
         activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=act["avg_heartrate"] if "avg_heartrate" in act else None, max=act["max_heartrate"] if "max_heartrate" in act else None)
         activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_cadence"] if "avg_cadence" in act else None, max=act["max_cadence"] if "max_cadence" in act else None)
         activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_power"] if "avg_power" in act else None, max=act["max_power"] if "max_power" in act else None)
@@ -340,6 +337,26 @@ class SportTracksService(ServiceBase):
 
         activityData["type"] = self._reverseActivityMappings[activity.Type]
 
+        def _mapStat(key, val):
+            nonlocal activityData
+            if val is not None:
+                activityData[key] = val
+
+        _mapStat("clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
+        _mapStat("duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else None)
+        _mapStat("total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+        _mapStat("calories", int(activity.Stats.Kilocalories.Value))
+        _mapStat("elevation_gain", activity.Stats.Elevation.Gain)
+        _mapStat("elevation_loss", activity.Stats.Elevation.Loss)
+        _mapStat("max_speed", activity.Stats.Speed.Max)
+        _mapStat("avg_heartrate", activity.Stats.HR.Average)
+        _mapStat("max_heartrate", activity.Stats.HR.Max)
+        _mapStat("avg_cadence", activity.Stats.Cadence.Average)
+        _mapStat("max_cadence", activity.Stats.Cadence.Max)
+        _mapStat("avg_power", activity.Stats.Power.Average)
+        _mapStat("max_power", activity.Stats.Power.Max)
+
+        if not activity.Stationary:
         lap_starts = []
         timer_stops = []
         timer_stopped_at = None
