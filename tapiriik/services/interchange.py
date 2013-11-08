@@ -40,7 +40,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None, stationary=False):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -50,6 +50,7 @@ class Activity:
         self.FallbackTZ = fallbackTz
         self.Name = name
         self.Private = private
+        self.Stationary = stationary
         self.PrerenderedFormats = {}
 
     def CalculateUID(self):
@@ -142,6 +143,11 @@ class Activity:
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
+        if not self.Stationary:
+            if len(self.Waypoints) == 0:
+                raise ValueError("No waypoints")
+            if len(self.Waypoints) == 1:
+                raise ValueError("Only one waypoint")
         if self.Stats.Distance.Value is not None and self.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
@@ -174,7 +180,7 @@ class Activity:
                     altHigh = wp.Location.Altitude
             if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
                 pointsWithoutLocation += 1
-        if len(self.Waypoints) - pointsWithoutLocation == 0 and len(self.Waypoints):
+        if len(self.Waypoints) - pointsWithoutLocation == 0 and not self.Stationary:
             raise ValueError("No points have location")
         if len(self.Waypoints) - pointsWithoutLocation == 1:
             raise ValueError("Only one point has location")

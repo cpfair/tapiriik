@@ -143,7 +143,8 @@ class RunKeeperService(ServiceBase):
         activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
-
+        if "has_path" in rawRecord and rawRecord["has_path"] is False:
+                activity.Stationary = True
         activity.CalculateUID()
         return activity
 

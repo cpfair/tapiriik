@@ -19,6 +19,7 @@ class DropboxService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
     Configurable = True
+    ReceivesStationaryActivities = False
 
     ActivityTaggingTable = {  # earlier items have precedence over
         ActivityType.Running: "run",
@@ -260,6 +261,9 @@ class DropboxService(ServiceBase):
             fullActivity.ServiceDataCollection = activity.ServiceDataCollection
             activity = fullActivity
 
+        # Dropbox doesn't support stationary activities yet.
+        if len(activity.Waypoints) <= 1:
+            raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         return activity
 

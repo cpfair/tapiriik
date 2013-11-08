@@ -139,6 +139,9 @@ class GarminConnectService(ServiceBase):
                     continue
                 activity = UploadedActivity()
 
+                if "beginLatitude" not in act or "endLatitude" not in act or (act["beginLatitude"] is act["endLatitude"] and act["beginLongitude"] is act["endLongitude"]):
+                    activity.Stationary = True
+
                 try:
                     activity.TZ = pytz.timezone(act["activityTimeZone"]["key"])
                 except pytz.exceptions.UnknownTimeZoneError:

@@ -222,6 +222,9 @@ class EndomondoService(ServiceBase):
                 activity.EndTime = activity.StartTime + timedelta(0, round(act["duration_sec"]))
                 logger.debug("\tActivity s/t " + str(activity.StartTime))
 
+                if not act["has_points"]:
+                    activity.Stationary = True
+
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
                 activity.ServiceData = {"ActivityID": act["id"]}

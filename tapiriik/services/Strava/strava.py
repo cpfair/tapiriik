@@ -139,6 +139,7 @@ class StravaService(ServiceBase):
                     activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=ride["average_watts"])
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
+                activity.Stationary = manual
                 activity.AdjustTZ()
                 activity.CalculateUID()
                 activities.append(activity)

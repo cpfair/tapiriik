@@ -154,6 +154,7 @@ class Sync:
                 existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
+                existElsewhere[0].Stationary = existElsewhere[0].Stationary and act.Stationary
                 existElsewhere[0].Stats.coalesceWith(act.Stats)
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
@@ -200,6 +201,8 @@ class Sync:
             if destSvc.RequiresConfiguration(destinationSvcRecord):
                 logger.info("\t\t" + destSvc.ID + " not configured")
                 continue  # not configured, so we won't even try
+            if not destSvc.ReceivesStationaryActivities and activity.Stationary:
+                logger.info("\t\t" + destSvc.ID + "doesn't receive stationary activities")
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
