@@ -14,6 +14,8 @@ def config(req):
     in_diagnostics = "diagnostics" in req.path
     return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}, "soft_launch": SOFT_LAUNCH_SERVICES, "disabled_services": DISABLED_SERVICES, "in_diagnostics": in_diagnostics}}
 
+def user(req):
+    return {"user":req.user}
 
 def js_bridge(req):
     serviceInfo = {}

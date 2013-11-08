@@ -108,7 +108,13 @@ TEMPLATE_DIRS = (
     "I:/wamp/www/tapiriik/tapiriik/web/templates",
 )
 
-TEMPLATE_CONTEXT_PROCESSORS = ('tapiriik.web.context_processors.config', 'tapiriik.web.context_processors.js_bridge', 'tapiriik.web.context_processors.stats', 'tapiriik.web.context_processors.providers', 'django.core.context_processors.static',)
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'tapiriik.web.context_processors.user',
+    'tapiriik.web.context_processors.config',
+    'tapiriik.web.context_processors.js_bridge',
+    'tapiriik.web.context_processors.stats',
+    'tapiriik.web.context_processors.providers',
+    'django.core.context_processors.static',)
 
 INSTALLED_APPS = (
     'django.contrib.sessions',
@@ -166,9 +172,6 @@ PP_RECEIVER_ID = "NR6NTNSRT7NDJ"
 PAYMENT_AMOUNT = 2
 PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
-
-# empty means no invites
-INVITE_KEYS = []
 
 # hidden from regular signup
 SOFT_LAUNCH_SERVICES = []
