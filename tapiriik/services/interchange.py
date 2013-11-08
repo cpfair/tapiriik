@@ -331,7 +331,7 @@ class ActivityStatistic:
         items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
         other_items = stat.__dict__
         for item in items:
-            if item in other_items:
+            if item in other_items and other_items[item] is not None:
                 self.__dict__[item] = other_items[item]
 
     def __eq__(self, other):
