@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.interchange import UploadedActivity, ActivityType
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.tcx import TCXIO
 from tapiriik.services.fit import FITIO
@@ -57,6 +57,22 @@ class GarminConnectService(ServiceBase):
     SupportsHR = SupportsCadence = True
 
     _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
+
+    _unitMap = {
+        "mph": ActivityStatisticUnit.MilesPerHour,
+        "kmh": ActivityStatisticUnit.KilometersPerHour,
+        "celcius": ActivityStatisticUnit.DegreesCelcius,
+        "fahrenheit": ActivityStatisticUnit.DegreesFahrenheit,
+        "mile": ActivityStatisticUnit.Miles,
+        "kilometer": ActivityStatisticUnit.Kilometers,
+        "foot": ActivityStatisticUnit.Feet,
+        "meter": ActivityStatisticUnit.Meters,
+        "kilocalorie": ActivityStatisticUnit.Kilocalories,
+        "bpm": ActivityStatisticUnit.BeatsPerMinute,
+        "stepsPerMinute": ActivityStatisticUnit.StepsPerMinute,
+        "rpm": ActivityStatisticUnit.RevolutionsPerMinute,
+        "watt": ActivityStatisticUnit.Watts
+    }
 
     def __init__(self):
         self._activityHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").json()["dictionary"]
@@ -142,7 +158,39 @@ class GarminConnectService(ServiceBase):
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
                 # TODO: fix the distance stats to account for the fact that this incorrectly reported km instead of meters for the longest time.
-                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Miles if act["sumDistance"]["uom"] == "mile" else ActivityStatisticUnit.Kilometers, value=float(act["sumDistance"]["value"]))
+                activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
+
+                def mapStat(gcKey, statKey, type):
+                    nonlocal activity, act
+                    if gcKey in act:
+                        valData = {type: float(act[gcKey]["value"])}
+                        activity.Stats.__dict__[statKey].update(ActivityStatistic(self._unitMap[act[gcKey]["uom"]], **valData))
+
+                if "sumDuration" in act:
+                    activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1])))
+
+                mapStat("minSpeed", "Speed", "min")
+                mapStat("maxSpeed", "Speed", "max")
+                mapStat("weightedMeanSpeed", "Speed", "avg")
+                mapStat("weightedMeanSpeed", "Speed", "avg")
+                mapStat("minAirTemperature", "Temperature", "min")
+                mapStat("maxAirTemperature", "Temperature", "max")
+                mapStat("weightedMeanAirTemperature", "Temperature", "avg")
+                mapStat("sumEnergy", "Kilocalories", "avg")
+                mapStat("maxHeartRate", "HR", "max")
+                mapStat("weightedMeanHeartRate", "HR", "avg")
+                mapStat("maxRunCadence", "Cadence", "max")
+                mapStat("weightedMeanRunCadence", "Cadence", "avg")
+                mapStat("maxBikeCadence", "Cadence", "max")
+                mapStat("weightedMeanBikeCadence", "Cadence", "avg")
+                mapStat("minPower", "Power", "min")
+                mapStat("maxPower", "Power", "max")
+                mapStat("weightedMeanPower", "Power", "avg")
+                mapStat("minElevation", "Elevation", "min")
+                mapStat("maxElevation", "Elevation", "max")
+                mapStat("gainElevation", "Elevation", "gain")
+                mapStat("lossElevation", "Elevation", "loss")
+
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()

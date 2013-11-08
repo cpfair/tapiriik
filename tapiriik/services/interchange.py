@@ -258,7 +258,8 @@ class ActivityStatistic:
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
             (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
-            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280
+            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
+            (ActivityStatisticUnit.StepsPerMinute, ActivityStatisticUnit.RevolutionsPerMinute): 1 # Until I understand the need for there to be a difference between these...
         }
         def recurseFindConversionPath(unit, target, stack):
             assert(unit != target)
@@ -319,6 +320,13 @@ class ActivityStatistic:
                     my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
                     my_samples[item] += other_samples[item]
 
+    def update(self, stat):
+        stat = stat.asUnits(self.Units)
+        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
+        other_items = stat.__dict__
+        for item in items:
+            if item in other_items:
+                self.__dict__[item] = other_items[item]
 
     def __eq__(self, other):
         if not other:
@@ -343,6 +351,7 @@ class ActivityStatisticUnit:
     MilesPerHour = "mph"
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
+    StepsPerMinute = "SPM"
     Kilocalories = "kcal"
     Watts = "W"
 
