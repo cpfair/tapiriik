@@ -228,6 +228,12 @@ class GarminConnectService(ServiceBase):
             raise APIException("Unable to upload activity")
         actid = res["successes"][0]["internalId"]
 
+        if activity.Name:
+            res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
+            res = res.json()
+            if "display" not in res or res["display"]["value"] != activity.Name:
+                raise APIWarning("Unable to set activity name")
+
         if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
             # Set the legit activity type - whatever it is, it's not supported by the TCX schema
             acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
