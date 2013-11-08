@@ -504,6 +504,8 @@ class Sync:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)
                     destSvc = destinationSvcRecord.Service
+                    if not destSvc.ReceivesStationaryActivities and act.Stationary:
+                        logger.info("\t\t Skipping %s - activity marked as stationary during download" % destSvc.ID)
                     try:
                         logger.info("\t\tUploading to " + destSvc.ID)
                         destSvc.UploadActivity(destinationSvcRecord, act)

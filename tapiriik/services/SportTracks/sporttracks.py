@@ -246,82 +246,85 @@ class SportTracksService(ServiceBase):
         activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_cadence"] if "avg_cadence" in act else None, max=act["max_cadence"] if "max_cadence" in act else None)
         activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=act["avg_power"] if "avg_power" in act else None, max=act["max_power"] if "max_power" in act else None)
 
-        timerStops = []
-        if "timer_stops" in activityData:
-            for stop in activityData["timer_stops"]:
-                timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
+        if "location" not in activityData:
+            activity.Stationary = True
+        else:
+            timerStops = []
+            if "timer_stops" in activityData:
+                for stop in activityData["timer_stops"]:
+                    timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
 
-        def isInTimerStop(timestamp):
-            for stop in timerStops:
-                if timestamp >= stop[0] and timestamp < stop[1]:
-                    return True
-                if timestamp >= stop[1]:
-                    return False
-            return False
+            def isInTimerStop(timestamp):
+                for stop in timerStops:
+                    if timestamp >= stop[0] and timestamp < stop[1]:
+                        return True
+                    if timestamp >= stop[1]:
+                        return False
+                return False
 
-        laps = []
-        if "laps" in activityData:
-            for lap in activityData["laps"]:
-                laps.append(dateutil.parser.parse(lap["start_time"]))
-        # Collate the individual streams into our waypoints.
-        # Everything is resampled by nearest-neighbour to the rate of the location stream.
-        parallel_indices = {}
-        parallel_stream_lengths = {}
-        for secondary_stream in ["elevation", "heartrate", "power", "cadence"]:
-            if secondary_stream in activityData:
-                parallel_indices[secondary_stream] = 0
-                parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
+            laps = []
+            if "laps" in activityData:
+                for lap in activityData["laps"]:
+                    laps.append(dateutil.parser.parse(lap["start_time"]))
+            # Collate the individual streams into our waypoints.
+            # Everything is resampled by nearest-neighbour to the rate of the location stream.
+            parallel_indices = {}
+            parallel_stream_lengths = {}
+            for secondary_stream in ["elevation", "heartrate", "power", "cadence"]:
+                if secondary_stream in activityData:
+                    parallel_indices[secondary_stream] = 0
+                    parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
 
-        activity.Waypoints = []
-        wasInPause = False
-        currentLapIdx = 0
-        for idx in range(0, len(activityData["location"]), 2):
-            # Pick the nearest indices in the parallel streams
-            for parallel_stream, parallel_index in parallel_indices.items():
-                if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
-                    continue  # We're at the end of this stream
-                # Is the next datapoint a better choice than the current?
-                if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
-                    parallel_indices[parallel_stream] += 2
+            activity.Waypoints = []
+            wasInPause = False
+            currentLapIdx = 0
+            for idx in range(0, len(activityData["location"]), 2):
+                # Pick the nearest indices in the parallel streams
+                for parallel_stream, parallel_index in parallel_indices.items():
+                    if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
+                        continue  # We're at the end of this stream
+                    # Is the next datapoint a better choice than the current?
+                    if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
+                        parallel_indices[parallel_stream] += 2
 
-            waypoint = Waypoint(activity.StartTime + timedelta(0, activityData["location"][idx]))
-            waypoint.Location = Location(activityData["location"][idx+1][0], activityData["location"][idx+1][1], None)
-            if "elevation" in parallel_indices:
-                waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
+                waypoint = Waypoint(activity.StartTime + timedelta(0, activityData["location"][idx]))
+                waypoint.Location = Location(activityData["location"][idx+1][0], activityData["location"][idx+1][1], None)
+                if "elevation" in parallel_indices:
+                    waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
+
+                if returnFirstLocation:
+                    return waypoint.Location
+
+                if "heartrate" in parallel_indices:
+                    waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
+
+                if "power" in parallel_indices:
+                    waypoint.Power = activityData["power"][parallel_indices["power"]+1]
+
+                if "cadence" in parallel_indices:
+                    waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
+
+
+                inPause = isInTimerStop(waypoint.Timestamp)
+                waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
+                if wasInPause and not inPause:
+                    waypoint.Type = WaypointType.Resume
+                wasInPause = inPause
+
+                # We only care if it's possible to start a new lap, i.e. there are more left
+                if currentLapIdx + 1 < len(laps):
+                    if laps[currentLapIdx + 1] < waypoint.Timestamp:
+                        # A new lap has started
+                        waypoint.Type = WaypointType.Lap
+                        currentLapIdx += 1
+
+                activity.Waypoints.append(waypoint)
 
             if returnFirstLocation:
-                return waypoint.Location
-
-            if "heartrate" in parallel_indices:
-                waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
-
-            if "power" in parallel_indices:
-                waypoint.Power = activityData["power"][parallel_indices["power"]+1]
-
-            if "cadence" in parallel_indices:
-                waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
-
-
-            inPause = isInTimerStop(waypoint.Timestamp)
-            waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
-            if wasInPause and not inPause:
-                waypoint.Type = WaypointType.Resume
-            wasInPause = inPause
-
-            # We only care if it's possible to start a new lap, i.e. there are more left
-            if currentLapIdx + 1 < len(laps):
-                if laps[currentLapIdx + 1] < waypoint.Timestamp:
-                    # A new lap has started
-                    waypoint.Type = WaypointType.Lap
-                    currentLapIdx += 1
-
-            activity.Waypoints.append(waypoint)
-
-        if returnFirstLocation:
-            return None  # I guess there were no waypoints?
-
-        activity.Waypoints[0].Type = WaypointType.Start
-        activity.Waypoints[-1].Type = WaypointType.End
+                return None  # I guess there were no waypoints?
+            if len(activity.Waypoints):
+                activity.Waypoints[0].Type = WaypointType.Start
+                activity.Waypoints[-1].Type = WaypointType.End
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
