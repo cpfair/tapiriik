@@ -4,6 +4,7 @@ import copy
 import dateutil.parser
 from datetime import datetime
 from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatisticUnit, ActivityType, Waypoint, Location
+from .statistic_calculator import ActivityStatisticCalculator
 
 
 class TCXIO:
@@ -98,7 +99,7 @@ class TCXIO:
         act.TZ = act.Waypoints[0].Timestamp.tzinfo
         act.StartTime = startTime
         act.EndTime = endTime
-        act.CalculateDistance()
+        act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
         act.CalculateUID()
         return act
 
@@ -158,8 +159,8 @@ class TCXIO:
                 nonlocal lapStartWpt, lap
                 if not wpt:
                     return # Well, this was useful.
-                dist = activity.GetDistance(lapStartWpt, wpt)
-                movingTime = activity.GetDuration(lapStartWpt, wpt)
+                dist = ActivityStatisticCalculator.CalculateDistance(activity, lapStartWpt, wpt)
+                movingTime = ActivityStatisticCalculator.CalculateMovingTime(activity, lapStartWpt, wpt)
                 xdist = etree.SubElement(lap, "DistanceMeters")
                 xdist.text = str(dist)
                 totaltime = etree.SubElement(lap, "TotalTimeSeconds")

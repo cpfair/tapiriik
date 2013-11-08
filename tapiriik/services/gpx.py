@@ -4,7 +4,7 @@ import copy
 import dateutil.parser
 from datetime import datetime
 from .interchange import WaypointType, Activity, Waypoint, Location
-
+from .statistic_calculator import ActivityStatisticCalculator
 
 class GPXIO:
     Namespaces = {
@@ -93,7 +93,7 @@ class GPXIO:
         act.TZ = act.Waypoints[0].Timestamp.tzinfo
         act.StartTime = startTime
         act.EndTime = endTime
-        act.CalculateDistance()
+        act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
         act.CalculateUID()
         return act
 

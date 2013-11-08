@@ -40,7 +40,6 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    ImplicitPauseTime = timedelta(minutes=1, seconds=5)
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None):
         self.StartTime = startTime
         self.EndTime = endTime
@@ -134,81 +133,6 @@ class Activity:
             self.DefineTZ()
         else:
             self.AdjustTZ()
-
-    def CalculateDistance(self):
-        self.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters,value=self.GetDistance())
-
-    def GetDistance(self, startWpt=None, endWpt=None):
-        import math
-        dist = 0
-        altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
-        lastTimestamp = lastLoc = None
-
-        if not startWpt:
-            startWpt = self.Waypoints[0]
-        if not endWpt:
-            endWpt = self.Waypoints[-1]
-
-        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
-            timeDelta = self.Waypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp = self.Waypoints[x].Timestamp
-
-            if self.Waypoints[x].Type == WaypointType.Pause or (timeDelta and timeDelta > self.ImplicitPauseTime):
-                lastLoc = None  # don't count distance while paused
-                continue
-
-            loc = self.Waypoints[x].Location
-            if loc is None or loc.Longitude is None or loc.Latitude is None:
-                # Used to throw an exception in this case, but the TCX schema allows for location-free waypoints, so we'll just patch over it.
-                continue
-
-            if loc and lastLoc:
-                altHold = lastLoc.Altitude if lastLoc.Altitude is not None else altHold
-                latRads = loc.Latitude * math.pi / 180
-                meters_lat_degree = 1000 * 111.13292 + 1.175 * math.cos(4 * latRads) - 559.82 * math.cos(2 * latRads)
-                meters_lon_degree = 1000 * 111.41284 * math.cos(latRads) - 93.5 * math.cos(3 * latRads)
-                dx = (loc.Longitude - lastLoc.Longitude) * meters_lon_degree
-                dy = (loc.Latitude - lastLoc.Latitude) * meters_lat_degree
-                if loc.Altitude is not None and altHold is not None:  # incorporate the altitude when possible
-                    dz = loc.Altitude - altHold
-                else:
-                    dz = 0
-                dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
-            lastLoc = loc
-
-        return dist
-
-    def CalculateMovingTime(self, recalculate=False, **kwargs):
-        if self.Stats.MovingTime.Value is None or recalculate:
-            try:
-                self.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=self.GetMovingTime(**kwargs))
-            except ValueError:
-                pass  # Oh well.
-        return self.Stats.MovingTime
-
-    def GetMovingTime(self, startWpt=None, endWpt=None):
-        if len(self.Waypoints) < 3:
-            # Either no waypoints, or one at the start and one at the end - just use regular time elapsed
-            raise ValueError("Not enough waypoints to calculate moving time")
-        duration = timedelta(0)
-        if not startWpt:
-            startWpt = self.Waypoints[0]
-        if not endWpt:
-            endWpt = self.Waypoints[-1]
-        lastTimestamp = None
-        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
-            wpt = self.Waypoints[x]
-            delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp = wpt.Timestamp
-            if wpt.Type is WaypointType.Pause:
-                lastTimestamp = None
-            elif delta and delta > self.ImplicitPauseTime:
-                delta = None  # Implicit pauses
-            if delta:
-                duration += delta
-        if duration.total_seconds() == 0 and startWpt is None and endWpt is None:
-            raise ValueError("Zero-duration activity")
-        return duration
 
     def CheckSanity(self):
         if not hasattr(self, "ServiceDataCollection") or len(self.ServiceDataCollection.keys()) == 0:
