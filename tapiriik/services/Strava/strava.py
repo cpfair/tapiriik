@@ -4,7 +4,7 @@ from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
-from tapiriik.services.tcx import TCXIO
+from tapiriik.services.fit import FITIO
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -227,20 +227,20 @@ class StravaService(ServiceBase):
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
 
         req = { "id": 0,
-                "data_type": "tcx",
+                "data_type": "fit",
                 "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + str(activity.ServiceDataCollection.keys()[0]),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
                 "private": activity.Private}
 
-        if "tcx" in activity.PrerenderedFormats:
-            logger.debug("Using prerendered TCX")
-            tcxData = activity.PrerenderedFormats["tcx"]
+        if "fit" in activity.PrerenderedFormats:
+            logger.debug("Using prerendered FIT")
+            fitData = activity.PrerenderedFormats["fit"]
         else:
             activity.EnsureTZ()
-            # TODO: put the tcx back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
-            tcxData = TCXIO.Dump(activity)
-        files = {"file":(req["external_id"] + ".tcx", tcxData)}
+            # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
+            fitData = FITIO.Dump(activity)
+        files = {"file":(req["external_id"] + ".fit", fitData)}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
         if response.status_code != 201:

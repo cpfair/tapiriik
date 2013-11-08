@@ -1,16 +1,15 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.tcx import TCXIO
+from tapiriik.services.fit import FITIO
 from tapiriik.services.sessioncache import SessionCache
 
 from django.core.urlresolvers import reverse
 import pytz
 from datetime import datetime, timedelta
 import requests
-import json
 import os
 
 import logging
@@ -171,8 +170,8 @@ class GarminConnectService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         #/proxy/upload-service-1.1/json/upload/.tcx
         activity.EnsureTZ()
-        tcx_file = TCXIO.Dump(activity)
-        files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_file)}
+        fit_file = FITIO.Dump(activity)
+        files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         cookies = self._get_cookies(record=serviceRecord)
         res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
         res = res.json()["detailedImportResult"]
