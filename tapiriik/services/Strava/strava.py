@@ -25,6 +25,7 @@ class StravaService(ServiceBase):
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
+    ReceivesStationaryActivities = False # Grumble grumble
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
@@ -132,7 +133,7 @@ class StravaService(ServiceBase):
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=ride["distance"])
                 if "max_speed" in ride or "average_speed" in ride:
                     activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
-                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(ride["moving_time"]) if "moving_time" in ride and ride["moving_time"] > 0 else None)  # They don't let you manually enter this, and I think it returns 0 for those activities.
+                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=ride["moving_time"]) if "moving_time" in ride and ride["moving_time"] > 0 else None)  # They don't let you manually enter this, and I think it returns 0 for those activities.
                 activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=ride["calories"] if "calories" in ride else None)
                 if "average_watts" in ride:
                     activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=ride["average_watts"])
@@ -230,46 +231,60 @@ class StravaService(ServiceBase):
         if hasattr(activity, "ServiceDataCollection"):
             source_svc = str(activity.ServiceDataCollection.keys()[0])
 
-        req = { "id": 0,
-                "data_type": "fit",
-                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ("-" + source_svc if source_svc else ""),
-                "activity_name": activity.Name,
-                "activity_type": self._activityTypeMappings[activity.Type],
-                "private": activity.Private}
+        if len(activity.Waypoints):
+            req = { "id": 0,
+                    "data_type": "fit",
+                    "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ("-" + source_svc if source_svc else ""),
+                    "activity_name": activity.Name,
+                    "activity_type": self._activityTypeMappings[activity.Type],
+                    "private": 1 if activity.Private else 0}
 
-        if "fit" in activity.PrerenderedFormats:
-            logger.debug("Using prerendered FIT")
-            fitData = activity.PrerenderedFormats["fit"]
-        else:
-            activity.EnsureTZ()
-            # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
-            fitData = FITIO.Dump(activity)
-        files = {"file":(req["external_id"] + ".fit", fitData)}
+            if "fit" in activity.PrerenderedFormats:
+                logger.debug("Using prerendered FIT")
+                fitData = activity.PrerenderedFormats["fit"]
+            else:
+                activity.EnsureTZ()
+                # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
+                fitData = FITIO.Dump(activity)
+            files = {"file":(req["external_id"] + ".fit", fitData)}
 
         response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
         if response.status_code != 201:
-            self._logAPICall("upload", (serviceRecord.ExternalID, str(activity.StartTime)), response.text)
             if response.status_code == 401:
                 raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-            if "duplicate of activity" in response.text:
-                logger.debug("Duplicate")
-                return # Fine by me. The majority of these cases were caused by a dumb optimization that meant existing activities on services were never flagged as such if tapiriik didn't have to synchronize them elsewhere.
             raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
+            upload_id = response.json()["id"]
+            while not response.json()["activity_id"]:
+                time.sleep(1)
+                response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+                logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
+                if response.json()["error"]:
+                    error = response.json()["error"]
+                    if "duplicate of activity" in error:
+                        logger.debug("Duplicate")
+                        return # I guess we're done here?
+                    raise APIException("Strava failed while processing activity - last status %s" % response.text)
+        else:
+            # Semi-undocumented stationary-activity upload
+            # Requires an access_token from one of the official Strava apps to go through.
+            uploadTS = activity.StartTime.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S +0000")
+            req = {
+                    "name": activity.Name,
+                    "type": self._activityTypeMappings[activity.Type],
+                    "private": 1 if activity.Private else 0,
+                    "start_date": uploadTS,
+                    "distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
+                    "elapsed_time": int((activity.EndTime - activity.StartTime).total_seconds())
+                }
+            headers = self._apiHeaders(serviceRecord)
+            response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers, files={"testf":"testf"}, proxies={"https":"http://127.0.0.1:8888"})
+            # FFR this method returns the same dict as the activity listing, as REST services are wont to do.
+            if response.status_code != 201:
+                if response.status_code == 401:
+                    raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("Unable to upload stationary activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
-        upload_id = response.json()["id"]
-        while not response.json()["activity_id"]:
-            time.sleep(1)
-            response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
-            logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
-            if response.json()["error"]:
-                error = response.json()["error"]
-                self._logAPICall("upload", (serviceRecord.ExternalID, str(activity.StartTime)), error)
-                if "duplicate of activity" in error:
-                    logger.debug("Duplicate")
-                    return # I guess we're done here?
-                raise APIException("Strava failed while processing activity - last status %s" % response.text)
-        self._logAPICall("upload", (serviceRecord.ExternalID, str(activity.StartTime)), None)
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})

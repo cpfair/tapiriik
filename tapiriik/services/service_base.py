@@ -12,6 +12,7 @@ class ServiceBase:
         return False  # true means no sync until user configures
 
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
+    ReceivesStationaryActivities = True
     UserAuthorizationURL = None
     UserProfileURL = UserActivityURL = None
     AuthenticationNoFrame = False
