@@ -51,17 +51,17 @@
 
 <div class="right">
 	<h3>What are "untagged activites" and why do I care?</h3>
-	<b>tapiriik can't automatically determine what activity you were performing while synchronizing a GPX or TPX file from your Dropbox</b>. You need to put the <a href="/supported-activities">name of the activity</a> in the file name, or place the file in an <a href="/supported-activities">appropriately named folder</a>.
+	<b>GPX and TCX files in your Dropbox don't include information about the type of activity they contain</b>. You need to include the <a href="/supported-activities">type of the activity</a> in the file name, or place the file in an <a href="/supported-activities">appropriately named folder</a>.
 </div>
 
 <div>
 	<a name="partial"><h3>Some activities could not be synchronized?!</h3></a>
-	<b>Sometimes there are activities that tapiriik has trouble synchronizing</b>. Seeing this message <b>doesn't mean that synchronization has stopped</b>, just that certain activities are being put aside until I can resolve the issue and get everything back on track.</b>
+	<b>Sometimes there are activities that tapiriik has trouble synchronizing</b>. Most of the time this is a result of a temporary error communicating with the remote site. If the issue persists, send me an email.
 </div>
 
 <div class="right">
 	<h3>How do I connect more services?</h3>
-	Just sign into any one of the services you already connected, then sign into the new service (or the other way around, it doesn't matter). The new service will automatically be synchronized with all the others.
+	Just sign into any one of the services you already connected, then sign into the new service (or the other way around, it doesn't matter). The new service will be synchronized with all the others.
 </div>
 
 <div>
@@ -69,17 +69,20 @@
 	<b>No.</b> Simple as that.
 </div>
 
-<div class="right">
-	<h3>What data is stored on your servers?</h3>
-	As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
-</div>
-
 <div>
 	<h3>Will tapiriik create duplicate activities?</h3>
 	Nope - <b>even if you tracked the same activity on multiple devices, or with multiple apps,</b> tapiriik will see that and <b>won't create any duplicate activities</b>.
 </div>
 
+<div class="right">
+	<h3>When will tapiriik support <i>Activity Tracking Site X</i>?</h3>
+	You can register your interest in a particular site at the <b><a href="{% url 'supported_services_poll' %}">supported services poll</a></b>. This helps prioritize development, but I can't make promises - especially about release timelines.
+</div>
 
+<div>
+	<h3>What data is stored on your servers?</h3>
+	As little as is required. Check out the <a href="{% url 'privacy' %}">privacy page</a> for more.
+</div>
 
 
 
