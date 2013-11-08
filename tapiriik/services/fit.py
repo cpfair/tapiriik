@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from .interchange import WaypointType, ActivityStatisticUnit
+from .interchange import WaypointType, ActivityStatisticUnit, ActivityType
 import struct
 import sys
 import pytz
@@ -79,6 +79,9 @@ class FITMessageGenerator:
 		def mmPerSecFormatter(input):
 			# UINT16
 			return struct.pack("<H", int(input * 1000))
+		def cmFormatter(input):
+			# UINT32
+			return struct.pack("<I", int(input * 100))
 		def altitudeFormatter(input):
 			# UINT16
 			return struct.pack("<H", int((input + 500) / 5)) # Increments of 1/5, offset from -500m :S
@@ -112,6 +115,7 @@ class FITMessageGenerator:
 		# Not strictly FIT fields, but convenient.
 		defType("date_time", 0x86, 4, None, 0x0, formatter=dateTimeFormatter)
 		defType("duration_msec", 0x86, 4, None, 0x0, formatter=msecFormatter)
+		defType("distance_cm", 0x86, 4, None, 0x0, formatter=cmFormatter)
 		defType("mmPerSec", 0x84, 2, None, 0x0, formatter=mmPerSecFormatter)
 		defType("semicircles", 0x85, 4, None, 0x0, formatter=semicirclesFormatter)
 		defType("altitude", 0x84, 2, None, 0x0, formatter=altitudeFormatter)
@@ -144,7 +148,7 @@ class FITMessageGenerator:
 			6, "sub_sport", "enum",
 			0, "event", "enum",
 			1, "event_type", "enum",
-			9, "total_distance", "uint32",
+			9, "total_distance", "distance_cm",
 			11,"total_calories", "uint16",
 			14, "avg_speed", "mmPerSec",
 			15, "max_speed", "mmPerSec",
@@ -267,6 +271,17 @@ class FITMessageGenerator:
 
 class FITIO:
 
+	_sportMap = {
+		ActivityType.Other: 0,
+		ActivityType.Running: 1,
+		ActivityType.Cycling: 2,
+		ActivityType.MountainBiking: 2,
+		ActivityType.Elliptical: 4,
+		ActivityType.Swimming: 5,
+	}
+	_subSportMap = {
+		ActivityType.MountainBiking: 8
+	}
 	def _calculateCRC(bytestring, crc=0):
 		crc_table = [0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400]
 		for byte in bytestring:
@@ -298,7 +313,6 @@ class FITIO:
 				raise ValueError("Need TZ data to produce FIT file")
 		fmg = FITMessageGenerator()
 		fmg.GenerateMessage("file_id", type=FITFileTypes.Activity, time_created=datetime.utcnow(), manufacturer=FITManufacturers.DEVELOPMENT, serial_number=1, product=15706)
-
 		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityTypes.GENERIC, event=FITEvents.Activity, event_type=FITEventTypes.Start)
 
 		session_stats = {
@@ -328,7 +342,11 @@ class FITIO:
 		_mapStat("avg_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Average)
 		_mapStat("max_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Max)
 
-		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=1, event=FITEvents.Timer, event_type=FITEventTypes.Start, **session_stats)
+
+		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
+		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
+
+		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvents.Timer, event_type=FITEventTypes.Start, **session_stats)
 		fmg.GenerateMessage("lap", timestamp=toUtc(act.StartTime), event=FITEvents.Lap, event_type=FITEventTypes.Start)
 
 		inPause = False
