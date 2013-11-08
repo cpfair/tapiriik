@@ -92,15 +92,15 @@ class TCXIO:
                 act.Waypoints.append(wp)
                 xtrkpt.clear()
                 del xtrkpt
-        if not len(act.Waypoints):
-            raise ValueError("No waypoints in TCX")
 
-        act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
-        act.TZ = act.Waypoints[0].Timestamp.tzinfo
-        act.StartTime = startTime
-        act.EndTime = endTime
-        act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
-        act.CalculateUID()
+        if len(act.Waypoints):
+            act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
+            act.TZ = act.Waypoints[0].Timestamp.tzinfo
+            act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
+            act.StartTime = startTime
+            act.EndTime = endTime
+            act.CalculateUID()
+
         return act
 
     def Dump(activity):
