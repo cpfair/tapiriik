@@ -179,7 +179,7 @@ class GarminConnectService(ServiceBase):
                 mapStat("minAirTemperature", "Temperature", "min")
                 mapStat("maxAirTemperature", "Temperature", "max")
                 mapStat("weightedMeanAirTemperature", "Temperature", "avg")
-                mapStat("sumEnergy", "Kilocalories", "avg")
+                mapStat("sumEnergy", "Kilocalories", "value")
                 mapStat("maxHeartRate", "HR", "max")
                 mapStat("weightedMeanHeartRate", "HR", "avg")
                 mapStat("maxRunCadence", "Cadence", "max")
