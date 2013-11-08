@@ -434,7 +434,15 @@ class Sync:
 
                 # Download the full activity record
                 act = None
-                for dlSvcRecId in activity.ServiceDataCollection.keys():
+                actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
+
+                # Prefer retrieving the activity from its original source.
+                if hasattr(act, "Origin") and act.Origin.Service.ID in actAvailableFromSvcIds:
+                    # Move this service to the front of the line.
+                    actAvailableFromSvcIds.remove(act.Origin.Service.ID)
+                    actAvailableFromSvcIds.insert(0, act.Origin.Service.ID)
+
+                for dlSvcRecId in actAvailableFromSvcIds:
                     dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId]
                     dlSvc = dlSvcRecord.Service
                     logger.info("\t from " + dlSvc.ID)
