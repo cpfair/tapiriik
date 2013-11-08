@@ -226,9 +226,13 @@ class StravaService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
 
+        source_svc = None
+        if hasattr(activity, "ServiceDataCollection"):
+            source_svc = str(activity.ServiceDataCollection.keys()[0])
+
         req = { "id": 0,
                 "data_type": "fit",
-                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + "-" + str(activity.ServiceDataCollection.keys()[0]),
+                "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ("-" + source_svc if source_svc else ""),
                 "activity_name": activity.Name,
                 "activity_type": self._activityTypeMappings[activity.Type],
                 "private": activity.Private}
