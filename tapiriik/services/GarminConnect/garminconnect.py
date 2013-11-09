@@ -60,7 +60,7 @@ class GarminConnectService(ServiceBase):
 
     _unitMap = {
         "mph": ActivityStatisticUnit.MilesPerHour,
-        "kmh": ActivityStatisticUnit.KilometersPerHour,
+        "kph": ActivityStatisticUnit.KilometersPerHour,
         "celcius": ActivityStatisticUnit.DegreesCelcius,
         "fahrenheit": ActivityStatisticUnit.DegreesFahrenheit,
         "mile": ActivityStatisticUnit.Miles,
