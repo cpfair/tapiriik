@@ -357,44 +357,44 @@ class SportTracksService(ServiceBase):
         _mapStat("max_power", activity.Stats.Power.Max)
 
         if not activity.Stationary:
-        lap_starts = []
-        timer_stops = []
-        timer_stopped_at = None
+            lap_starts = []
+            timer_stops = []
+            timer_stopped_at = None
 
-        def stream_append(stream, wp, data):
-            stream += [int((wp.Timestamp - activity.StartTime).total_seconds()), data]
+            def stream_append(stream, wp, data):
+                stream += [int((wp.Timestamp - activity.StartTime).total_seconds()), data]
 
-        location_stream = []
-        elevation_stream = []
-        heartrate_stream = []
-        power_stream = []
-        cadence_stream = []
-        for wp in activity.Waypoints:
-            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
-                stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
-            if wp.HR:
-                stream_append(heartrate_stream, wp, int(wp.HR))
-            if wp.Cadence:
-                stream_append(cadence_stream, wp, int(wp.Cadence))
-            if wp.Power:
-                stream_append(power_stream, wp, wp.Power)
-            if wp.Location and wp.Location.Altitude:
-                stream_append(elevation_stream, wp, wp.Location.Altitude)
-            if wp.Type == WaypointType.Lap:
-                lap_starts.append(wp.Timestamp)
-            if wp.Type == WaypointType.Pause and not timer_stopped_at:
-                timer_stopped_at = wp.Timestamp
-            if wp.Type != WaypointType.Pause and timer_stopped_at:
-                timer_stops.append([timer_stopped_at, wp.Timestamp])
-                timer_stopped_at = None
+            location_stream = []
+            elevation_stream = []
+            heartrate_stream = []
+            power_stream = []
+            cadence_stream = []
+            for wp in activity.Waypoints:
+                if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                    stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
+                if wp.HR:
+                    stream_append(heartrate_stream, wp, int(wp.HR))
+                if wp.Cadence:
+                    stream_append(cadence_stream, wp, int(wp.Cadence))
+                if wp.Power:
+                    stream_append(power_stream, wp, wp.Power)
+                if wp.Location and wp.Location.Altitude:
+                    stream_append(elevation_stream, wp, wp.Location.Altitude)
+                if wp.Type == WaypointType.Lap:
+                    lap_starts.append(wp.Timestamp)
+                if wp.Type == WaypointType.Pause and not timer_stopped_at:
+                    timer_stopped_at = wp.Timestamp
+                if wp.Type != WaypointType.Pause and timer_stopped_at:
+                    timer_stops.append([timer_stopped_at, wp.Timestamp])
+                    timer_stopped_at = None
 
-        activityData["elevation"] = elevation_stream
-        activityData["heartrate"] = heartrate_stream
-        activityData["power"] = power_stream
-        activityData["cadence"] = cadence_stream
-        activityData["location"] = location_stream
-        activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
-        activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
+            activityData["elevation"] = elevation_stream
+            activityData["heartrate"] = heartrate_stream
+            activityData["power"] = power_stream
+            activityData["cadence"] = cadence_stream
+            activityData["location"] = location_stream
+            activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
+            activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
         cookies = self._get_cookies(record=serviceRecord)
         upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), cookies=cookies, headers={"Content-Type": "application/json"})
