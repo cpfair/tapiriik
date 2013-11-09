@@ -40,7 +40,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False, fallbackTz=None, stationary=False):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, waypointList=None, private=False, fallbackTz=None, stationary=False):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -49,6 +49,7 @@ class Activity:
         self.TZ = tz
         self.FallbackTZ = fallbackTz
         self.Name = name
+        self.Notes = notes
         self.Private = private
         self.Stationary = stationary
         self.PrerenderedFormats = {}
