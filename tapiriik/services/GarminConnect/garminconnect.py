@@ -207,14 +207,15 @@ class GarminConnectService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
-        #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
-        activityID = activity.ServiceData["ActivityID"]
-        cookies = self._get_cookies(record=serviceRecord)
-        res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
-        try:
-            TCXIO.Parse(res.content, activity)
-        except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e))
+        if not activity.Stationary:
+            #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
+            activityID = activity.ServiceData["ActivityID"]
+            cookies = self._get_cookies(record=serviceRecord)
+            res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
+            try:
+                TCXIO.Parse(res.content, activity)
+            except ValueError as e:
+                raise APIExcludeActivity("TCX parse error " + str(e))
 
         return activity
 

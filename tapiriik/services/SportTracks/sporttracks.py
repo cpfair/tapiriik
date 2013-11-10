@@ -232,8 +232,8 @@ class SportTracksService(ServiceBase):
         activityData = requests.get(activityURI, cookies=cookies)
         activityData = activityData.json()
 
-        if "clock_duration" in activity:
-            activity.EndTime = activity.StartTime + timedelta(seconds=float(act["clock_duration"]))
+        if "clock_duration" in activityData:
+            activity.EndTime = activity.StartTime + timedelta(seconds=float(activityData["clock_duration"]))
 
         activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(act["calories"]))
 

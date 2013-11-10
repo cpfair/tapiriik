@@ -230,7 +230,7 @@ class StravaService(ServiceBase):
 
         source_svc = None
         if hasattr(activity, "ServiceDataCollection"):
-            source_svc = str(activity.ServiceDataCollection.keys()[0])
+            source_svc = str(list(activity.ServiceDataCollection.keys())[0])
 
         if len(activity.Waypoints):
             req = { "id": 0,

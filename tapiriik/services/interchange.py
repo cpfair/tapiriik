@@ -311,7 +311,6 @@ class ActivityStatistic:
         stat = stat.asUnits(self.Units)
 
         items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
-
         my_items = self.__dict__
         other_items = stat.__dict__
         my_samples = self.Samples
@@ -324,6 +323,7 @@ class ActivityStatistic:
                     my_items[item] = other_items[item]
                     my_samples[item] = other_samples[item]
                 else:
+                    print("Coalesce %s %s n=%s with %s n=%s" % (item, my_items[item], my_samples[item], other_items[item], other_samples[item]))
                     my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
                     my_samples[item] += other_samples[item]
 
@@ -334,6 +334,7 @@ class ActivityStatistic:
         for item in items:
             if item in other_items and other_items[item] is not None:
                 self.__dict__[item] = other_items[item]
+                self.Samples[item] = stat.Samples[item]
 
     def __eq__(self, other):
         if not other:

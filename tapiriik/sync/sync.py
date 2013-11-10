@@ -11,6 +11,7 @@ import copy
 import random
 import logging
 import logging.handlers
+import pytz
 
 # Set this up seperate from the logger used in this scope, so services logging messages are caught and logged into user's files.
 _global_logger = logging.getLogger("tapiriik")
@@ -203,7 +204,7 @@ class Sync:
                 logger.info("\t\t" + destSvc.ID + " not configured")
                 continue  # not configured, so we won't even try
             if not destSvc.ReceivesStationaryActivities and activity.Stationary:
-                logger.info("\t\t" + destSvc.ID + "doesn't receive stationary activities")
+                logger.info("\t\t" + destSvc.ID + " doesn't receive stationary activities")
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
@@ -252,6 +253,7 @@ class Sync:
         return userCt
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
+        from tapiriik.services.interchange import ActivityStatisticUnit
         # And thus begins the monolithic sync function that's a pain to test.
         connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
 
@@ -392,7 +394,7 @@ class Sync:
                         updateServicesWithExistingActivity = True
                         break
                 if updateServicesWithExistingActivity:
-                    db.connections.update({"_id": {"$in": activity.ServiceDataCollection.keys()}},
+                    db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                           multi=True)
 
@@ -410,7 +412,7 @@ class Sync:
                     continue
 
                 # eligibleServices are services that are permitted to receive this activity - taking into account flow exceptions, excluded services, unfufilled configuration requirements, etc.
-                eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+                eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, connectedServices=serviceConnections, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
                 if not len(eligibleServices):
                     logger.info("\t %s has no eligible destinations" % activity.UID)
@@ -444,7 +446,7 @@ class Sync:
                     actAvailableFromSvcIds.insert(0, act.Origin.Service.ID)
 
                 for dlSvcRecId in actAvailableFromSvcIds:
-                    dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId]
+                    dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId][0]
                     dlSvc = dlSvcRecord.Service
                     logger.info("\t from " + dlSvc.ID)
                     if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
@@ -475,7 +477,7 @@ class Sync:
                         continue
                     finally:
                         # Clear this data now that we're done with it - it should never get used again
-                        activity.ServiceDataCollection[dlSvcUploadRec._id] = None
+                        activity.ServiceDataCollection[dlSvcRecord._id] = None
 
 
                     if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
@@ -497,9 +499,10 @@ class Sync:
                     del activity
                     continue
 
-                # Log metadata
-                startLoc = act.GetFirstWaypointWithLocation()
-                db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
+                if not act.Stationary:
+                    # Log metadata
+                    startLoc = act.GetFirstWaypointWithLocation()
+                    db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
@@ -507,6 +510,7 @@ class Sync:
                     destSvc = destinationSvcRecord.Service
                     if not destSvc.ReceivesStationaryActivities and act.Stationary:
                         logger.info("\t\t Skipping %s - activity marked as stationary during download" % destSvc.ID)
+                        continue
                     try:
                         logger.info("\t\tUploading to " + destSvc.ID)
                         destSvc.UploadActivity(destinationSvcRecord, act)
