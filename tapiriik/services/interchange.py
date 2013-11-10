@@ -1,9 +1,8 @@
 from datetime import timedelta, datetime
 from tapiriik.database import cachedb
-import requests
+from tapiriik.database.tz import TZLookup
 import hashlib
 import pytz
-import warnings
 
 
 class ActivityType:  # taken from RK API docs. The text values have no meaning except for debugging
@@ -107,19 +106,12 @@ class Activity:
                     break
             if loc is None:
                 raise Exception("Can't find TZ without a waypoint with a location")
+
+        # I guess at some point it will be faster to perform a full lookup than digging through this table.
         cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
         if cachedTzData is None:
-            warnings.filterwarnings("ignore", "the 'strict' argument")
-            warnings.filterwarnings("ignore", "unclosed <socket")
-            resp = requests.get("http://api.geonames.org/timezoneJSON?username=tapiriik&radius=0.5&lat=" + str(loc.Latitude) + "&lng=" + str(loc.Longitude))
-            data = resp.json()
-            cachedTzData = {}
-            if "timezoneId" in data:
-                cachedTzData["TZ"] = data["timezoneId"]
-            else:
-                cachedTzData["TZ"] = data["rawOffset"]
-            cachedTzData["Latitude"] = loc.Latitude
-            cachedTzData["Longitude"] = loc.Longitude
+            res = TZLookup(loc.Latitude, loc.Longitude)
+            cachedTzData = {"TZ": res, "Latitude": loc.Latitude, "Longitude": loc.Longitude}
             cachedb.tz_cache.insert(cachedTzData)
 
         if type(cachedTzData["TZ"]) != str:
