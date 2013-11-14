@@ -84,7 +84,8 @@ class User:
                 for duplicateConn in [x for x in user["ConnectedServices"] if x["Service"] == serviceRecord.Service.ID]:
                     dupeRecord = User.GetConnectionRecord(user, serviceRecord.Service.ID)  # this'll just pick the first connection of type, but we repeat the right # of times anyways
                     Service.DeleteServiceRecord(dupeRecord)
-                    User.DisconnectService(dupeRecord, preserveUser=True)  # preserveUser prevents GCing the user immediately before it's needed
+                    # We used to call DisconnectService() here, but the results of that call were getting overwritten, which was unfortunate.
+                    user["ConnectedServices"] = [x for x in user["ConnectedServices"] if x["Service"] != serviceRecord.Service.ID]
 
                 user["ConnectedServices"].append({"Service": serviceRecord.Service.ID, "ID": serviceRecord._id})
                 delta = True
