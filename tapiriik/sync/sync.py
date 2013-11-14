@@ -153,7 +153,7 @@ class Sync:
                 existElsewhere[0].EndTime = Sync._coalesceDatetime(existElsewhere[0].EndTime, act.EndTime, knownTz=existElsewhere[0].StartTime.tzinfo)
                 existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
                 existElsewhere[0].Notes = existElsewhere[0].Notes if existElsewhere[0].Notes is not None else act.Notes
-                existElsewhere[0].Waypoints = existElsewhere[0].Waypoints if len(existElsewhere[0].Waypoints) > 0 else act.Waypoints
+                existElsewhere[0].Laps = existElsewhere[0].Laps if len(existElsewhere[0].Laps) > len(act.Laps) else act.Laps
                 existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
                 existElsewhere[0].Private = existElsewhere[0].Private or act.Private
                 existElsewhere[0].Stationary = existElsewhere[0].Stationary and act.Stationary

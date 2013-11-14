@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.sessioncache import SessionCache
 from tapiriik.services.fit import FITIO
@@ -123,7 +123,8 @@ class EndomondoService(ServiceBase):
         return response.text
 
     def _populateActivityFromTrackData(self, activity, recordText, minimumWaypoints=False):
-        activity.Waypoints = []
+        lap = Lap()
+        activity.Laps = [lap]
         ###       1ST RECORD      ###
         # userID;
         # timestamp - create date?;
@@ -159,11 +160,13 @@ class EndomondoService(ServiceBase):
             split = row.split(";")
             if split[2] == "W":
                 # init record
-                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(split[7])) if split[7] != "" else None)
-                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(split[8]) if split[8] != "" else None)
-                activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
-                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)
-                activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(split[12]) if split[12] != "" else None)
+                lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(split[7])) if split[7] != "" else None)
+                lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(split[8]) if split[8] != "" else None)
+                lap.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
+                lap.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)
+                lap.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(split[12]) if split[12] != "" else None)
+                activity.Stats.update(lap.Stats)
+                lap.Stats = activity.Stats
                 activity.Name = split[4]
             else:
                 wp = Waypoint()
@@ -194,18 +197,18 @@ class EndomondoService(ServiceBase):
 
                 if split[7] != "":
                     wp.HR = float(split[7])
-                activity.Waypoints.append(wp)
+                lap.Waypoints.append(wp)
                 if wptsWithLocation and minimumWaypoints:
                     break
-        activity.Waypoints = sorted(activity.Waypoints, key=lambda v: v.Timestamp)
+        lap.Waypoints = sorted(activity.Waypoints, key=lambda v: v.Timestamp)
         if wptsWithLocation:
             activity.EnsureTZ(recalculate=True)
             if not wptsWithNonZeroAltitude:  # do this here so, should the activity run near sea level, altitude data won't be spotty
-                for x in activity.Waypoints:  # clear waypoints of altitude data if all of them were logged at 0m (invalid)
+                for x in lap.Waypoints:  # clear waypoints of altitude data if all of them were logged at 0m (invalid)
                     if x.Location is not None:
                         x.Location.Altitude = None
         else:
-            activity.Waypoints = []  # practically speaking
+            lap.Waypoints = []  # practically speaking
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
@@ -285,7 +288,7 @@ class EndomondoService(ServiceBase):
                     activity.TZ = pickle.loads(cached_track_tzs[track_id]["TZ"])
                     activity.AdjustTZ()  # Everything returned is in UTC
 
-                activity.Waypoints = []
+                activity.Laps = []
                 if int(act["sport"]) in self._activityMappings:
                     activity.Type = self._activityMappings[int(act["sport"])]
 

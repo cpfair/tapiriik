@@ -10,20 +10,24 @@ class ActivityStatisticCalculator:
         altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
         lastTimestamp = lastLoc = None
 
+        flatWaypoints = []
+        for lap in act.Laps:
+            flatWaypoints.append(lap.Waypoints)
+
         if not startWpt:
-            startWpt = act.Waypoints[0]
+            startWpt = flatWaypoints[0]
         if not endWpt:
-            endWpt = act.Waypoints[-1]
+            endWpt = flatWaypoints[-1]
 
-        for x in range(act.Waypoints.index(startWpt), act.Waypoints.index(endWpt) + 1):
-            timeDelta = act.Waypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp = act.Waypoints[x].Timestamp
+        for x in range(flatWaypoints.index(startWpt), flatWaypoints.index(endWpt) + 1):
+            timeDelta = flatWaypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
+            lastTimestamp = flatWaypoints[x].Timestamp
 
-            if act.Waypoints[x].Type == WaypointType.Pause or (timeDelta and timeDelta > ActivityStatisticCalculator.ImplicitPauseTime):
+            if flatWaypoints[x].Type == WaypointType.Pause or (timeDelta and timeDelta > ActivityStatisticCalculator.ImplicitPauseTime):
                 lastLoc = None  # don't count distance while paused
                 continue
 
-            loc = act.Waypoints[x].Location
+            loc = flatWaypoints[x].Location
             if loc is None or loc.Longitude is None or loc.Latitude is None:
                 # Used to throw an exception in this case, but the TCX schema allows for location-free waypoints, so we'll just patch over it.
                 continue
@@ -45,17 +49,21 @@ class ActivityStatisticCalculator:
         return dist
 
     def CalculateMovingTime(act, startWpt=None, endWpt=None):
-        if len(act.Waypoints) < 3:
+        flatWaypoints = []
+        for lap in act.Laps:
+            flatWaypoints.append(lap.Waypoints)
+
+        if len(flatWaypoints) < 3:
             # Either no waypoints, or one at the start and one at the end
             raise ValueError("Not enough waypoints to calculate moving time")
         duration = timedelta(0)
         if not startWpt:
-            startWpt = act.Waypoints[0]
+            startWpt = flatWaypoints[0]
         if not endWpt:
-            endWpt = act.Waypoints[-1]
+            endWpt = flatWaypoints[-1]
         lastTimestamp = None
-        for x in range(act.Waypoints.index(startWpt), act.Waypoints.index(endWpt) + 1):
-            wpt = act.Waypoints[x]
+        for x in range(flatWaypoints.index(startWpt), flatWaypoints.index(endWpt) + 1):
+            wpt = flatWaypoints[x]
             delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
             lastTimestamp = wpt.Timestamp
             if wpt.Type is WaypointType.Pause:

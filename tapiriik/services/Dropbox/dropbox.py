@@ -231,8 +231,8 @@ class DropboxService(ServiceBase):
                         logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(e)
                         continue
-                    del act.Waypoints
-                    act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
+                    del act.Laps
+                    act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 tagRes = self._tagActivity(relPath)
                 act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
@@ -253,16 +253,15 @@ class DropboxService(ServiceBase):
                 raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServideData["Path"])
 
         # activity might already be populated, if not download it again
-        if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
-            path = activity.ServiceData["Path"]
-            dbcl = self._getClient(serviceRecord)
-            fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
-            fullActivity.Type = activity.Type
-            fullActivity.ServiceDataCollection = activity.ServiceDataCollection
-            activity = fullActivity
+        path = activity.ServiceData["Path"]
+        dbcl = self._getClient(serviceRecord)
+        fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
+        fullActivity.Type = activity.Type
+        fullActivity.ServiceDataCollection = activity.ServiceDataCollection
+        activity = fullActivity
 
         # Dropbox doesn't support stationary activities yet.
-        if len(activity.Waypoints) <= 1:
+        if activity.CountTotalWaypoints() <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         return activity

@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.fit import FITIO
 
@@ -154,7 +154,7 @@ class StravaService(ServiceBase):
             return activity  # We've got as much information as we're going to get.
         activityID = activity.ServiceData["ActivityID"]
 
-        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,resting,latlng", headers=self._apiHeaders(svcRecord))
+        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "auth")
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -169,14 +169,16 @@ class StravaService(ServiceBase):
         for stream in streamdata:
             ridedata[stream["type"]] = stream["data"]
 
-        activity.Waypoints = []
+        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime) # Strava doesn't support laps, but we need somewhere to put the waypoints.
+        activity.Laps = [lap]
+        lap.Waypoints = []
 
         hasHR = "heartrate" in ridedata and len(ridedata["heartrate"]) > 0
         hasCadence = "cadence" in ridedata and len(ridedata["cadence"]) > 0
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0)
         hasAltitude = "altitude" in ridedata and len(ridedata["altitude"]) > 0
-        hasRestingData = "resting" in ridedata and len(ridedata["resting"]) > 0
+        hasMovingData = "moving" in ridedata and len(ridedata["moving"]) > 0
         moving = True
 
         if "error" in ridedata:
@@ -203,10 +205,10 @@ class StravaService(ServiceBase):
                 waypoint.Type = WaypointType.Start
             elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
-            elif hasRestingData and not moving and ridedata["resting"][idx] is False:
+            elif hasMovingData and not moving and ridedata["moving"][idx] is False:
                 waypoint.Type = WaypointType.Resume
                 moving = True
-            elif hasRestingData and ridedata["resting"][idx] is True:
+            elif hasMovingData and ridedata["moving"][idx] is True:
                 waypoint.Type = WaypointType.Pause
                 moving = False
 
@@ -218,7 +220,7 @@ class StravaService(ServiceBase):
                 waypoint.Temp = ridedata["temp"][idx]
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx]
-            activity.Waypoints.append(waypoint)
+            lap.Waypoints.append(waypoint)
         if not hasLocation:
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "faulty")
             raise APIExcludeActivity("No waypoints with location", activityId=activityID)
@@ -232,7 +234,7 @@ class StravaService(ServiceBase):
         if hasattr(activity, "ServiceDataCollection"):
             source_svc = str(list(activity.ServiceDataCollection.keys())[0])
 
-        if len(activity.Waypoints):
+        if activity.CountTotalWaypoints():
             req = { "id": 0,
                     "data_type": "fit",
                     "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ("-" + source_svc if source_svc else ""),

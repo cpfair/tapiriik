@@ -1,25 +1,44 @@
 from datetime import datetime, timedelta
-from .interchange import WaypointType, ActivityStatisticUnit, ActivityType
+from .interchange import WaypointType, ActivityStatisticUnit, ActivityType, LapIntensity, LapTriggerMethod
 import struct
 import sys
 import pytz
 
-class FITFileTypes:
+class FITFileType:
 	Activity = 4 # The only one we care about now.
 
-class FITManufacturers:
+class FITManufacturer:
 	DEVELOPMENT = 255 # $1500/year for one of these numbers.
 
-class FITEvents:
+class FITEvent:
 	Timer = 0
 	Lap = 9
 	Activity = 26
 
-class FITEventTypes:
+class FITEventType:
 	Start = 0
 	Stop = 1
 
-class FITActivityTypes:
+# It's not a coincidence that these enums match the ones in interchange perfectly
+class FITLapIntensity:
+	Active = 0
+	Rest = 1
+	Warmup = 2
+	Cooldown = 3
+
+class FITLapTriggerMethod:
+    Manual = 0
+    Time = 1
+    Distance = 2
+    PositionStart = 3
+    PositionLap = 4
+    PositionWaypoint = 5
+    PositionMarked = 6
+    SessionEnd = 7
+    FitnessEquipment = 8
+
+
+class FITActivityType:
 	GENERIC = 0
 	RUNNING = 1
 	CYCLING = 2
@@ -160,6 +179,7 @@ class FITMessageGenerator:
 			21, "max_power", "uint16",
 			22, "total_ascent", "uint16",
 			23, "total_descent", "uint16",
+			49, "avg_altitude", "uint16",
 			50, "max_altitude", "uint16",
 			71, "min_altitude", "uint16",
 			57, "avg_temperature", "sint8",
@@ -168,7 +188,29 @@ class FITMessageGenerator:
 		defMsg("lap", 19,
 			253, "timestamp", "date_time",
 			0, "event", "enum",
-			1, "event_type", "enum")
+			1, "event_type", "enum",
+			23, "intensity", "enum",
+			24, "lap_trigger", "enum",
+			2, "start_time", "date_time", # Vs timestamp, which was whenever the record was "written"/end of the session
+			7, "total_elapsed_time", "duration_msec", # Including pauses
+			8, "total_timer_time", "duration_msec", # Excluding pauses
+			9, "total_distance", "distance_cm",
+			11,"total_calories", "uint16",
+			13, "avg_speed", "mmPerSec",
+			14, "max_speed", "mmPerSec",
+			15, "avg_heart_rate", "uint8",
+			16, "max_heart_rate", "uint8",
+			17, "avg_cadence", "uint8", # FIT rolls run and bike cadence into one
+			18, "max_cadence", "uint8",
+			19, "avg_power", "uint16",
+			20, "max_power", "uint16",
+			21, "total_ascent", "uint16",
+			22, "total_descent", "uint16",
+			42, "avg_altitude", "uint16",
+			43, "max_altitude", "uint16",
+			62, "min_altitude", "uint16",
+			50, "avg_temperature", "sint8",
+			51, "max_temperature", "sint8"))
 
 		defMsg("record", 20,
 			253, "timestamp", "date_time",
@@ -177,6 +219,7 @@ class FITMessageGenerator:
 			2, "altitude", "altitude",
 			3, "heart_rate", "uint8",
 			4, "cadence", "uint8",
+			5, "distance", "distance_cm",
 			7, "power", "uint8",
 			13, "temperature", "sint8",
 			33, "calories", "uint16",
@@ -312,70 +355,112 @@ class FITIO:
 			else:
 				raise ValueError("Need TZ data to produce FIT file")
 		fmg = FITMessageGenerator()
-		fmg.GenerateMessage("file_id", type=FITFileTypes.Activity, time_created=datetime.utcnow(), manufacturer=FITManufacturers.DEVELOPMENT, serial_number=1, product=15706)
-		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityTypes.GENERIC, event=FITEvents.Activity, event_type=FITEventTypes.Start)
+		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), manufacturer=FITManufacturer.DEVELOPMENT, serial_number=1, product=15706)
+		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Start)
 
 		session_stats = {
 			"total_elapsed_time": act.EndTime - act.StartTime,
 		}
 
-		def _mapStat(key, value):
-			nonlocal session_stats
+		def _mapStat(dict, key, value):
 			if value is not None:
-				session_stats[key] = value
+				dict[key] = value
 
-		_mapStat("total_timer_time", act.Stats.MovingTime.Value)
-		_mapStat("total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-		_mapStat("total_calories", act.Stats.Kilocalories.Value)
-		_mapStat("avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
-		_mapStat("max_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
-		_mapStat("avg_heart_rate", act.Stats.HR.Average)
-		_mapStat("max_heart_rate", act.Stats.HR.Max)
-		_mapStat("avg_cadence", act.Stats.Cadence.Average)
-		_mapStat("max_cadence", act.Stats.Cadence.Max)
-		_mapStat("avg_power", act.Stats.Power.Average)
-		_mapStat("max_power", act.Stats.Power.Max)
-		_mapStat("total_ascent", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Gain)
-		_mapStat("total_descent", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Loss)
-		_mapStat("max_altitude", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Max)
-		_mapStat("min_altitude", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Min)
-		_mapStat("avg_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Average)
-		_mapStat("max_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Max)
+		_mapStat(session_stats, "total_timer_time", act.Stats.MovingTime.Value)
+		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+		_mapStat(session_stats, "total_calories", act.Stats.Kilocalories.Value)
+		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
+		_mapStat(session_stats, "max_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
+		_mapStat(session_stats, "avg_heart_rate", act.Stats.HR.Average)
+		_mapStat(session_stats, "max_heart_rate", act.Stats.HR.Max)
+		_mapStat(session_stats, "avg_cadence", act.Stats.Cadence.Average)
+		_mapStat(session_stats, "max_cadence", act.Stats.Cadence.Max)
+		_mapStat(session_stats, "avg_power", act.Stats.Power.Average)
+		_mapStat(session_stats, "max_power", act.Stats.Power.Max)
+		_mapStat(session_stats, "total_ascent", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Gain)
+		_mapStat(session_stats, "total_descent", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Loss)
+		_mapStat(session_stats, "avg_altitude", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Average)
+		_mapStat(session_stats, "max_altitude", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Max)
+		_mapStat(session_stats, "min_altitude", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Min)
+		_mapStat(session_stats, "avg_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Average)
+		_mapStat(session_stats, "max_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Max)
 
 
 		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
 		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
 
-		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvents.Timer, event_type=FITEventTypes.Start, **session_stats)
-		fmg.GenerateMessage("lap", timestamp=toUtc(act.StartTime), event=FITEvents.Lap, event_type=FITEventTypes.Start)
+		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
 
 		inPause = False
-		for wp in act.Waypoints:
-			if wp.Type == WaypointType.Resume and inPause:
-				fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvents.Timer, event_type=FITEventTypes.Start)
-				inPause = False
-			elif wp.Type == WaypointType.Pause and not inPause:
-				fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvents.Timer, event_type=FITEventTypes.Stop)
-				inPause = True
-			elif wp.Type == WaypointType.Lap:
-				fmg.GenerateMessage("lap", timestamp=toUtc(wp.Timestamp), event=FITEvents.Lap, event_type=FITEventTypes.Start)
+		for lap in act.Laps:
+			for wp in act.Waypoints:
+				if wp.Type == WaypointType.Resume and inPause:
+					fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvent.Timer, event_type=FITEventType.Start)
+					inPause = False
+				elif wp.Type == WaypointType.Pause and not inPause:
+					fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvent.Timer, event_type=FITEventType.Stop)
+					inPause = True
 
-			rec_contents = {"timestamp": toUtc(wp.Timestamp)}
-			if wp.Location:
-				rec_contents.update({"position_lat": wp.Location.Latitude, "position_long": wp.Location.Longitude})
-				if wp.Location.Altitude is not None:
-					rec_contents.update({"altitude": wp.Location.Altitude})
-			if wp.HR is not None:
-				rec_contents.update({"heart_rate": wp.HR})
-			if wp.Cadence is not None:
-				rec_contents.update({"cadence": wp.Cadence})
-			if wp.Power is not None:
-				rec_contents.update({"power": wp.Power})
-			if wp.Temp is not None:
-				rec_contents.update({"temperature": wp.Temp})
-			if wp.Calories is not None:
-				rec_contents.update({"calories": wp.Calories})
-			fmg.GenerateMessage("record", **rec_contents)
+				rec_contents = {"timestamp": toUtc(wp.Timestamp)}
+				if wp.Location:
+					rec_contents.update({"position_lat": wp.Location.Latitude, "position_long": wp.Location.Longitude})
+					if wp.Location.Altitude is not None:
+						rec_contents.update({"altitude": wp.Location.Altitude})
+				if wp.HR is not None:
+					rec_contents.update({"heart_rate": wp.HR})
+				if wp.Cadence is not None:
+					rec_contents.update({"cadence": wp.Cadence})
+				if wp.Power is not None:
+					rec_contents.update({"power": wp.Power})
+				if wp.Temp is not None:
+					rec_contents.update({"temperature": wp.Temp})
+				if wp.Calories is not None:
+					rec_contents.update({"calories": wp.Calories})
+				if wp.Distance is not None:
+					rec_contents.update({"distance": wp.Distance})
+				fmg.GenerateMessage("record", **rec_contents)
+			# Man, I love copy + paste and multi-cursor editing
+			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
+			lap_stats = {}
+			_mapStat(lap_stats, "total_timer_time", lap.Stats.MovingTime.Value)
+			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+			_mapStat(lap_stats, "total_calories", lap.Stats.Kilocalories.Value)
+			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
+			_mapStat(lap_stats, "max_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
+			_mapStat(lap_stats, "avg_heart_rate", lap.Stats.HR.Average)
+			_mapStat(lap_stats, "max_heart_rate", lap.Stats.HR.Max)
+			_mapStat(lap_stats, "avg_cadence", lap.Stats.Cadence.Average)
+			_mapStat(lap_stats, "max_cadence", lap.Stats.Cadence.Max)
+			_mapStat(lap_stats, "avg_power", lap.Stats.Power.Average)
+			_mapStat(lap_stats, "max_power", lap.Stats.Power.Max)
+			_mapStat(lap_stats, "total_ascent", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Gain)
+			_mapStat(lap_stats, "total_descent", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Loss)
+			_mapStat(lap_stats, "avg_altitude", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Average)
+			_mapStat(lap_stats, "max_altitude", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Max)
+			_mapStat(lap_stats, "min_altitude", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Min)
+			_mapStat(lap_stats, "avg_temperature", lap.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Average)
+			_mapStat(lap_stats, "max_temperature", lap.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Max)
+
+			# These are some really... stupid lookups.
+			# Oh well, futureproofing.
+			lap_stats["intensity"] = ({
+					LapIntensity.Active: FITLapIntensity.Active,
+					LapIntensity.Rest: FITLapIntensity.Rest,
+					LapIntensity.Warmup: FITLapIntensity.Warmup,
+					LapIntensity.Cooldown: FITLapIntensity.Cooldown,
+				})[lap.Intensity]
+			lap_stats["trigger_method"] = ({
+					LapTriggerMethod.Manual: FITLapTriggerMethod.Manual
+					LapTriggerMethod.Time: FITLapTriggerMethod.Time
+					LapTriggerMethod.Distance: FITLapTriggerMethod.Distance
+					LapTriggerMethod.PositionStart: FITLapTriggerMethod.PositionStart
+					LapTriggerMethod.PositionLap: FITLapTriggerMethod.PositionLap
+					LapTriggerMethod.PositionWaypoint: FITLapTriggerMethod.PositionWaypoint
+					LapTriggerMethod.PositionMarked: FITLapTriggerMethod.PositionMarked
+					LapTriggerMethod.SessionEnd: FITLapTriggerMethod.SessionEnd
+					LapTriggerMethod.FitnessEquipment: FITLapTriggerMethod.FitnessEquipment
+				})[lap.TriggerMethod]
+			fmg.GenerateMessage("lap", timestamp=toUtc(lap.EndTime), start_time=toUtc(lap.StartTime), event=FITEvent.Lap, event_type=FITEventType.Start, **lap_stats)
 
 		records = fmg.GetResult()
 		header = FITIO._generateHeader(len(records))

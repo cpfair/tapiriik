@@ -40,11 +40,11 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, waypointList=None, private=False, fallbackTz=None, stationary=False):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=False):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
-        self.Waypoints = waypointList if waypointList is not None else []
+        self.Laps = lapList if lapList is not None else []
         self.Stats = ActivityStatistics(distance=distance)
         self.TZ = tz
         self.FallbackTZ = fallbackTz
@@ -65,12 +65,16 @@ class Activity:
         csp.update(roundedStartTime.strftime("%Y-%m-%d %H:%M:%S").encode('utf-8'))  # exclude TZ for compat
         self.UID = csp.hexdigest()
 
+    def CountTotalWaypoints(self):
+        return sum([len(x.Waypoints) for x in self.Laps])
+
     def GetFirstWaypointWithLocation(self):
         loc_wp = None
-        for wp in self.Waypoints:
-            if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
-                loc_wp = wp.Location
-                break
+        for lap in self.Laps:
+            for wp in lap.Waypoints:
+                if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                    loc_wp = wp.Location
+                    break
         return loc_wp
 
     def DefineTZ(self):
@@ -81,9 +85,12 @@ class Activity:
             self.StartTime = self.TZ.localize(self.StartTime)
         if self.EndTime and self.EndTime.tzinfo is None:
             self.EndTime = self.TZ.localize(self.EndTime)
-        for wp in self.Waypoints:
-            if wp.Timestamp.tzinfo is None:
-                wp.Timestamp = self.TZ.localize(wp.Timestamp)
+        for lap in self.Laps:
+            lap.StartTime = self.TZ.localize(lap.StartTime) if lap.StartTime.tzinfo is None
+            lap.EndTime = self.TZ.localize(lap.EndTime) if lap.EndTime.tzinfo is None
+            for wp in lap.Waypoints:
+                if wp.Timestamp.tzinfo is None:
+                    wp.Timestamp = self.TZ.localize(wp.Timestamp)
         self.CalculateUID()
 
     def AdjustTZ(self):
@@ -93,21 +100,18 @@ class Activity:
         self.StartTime = self.StartTime.astimezone(self.TZ)
         self.EndTime = self.EndTime.astimezone(self.TZ)
 
-        for wp in self.Waypoints:
-                wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
+        for lap in self.Laps:
+            lap.StartTime = lap.StartTime.astimezone(self.TZ)
+            lap.EndTime = lap.EndTime.astimezone(self.TZ)
+            for wp in lap.Waypoints:
+                    wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
         self.CalculateUID()
 
     def CalculateTZ(self, loc=None, recalculate=False):
         if self.TZ and not recalculate:
             return self.TZ
-        if len(self.Waypoints) == 0 and loc is None and self.FallbackTZ is None:
-            import pdb; pdb.set_trace()
-            raise Exception("Can't find TZ without waypoints")
         if loc is None:
-            for wp in self.Waypoints:
-                if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
-                    loc = wp.Location
-                    break
+            loc = self.GetFirstWaypointWithLocation()
             if loc is None and self.FallbackTZ is None:
                 raise Exception("Can't find TZ without a waypoint with a location, or a fallback TZ")
         if loc is None:
@@ -137,6 +141,12 @@ class Activity:
             self.AdjustTZ()
 
     def CheckSanity(self):
+        """ Started out as a function that checked to make sure the activity itself is sane.
+            Now we perform a lot of checks to make sure all the objects were initialized properly
+            I'm undecided on this front...
+                - Forcing the .NET model of "XYZCollection"s that enforce integrity seems wrong
+                - Enforcing them in constructors makes using the classes a pain
+        """
         if not hasattr(self, "ServiceDataCollection") or len(self.ServiceDataCollection.keys()) == 0:
             raise ValueError("Unset ServiceData/ServiceDataCollection field")
         srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
@@ -144,11 +154,14 @@ class Activity:
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
+        if len(self.Laps) == 0:
+                raise ValueError("No laps")
+        wptCt = sum([len(x.Waypoints) for x in self.Laps])
         if not self.Stationary:
-            if len(self.Waypoints) == 0:
-                raise ValueError("No waypoints")
-            if len(self.Waypoints) == 1:
-                raise ValueError("Only one waypoint")
+            if wptCt == 0:
+                raise ValueError("Exactly 0 waypoints")
+            if wptCt == 1:
+                raise ValueError("Only 1 waypoint")
         if self.Stats.Distance.Value is not None and self.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
@@ -164,37 +177,51 @@ class Activity:
                 raise ValueError("0-duration activity")
             if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
                 raise ValueError("Exceedingly long activity (time)")
+
+        if len(self.Laps) == 1:
+            if self.Laps[0].Stats != self.Stats:
+                raise ValueError("Activity with 1 lap has mismatching statistics between activity and lap")
         altLow = None
         altHigh = None
         pointsWithoutLocation = 0
-        for wp in self.Waypoints:
-            if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
-                raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
-            if wp.Location:
-                if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
-                    raise ValueError("Invalid lat/lng")
-                if (wp.Location.Latitude is not None and (wp.Location.Latitude > 90 or wp.Location.Latitude < -90)) or (wp.Location.Longitude is not None and (wp.Location.Longitude > 180 or wp.Location.Longitude < -180)):
-                    raise ValueError("Out of range lat/lng")
-                if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
-                    altLow = wp.Location.Altitude
-                if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
-                    altHigh = wp.Location.Altitude
-            if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                pointsWithoutLocation += 1
-        if len(self.Waypoints) - pointsWithoutLocation == 0 and not self.Stationary:
+        for lap in self.Laps:
+            if not lap.StartTime:
+                raise ValueError("Lap has no start time")
+            if not lap.EndTime:
+                raise ValueError("Lap has no start time")
+            if len(lap.Waypoints):
+                if lap.Waypoints[0].Timestamp != lap.StartTime:
+                    raise ValueError("Lap start time does not match first waypoint timestamp")
+                if lap.Waypoints[-1].Timestamp != lap.EndTime:
+                    raise ValueError("Lap end time does not match last waypoint timestamp")
+            for wp in lap.Waypoints:
+                if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
+                    raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
+                if wp.Location:
+                    if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
+                        raise ValueError("Invalid lat/lng")
+                    if (wp.Location.Latitude is not None and (wp.Location.Latitude > 90 or wp.Location.Latitude < -90)) or (wp.Location.Longitude is not None and (wp.Location.Longitude > 180 or wp.Location.Longitude < -180)):
+                        raise ValueError("Out of range lat/lng")
+                    if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
+                        altLow = wp.Location.Altitude
+                    if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
+                        altHigh = wp.Location.Altitude
+                if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                    pointsWithoutLocation += 1
+        if wptCt - pointsWithoutLocation == 0 and not self.Stationary:
             raise ValueError("No points have location")
-        if len(self.Waypoints) - pointsWithoutLocation == 1:
+        if wptCt - pointsWithoutLocation == 1:
             raise ValueError("Only one point has location")
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Waypoints)) + " WPs"
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Laps)) + " laps " + str(sum([len(x.Waypoints) for x in self.Laps])) + " WPs"
     __repr__ = __str__
 
     def __eq__(self, other):
         # might need to fix this for TZs?
-        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Stats.Distance == other.Stats.Distance and self.Name == other.Name
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Laps == other.Laps and self.Stats.Distance == other.Stats.Distance and self.Name == other.Name
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -203,8 +230,35 @@ class Activity:
 class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
 
+class LapIntensity:
+    Active = 0
+    Rest = 1
+    Warmup = 2
+    Cooldown = 3
+
+class LapTriggerMethod:
+    Manual = 0
+    Time = 1
+    Distance = 2
+    PositionStart = 3
+    PositionLap = 4
+    PositionWaypoint = 5
+    PositionMarked = 6
+    SessionEnd = 7
+    FitnessEquipment = 8
+
+class Lap:
+    def __init__(self, startTime=None, endTime=None, intensity=LapIntensity.Active, trigger=LapTriggerMethod.Manual, stats=None, waypointList=None):
+        self.StartTime = startTime
+        self.EndTime = endTime
+        self.Trigger = trigger
+        self.Intensity = intensity
+        self.Stats = stats if stats else ActivityStatistics()
+        self.Waypoints = waypointList if waypointList else []
+
 class ActivityStatistics:
-    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
+    _statKeyList = ["Distance", "MovingTime", "Kilocalories", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
+    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
         self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
         self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
         self.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal) # KCal
@@ -212,13 +266,29 @@ class ActivityStatistics:
         self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
         self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=avg_hr, max=max_hr)
         self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=avg_cadence, max=max_cadence)
+        self.RunCadence = ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=avg_run_cadence, max=max_run_cadence)
+        self.Strides = ActivityStatistic(ActivityStatisticUnit.Strides, value=strides)
         self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg=avg_temp, max=max_temp, min=min_temp)
         self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=avg_power, max=max_power)
 
     def coalesceWith(self, other_stats):
-        stats = ["Distance", "MovingTime", "Kilocalories", "Speed", "Elevation", "HR", "Cadence", "Temperature", "Power"]
-        for stat in stats:
+        for stat in ActivityStatistics._statKeyList:
             self.__dict__[stat].coalesceWith(other_stats.__dict__[stat])
+    # Magic dict is meh
+    def update(self, other_stats):
+        for stat in ActivityStatistics._statKeyList:
+            self.__dict__[stat].update(other_stats.__dict__[stat])
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        for stat in ActivityStatistics._statKeyList:
+            if not self.__dict__[stat] == other_stats.__dict__[stat]:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class ActivityStatistic:
     def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
@@ -265,8 +335,7 @@ class ActivityStatistic:
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
             (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
-            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
-            (ActivityStatisticUnit.StepsPerMinute, ActivityStatisticUnit.RevolutionsPerMinute): 1 # Until I understand the need for there to be a difference between these...
+            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280
         }
         def recurseFindConversionPath(unit, target, stack):
             assert(unit != target)
@@ -360,6 +429,7 @@ class ActivityStatisticUnit:
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
     StepsPerMinute = "SPM"
+    Strides = "strides"
     Kilocalories = "kcal"
     Watts = "W"
 
@@ -367,15 +437,13 @@ class ActivityStatisticUnit:
 class WaypointType:
     Start = 0   # Start of activity
     Regular = 1 # Normal
-    Lap = 2     # A new lap starts with this
     Pause = 11  # All waypoints within a paused period should have this type
     Resume = 12 # The first waypoint after a paused period
     End = 100   # End of activity
 
-
 class Waypoint:
     __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "Type"]
-    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, temp=None):
+    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None):
         self.Timestamp = timestamp
         self.Location = location
         self.HR = hr
@@ -383,6 +451,8 @@ class Waypoint:
         self.Power = power  # I doubt there will ever be more parameters than this in terms of interchange
         self.Temp = temp  # never say never
         self.Cadence = cadence  # dammit this better be the last one
+        self.RunCadence = runCadence  # screw it
+        self.Distance = distance # I don't even care any more.
         self.Type = ptType
 
     def __eq__(self, other):
