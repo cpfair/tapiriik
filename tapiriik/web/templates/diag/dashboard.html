@@ -25,7 +25,13 @@
 			{% endif %}
 		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
-		<li><b>Sync errors:</b>
+		<li><b>Sync errors (automatic):</b>
+			<ul>{% for error in autoSyncErrorSummary %}
+				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user %}">{{ affected_user }}</a> {% endfor %}</li>
+				{% endfor %}
+			</ul>
+		</li>
+		<li><b>Sync errors (manual):</b>
 			<ul>{% for error in syncErrorSummary %}
 				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user %}">{{ affected_user }}</a> {% endfor %}</li>
 				{% endfor %}
