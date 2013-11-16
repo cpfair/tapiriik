@@ -10,6 +10,7 @@ import subprocess
 import socket
 
 Run = True
+RecycleInterval = 10 # Number of users processed before the worker is recycled. Meh.
 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
@@ -32,7 +33,9 @@ patch_requests_with_default_timeout(timeout=60)
 
 while Run:
     cycleStart = datetime.datetime.utcnow()
-    Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
+    RecycleInterval -= Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat)
+    if RecycleInterval <= 0:
+    	break
     if (datetime.datetime.utcnow() - cycleStart).total_seconds() < 1:
         time.sleep(1)
     sync_heartbeat("idle")

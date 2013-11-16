@@ -209,7 +209,9 @@ class Sync:
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
         users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None}).sort("NextSynchronization").limit(1)
+        userCt = 0
         for user in users:
+            userCt += 1
             syncStart = datetime.utcnow()
 
             # Always to an exhaustive sync if there were errors
@@ -236,6 +238,7 @@ class Sync:
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
+        return userCt
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
         # And thus begins the monolithic sync function that's a pain to test.
