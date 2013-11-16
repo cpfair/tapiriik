@@ -362,6 +362,20 @@ class Sync:
             processedActivities = 0
             for activity in activities:
 
+                # Locally mark this activity as present on the appropriate services.
+                # These needs to happen regardless of whether the activity is going to be synchronized.
+                #   Before, I had moved this under all the eligibility/recipient checks, but that could cause persistent duplicate activities when the user had already manually uploaded the same activity to multiple sites.
+                updateServicesWithExistingActivity = False
+                for serviceWithExistingActivityUploadRecord in activity.UploadedTo:
+                    serviceWithExistingActivity = serviceWithExistingActivityUploadRecord["Connection"]
+                    if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or activity.UID not in serviceWithExistingActivity.SynchronizedActivities:
+                        updateServicesWithExistingActivity = True
+                        break
+                if updateServicesWithExistingActivity:
+                    db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
+                                          {"$addToSet": {"SynchronizedActivities": activity.UID}},
+                                          multi=True)
+
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
                     logger.info("\t %s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
@@ -387,10 +401,6 @@ class Sync:
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.Download)
 
-                # Locally mark this activity as present on the appropriate services.
-                db.connections.update({"_id": {"$in": [x["Connection"]._id for x in activity.UploadedTo]}},
-                                      {"$addToSet": {"SynchronizedActivities": activity.UID}},
-                                      multi=True)
 
 
                 if totalActivities <= 0:
