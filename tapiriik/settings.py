@@ -191,7 +191,7 @@ AGGRESSIVE_CACHE = True
 # Diagnostics auth, None = no auth
 DIAG_AUTH_TOTP_SECRET = DIAG_AUTH_PASSWORD = None
 
-SPORTTRACKS_OPENFIT_ENDPOINT = "http://demo.openfitapi.com/openfitapi/api"
+SPORTTRACKS_OPENFIT_ENDPOINT = "http://sporttracks.mobi/openfitapi/api"
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = './sent_emails'
