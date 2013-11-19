@@ -15,6 +15,7 @@ def auth_login(req, service):
     return render(req, "auth/login.html", {"serviceid": service, "service": Service.FromID(service)})
 
 
+@require_POST
 def auth_login_ajax(req, service):
     res = auth_do(req, service)
     return HttpResponse(json.dumps({"success": res}), mimetype='application/json')
