@@ -86,8 +86,8 @@ class Activity:
         if self.EndTime and self.EndTime.tzinfo is None:
             self.EndTime = self.TZ.localize(self.EndTime)
         for lap in self.Laps:
-            lap.StartTime = self.TZ.localize(lap.StartTime) if lap.StartTime.tzinfo is None
-            lap.EndTime = self.TZ.localize(lap.EndTime) if lap.EndTime.tzinfo is None
+            lap.StartTime = self.TZ.localize(lap.StartTime) if lap.StartTime.tzinfo is None else lap.StartTime
+            lap.EndTime = self.TZ.localize(lap.EndTime) if lap.EndTime.tzinfo is None else lap.EndTime
             for wp in lap.Waypoints:
                 if wp.Timestamp.tzinfo is None:
                     wp.Timestamp = self.TZ.localize(wp.Timestamp)
@@ -181,6 +181,11 @@ class Activity:
         if len(self.Laps) == 1:
             if self.Laps[0].Stats != self.Stats:
                 raise ValueError("Activity with 1 lap has mismatching statistics between activity and lap")
+        if len(self.Laps) >= 1:
+            if self.Laps[0].StartTime != self.StartTime:
+                raise ValueError("Start time of first lap must match start time of activity")
+            if self.Laps[-1].EndTime != self.EndTime:
+                raise ValueError("End time of last lap must match end time of activity")
         altLow = None
         altHigh = None
         pointsWithoutLocation = 0
@@ -442,8 +447,8 @@ class WaypointType:
     End = 100   # End of activity
 
 class Waypoint:
-    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "Type"]
-    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None):
+    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "RunCadence", "Type", "Distance", "Speed"]
+    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None, speed=None):
         self.Timestamp = timestamp
         self.Location = location
         self.HR = hr
@@ -453,10 +458,11 @@ class Waypoint:
         self.Cadence = cadence  # dammit this better be the last one
         self.RunCadence = runCadence  # screw it
         self.Distance = distance # I don't even care any more.
+        self.Speed = speed # neghhhhh
         self.Type = ptType
 
     def __eq__(self, other):
-        return self.Timestamp == other.Timestamp and self.Location == other.Location and self.HR == other.HR and self.Calories == other.Calories and self.Temp == other.Temp and self.Cadence == other.Cadence and self.Type == other.Type and self.Power == other.Power
+        return self.Timestamp == other.Timestamp and self.Location == other.Location and self.HR == other.HR and self.Calories == other.Calories and self.Temp == other.Temp and self.Cadence == other.Cadence and self.Type == other.Type and self.Power == other.Power and self.RunCadence == other.RunCadence and self.Distance == other.Distance and self.Speed == other.Speed
 
     def __ne__(self, other):
         return not self.__eq__(other)

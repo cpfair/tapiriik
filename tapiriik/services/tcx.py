@@ -143,6 +143,9 @@ class TCXIO:
                         powerEl = tpxEl.find("tpx:Watts", namespaces=ns)
                         if powerEl is not None:
                             wp.Power = float(powerEl.text)
+                        speedEl = tpxEl.find("tpx:Speed", namespaces=ns)
+                        if speedEl is not None:
+                            wp.Speed = float(speedEl.text)
                         runCadEl = tpxEl.find("tpx:RunCadence", namespaces=ns)
                         if runCadEl is not None:
                             wp.RunCadence = float(runCadEl.text)
@@ -270,7 +273,7 @@ class TCXIO:
                         etree.SubElement(xhr, "Value").text = str(int(wp.HR))
                     if wp.Cadence is not None:
                         etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
-                    if wp.Power is not None or wp.RunCadence is not None:
+                    if wp.Power is not None or wp.RunCadence is not None or wp.Speed is not None:
                         exts = etree.SubElement(trkpt, "Extensions")
                         gpxtpxexts = etree.SubElement(exts, "TPX")
                         gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
@@ -278,4 +281,6 @@ class TCXIO:
                             etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
                         if wp.RunCadence is not None:
                             etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
+                        if wp.Speed is not None:
+                            etree.SubElement(gpxtpxexts, "Speed").text = str(wp.Speed)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")

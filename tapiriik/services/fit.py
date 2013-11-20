@@ -90,23 +90,23 @@ class FITMessageGenerator:
 		def dateTimeFormatter(input):
 			# UINT32
 			# Seconds since UTC 00:00 Dec 31 1989. If <0x10000000 = system time
-			delta = int((input - datetime(hour=0, minute=0, month=12, day=31, year=1989)).total_seconds())
+			delta = round((input - datetime(hour=0, minute=0, month=12, day=31, year=1989)).total_seconds())
 			return struct.pack("<I", delta)
 		def msecFormatter(input):
 			# uint32
-			return struct.pack("<I", int((input if type(input) is not timedelta else input.total_seconds()) * 1000))
+			return struct.pack("<I", round((input if type(input) is not timedelta else input.total_seconds()) * 1000))
 		def mmPerSecFormatter(input):
 			# UINT16
-			return struct.pack("<H", int(input * 1000))
+			return struct.pack("<H", round(input * 1000))
 		def cmFormatter(input):
 			# UINT32
-			return struct.pack("<I", int(input * 100))
+			return struct.pack("<I", round(input * 100))
 		def altitudeFormatter(input):
 			# UINT16
-			return struct.pack("<H", int((input + 500) / 5)) # Increments of 1/5, offset from -500m :S
+			return struct.pack("<H", round((input + 500) * 5)) # Increments of 1/5, offset from -500m :S
 		def semicirclesFormatter(input):
 			# SINT32
-			return struct.pack("<i", int(input * (2 ** 31 / 180)))
+			return struct.pack("<i", round(input * (2 ** 31 / 180)))
 
 
 		def defType(name, *args, **kwargs):
@@ -179,9 +179,9 @@ class FITMessageGenerator:
 			21, "max_power", "uint16",
 			22, "total_ascent", "uint16",
 			23, "total_descent", "uint16",
-			49, "avg_altitude", "uint16",
-			50, "max_altitude", "uint16",
-			71, "min_altitude", "uint16",
+			49, "avg_altitude", "altitude",
+			50, "max_altitude", "altitude",
+			71, "min_altitude", "altitude",
 			57, "avg_temperature", "sint8",
 			58, "max_temperature", "sint8")
 
@@ -189,6 +189,7 @@ class FITMessageGenerator:
 			253, "timestamp", "date_time",
 			0, "event", "enum",
 			1, "event_type", "enum",
+			25, "sport", "enum",
 			23, "intensity", "enum",
 			24, "lap_trigger", "enum",
 			2, "start_time", "date_time", # Vs timestamp, which was whenever the record was "written"/end of the session
@@ -206,11 +207,12 @@ class FITMessageGenerator:
 			20, "max_power", "uint16",
 			21, "total_ascent", "uint16",
 			22, "total_descent", "uint16",
-			42, "avg_altitude", "uint16",
-			43, "max_altitude", "uint16",
-			62, "min_altitude", "uint16",
+			42, "avg_altitude", "altitude",
+			43, "max_altitude", "altitude",
+			62, "min_altitude", "altitude",
 			50, "avg_temperature", "sint8",
-			51, "max_temperature", "sint8"))
+			51, "max_temperature", "sint8"
+			)
 
 		defMsg("record", 20,
 			253, "timestamp", "date_time",
@@ -220,6 +222,7 @@ class FITMessageGenerator:
 			3, "heart_rate", "uint8",
 			4, "cadence", "uint8",
 			5, "distance", "distance_cm",
+			6, "speed", "mmPerSec",
 			7, "power", "uint8",
 			13, "temperature", "sint8",
 			33, "calories", "uint16",
@@ -238,6 +241,8 @@ class FITMessageGenerator:
 
 	def _defineMessage(self, local_no, global_message, field_names):
 		assert local_no < 16 and local_no >= 0
+		if set(field_names) - set(global_message.FieldNameList):
+			raise ValueError("Attempting to use undefined fields %s" % (set(field_names) - set(global_message.FieldNameList)))
 		messageHeader = 0b01000000
 		messageHeader = messageHeader | local_no
 
@@ -245,7 +250,6 @@ class FITMessageGenerator:
 
 		arch = 0 # Little-endian
 		global_no = global_message.Number
-
 		field_count = len(field_names)
 		pack_tuple = (messageHeader, 0, arch, global_no, field_count)
 		for field_name in global_message.FieldNameList:
@@ -304,7 +308,7 @@ class FITMessageGenerator:
 				else:
 					sanitized_value = kwargs[field_name]
 					if field_type.PackFormat in ["B","b", "H", "h", "I", "i"]:
-						sanitized_value = int(sanitized_value)
+						sanitized_value = round(sanitized_value)
 					result = struct.pack("<" + field_type.PackFormat, sanitized_value)
 			except Exception as e:
 				raise Exception("Failed packing %s=%s - %s" % (field_name, kwargs[field_name], e))
@@ -323,7 +327,7 @@ class FITIO:
 		ActivityType.Swimming: 5,
 	}
 	_subSportMap = {
-		ActivityType.MountainBiking: 8
+		# ActivityType.MountainBiking: 8 there's an issue with cadence upload and this type with GC, so...
 	}
 	def _calculateCRC(bytestring, crc=0):
 		crc_table = [0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400]
@@ -356,11 +360,23 @@ class FITIO:
 				raise ValueError("Need TZ data to produce FIT file")
 		fmg = FITMessageGenerator()
 		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), manufacturer=FITManufacturer.DEVELOPMENT, serial_number=1, product=15706)
-		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Start)
+
+		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
+		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
 
 		session_stats = {
 			"total_elapsed_time": act.EndTime - act.StartTime,
 		}
+
+		# FIT doesn't have different fields for this, but it does have a different interpretation - we eventually need to divide by two in the running case.
+		# Further complicating the issue is that most sites don't differentiate the two, so they'll end up putting the run cadence back into the bike field.
+		use_run_cadence = act.Type in [ActivityType.Running, ActivityType.Walking, ActivityType.Hiking]
+		def _resolveRunCadence(bikeCad, runCad):
+			nonlocal use_run_cadence
+			if use_run_cadence:
+				return runCad/2 if runCad is not None else (bikeCad/2 if bikeCad is not None else None)
+			else:
+				return bikeCad
 
 		def _mapStat(dict, key, value):
 			if value is not None:
@@ -373,8 +389,8 @@ class FITIO:
 		_mapStat(session_stats, "max_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
 		_mapStat(session_stats, "avg_heart_rate", act.Stats.HR.Average)
 		_mapStat(session_stats, "max_heart_rate", act.Stats.HR.Max)
-		_mapStat(session_stats, "avg_cadence", act.Stats.Cadence.Average)
-		_mapStat(session_stats, "max_cadence", act.Stats.Cadence.Max)
+		_mapStat(session_stats, "avg_cadence", _resolveRunCadence(act.Stats.Cadence.Average, act.Stats.RunCadence.Average))
+		_mapStat(session_stats, "max_cadence", _resolveRunCadence(act.Stats.Cadence.Max, act.Stats.RunCadence.Max))
 		_mapStat(session_stats, "avg_power", act.Stats.Power.Average)
 		_mapStat(session_stats, "max_power", act.Stats.Power.Max)
 		_mapStat(session_stats, "total_ascent", act.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Gain)
@@ -385,15 +401,9 @@ class FITIO:
 		_mapStat(session_stats, "avg_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Average)
 		_mapStat(session_stats, "max_temperature", act.Stats.Temperature.asUnits(ActivityStatisticUnit.DegreesCelcius).Max)
 
-
-		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
-		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
-
-		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
-
 		inPause = False
 		for lap in act.Laps:
-			for wp in act.Waypoints:
+			for wp in lap.Waypoints:
 				if wp.Type == WaypointType.Resume and inPause:
 					fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvent.Timer, event_type=FITEventType.Start)
 					inPause = False
@@ -408,6 +418,8 @@ class FITIO:
 						rec_contents.update({"altitude": wp.Location.Altitude})
 				if wp.HR is not None:
 					rec_contents.update({"heart_rate": wp.HR})
+				if wp.RunCadence is not None:
+					rec_contents.update({"cadence": wp.RunCadence})
 				if wp.Cadence is not None:
 					rec_contents.update({"cadence": wp.Cadence})
 				if wp.Power is not None:
@@ -418,6 +430,8 @@ class FITIO:
 					rec_contents.update({"calories": wp.Calories})
 				if wp.Distance is not None:
 					rec_contents.update({"distance": wp.Distance})
+				if wp.Speed is not None:
+					rec_contents.update({"speed": wp.Speed})
 				fmg.GenerateMessage("record", **rec_contents)
 			# Man, I love copy + paste and multi-cursor editing
 			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
@@ -429,8 +443,8 @@ class FITIO:
 			_mapStat(lap_stats, "max_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
 			_mapStat(lap_stats, "avg_heart_rate", lap.Stats.HR.Average)
 			_mapStat(lap_stats, "max_heart_rate", lap.Stats.HR.Max)
-			_mapStat(lap_stats, "avg_cadence", lap.Stats.Cadence.Average)
-			_mapStat(lap_stats, "max_cadence", lap.Stats.Cadence.Max)
+			_mapStat(lap_stats, "avg_cadence", _resolveRunCadence(lap.Stats.Cadence.Average, lap.Stats.RunCadence.Average))
+			_mapStat(lap_stats, "max_cadence", _resolveRunCadence(lap.Stats.Cadence.Max, lap.Stats.RunCadence.Max))
 			_mapStat(lap_stats, "avg_power", lap.Stats.Power.Average)
 			_mapStat(lap_stats, "max_power", lap.Stats.Power.Max)
 			_mapStat(lap_stats, "total_ascent", lap.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters).Gain)
@@ -449,19 +463,23 @@ class FITIO:
 					LapIntensity.Warmup: FITLapIntensity.Warmup,
 					LapIntensity.Cooldown: FITLapIntensity.Cooldown,
 				})[lap.Intensity]
-			lap_stats["trigger_method"] = ({
-					LapTriggerMethod.Manual: FITLapTriggerMethod.Manual
-					LapTriggerMethod.Time: FITLapTriggerMethod.Time
-					LapTriggerMethod.Distance: FITLapTriggerMethod.Distance
-					LapTriggerMethod.PositionStart: FITLapTriggerMethod.PositionStart
-					LapTriggerMethod.PositionLap: FITLapTriggerMethod.PositionLap
-					LapTriggerMethod.PositionWaypoint: FITLapTriggerMethod.PositionWaypoint
-					LapTriggerMethod.PositionMarked: FITLapTriggerMethod.PositionMarked
-					LapTriggerMethod.SessionEnd: FITLapTriggerMethod.SessionEnd
-					LapTriggerMethod.FitnessEquipment: FITLapTriggerMethod.FitnessEquipment
-				})[lap.TriggerMethod]
-			fmg.GenerateMessage("lap", timestamp=toUtc(lap.EndTime), start_time=toUtc(lap.StartTime), event=FITEvent.Lap, event_type=FITEventType.Start, **lap_stats)
+			lap_stats["lap_trigger"] = ({
+					LapTriggerMethod.Manual: FITLapTriggerMethod.Manual,
+					LapTriggerMethod.Time: FITLapTriggerMethod.Time,
+					LapTriggerMethod.Distance: FITLapTriggerMethod.Distance,
+					LapTriggerMethod.PositionStart: FITLapTriggerMethod.PositionStart,
+					LapTriggerMethod.PositionLap: FITLapTriggerMethod.PositionLap,
+					LapTriggerMethod.PositionWaypoint: FITLapTriggerMethod.PositionWaypoint,
+					LapTriggerMethod.PositionMarked: FITLapTriggerMethod.PositionMarked,
+					LapTriggerMethod.SessionEnd: FITLapTriggerMethod.SessionEnd,
+					LapTriggerMethod.FitnessEquipment: FITLapTriggerMethod.FitnessEquipment,
+				})[lap.Trigger]
+			fmg.GenerateMessage("lap", timestamp=toUtc(lap.EndTime), start_time=toUtc(lap.StartTime), event=FITEvent.Lap, event_type=FITEventType.Start, sport=sport, **lap_stats)
 
+
+		# These need to be at the end for Strava
+		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
+		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Stop)
 		records = fmg.GetResult()
 		header = FITIO._generateHeader(len(records))
 		crc = FITIO._calculateCRC(records, FITIO._calculateCRC(header))
