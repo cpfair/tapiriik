@@ -254,7 +254,7 @@ class TCXIO:
                 _writeStat(lapext, "Steps", lap.Stats.Strides.Value, naturalValue=True)
                 _writeStat(lapext, "MaxWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Max, naturalValue=True)
                 _writeStat(lapext, "AvgWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Average, naturalValue=True)
-                _writeStat(lapext, "AvgSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average, naturalValue=True)
+                _writeStat(lapext, "AvgSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
 
         inPause = False
         for lap in activity.Laps:
@@ -267,7 +267,7 @@ class TCXIO:
                     if inPause:
                         continue  # this used to be an exception, but I don't think that was merited
                     inPause = True
-                if inPause and wp.Type != WaypointType.Pause or wp.Type == WaypointType.Lap:
+                if inPause and wp.Type != WaypointType.Pause:
                     inPause = False
                 if track is None:  # Defer creating the track until there are points
                     track = etree.SubElement(xlap, "Track") # TODO - pauses should create new tracks instead of new laps?

@@ -480,14 +480,14 @@ class Waypoint:
     def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None, speed=None):
         self.Timestamp = timestamp
         self.Location = location
-        self.HR = hr
-        self.Calories = calories
-        self.Power = power  # I doubt there will ever be more parameters than this in terms of interchange
-        self.Temp = temp  # never say never
-        self.Cadence = cadence  # dammit this better be the last one
-        self.RunCadence = runCadence  # screw it
-        self.Distance = distance # I don't even care any more.
-        self.Speed = speed # neghhhhh
+        self.HR = hr # BPM
+        self.Calories = calories # kcal
+        self.Power = power  # Watts. I doubt there will ever be more parameters than this in terms of interchange
+        self.Temp = temp  # degrees C. never say never
+        self.Cadence = cadence  # RPM. dammit this better be the last one
+        self.RunCadence = runCadence  # SPM. screw it
+        self.Distance = distance # meters. I don't even care any more.
+        self.Speed = speed # m/sec. neghhhhh
         self.Type = ptType
 
     def __eq__(self, other):
