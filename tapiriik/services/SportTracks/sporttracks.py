@@ -257,6 +257,8 @@ class SportTracksService(ServiceBase):
         for lapinfo in laps_info:
             lap = Lap()
             activity.Laps.append(lap)
+            lap.StartTime = dateutil.parser.parse(lapinfo["start_time"])
+            lap.EndTime = lap.StartTime + timedelta(seconds=lapinfo["clock_duration"])
             if "type" in lapinfo:
                 lap.Intensity = LapIntensity.Active if lapinfo["type"] == "ACTIVE" else LapIntensity.Rest
             if "distance" in lapinfo:

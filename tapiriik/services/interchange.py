@@ -68,6 +68,9 @@ class Activity:
     def CountTotalWaypoints(self):
         return sum([len(x.Waypoints) for x in self.Laps])
 
+    def GetFlatWaypoints(self):
+        return [wp for waypoints in [x.Waypoints for x in self.Laps] for wp in waypoints]
+
     def GetFirstWaypointWithLocation(self):
         loc_wp = None
         for lap in self.Laps:
@@ -147,9 +150,8 @@ class Activity:
                 - Forcing the .NET model of "XYZCollection"s that enforce integrity seems wrong
                 - Enforcing them in constructors makes using the classes a pain
         """
-        if not hasattr(self, "ServiceDataCollection") or len(self.ServiceDataCollection.keys()) == 0:
-            raise ValueError("Unset ServiceData/ServiceDataCollection field")
-        srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
+        if "ServiceDataCollection" in self.__dict__:
+            srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
         if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
@@ -181,11 +183,6 @@ class Activity:
         if len(self.Laps) == 1:
             if self.Laps[0].Stats != self.Stats:
                 raise ValueError("Activity with 1 lap has mismatching statistics between activity and lap")
-        if len(self.Laps) >= 1:
-            if self.Laps[0].StartTime != self.StartTime:
-                raise ValueError("Start time of first lap must match start time of activity")
-            if self.Laps[-1].EndTime != self.EndTime:
-                raise ValueError("End time of last lap must match end time of activity")
         altLow = None
         altHigh = None
         pointsWithoutLocation = 0
@@ -193,12 +190,7 @@ class Activity:
             if not lap.StartTime:
                 raise ValueError("Lap has no start time")
             if not lap.EndTime:
-                raise ValueError("Lap has no start time")
-            if len(lap.Waypoints):
-                if lap.Waypoints[0].Timestamp != lap.StartTime:
-                    raise ValueError("Lap start time does not match first waypoint timestamp")
-                if lap.Waypoints[-1].Timestamp != lap.EndTime:
-                    raise ValueError("Lap end time does not match last waypoint timestamp")
+                raise ValueError("Lap has no end time")
             for wp in lap.Waypoints:
                 if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
                     raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
@@ -291,7 +283,7 @@ class ActivityStatistics:
         if not other:
             return False
         for stat in ActivityStatistics._statKeyList:
-            if not self.__dict__[stat] == other_stats.__dict__[stat]:
+            if not self.__dict__[stat] == other.__dict__[stat]:
                 return False
         return True
 

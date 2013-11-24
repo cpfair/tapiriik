@@ -53,7 +53,9 @@ class TCXIO:
             lap = Lap()
             act.Laps.append(lap)
 
+            lap.StartTime = dateutil.parser.parse(xlap.attrib["StartTime"])
             lap.Stats.MovingTime.Value = timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
+            lap.EndTime = lap.StartTime + lap.Stats.MovingTime.Value
             lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(xlap.find("tcx:DistanceMeters", namespaces=ns).text))
             lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(xlap.find("tcx:Calories", namespaces=ns).text))
             if lap.Stats.Energy.Value == 0:
@@ -158,21 +160,24 @@ class TCXIO:
                 lap.Waypoints.append(wp)
                 xtrkpt.clear()
                 del xtrkpt
+        act.StartTime = act.Laps[0].StartTime if len(act.Laps) else act.StartTime
+        act.EndTime = act.Laps[-1].EndTime if len(act.Laps) else act.EndTime
 
-        if len(act.Laps):
-            if len(act.Laps[0].Waypoints):
-                act.Laps[0].Waypoints[0].Type = WaypointType.Start
-            if len(act.Laps[-1].Waypoints):
-                act.Laps[-1].Waypoints[-1].Type = WaypointType.End
-            act.TZ = UTC
-            act.StartTime = startTime
-            act.EndTime = endTime
-            act.CalculateUID()
+        if act.CountTotalWaypoints():
+            act.GetFlatWaypoints()[0].Type = WaypointType.Start
+            act.GetFlatWaypoints()[-1].Type = WaypointType.End
+        else:
+            act.Stationary = True
         if len(act.Laps) == 1:
             act.Stats.update(act.Laps[0].Stats)
-        elif len(act.Laps) > 1:
+        else:
             for lap in act.Laps:
                 act.Stats.sumWith(lap.Stats)
+        if not act.TZ: # Don't overwrite the incoming TZ
+            act.TZ = UTC
+        act.AdjustTZ() # Update all timestamps to match whatever the TZ ends up being
+        act.CalculateUID()
+
         return act
 
     def Dump(activity):
