@@ -11,7 +11,7 @@ import pytz
 from datetime import datetime, timedelta
 import requests
 import os
-
+import math
 import logging
 logger = logging.getLogger(__name__)
 
@@ -163,27 +163,32 @@ class GarminConnectService(ServiceBase):
                 # TODO: fix the distance stats to account for the fact that this incorrectly reported km instead of meters for the longest time.
                 activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
 
-                def mapStat(gcKey, statKey, type):
+                def mapStat(gcKey, statKey, type, useSourceUnits=False):
                     nonlocal activity, act
                     if gcKey in act:
-                        valData = {type: float(act[gcKey]["value"])}
-                        activity.Stats.__dict__[statKey].update(ActivityStatistic(self._unitMap[act[gcKey]["uom"]], **valData))
+                        value = float(act[gcKey]["value"])
+                        if math.isinf(value):
+                            return # GC returns the minimum speed as "-Infinity" instead of 0 some times :S
+                        activity.Stats.__dict__[statKey].update(ActivityStatistic(self._unitMap[act[gcKey]["uom"]], **({type: value})))
+                        if useSourceUnits:
+                            activity.Stats.__dict__[statKey] = activity.Stats.__dict__[statKey].asUnits(self._unitMap[act[gcKey]["uom"]])
+
 
                 if "sumDuration" in act:
                     activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1])))
 
-                mapStat("minSpeed", "Speed", "min")
-                mapStat("maxSpeed", "Speed", "max")
-                mapStat("weightedMeanSpeed", "Speed", "avg")
-                mapStat("weightedMeanSpeed", "Speed", "avg")
+
+                mapStat("minSpeed", "Speed", "min", useSourceUnits=True) # We need to suppress conversion here, so we can fix the pace-speed issue below
+                mapStat("maxSpeed", "Speed", "max", useSourceUnits=True)
+                mapStat("weightedMeanSpeed", "Speed", "avg", useSourceUnits=True)
                 mapStat("minAirTemperature", "Temperature", "min")
                 mapStat("maxAirTemperature", "Temperature", "max")
                 mapStat("weightedMeanAirTemperature", "Temperature", "avg")
-                mapStat("sumEnergy", "Kilocalories", "value")
+                mapStat("sumEnergy", "Energy", "value")
                 mapStat("maxHeartRate", "HR", "max")
                 mapStat("weightedMeanHeartRate", "HR", "avg")
-                mapStat("maxRunCadence", "Cadence", "max")
-                mapStat("weightedMeanRunCadence", "Cadence", "avg")
+                mapStat("maxRunCadence", "RunCadence", "max")
+                mapStat("weightedMeanRunCadence", "RunCadence", "avg")
                 mapStat("maxBikeCadence", "Cadence", "max")
                 mapStat("weightedMeanBikeCadence", "Cadence", "avg")
                 mapStat("minPower", "Power", "min")
@@ -193,6 +198,27 @@ class GarminConnectService(ServiceBase):
                 mapStat("maxElevation", "Elevation", "max")
                 mapStat("gainElevation", "Elevation", "gain")
                 mapStat("lossElevation", "Elevation", "loss")
+
+                # In Garmin Land, max can be smaller than min for this field :S
+                if activity.Stats.Power.Max is not None and activity.Stats.Power.Min is not None and activity.Stats.Power.Min > activity.Stats.Power.Max:
+                    activity.Stats.Power.Min = None
+
+                # To get it to match what the user sees in GC.
+                if activity.Stats.RunCadence.Max is not None:
+                    activity.Stats.RunCadence.Max *= 2
+                if activity.Stats.RunCadence.Average is not None:
+                    activity.Stats.RunCadence.Average *= 2
+
+                # GC incorrectly reports pace measurements as kph/mph when they are in fact in min/km or min/mi
+                if "minSpeed" in act:
+                    if act["minSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                        activity.Stats.Speed.Min = 60 / activity.Stats.Speed.Min
+                if "maxSpeed" in act:
+                    if act["maxSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                        activity.Stats.Speed.Max = 60 / activity.Stats.Speed.Max
+                if "weightedMeanSpeed" in act:
+                    if act["weightedMeanSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                        activity.Stats.Speed.Average = 60 / activity.Stats.Speed.Average
 
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 

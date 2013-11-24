@@ -2,8 +2,8 @@ from lxml import etree, objectify
 from pytz import UTC
 import copy
 import dateutil.parser
-from datetime import datetime
-from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatisticUnit, ActivityType, Waypoint, Location
+from datetime import datetime, timedelta
+from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatisticUnit, ActivityType, Waypoint, Location, Lap, LapIntensity, LapTriggerMethod
 from .statistic_calculator import ActivityStatisticCalculator
 
 
@@ -47,18 +47,17 @@ class TCXIO:
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
         endTime = None
-
         for xlap in xlaps:
             xtrkseg = xlap.find("tcx:Track", namespaces=ns)
 
             lap = Lap()
-            activity.Laps.append(lap)
+            act.Laps.append(lap)
 
             lap.Stats.MovingTime.Value = timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
             lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(xlap.find("tcx:DistanceMeters", namespaces=ns).text))
-            lap.Stats.Calories.Value = float(xlap.find("tcx:Calories", namespaces=ns).text)
-            if lap.Stats.Calories == 0:
-                lap.Stats.Calories = None # It's dumb to make this required, but I digress.
+            lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(xlap.find("tcx:Calories", namespaces=ns).text))
+            if lap.Stats.Energy.Value == 0:
+                lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
             lap.Intensity = LapIntensity.Active if xlap.find("tcx:Intensity", namespaces=ns).text == "Active" else LapIntensity.Rest
             lap.Trigger = ({
                 "Manual": LapTriggerMethod.Manual,
@@ -86,32 +85,39 @@ class TCXIO:
 
             cadEl = xlap.find("tcx:Cadence", namespaces=ns)
             if cadEl is not None:
-                lap.Stats.Cadence = ActivityStatistic(ActivityStatistic.RevolutionsPerMinute, avg=float(cadEl.text))
+                lap.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=float(cadEl.text))
 
             extsEl = xlap.find("tcx:Extensions", namespaces=ns)
             if extsEl is not None:
-                tpxEl = extsEl.find("tpx:TPX", namespaces=ns)
-                if tpxEl is not None:
-                    maxBikeCadEl = tpxEl.find("tpx:MaxBikeCadence", namespaces=ns)
+                lxEls = extsEl.findall("tpx:LX", namespaces=ns)
+                for lxEl in lxEls:
+                    avgSpeedEl = lxEl.find("tpx:AvgSpeed", namespaces=ns)
+                    if avgSpeedEl is not None:
+                        lap.Stats.Speed.update(ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=float(avgSpeedEl.text)))
+                    maxBikeCadEl = lxEl.find("tpx:MaxBikeCadence", namespaces=ns)
                     if maxBikeCadEl is not None:
-                        lap.Stats.Cadence.update(ActivityStatistic(ActivityStatistic.RevolutionsPerMinute, max=float(maxBikeCadEl.text)))
-                    maxRunCadEl = tpxEl.find("tpx:MaxRunCadence", namespaces=ns)
+                        lap.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, max=float(maxBikeCadEl.text)))
+                    maxPowerEl = lxEl.find("tpx:MaxWatts", namespaces=ns)
+                    if maxPowerEl is not None:
+                        lap.Stats.Power.update(ActivityStatistic(ActivityStatisticUnit.Watts, max=float(maxPowerEl.text)))
+                    avgPowerEl = lxEl.find("tpx:AvgWatts", namespaces=ns)
+                    if avgPowerEl is not None:
+                        lap.Stats.Power.update(ActivityStatistic(ActivityStatisticUnit.Watts, avg=float(avgPowerEl.text)))
+                    maxRunCadEl = lxEl.find("tpx:MaxRunCadence", namespaces=ns)
                     if maxRunCadEl is not None:
-                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatistic.StepsPerMinute, max=float(maxRunCadEl.text)))
-                    avgRunCadEl = tpxEl.find("tpx:AvgRunCadence", namespaces=ns)
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, max=float(maxRunCadEl.text) * 2))
+                    avgRunCadEl = lxEl.find("tpx:AvgRunCadence", namespaces=ns)
                     if avgRunCadEl is not None:
-                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatistic.StepsPerMinute, avg=float(avgRunCadEl.text)))
-                    stepsEl = tpxEl.find("tpx:Steps", namespaces=ns)
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=float(avgRunCadEl.text) * 2))
+                    stepsEl = lxEl.find("tpx:Steps", namespaces=ns)
                     if stepsEl is not None:
-                        lap.Stats.Strides.update(ActivityStatistic(ActivityStatistic.Strides, value=int(stepsEl.text)))
+                        lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=int(stepsEl.text)))
 
             if xtrkseg is None:
                 # Some TCX files have laps with no track - not sure if it's valid or not.
                 continue
             for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
                 wp = Waypoint()
-                if len(act.Waypoints) == 0:
-                    wp.Type = WaypointType.Start
 
                 wp.Timestamp = dateutil.parser.parse(xtrkpt.find("tcx:Time", namespaces=ns).text)
                 wp.Timestamp.replace(tzinfo=UTC)
@@ -154,14 +160,16 @@ class TCXIO:
                 del xtrkpt
 
         if len(act.Laps):
+            if len(act.Laps[0].Waypoints):
+                act.Laps[0].Waypoints[0].Type = WaypointType.Start
             if len(act.Laps[-1].Waypoints):
                 act.Laps[-1].Waypoints[-1].Type = WaypointType.End
             act.TZ = UTC
-            act.Stats.Distance.Value = sum([x.Stats.Distance.Value for x in act.Laps])
             act.StartTime = startTime
             act.EndTime = endTime
             act.CalculateUID()
-
+        if len(act.Laps) == 1:
+            act.Stats.update(act.Laps[0].Stats)
         return act
 
     def Dump(activity):
@@ -213,31 +221,37 @@ class TCXIO:
                 LapTriggerMethod.PositionMarked: "Location",
                 LapTriggerMethod.SessionEnd: "Manual",
                 LapTriggerMethod.FitnessEquipment: "Manual"
-                })[lap.TriggerMethod]
+                })[lap.Trigger]
 
             xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
-            def _writeStat(parent, elName, value, wrapValue=False, naturalValue=False):
-                if value is not None:
+            def _writeStat(parent, elName, value, wrapValue=False, naturalValue=False, default=None):
+                if value is not None or default is not None:
                     xstat = etree.SubElement(parent, elName)
                     if wrapValue:
-                        xstat = etree.SubElement("tcx:Value", xstat)
+                        xstat = etree.SubElement(xstat, "Value")
+                    value = value if value is not None else default
                     xstat.text = str(value) if not naturalValue else str(int(value))
 
-            _writeStat(xlap, "tcx:MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
-            _writeStat(xlap, "tcx:AverageHeartRateBpm", lap.Stats.HR.Average, naturalValue=True, wrapValue=True)
-            _writeStat(xlap, "tcx:MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
-            _writeStat(xlap, "tcx:Cadence", lap.Stats.Cadence.Average, naturalValue=True)
-            _writeStat(xlap, "txc:DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-            _writeStat(xlap, "txc:TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None)
+            _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
+            _writeStat(xlap, "AverageHeartRateBpm", lap.Stats.HR.Average, naturalValue=True, wrapValue=True)
+            _writeStat(xlap, "MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
+            _writeStat(xlap, "Cadence", lap.Stats.Cadence.Average, naturalValue=True)
+            _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None)
+            _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0)
 
-            if lap.Stats.Cadence.Max is not None or lap.Stats.RunCadence.Max is not None or lap.Stats.RunCadence.Average  is not None or lap.Stats.Strides.Value is not None:
+            if len([x for x in [lap.Stats.Cadence.Max, lap.Stats.RunCadence.Max, lap.Stats.RunCadence.Average, lap.Stats.Strides.Value, lap.Stats.Power.Max, lap.Stats.Power.Average, lap.Stats.Speed.Average] if x is not None]):
                 exts = etree.SubElement(xlap, "Extensions")
                 lapext = etree.SubElement(exts, TRKPTEXT + "LX")
                 lapext.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
                 _writeStat(lapext, "MaxBikeCadence", lap.Stats.Cadence.Max, naturalValue=True)
-                _writeStat(lapext, "MaxRunCadence", lap.Stats.RunCadence.Max, naturalValue=True)
-                _writeStat(lapext, "AvgRunCadence", lap.Stats.RunCadence.Average, naturalValue=True)
-                _writeStat(lapext, "Steps", lap.Stats.Steps.Valie, naturalValue=True)
+                # This dividing-by-two stuff is getting silly
+                _writeStat(lapext, "MaxRunCadence", lap.Stats.RunCadence.Max/2 if lap.Stats.RunCadence.Max is not None else None, naturalValue=True)
+                _writeStat(lapext, "AvgRunCadence", lap.Stats.RunCadence.Average/2 if lap.Stats.RunCadence.Average is not None else None, naturalValue=True)
+                _writeStat(lapext, "Steps", lap.Stats.Strides.Value, naturalValue=True)
+                _writeStat(lapext, "MaxWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Max, naturalValue=True)
+                _writeStat(lapext, "AvgWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Average, naturalValue=True)
+                _writeStat(lapext, "AvgSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average, naturalValue=True)
 
         inPause = False
         for lap in activity.Laps:
