@@ -170,6 +170,9 @@ class TCXIO:
             act.CalculateUID()
         if len(act.Laps) == 1:
             act.Stats.update(act.Laps[0].Stats)
+        elif len(act.Laps) > 1:
+            for lap in act.Laps:
+                act.Stats.sumWith(lap.Stats)
         return act
 
     def Dump(activity):

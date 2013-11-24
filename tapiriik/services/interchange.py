@@ -279,11 +279,14 @@ class ActivityStatistics:
     def coalesceWith(self, other_stats):
         for stat in ActivityStatistics._statKeyList:
             self.__dict__[stat].coalesceWith(other_stats.__dict__[stat])
+    # Could overload +, but...
+    def sumWith(self, other_stats):
+        for stat in ActivityStatistics._statKeyList:
+            self.__dict__[stat].sumWith(other_stats.__dict__[stat])
     # Magic dict is meh
     def update(self, other_stats):
         for stat in ActivityStatistics._statKeyList:
             self.__dict__[stat].update(other_stats.__dict__[stat])
-
     def __eq__(self, other):
         if not other:
             return False
@@ -398,9 +401,33 @@ class ActivityStatistic:
                     my_items[item] = other_items[item]
                     my_samples[item] = other_samples[item]
                 else:
-                    print("Coalesce %s %s n=%s with %s n=%s" % (item, my_items[item], my_samples[item], other_items[item], other_samples[item]))
                     my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
                     my_samples[item] += other_samples[item]
+
+    def sumWith(self, stat):
+        """ Used if you want to sum up, for instance, laps' stats to get the activity's stats
+            Not all items can be simply summed (min/max), and sum just shouldn't (average)
+        """
+        stat = stat.asUnits(self.Units)
+        summable_items = ["Value", "Gain", "Loss"]
+        other_items = stat.__dict__
+        for item in summable_items:
+            if item in other_items and other_items[item] is not None:
+                if self.__dict__[item] is not None:
+                    self.__dict__[item] += other_items[item]
+                    self.Samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
+                else:
+                    self.__dict__[item] = other_items[item]
+                    self.Samples[item] = stat.Samples[item]
+        self.Average = None
+        self.Samples["Average"] = 0
+
+        if self.Max is None or (stat.Max is not None and stat.Max > self.Max):
+            self.Max = stat.Max
+            self.Samples["Max"] = stat.Samples["Max"]
+        if self.Min is None or (stat.Min is not None and stat.Min < self.Min):
+            self.Min = stat.Min
+            self.Samples["Min"] = stat.Samples["Min"]
 
     def update(self, stat):
         stat = stat.asUnits(self.Units)
