@@ -142,7 +142,7 @@ class RunKeeperService(ServiceBase):
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["total_distance"])
         # I'm fairly sure this is how the RK calculation works. I remember I removed something exactly like this from ST.mobi, but I trust them more than I trust myself to get the speed right.
         activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value / ((activity.EndTime - activity.StartTime).total_seconds()/60/60))
-        activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
+        activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
         if "has_path" in rawRecord and rawRecord["has_path"] is False:
@@ -236,8 +236,8 @@ class RunKeeperService(ServiceBase):
         record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
         if activity.Stats.HR.Average is not None:
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
-        if activity.Stats.Kilocalories.Value is not None:
-            record["total_calories"] = activity.Stats.Kilocalories.Value
+        if activity.Stats.Energy.Value is not None:
+            record["total_calories"] = activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
         if activity.Stats.Distance.Value is not None:
             record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
         if activity.Name:

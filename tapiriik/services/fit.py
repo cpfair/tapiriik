@@ -384,7 +384,7 @@ class FITIO:
 
 		_mapStat(session_stats, "total_timer_time", act.Stats.MovingTime.Value)
 		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-		_mapStat(session_stats, "total_calories", act.Stats.Kilocalories.Value)
+		_mapStat(session_stats, "total_calories", act.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
 		_mapStat(session_stats, "max_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
 		_mapStat(session_stats, "avg_heart_rate", act.Stats.HR.Average)
@@ -438,7 +438,7 @@ class FITIO:
 			lap_stats = {}
 			_mapStat(lap_stats, "total_timer_time", lap.Stats.MovingTime.Value)
 			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-			_mapStat(lap_stats, "total_calories", lap.Stats.Kilocalories.Value)
+			_mapStat(lap_stats, "total_calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
 			_mapStat(lap_stats, "max_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
 			_mapStat(lap_stats, "avg_heart_rate", lap.Stats.HR.Average)

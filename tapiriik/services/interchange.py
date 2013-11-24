@@ -262,11 +262,11 @@ class Lap:
         self.Waypoints = waypointList if waypointList else []
 
 class ActivityStatistics:
-    _statKeyList = ["Distance", "MovingTime", "Kilocalories", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
+    _statKeyList = ["Distance", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
     def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
         self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
         self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
-        self.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal) # KCal
+        self.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal)
         self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=avg_speed, max=max_speed)
         self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
         self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=avg_hr, max=max_hr)
@@ -340,7 +340,8 @@ class ActivityStatistic:
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
             (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
-            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280
+            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
+            (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184
         }
         def recurseFindConversionPath(unit, target, stack):
             assert(unit != target)
@@ -436,6 +437,7 @@ class ActivityStatisticUnit:
     StepsPerMinute = "SPM"
     Strides = "strides"
     Kilocalories = "kcal"
+    Kilojoules = "kj"
     Watts = "W"
 
 

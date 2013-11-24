@@ -164,7 +164,7 @@ class EndomondoService(ServiceBase):
                 lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(split[8]) if split[8] != "" else None)
                 lap.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
                 lap.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)
-                lap.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(split[12]) if split[12] != "" else None)
+                lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(split[12]) if split[12] != "" else None)
                 activity.Stats.update(lap.Stats)
                 lap.Stats = activity.Stats
                 activity.Name = split[4]

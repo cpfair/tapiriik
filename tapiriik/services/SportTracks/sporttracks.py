@@ -1,6 +1,6 @@
 from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, LapIntensity
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
 from django.core.urlresolvers import reverse
@@ -240,7 +240,7 @@ class SportTracksService(ServiceBase):
         if "notes" in activityData:
             activity.Notes = activityData["notes"]
 
-        activity.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(activityData["calories"]))
+        activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=float(activityData["calories"]))
 
         activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(activityData["elevation_gain"]) if "elevation_gain" in activityData else None, loss=float(activityData["elevation_loss"]) if "elevation_loss" in activityData else None)
 
@@ -265,7 +265,7 @@ class SportTracksService(ServiceBase):
             if "duration" in lapinfo:
                 lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=lapinfo["duration"]))
             if "calories" in lapinfo:
-                lap.Stats.Kilocalories = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=lapinfo["calories"])
+                lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=lapinfo["calories"])
             if "elevation_gain" in lapinfo:
                 lap.Stats.Elevation.update(ActivityStatistic(ActivityStatistic.Meters, gain=float(lapinfo["elevation_gain"])))
             if "elevation_loss" in lapinfo:
@@ -389,7 +389,7 @@ class SportTracksService(ServiceBase):
         _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
         _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else None)
         _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-        _mapStat(activityData, "calories", int(activity.Stats.Kilocalories.Value))
+        _mapStat(activityData, "calories", int(activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value))
         _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
         _mapStat(activityData, "elevation_loss", activity.Stats.Elevation.Loss)
         _mapStat(activityData, "max_speed", activity.Stats.Speed.Max)
@@ -411,17 +411,13 @@ class SportTracksService(ServiceBase):
             }
             _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds())
             _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else None)
-            _mapStat(lapinfo, "total_distance", lap.Stats.Distance.asUnits(lapStatisticUnit.Meters).Value)
-            _mapStat(lapinfo, "calories", int(lap.Stats.Kilocalories.Value))
+            _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _mapStat(lapinfo, "calories", int(lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value))
             _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
             _mapStat(lapinfo, "elevation_loss", lap.Stats.Elevation.Loss)
             _mapStat(lapinfo, "max_speed", lap.Stats.Speed.Max)
             _mapStat(lapinfo, "avg_heartrate", lap.Stats.HR.Average)
             _mapStat(lapinfo, "max_heartrate", lap.Stats.HR.Max)
-            _mapStat(lapinfo, "avg_cadence", lap.Stats.Cadence.Average)
-            _mapStat(lapinfo, "max_cadence", lap.Stats.Cadence.Max)
-            _mapStat(lapinfo, "avg_power", lap.Stats.Power.Average)
-            _mapStat(lapinfo, "max_power", lap.Stats.Power.Max)
 
             activityData["laps"].append(lapinfo)
 
@@ -439,24 +435,25 @@ class SportTracksService(ServiceBase):
             heartrate_stream = []
             power_stream = []
             cadence_stream = []
-            for wp in activity.Waypoints:
-                if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
-                    stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
-                if wp.HR:
-                    stream_append(heartrate_stream, wp, int(wp.HR))
-                if wp.Distance:
-                    stream_append(distance_stream, wp, wp.Distance)
-                if wp.Cadence or wp.RunCadence:
-                    stream_append(cadence_stream, wp, int(wp.Cadence) if wp.Cadence else int(wp.RunCadence))
-                if wp.Power:
-                    stream_append(power_stream, wp, wp.Power)
-                if wp.Location and wp.Location.Altitude:
-                    stream_append(elevation_stream, wp, wp.Location.Altitude)
-                if wp.Type == WaypointType.Pause and not timer_stopped_at:
-                    timer_stopped_at = wp.Timestamp
-                if wp.Type != WaypointType.Pause and timer_stopped_at:
-                    timer_stops.append([timer_stopped_at, wp.Timestamp])
-                    timer_stopped_at = None
+            for lap in activity.Laps:
+                for wp in lap.Waypoints:
+                    if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                        stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
+                    if wp.HR:
+                        stream_append(heartrate_stream, wp, int(wp.HR))
+                    if wp.Distance:
+                        stream_append(distance_stream, wp, wp.Distance)
+                    if wp.Cadence or wp.RunCadence:
+                        stream_append(cadence_stream, wp, int(wp.Cadence) if wp.Cadence else int(wp.RunCadence))
+                    if wp.Power:
+                        stream_append(power_stream, wp, wp.Power)
+                    if wp.Location and wp.Location.Altitude:
+                        stream_append(elevation_stream, wp, wp.Location.Altitude)
+                    if wp.Type == WaypointType.Pause and not timer_stopped_at:
+                        timer_stopped_at = wp.Timestamp
+                    if wp.Type != WaypointType.Pause and timer_stopped_at:
+                        timer_stops.append([timer_stopped_at, wp.Timestamp])
+                        timer_stopped_at = None
 
             activityData["elevation"] = elevation_stream
             activityData["heartrate"] = heartrate_stream
