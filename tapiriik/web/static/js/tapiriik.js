@@ -270,7 +270,7 @@ tapiriik.OpenServiceConfigPanel = function(svcId){
 		$("input", destRow).attr("service", i);
 		$("table", configPanel).append(destRow);
 	}
-	if (svcId == "strava" || svcId == "runkeeper")
+	if (svcId == "strava" || svcId == "runkeeper" || svcId == "sporttracks")
 	{
 		if (tapiriik.ServiceInfo[svcId].Config.sync_private)
 		{
