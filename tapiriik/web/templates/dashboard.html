@@ -13,14 +13,16 @@
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
 			{% for connection in user.ConnectedServices|svc_populate_conns %}
-			{% with svc=connection.Service %}
-				{% include "service-button.html" with provider=svc connection=connection %}
-				{% if svc.Configurable %}
-					<noscript>
-					<p><a href="/configure/{{ connection.Service }}">Configure {{ svc.DisplayName }} &raquo;</a></p>
-					</noscript>
-				{% endif %}
-			{% endwith %}
+				{% with svc=connection.Service %}
+					{% if svc.ID not in config.withdrawn_services %}
+						{% include "service-button.html" with provider=svc connection=connection %}
+						{% if svc.Configurable %}
+							<noscript>
+							<p><a href="/configure/{{ connection.Service }}">Configure {{ svc.DisplayName }} &raquo;</a></p>
+							</noscript>
+						{% endif %}
+					{% endif %}
+				{% endwith %}
 			{% endfor %}
 			</div>
 		</div>
@@ -49,17 +51,17 @@
 	{% endfor %}
 
 	{% for provider in user.ConnectedServices|svc_providers_except %}
-		{% if provider.ID not in config.soft_launch %}
+		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
 			{% if forloop.first %}<hr>{% endif %}
 			{% include "service-button.html" with provider=provider inactive=True %}
 		{% endif %}
 	{% endfor %}
 
 {% else %}
-<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, RunKeeper, Strava, Endomondo, SportTracks.mobi and Dropbox<br/>
+<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, RunKeeper, Strava, SportTracks.mobi and Dropbox<br/>
 (your heart rate, cadence, power, and temperature data syncs too)</p>
 	{% for provider in service_providers %}
-		{% if provider.ID not in config.soft_launch %}
+		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
 			{% include "service-button.html" with provider=provider %}
 		{% endif %}
 	{% endfor %}

@@ -1,7 +1,7 @@
 from tapiriik.services import Service
 from tapiriik.auth import User
 from tapiriik.sync import Sync
-from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES, DISABLED_SERVICES
+from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from tapiriik.database import db
 import json
 
@@ -12,7 +12,7 @@ def providers(req):
 
 def config(req):
     in_diagnostics = "diagnostics" in req.path
-    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}, "soft_launch": SOFT_LAUNCH_SERVICES, "disabled_services": DISABLED_SERVICES, "in_diagnostics": in_diagnostics}}
+    return {"config": {"minimumSyncInterval": Sync.MinimumSyncInterval.seconds, "siteVer": SITE_VER, "pp": {"url": PP_WEBSCR, "buttonId": PP_BUTTON_ID}, "soft_launch": SOFT_LAUNCH_SERVICES, "disabled_services": DISABLED_SERVICES, "withdrawn_services": WITHDRAWN_SERVICES, "in_diagnostics": in_diagnostics}}
 
 def user(req):
     return {"user":req.user}
@@ -21,6 +21,8 @@ def js_bridge(req):
     serviceInfo = {}
 
     for svc in Service.List():
+        if svc.ID in WITHDRAWN_SERVICES:
+            continue
         if req.user is not None:
             svcRec = User.GetConnectionRecord(req.user, svc.ID)  # maybe make the auth handler do this only once?
         else:

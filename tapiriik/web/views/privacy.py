@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from tapiriik.services import Service
-
+from tapiriik.settings import WITHDRAWN_SERVICES
 def privacy(request):
 
 	OPTIN = "<span class=\"optin policy\">Opt-in</span>"
@@ -9,12 +9,11 @@ def privacy(request):
 	CACHED = "<span class=\"cached policy\">Cached</span>"
 	SEEBELOW = "See below"
 
-	services = dict([[x.ID, {"DisplayName": x.DisplayName, "ID": x.ID}] for x in Service.List()])
+	services = dict([[x.ID, {"DisplayName": x.DisplayName, "ID": x.ID}] for x in Service.List() if x.ID not in WITHDRAWN_SERVICES])
 
 	services["garminconnect"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
 	services["strava"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":NO})
 	services["sporttracks"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
-	services["endomondo"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":NO})
 	services["dropbox"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":CACHED})
 	services["runkeeper"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":NO})
 

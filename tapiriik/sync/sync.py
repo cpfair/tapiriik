@@ -1,6 +1,6 @@
 from tapiriik.database import db, cachedb
 from tapiriik.services import ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
-from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES
+from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from datetime import datetime, timedelta
 import sys
 import os
@@ -303,7 +303,7 @@ class Sync:
                     excludedServices.append(conn)
                     continue
 
-                if svc.ID in DISABLED_SERVICES:
+                if svc.ID in DISABLED_SERVICES or svc.ID in WITHDRAWN_SERVICES:
                     excludedServices.append(conn)
                     continue
 
