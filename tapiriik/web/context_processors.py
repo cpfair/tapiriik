@@ -50,6 +50,8 @@ def js_bridge(req):
     if req.user is not None:
         flowExc = User.GetFlowExceptions(req.user)
         for exc in flowExc:
+            if exc["Source"]["Service"] not in serviceInfo or exc["Target"]["Service"] not in serviceInfo:
+                continue # Withdrawn services
             if "ExternalID" in serviceInfo[exc["Source"]["Service"]] and exc["Source"]["ExternalID"] != serviceInfo[exc["Source"]["Service"]]["ExternalID"]:
                 continue  # this is an old exception for a different connection
             if "ExternalID" in serviceInfo[exc["Target"]["Service"]] and exc["Target"]["ExternalID"] != serviceInfo[exc["Target"]["Service"]]["ExternalID"]:
