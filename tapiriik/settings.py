@@ -199,4 +199,6 @@ SPORTTRACKS_OPENFIT_ENDPOINT = "http://sporttracks.mobi/openfitapi/api"
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = './sent_emails'
 
+STATIC_ACTIVITY_SYNC_USERS = ["527c418550f9d83c790e4120"]
+
 from .local_settings import *

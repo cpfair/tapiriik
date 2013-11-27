@@ -174,8 +174,8 @@ class GarminConnectService(ServiceBase):
                             activity.Stats.__dict__[statKey] = activity.Stats.__dict__[statKey].asUnits(self._unitMap[act[gcKey]["uom"]])
 
 
-                if "sumDuration" in act:
-                    activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1])))
+                if "sumMovingDuration" in act:
+                    activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["sumMovingDuration"]["value"])))
 
 
                 mapStat("minSpeed", "Speed", "min", useSourceUnits=True) # We need to suppress conversion here, so we can fix the pace-speed issue below
@@ -211,19 +211,21 @@ class GarminConnectService(ServiceBase):
 
                 # GC incorrectly reports pace measurements as kph/mph when they are in fact in min/km or min/mi
                 if "minSpeed" in act:
-                    if act["minSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                    if ":" in act["minSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Min:
                         activity.Stats.Speed.Min = 60 / activity.Stats.Speed.Min
                 if "maxSpeed" in act:
-                    if act["maxSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                    if ":" in act["maxSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Max:
                         activity.Stats.Speed.Max = 60 / activity.Stats.Speed.Max
                 if "weightedMeanSpeed" in act:
-                    if act["weightedMeanSpeed"]["unitAbbr"] in ["min/km", "min/mi"]:
+                    if ":" in act["weightedMeanSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Average:
                         activity.Stats.Speed.Average = 60 / activity.Stats.Speed.Average
 
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
                 activity.ServiceData = {"ActivityID": act["activityId"]}
+                if "b7e" not in activity.UID:
+                    continue
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
             if not exhaustive or int(res["search"]["totalPages"]) == page:

@@ -1,6 +1,6 @@
 from tapiriik.database import db, cachedb
 from tapiriik.services import ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
-from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
+from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, STATIC_ACTIVITY_SYNC_USERS, WITHDRAWN_SERVICES
 from datetime import datetime, timedelta
 import sys
 import os
@@ -492,18 +492,22 @@ class Sync:
                     else:
                         act = workingCopy
                         break  # succesfully got the activity + passed sanity checks, can stop now
-
                 if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                     processedActivities += 1  # we tried
                     del act
                     del activity
                     continue
 
+                act.CleanStats()
+
                 if not act.Stationary:
                     # Log metadata
                     startLoc = act.GetFirstWaypointWithLocation()
                     db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
-
+                else:
+                    if str(user["_id"]) not in STATIC_ACTIVITY_SYNC_USERS:
+                        logger.info("\tSkipping stationary activity for user not marked")
+                        continue
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)

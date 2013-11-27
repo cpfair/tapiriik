@@ -3,7 +3,7 @@ from pytz import UTC
 import copy
 import dateutil.parser
 from datetime import datetime, timedelta
-from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatisticUnit, ActivityType, Waypoint, Location, Lap, LapIntensity, LapTriggerMethod
+from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatistics, ActivityStatisticUnit, ActivityType, Waypoint, Location, Lap, LapIntensity, LapTriggerMethod
 from .statistic_calculator import ActivityStatisticCalculator
 
 
@@ -54,8 +54,8 @@ class TCXIO:
             act.Laps.append(lap)
 
             lap.StartTime = dateutil.parser.parse(xlap.attrib["StartTime"])
-            lap.Stats.MovingTime.Value = timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
-            lap.EndTime = lap.StartTime + lap.Stats.MovingTime.Value
+            lap.EndTime = lap.StartTime + timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
+            # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
             lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(xlap.find("tcx:DistanceMeters", namespaces=ns).text))
             lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(xlap.find("tcx:Calories", namespaces=ns).text))
             if lap.Stats.Energy.Value == 0:
@@ -82,8 +82,8 @@ class TCXIO:
                 lap.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=float(maxHREl.find("tcx:Value", namespaces=ns).text)))
 
             # WF fills these in with invalid values.
-            lap.Stats.HR.Max = lap.Stats.HR.Max if lap.Stats.HR.Max > 10 else None
-            lap.Stats.HR.Average = lap.Stats.HR.Average if lap.Stats.HR.Average > 10 else None
+            lap.Stats.HR.Max = lap.Stats.HR.Max if lap.Stats.HR.Max and lap.Stats.HR.Max > 10 else None
+            lap.Stats.HR.Average = lap.Stats.HR.Average if lap.Stats.HR.Average and lap.Stats.HR.Average > 10 else None
 
             cadEl = xlap.find("tcx:Cadence", namespaces=ns)
             if cadEl is not None:
@@ -160,6 +160,9 @@ class TCXIO:
                 lap.Waypoints.append(wp)
                 xtrkpt.clear()
                 del xtrkpt
+            if len(lap.Waypoints):
+                lap.EndTime = lap.Waypoints[-1].Timestamp
+
         act.StartTime = act.Laps[0].StartTime if len(act.Laps) else act.StartTime
         act.EndTime = act.Laps[-1].EndTime if len(act.Laps) else act.EndTime
 
@@ -169,10 +172,14 @@ class TCXIO:
         else:
             act.Stationary = True
         if len(act.Laps) == 1:
-            act.Stats.update(act.Laps[0].Stats)
+            act.Laps[0].Stats.update(act.Stats) # External source is authorative
+            act.Stats = act.Laps[0].Stats
         else:
+            sum_stats = ActivityStatistics() # Blank
             for lap in act.Laps:
-                act.Stats.sumWith(lap.Stats)
+                sum_stats.sumWith(lap.Stats)
+            sum_stats.update(act.Stats)
+            act.Stats = sum_stats
         if not act.TZ: # Don't overwrite the incoming TZ
             act.TZ = UTC
         act.AdjustTZ() # Update all timestamps to match whatever the TZ ends up being

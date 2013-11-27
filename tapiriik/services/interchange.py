@@ -212,6 +212,37 @@ class Activity:
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
+    def CleanStats(self):
+        """
+            Some devices/apps populate fields with patently false values, e.g. HR avg = 1bpm, calories = 0kcal
+            So, rather than propagating these, or bailing, we silently strip them, in hopes that destinations will do a better job of calculating them.
+            Most of the upper limits match the FIT spec
+        """
+        def _cleanStatsObj(stats):
+            ranges = {
+                "Power": [ActivityStatisticUnit.Watts, 0, 5000],
+                "Speed": [ActivityStatisticUnit.KilometersPerHour, 0, 150],
+                "Elevation": [ActivityStatisticUnit.Meters, -500, 8850], # Props for bringing your Forerunner up Everest
+                "HR": [ActivityStatisticUnit.BeatsPerMinute, 15, 300], # Please visit the ER before you email me about these limits
+                "Cadence": [ActivityStatisticUnit.RevolutionsPerMinute, 0, 255], # FIT
+                "RunCadence": [ActivityStatisticUnit.StepsPerMinute, 0, 255], # FIT
+                "Strides": [ActivityStatisticUnit.Strides, 1, 9999999],
+                "Temperature": [ActivityStatisticUnit.DegreesCelcius, -62, 50],
+                "Energy": [ActivityStatisticUnit.Kilocalories, 1, 65535] # FIT
+            }
+            checkFields = ["Average", "Max", "Min", "Value"]
+            for key in ranges:
+                stat = stats.__dict__[key].asUnits(ranges[key][0])
+                for field in checkFields:
+                    value = stat.__dict__[field]
+                    if value is not None and (value < ranges[key][1] or value > ranges[key][2]):
+                        stats.__dict__[key].Samples[field] = 0 # Need to update the original, not the asUnits copy
+                        stats.__dict__[key].__dict__[field] = None
+
+        _cleanStatsObj(self.Stats)
+        for lap in self.Laps:
+            _cleanStatsObj(lap.Stats)
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Laps)) + " laps " + str(sum([len(x.Waypoints) for x in self.Laps])) + " WPs"
     __repr__ = __str__

@@ -382,14 +382,16 @@ class SportTracksService(ServiceBase):
         activityData["sharing"] = "public" if not activity.Private else "private"
         activityData["type"] = self._reverseActivityMappings[activity.Type]
 
-        def _mapStat(dict, key, val):
+        def _mapStat(dict, key, val, naturalValue=False):
             if val is not None:
+                if naturalValue:
+                    val = round(val)
+                print("Mapping %s=%s" % (key, val))
                 dict[key] = val
-
         _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
         _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else None)
         _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-        _mapStat(activityData, "calories", int(activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value))
+        _mapStat(activityData, "calories", activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
         _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
         _mapStat(activityData, "elevation_loss", activity.Stats.Elevation.Loss)
         _mapStat(activityData, "max_speed", activity.Stats.Speed.Max)
@@ -412,7 +414,7 @@ class SportTracksService(ServiceBase):
             _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds())
             _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else None)
             _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-            _mapStat(lapinfo, "calories", int(lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value))
+            _mapStat(lapinfo, "calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
             _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
             _mapStat(lapinfo, "elevation_loss", lap.Stats.Elevation.Loss)
             _mapStat(lapinfo, "max_speed", lap.Stats.Speed.Max)
@@ -421,7 +423,7 @@ class SportTracksService(ServiceBase):
 
             activityData["laps"].append(lapinfo)
 
-
+        print("Lap data %s" % activityData["laps"])
         if not activity.Stationary:
             timer_stops = []
             timer_stopped_at = None
