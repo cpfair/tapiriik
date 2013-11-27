@@ -12,5 +12,7 @@ from tapiriik.services.GarminConnect import GarminConnectService
 GarminConnect = GarminConnectService()
 from tapiriik.services.SportTracks import SportTracksService
 SportTracks = SportTracksService()
+from tapiriik.services.RideWithGPS import RideWithGPSService
+RideWithGPS = RideWithGPSService()
 from .service import *
 from .service_record import *
