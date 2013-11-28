@@ -404,6 +404,10 @@ class Sync:
                     del activity
                     continue
 
+                if "AllowStationary" not in user:
+                    logger.info("\tSkipping stationary activity for user not marked")
+                    continue
+
                 # recipientServices are services that don't already have this activity
                 recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
                 if len(recipientServices) == 0:
