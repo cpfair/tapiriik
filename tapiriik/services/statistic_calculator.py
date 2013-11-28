@@ -10,9 +10,7 @@ class ActivityStatisticCalculator:
         altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
         lastTimestamp = lastLoc = None
 
-        flatWaypoints = []
-        for lap in act.Laps:
-            flatWaypoints.append(lap.Waypoints)
+        flatWaypoints = act.GetFlatWaypoints()
 
         if not startWpt:
             startWpt = flatWaypoints[0]
