@@ -161,7 +161,9 @@ class StravaService(ServiceBase):
 
     def DownloadActivity(self, svcRecord, activity):
         if activity.ServiceData["Manual"]:  # I should really add a param to DownloadActivity for this value as opposed to constantly doing this
-            return activity  # We've got as much information as we're going to get.
+            # We've got as much information as we're going to get - we need to copy it into a Lap though.
+            activity.Laps = [Lap(startTime=activity.StartTime, endTime=activity.EndTime, stats=activity.Stats)]
+            return activity
         activityID = activity.ServiceData["ActivityID"]
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
