@@ -361,6 +361,7 @@ class ActivityStatistic:
 
     def convertValue(value, from_units, to_units):
         conversions = {
+            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
             (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
@@ -480,6 +481,7 @@ class ActivityStatisticUnit:
     DegreesCelcius = "ºC"
     DegreesFahrenheit = "ºF"
     KilometersPerHour = "km/h"
+    HectometersPerHour = "hm/h" # Silly Garmin Connect!
     MetersPerSecond = "m/s"
     MilesPerHour = "mph"
     BeatsPerMinute = "BPM"
