@@ -1,6 +1,6 @@
 from tapiriik.database import db, cachedb
 from tapiriik.services import ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
-from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, STATIC_ACTIVITY_SYNC_USERS, WITHDRAWN_SERVICES
+from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from datetime import datetime, timedelta
 import sys
 import os
@@ -505,7 +505,7 @@ class Sync:
                     startLoc = act.GetFirstWaypointWithLocation()
                     db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
                 else:
-                    if str(user["_id"]) not in STATIC_ACTIVITY_SYNC_USERS:
+                    if "AllowStationary" not in user:
                         logger.info("\tSkipping stationary activity for user not marked")
                         continue
                 for destinationSvcRecord in eligibleServices:
