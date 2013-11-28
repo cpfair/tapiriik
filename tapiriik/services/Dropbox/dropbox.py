@@ -250,7 +250,7 @@ class DropboxService(ServiceBase):
         # activity might not be populated at this point, still possible to bail out
         if not activity.ServiceData["Tagged"]:
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
-                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServideData["Path"])
+                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServiceData["Path"])
 
         # activity might already be populated, if not download it again
         path = activity.ServiceData["Path"]
