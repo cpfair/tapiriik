@@ -224,8 +224,7 @@ class GarminConnectService(ServiceBase):
 
                 activity.CalculateUID()
                 activity.ServiceData = {"ActivityID": act["activityId"]}
-                if "b7e" not in activity.UID:
-                    continue
+
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
             if not exhaustive or int(res["search"]["totalPages"]) == page:
