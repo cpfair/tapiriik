@@ -435,7 +435,7 @@ class Sync:
                 # The second most important line of logging in the application...
                 logger.info("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
-                if "AllowStationary" not in user:
+                if activity.Stationary and "AllowStationary" not in user:
                     logger.info("\tSkipping stationary activity for user not marked")
                     continue
 
@@ -444,10 +444,10 @@ class Sync:
                 actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
 
                 # Prefer retrieving the activity from its original source.
-                if hasattr(act, "Origin") and act.Origin.Service.ID in actAvailableFromSvcIds:
+                if hasattr(activity, "Origin") and activity.Origin.Service.ID in actAvailableFromSvcIds:
                     # Move this service to the front of the line.
-                    actAvailableFromSvcIds.remove(act.Origin.Service.ID)
-                    actAvailableFromSvcIds.insert(0, act.Origin.Service.ID)
+                    actAvailableFromSvcIds.remove(activity.Origin.Service.ID)
+                    actAvailableFromSvcIds.insert(0, activity.Origin.Service.ID)
 
                 for dlSvcRecId in actAvailableFromSvcIds:
                     dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId][0]
