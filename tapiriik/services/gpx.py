@@ -90,6 +90,10 @@ class GPXIO:
         act.StartTime = startTime
         act.EndTime = endTime
         act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
+        if len(act.Laps) == 1:
+            # GPX encodes no real per-lap/segment statistics, so this is the only case where we can fill this in.
+            # I've made an exception for the activity's total distance, but only because I want it later on for stats.
+            act.Laps[0].Stats = act.Stats
         act.CalculateUID()
         return act
 

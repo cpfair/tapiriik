@@ -236,7 +236,7 @@ class Activity:
                 for field in checkFields:
                     value = stat.__dict__[field]
                     if value is not None and (value < ranges[key][1] or value > ranges[key][2]):
-                        stats.__dict__[key].Samples[field] = 0 # Need to update the original, not the asUnits copy
+                        stats.__dict__[key]._samples[field] = 0 # Need to update the original, not the asUnits copy
                         stats.__dict__[key].__dict__[field] = None
 
         _cleanStatsObj(self.Stats)
@@ -330,13 +330,14 @@ class ActivityStatistic:
         self.Gain = gain
         self.Loss = loss
 
-        self.Samples = {}
-        self.Samples["Value"] = 1 if value is not None else 0
-        self.Samples["Average"] = 1 if avg is not None else 0
-        self.Samples["Min"] = 1 if min is not None else 0
-        self.Samples["Max"] = 1 if max is not None else 0
-        self.Samples["Gain"] = 1 if gain is not None else 0
-        self.Samples["Loss"] = 1 if loss is not None else 0
+        # Nothing outside of this class should be accessing _samples (though CleanStats gets a pass)
+        self._samples = {}
+        self._samples["Value"] = 1 if value is not None else 0
+        self._samples["Average"] = 1 if avg is not None else 0
+        self._samples["Min"] = 1 if min is not None else 0
+        self._samples["Max"] = 1 if max is not None else 0
+        self._samples["Gain"] = 1 if gain is not None else 0
+        self._samples["Loss"] = 1 if loss is not None else 0
 
         self.Units = units
 
@@ -346,11 +347,11 @@ class ActivityStatistic:
         newStat = ActivityStatistic(units)
         existing_dict = dict(self.__dict__)
         del existing_dict["Units"]
-        del existing_dict["Samples"]
+        del existing_dict["_samples"]
         ActivityStatistic.convertUnitsInDict(existing_dict, self.Units, units)
         newStat.__dict__ = existing_dict
         newStat.Units = units
-        newStat.Samples = self.Samples
+        newStat._samples = self._samples
         return newStat
 
     def convertUnitsInDict(values_dict, from_units, to_units):
@@ -415,11 +416,13 @@ class ActivityStatistic:
         items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
         my_items = self.__dict__
         other_items = stat.__dict__
-        my_samples = self.Samples
-        other_samples = stat.Samples
+        my_samples = self._samples
+        other_samples = stat._samples
         for item in items:
             # Only average if there's a second value
             if other_items[item] is not None:
+                # We need to override this so we can be lazy elsewhere and just assign values (.Average = ...) and don't have to use .update(ActivityStatistic(blah, blah, blah))
+                other_samples[item] = other_samples[item] if other_samples[item] else 1
                 if my_items[item] is None:
                     # We don't have this item's value, nothing to do really.
                     my_items[item] = other_items[item]
@@ -439,19 +442,19 @@ class ActivityStatistic:
             if item in other_items and other_items[item] is not None:
                 if self.__dict__[item] is not None:
                     self.__dict__[item] += other_items[item]
-                    self.Samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
+                    self._samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
                 else:
                     self.__dict__[item] = other_items[item]
-                    self.Samples[item] = stat.Samples[item]
+                    self._samples[item] = stat._samples[item]
         self.Average = None
-        self.Samples["Average"] = 0
+        self._samples["Average"] = 0
 
         if self.Max is None or (stat.Max is not None and stat.Max > self.Max):
             self.Max = stat.Max
-            self.Samples["Max"] = stat.Samples["Max"]
+            self._samples["Max"] = stat._samples["Max"]
         if self.Min is None or (stat.Min is not None and stat.Min < self.Min):
             self.Min = stat.Min
-            self.Samples["Min"] = stat.Samples["Min"]
+            self._samples["Min"] = stat._samples["Min"]
 
     def update(self, stat):
         stat = stat.asUnits(self.Units)
@@ -460,7 +463,7 @@ class ActivityStatistic:
         for item in items:
             if item in other_items and other_items[item] is not None:
                 self.__dict__[item] = other_items[item]
-                self.Samples[item] = stat.Samples[item]
+                self._samples[item] = stat._samples[item]
 
     def __eq__(self, other):
         if not other:
