@@ -54,7 +54,10 @@ class TCXIO:
             act.Laps.append(lap)
 
             lap.StartTime = dateutil.parser.parse(xlap.attrib["StartTime"])
-            lap.EndTime = lap.StartTime + timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
+            totalTimeEL = xlap.find("tcx:TotalTimeSeconds", namespaces=ns)
+            if totalTimeEL is None:
+                raise ValueError("Missing lap TotalTimeSeconds")
+            lap.EndTime = lap.StartTime + timedelta(seconds=float(totalTimeEL.text))
             # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
             distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
             energyEl = xlap.find("tcx:Calories", namespaces=ns)
@@ -273,7 +276,7 @@ class TCXIO:
             _writeStat(xlap, "MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
             _writeStat(xlap, "Cadence", lap.Stats.Cadence.Average, naturalValue=True)
             _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None)
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
             _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0)
 
             if len([x for x in [lap.Stats.Cadence.Max, lap.Stats.RunCadence.Max, lap.Stats.RunCadence.Average, lap.Stats.Strides.Value, lap.Stats.Power.Max, lap.Stats.Power.Average, lap.Stats.Speed.Average] if x is not None]):
