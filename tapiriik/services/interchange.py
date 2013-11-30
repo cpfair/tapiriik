@@ -370,6 +370,7 @@ class ActivityStatistic:
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
             (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
+            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Yards): 1.09361,
             (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
             (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184
         }
@@ -482,6 +483,7 @@ class ActivityStatisticUnit:
     Meters = "m"
     Kilometers = "km"
     Feet = "f"
+    Yards = "yd"
     Miles = "mi"
     DegreesCelcius = "ºC"
     DegreesFahrenheit = "ºF"

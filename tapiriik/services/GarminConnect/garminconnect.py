@@ -68,6 +68,7 @@ class GarminConnectService(ServiceBase):
         "kilometer": ActivityStatisticUnit.Kilometers,
         "foot": ActivityStatisticUnit.Feet,
         "meter": ActivityStatisticUnit.Meters,
+        "yard": ActivityStatisticUnit.Yards,
         "kilocalorie": ActivityStatisticUnit.Kilocalories,
         "bpm": ActivityStatisticUnit.BeatsPerMinute,
         "stepsPerMinute": ActivityStatisticUnit.StepsPerMinute,
