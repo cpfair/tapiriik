@@ -139,8 +139,10 @@ class TCXIO:
                 continue
             for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
                 wp = Waypoint()
-
-                wp.Timestamp = dateutil.parser.parse(xtrkpt.find("tcx:Time", namespaces=ns).text)
+                tsEl = xtrkpt.find("tcx:Time", namespaces=ns)
+                if tsEl is None:
+                    raise ValueError("Trackpoint without timestamp")
+                wp.Timestamp = dateutil.parser.parse(tsEl.text)
                 wp.Timestamp.replace(tzinfo=UTC)
                 if startTime is None or wp.Timestamp < startTime:
                     startTime = wp.Timestamp
