@@ -15,7 +15,9 @@
 		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
 		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
-		<li><b>Sync Control:</b> <form action="" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/></form></li>
+		<li><b>Sync Control:</b> <form action="" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
+		<input type="text" name="host" value="{{ user.SynchronizationHostRestriction }}"/><input type="submit" name="hostrestrict" value="Host restrict"/>
+		</form></li>
 		<li><b>Substitution:</b> <form action="" method="POST">{% csrf_token %}<input type="submit" name="substitute" value="su"/></form></li>
 	</ul>
 	{% if user.Payments|length > 0 %}

@@ -220,7 +220,14 @@ class Sync:
 
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
-        users = db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None}).sort("NextSynchronization").limit(1)
+        users = db.users.find({
+                "NextSynchronization": {"$lte": datetime.utcnow()},
+                "SynchronizationWorker": None,
+                "$or": [
+                    {"SynchronizationHostRestriction": {"$exists": False}},
+                    {"SynchronizationHostRestriction": socket.gethostname()}
+                    ]
+            }).sort("NextSynchronization").limit(1)
         userCt = 0
         for user in users:
             userCt += 1

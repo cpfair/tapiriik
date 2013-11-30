@@ -84,22 +84,24 @@ def diag_user(req, user):
             return redirect("diagnostics_user", user=userRec["_id"])
     if not userRec:
         return render(req, "diag/error_user_not_found.html")
-    delta = False
+    delta = True # Easier to set this to false in the one no-change case.
     if "sync" in req.POST:
         Sync.ScheduleImmediateSync(userRec, req.POST["sync"] == "Full")
-        delta = True
     elif "unlock" in req.POST:
         db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationWorker": None}})
-        delta = True
     elif "lock" in req.POST:
         db.users.update({"_id": ObjectId(user)}, {"$set": {"SynchronizationWorker": 1}})
-        delta = True
+    elif "hostrestrict" in req.POST:
+        host = req.POST["host"]
+        if host:
+            db.users.update({"_id": ObjectId(user)}, {"$set": {"SynchronizationHostRestriction": host}})
+        else:
+            db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationHostRestriction": None}})
     elif "substitute" in req.POST:
         req.session["substituteUserid"] = user
         return redirect("dashboard")
     elif "svc_setauth" in req.POST and len(req.POST["authdetails"]):
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set":{"Authorization": json.loads(req.POST["authdetails"])}})
-        delta = True
     elif "svc_unlink" in req.POST:
         from tapiriik.services import Service
         from tapiriik.auth import User
@@ -112,25 +114,17 @@ def diag_user(req, user):
             User.DisconnectService(svcRec)
         except:
             pass
-        delta = True
     elif "svc_marksync" in req.POST:
-        from tapiriik.services import Service
-        from tapiriik.auth import User
         db.connections.update({"_id": ObjectId(req.POST["id"])},
                               {"$addToSet": {"SynchronizedActivities": req.POST["uid"]}},
                               multi=False)
-        delta = True
     elif "svc_clearexc" in req.POST:
-        from tapiriik.services import Service
-        from tapiriik.auth import User
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"ExcludedActivities": 1}})
-        delta = True
     elif "svc_clearacts" in req.POST:
-        from tapiriik.services import Service
-        from tapiriik.auth import User
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"SynchronizedActivities": 1}})
         Sync.SetNextSyncIsExhaustive(userRec, True)
-        delta = True
+    else:
+        delta = False
 
     if delta:
         return redirect("diagnostics_user", user=user)
