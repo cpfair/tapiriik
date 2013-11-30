@@ -249,7 +249,7 @@ class TCXIO:
         for lap in activity.Laps:
             xlap = etree.SubElement(act, "Lap")
             xlaps.append(xlap)
-            etree.SubElement(xlap, "Intensity").text = "Resting" if lap.Intensity == LapIntensity.Active else "Active"
+            etree.SubElement(xlap, "Intensity").text = "Resting" if lap.Intensity == LapIntensity.Rest else "Active"
             etree.SubElement(xlap, "TriggerMethod").text = ({
                 LapTriggerMethod.Manual: "Manual",
                 LapTriggerMethod.Distance: "Distance",
