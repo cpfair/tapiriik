@@ -16,6 +16,6 @@ class GPXTests(TapiriikTestCase):
         act2 = GPXIO.Parse(bytes(mid,"UTF-8"))
         act2.TZ = act.TZ  # we need to fake this since local TZ isn't defined in GPX files, and TZ discovery will flail with random activities
         act2.AdjustTZ()
-        act.Distance = act2.Distance = None  # same here
+        act.Stats.Distance = act2.Stats.Distance = None  # same here
 
         self.assertActivitiesEqual(act2, act)

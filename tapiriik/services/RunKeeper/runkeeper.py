@@ -2,7 +2,7 @@ from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
-from tapiriik.services.interchange import UploadedActivity, ActivityType, WaypointType, Waypoint, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, WaypointType, Waypoint, Location, Lap
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -119,9 +119,6 @@ class RunKeeperService(ServiceBase):
         activities = []
         exclusions = []
         for act in allItems:
-            if "has_path" in act and act["has_path"] is False:
-                exclusions.append(APIExcludeActivity("No path", activityId=act["uri"]))
-                continue  # No points = no sync.
             try:
                 activity = self._populateActivity(act)
             except KeyError as e:
@@ -132,7 +129,7 @@ class RunKeeperService(ServiceBase):
             if (activity.StartTime - activity.EndTime).total_seconds() == 0:
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
-            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["uri"]}]
+            activity.ServiceData = {"ActivityID": act["uri"]}
             activities.append(activity)
         return activities, exclusions
 
@@ -142,15 +139,23 @@ class RunKeeperService(ServiceBase):
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
         activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
-        activity.Distance = rawRecord["total_distance"]
+        activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["total_distance"])
+        # I'm fairly sure this is how the RK calculation works. I remember I removed something exactly like this from ST.mobi, but I trust them more than I trust myself to get the speed right.
+        if (activity.EndTime - activity.StartTime).total_seconds() > 0:
+            activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value / ((activity.EndTime - activity.StartTime).total_seconds() / 60 / 60))
+        activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
-
+        if "has_path" in rawRecord and rawRecord["has_path"] is False:
+            activity.Stationary = True
+            activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, round(rawRecord["duration"]))) # Seems reasonable.
+        else:
+            activity.Stationary = False
         activity.CalculateUID()
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
-        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityID = activity.ServiceData["ActivityID"]
         if AGGRESSIVE_CACHE:
             ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
         if not AGGRESSIVE_CACHE or ridedata is None:
@@ -172,19 +177,25 @@ class RunKeeperService(ServiceBase):
 
         self._populateActivityWaypoints(ridedata, activity)
 
-        if len(activity.Waypoints) <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=activityID)
+        if "climb" in ridedata:
+            activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(ridedata["climb"]))
+        if "average_heart_rate" in ridedata:
+            activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
+        activity.Stationary = activity.CountTotalWaypoints() <= 1
+
 
         activity.Private = ridedata["share"] == "Just Me"
         return activity
 
     def _populateActivityWaypoints(self, rawData, activity):
         ''' populate the Waypoints collection from RK API data '''
-        activity.Waypoints = []
+        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
+        activity.Laps = [lap]
 
         #  path is the primary stream, HR/power/etc must have fewer pts
         hasHR = "heart_rate" in rawData and len(rawData["heart_rate"]) > 0
         hasCalories = "calories" in rawData and len(rawData["calories"]) > 0
+        hasDistance = "distance" in rawData and len(rawData["distance"]) > 0
         for pathpoint in rawData["path"]:
             waypoint = Waypoint(activity.StartTime + timedelta(0, pathpoint["timestamp"]))
             waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"] if "altitude" in pathpoint and float(pathpoint["altitude"]) != 0 else None)  # if you're running near sea level, well...
@@ -198,8 +209,12 @@ class RunKeeperService(ServiceBase):
                 calpoint = [x for x in rawData["calories"] if x["timestamp"] == pathpoint["timestamp"]]
                 if len(calpoint) > 0:
                     waypoint.Calories = calpoint[0]["calories"]
+            if hasDistance:
+                distpoint = [x for x in rawData["distance"] if x["timestamp"] == pathpoint["timestamp"]]
+                if len(distpoint) > 0:
+                    waypoint.Distance = distpoint[0]["distance"]
 
-            activity.Waypoints.append(waypoint)
+            lap.Waypoints.append(waypoint)
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
@@ -221,42 +236,54 @@ class RunKeeperService(ServiceBase):
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
-        record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
-        if activity.Distance is not None:
-            record["total_distance"] = activity.Distance  # RK calculates this itself, so we probably don't care
+        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else (activity.EndTime - activity.StartTime).total_seconds()
+        if activity.Stats.HR.Average is not None:
+            record["average_heart_rate"] = int(activity.Stats.HR.Average)
+        if activity.Stats.Energy.Value is not None:
+            record["total_calories"] = activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
+        if activity.Stats.Distance.Value is not None:
+            record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
         if activity.Name:
             record["notes"] = activity.Name  # not symetric, but better than nothing
-        record["path"] = []
         if activity.Private:
             record["share"] = "Just Me"
-        for waypoint in activity.Waypoints:
-            timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-            if waypoint.Type in self._wayptTypeMappings.values():
-                wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
-            else:
-                wpType = "gps"  # meh
+        if not activity.Stationary:
+            record["path"] = []
+            for lap in activity.Laps:
+                for waypoint in lap.Waypoints:
+                    timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-            if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
-                continue
+                    if waypoint.Type in self._wayptTypeMappings.values():
+                        wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
+                    else:
+                        wpType = "gps"  # meh
 
-            if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
-                pathPt = {"timestamp": timestamp,
-                          "latitude": waypoint.Location.Latitude,
-                          "longitude": waypoint.Location.Longitude,
-                          "type": wpType}
-                pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
-                record["path"].append(pathPt)
+                    if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
+                        continue
 
-            if waypoint.HR is not None:
-                if "heart_rate" not in record:
-                    record["heart_rate"] = []
-                record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
+                    if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                        pathPt = {"timestamp": timestamp,
+                                  "latitude": waypoint.Location.Latitude,
+                                  "longitude": waypoint.Location.Longitude,
+                                  "type": wpType}
+                        pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                        record["path"].append(pathPt)
 
-            if waypoint.Calories is not None:
-                if "calories" not in record:
-                    record["calories"] = []
-                record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+                    if waypoint.HR is not None:
+                        if "heart_rate" not in record:
+                            record["heart_rate"] = []
+                        record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
+
+                    if waypoint.Calories is not None:
+                        if "calories" not in record:
+                            record["calories"] = []
+                        record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+
+                    if waypoint.Distance is not None:
+                        if "distance" not in record:
+                            record["distance"] = []
+                        record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
 
         return record
 

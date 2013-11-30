@@ -40,17 +40,18 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    ImplicitPauseTime = timedelta(minutes=1, seconds=5)
-
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, tz=None, waypointList=None, private=False):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
-        self.Waypoints = waypointList if waypointList is not None else []
-        self.Distance = distance
+        self.Laps = lapList if lapList is not None else []
+        self.Stats = ActivityStatistics(distance=distance)
         self.TZ = tz
+        self.FallbackTZ = fallbackTz
         self.Name = name
+        self.Notes = notes
         self.Private = private
+        self.Stationary = stationary
         self.PrerenderedFormats = {}
 
     def CalculateUID(self):
@@ -64,12 +65,19 @@ class Activity:
         csp.update(roundedStartTime.strftime("%Y-%m-%d %H:%M:%S").encode('utf-8'))  # exclude TZ for compat
         self.UID = csp.hexdigest()
 
+    def CountTotalWaypoints(self):
+        return sum([len(x.Waypoints) for x in self.Laps])
+
+    def GetFlatWaypoints(self):
+        return [wp for waypoints in [x.Waypoints for x in self.Laps] for wp in waypoints]
+
     def GetFirstWaypointWithLocation(self):
         loc_wp = None
-        for wp in self.Waypoints:
-            if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
-                loc_wp = wp.Location
-                break
+        for lap in self.Laps:
+            for wp in lap.Waypoints:
+                if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                    loc_wp = wp.Location
+                    break
         return loc_wp
 
     def DefineTZ(self):
@@ -80,9 +88,12 @@ class Activity:
             self.StartTime = self.TZ.localize(self.StartTime)
         if self.EndTime and self.EndTime.tzinfo is None:
             self.EndTime = self.TZ.localize(self.EndTime)
-        for wp in self.Waypoints:
-            if wp.Timestamp.tzinfo is None:
-                wp.Timestamp = self.TZ.localize(wp.Timestamp)
+        for lap in self.Laps:
+            lap.StartTime = self.TZ.localize(lap.StartTime) if lap.StartTime.tzinfo is None else lap.StartTime
+            lap.EndTime = self.TZ.localize(lap.EndTime) if lap.EndTime.tzinfo is None else lap.EndTime
+            for wp in lap.Waypoints:
+                if wp.Timestamp.tzinfo is None:
+                    wp.Timestamp = self.TZ.localize(wp.Timestamp)
         self.CalculateUID()
 
     def AdjustTZ(self):
@@ -92,21 +103,26 @@ class Activity:
         self.StartTime = self.StartTime.astimezone(self.TZ)
         self.EndTime = self.EndTime.astimezone(self.TZ)
 
-        for wp in self.Waypoints:
-                wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
+        for lap in self.Laps:
+            lap.StartTime = lap.StartTime.astimezone(self.TZ)
+            lap.EndTime = lap.EndTime.astimezone(self.TZ)
+            for wp in lap.Waypoints:
+                    wp.Timestamp = wp.Timestamp.astimezone(self.TZ)
         self.CalculateUID()
 
-    def CalculateTZ(self, loc=None):
-        if len(self.Waypoints) == 0 and loc is None:
-            raise Exception("Can't find TZ without waypoints")
+    def CalculateTZ(self, loc=None, recalculate=False):
+        if self.TZ and not recalculate:
+            return self.TZ
         if loc is None:
-            for wp in self.Waypoints:
-                if wp.Location is not None and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
-                    loc = wp.Location
-                    break
-            if loc is None:
-                raise Exception("Can't find TZ without a waypoint with a location")
-
+            loc = self.GetFirstWaypointWithLocation()
+            if loc is None and self.FallbackTZ is None:
+                raise Exception("Can't find TZ without a waypoint with a location, or a fallback TZ")
+        if loc is None:
+            # At this point, we'll resort to the fallback TZ.
+            if self.FallbackTZ is None:
+                raise Exception("Can't find TZ without a waypoint with a location, specified location, or fallback TZ")
+            self.TZ = self.FallbackTZ
+            return self.TZ
         # I guess at some point it will be faster to perform a full lookup than digging through this table.
         cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
         if cachedTzData is None:
@@ -120,93 +136,37 @@ class Activity:
             self.TZ = pytz.timezone(cachedTzData["TZ"])
         return self.TZ
 
-    def EnsureTZ(self):
-        self.CalculateTZ()
+    def EnsureTZ(self, recalculate=False):
+        self.CalculateTZ(recalculate=recalculate)
         if self.StartTime.tzinfo is None:
             self.DefineTZ()
         else:
             self.AdjustTZ()
 
-    def CalculateDistance(self):
-        self.Distance = self.GetDistance()
-
-    def GetDistance(self, startWpt=None, endWpt=None):
-        import math
-        dist = 0
-        altHold = None  # seperate from the lastLoc variable, since we want to hold the altitude as long as required
-        lastTimestamp = lastLoc = None
-
-        if not startWpt:
-            startWpt = self.Waypoints[0]
-        if not endWpt:
-            endWpt = self.Waypoints[-1]
-
-        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
-            timeDelta = self.Waypoints[x].Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp = self.Waypoints[x].Timestamp
-
-            if self.Waypoints[x].Type == WaypointType.Pause or (timeDelta and timeDelta > self.ImplicitPauseTime):
-                lastLoc = None  # don't count distance while paused
-                continue
-
-            loc = self.Waypoints[x].Location
-            if loc is None or loc.Longitude is None or loc.Latitude is None:
-                # Used to throw an exception in this case, but the TCX schema allows for location-free waypoints, so we'll just patch over it.
-                continue
-
-            if loc and lastLoc:
-                altHold = lastLoc.Altitude if lastLoc.Altitude is not None else altHold
-                latRads = loc.Latitude * math.pi / 180
-                meters_lat_degree = 1000 * 111.13292 + 1.175 * math.cos(4 * latRads) - 559.82 * math.cos(2 * latRads)
-                meters_lon_degree = 1000 * 111.41284 * math.cos(latRads) - 93.5 * math.cos(3 * latRads)
-                dx = (loc.Longitude - lastLoc.Longitude) * meters_lon_degree
-                dy = (loc.Latitude - lastLoc.Latitude) * meters_lat_degree
-                if loc.Altitude is not None and altHold is not None:  # incorporate the altitude when possible
-                    dz = loc.Altitude - altHold
-                else:
-                    dz = 0
-                dist += math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
-            lastLoc = loc
-
-        return dist
-
-    def GetDuration(self, startWpt=None, endWpt=None):
-        if len(self.Waypoints) < 3:
-            # Either no waypoints, or one at the start and one at the end - just use regular time elapsed
-            return self.EndTime - self.StartTime
-        duration = timedelta(0)
-        if not startWpt:
-            startWpt = self.Waypoints[0]
-        if not endWpt:
-            endWpt = self.Waypoints[-1]
-        lastTimestamp = None
-        for x in range(self.Waypoints.index(startWpt), self.Waypoints.index(endWpt) + 1):
-            wpt = self.Waypoints[x]
-            delta = wpt.Timestamp - lastTimestamp if lastTimestamp else None
-            lastTimestamp = wpt.Timestamp
-            if wpt.Type is WaypointType.Pause:
-                lastTimestamp = None
-            elif delta and delta > self.ImplicitPauseTime:
-                delta = None  # Implicit pauses
-            if delta:
-                duration += delta
-        if duration.total_seconds() == 0 and startWpt is None and endWpt is None:
-            raise ValueError("Zero-duration activity")
-        return duration
-
     def CheckSanity(self):
-        if not hasattr(self, "UploadedTo") or len(self.UploadedTo) == 0:
-            raise ValueError("Unset UploadedTo field")
-        srcs = self.UploadedTo  # this is just so I can see the source of the activity in the exception message
+        """ Started out as a function that checked to make sure the activity itself is sane.
+            Now we perform a lot of checks to make sure all the objects were initialized properly
+            I'm undecided on this front...
+                - Forcing the .NET model of "XYZCollection"s that enforce integrity seems wrong
+                - Enforcing them in constructors makes using the classes a pain
+        """
+        if "ServiceDataCollection" in self.__dict__:
+            srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
         if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
-        if len(self.Waypoints) == 0:
-            raise ValueError("No waypoints")
-        if len(self.Waypoints) == 1:
-            raise ValueError("Only one waypoint")
-        if self.Distance is not None and self.Distance > 1000 * 1000:
+        if len(self.Laps) == 0:
+                raise ValueError("No laps")
+        wptCt = sum([len(x.Waypoints) for x in self.Laps])
+        if self.Stationary is None:
+            raise ValueError("Activity is undecidedly stationary")
+        if not self.Stationary:
+            if wptCt == 0:
+                raise ValueError("Exactly 0 waypoints")
+            if wptCt == 1:
+                raise ValueError("Only 1 waypoint")
+        if self.Stats.Distance.Value is not None and self.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
             raise ValueError("Activity is from the future")
@@ -221,37 +181,77 @@ class Activity:
                 raise ValueError("0-duration activity")
             if (self.EndTime - self.StartTime).total_seconds() > 60 * 60 * 24 * 5:
                 raise ValueError("Exceedingly long activity (time)")
+
+        if len(self.Laps) == 1:
+            if self.Laps[0].Stats != self.Stats:
+                raise ValueError("Activity with 1 lap has mismatching statistics between activity and lap")
         altLow = None
         altHigh = None
         pointsWithoutLocation = 0
-        for wp in self.Waypoints:
-            if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
-                raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
-            if wp.Location:
-                if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
-                    raise ValueError("Invalid lat/lng")
-                if (wp.Location.Latitude is not None and (wp.Location.Latitude > 90 or wp.Location.Latitude < -90)) or (wp.Location.Longitude is not None and (wp.Location.Longitude > 180 or wp.Location.Longitude < -180)):
-                    raise ValueError("Out of range lat/lng")
-                if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
-                    altLow = wp.Location.Altitude
-                if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
-                    altHigh = wp.Location.Altitude
-            if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                pointsWithoutLocation += 1
-        if len(self.Waypoints) - pointsWithoutLocation == 0:
+        for lap in self.Laps:
+            if not lap.StartTime:
+                raise ValueError("Lap has no start time")
+            if not lap.EndTime:
+                raise ValueError("Lap has no end time")
+            for wp in lap.Waypoints:
+                if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
+                    raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
+                if wp.Location:
+                    if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
+                        raise ValueError("Invalid lat/lng")
+                    if (wp.Location.Latitude is not None and (wp.Location.Latitude > 90 or wp.Location.Latitude < -90)) or (wp.Location.Longitude is not None and (wp.Location.Longitude > 180 or wp.Location.Longitude < -180)):
+                        raise ValueError("Out of range lat/lng")
+                    if wp.Location.Altitude is not None and (altLow is None or wp.Location.Altitude < altLow):
+                        altLow = wp.Location.Altitude
+                    if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
+                        altHigh = wp.Location.Altitude
+                if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                    pointsWithoutLocation += 1
+        if wptCt - pointsWithoutLocation == 0 and not self.Stationary:
             raise ValueError("No points have location")
-        if len(self.Waypoints) - pointsWithoutLocation == 1:
+        if wptCt - pointsWithoutLocation == 1:
             raise ValueError("Only one point has location")
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
+    def CleanStats(self):
+        """
+            Some devices/apps populate fields with patently false values, e.g. HR avg = 1bpm, calories = 0kcal
+            So, rather than propagating these, or bailing, we silently strip them, in hopes that destinations will do a better job of calculating them.
+            Most of the upper limits match the FIT spec
+        """
+        def _cleanStatsObj(stats):
+            ranges = {
+                "Power": [ActivityStatisticUnit.Watts, 0, 5000],
+                "Speed": [ActivityStatisticUnit.KilometersPerHour, 0, 150],
+                "Elevation": [ActivityStatisticUnit.Meters, -500, 8850], # Props for bringing your Forerunner up Everest
+                "HR": [ActivityStatisticUnit.BeatsPerMinute, 15, 300], # Please visit the ER before you email me about these limits
+                "Cadence": [ActivityStatisticUnit.RevolutionsPerMinute, 0, 255], # FIT
+                "RunCadence": [ActivityStatisticUnit.StepsPerMinute, 0, 255], # FIT
+                "Strides": [ActivityStatisticUnit.Strides, 1, 9999999],
+                "Temperature": [ActivityStatisticUnit.DegreesCelcius, -62, 50],
+                "Energy": [ActivityStatisticUnit.Kilocalories, 1, 65535] # FIT
+            }
+            checkFields = ["Average", "Max", "Min", "Value"]
+            for key in ranges:
+                stat = stats.__dict__[key].asUnits(ranges[key][0])
+                for field in checkFields:
+                    value = stat.__dict__[field]
+                    if value is not None and (value < ranges[key][1] or value > ranges[key][2]):
+                        stats.__dict__[key]._samples[field] = 0 # Need to update the original, not the asUnits copy
+                        stats.__dict__[key].__dict__[field] = None
+
+        _cleanStatsObj(self.Stats)
+        for lap in self.Laps:
+            _cleanStatsObj(lap.Stats)
+
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Waypoints)) + " WPs"
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " stat " + str(self.Stationary)
     __repr__ = __str__
 
     def __eq__(self, other):
         # might need to fix this for TZs?
-        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Waypoints == other.Waypoints and self.Distance == other.Distance and self.Name == other.Name
+        return self.StartTime == other.StartTime and self.EndTime == other.EndTime and self.Type == other.Type and self.Laps == other.Laps and self.Stats.Distance == other.Stats.Distance and self.Name == other.Name
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -260,30 +260,268 @@ class Activity:
 class UploadedActivity (Activity):
     pass  # will contain list of which service instances contain this activity - not really merited
 
+class LapIntensity:
+    Active = 0
+    Rest = 1
+    Warmup = 2
+    Cooldown = 3
+
+class LapTriggerMethod:
+    Manual = 0
+    Time = 1
+    Distance = 2
+    PositionStart = 3
+    PositionLap = 4
+    PositionWaypoint = 5
+    PositionMarked = 6
+    SessionEnd = 7
+    FitnessEquipment = 8
+
+class Lap:
+    def __init__(self, startTime=None, endTime=None, intensity=LapIntensity.Active, trigger=LapTriggerMethod.Manual, stats=None, waypointList=None):
+        self.StartTime = startTime
+        self.EndTime = endTime
+        self.Trigger = trigger
+        self.Intensity = intensity
+        self.Stats = stats if stats else ActivityStatistics()
+        self.Waypoints = waypointList if waypointList else []
+
+class ActivityStatistics:
+    _statKeyList = ["Distance", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
+    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
+        self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
+        self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
+        self.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal)
+        self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=avg_speed, max=max_speed)
+        self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
+        self.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=avg_hr, max=max_hr)
+        self.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=avg_cadence, max=max_cadence)
+        self.RunCadence = ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=avg_run_cadence, max=max_run_cadence)
+        self.Strides = ActivityStatistic(ActivityStatisticUnit.Strides, value=strides)
+        self.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg=avg_temp, max=max_temp, min=min_temp)
+        self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=avg_power, max=max_power)
+
+    def coalesceWith(self, other_stats):
+        for stat in ActivityStatistics._statKeyList:
+            self.__dict__[stat].coalesceWith(other_stats.__dict__[stat])
+    # Could overload +, but...
+    def sumWith(self, other_stats):
+        for stat in ActivityStatistics._statKeyList:
+            self.__dict__[stat].sumWith(other_stats.__dict__[stat])
+    # Magic dict is meh
+    def update(self, other_stats):
+        for stat in ActivityStatistics._statKeyList:
+            self.__dict__[stat].update(other_stats.__dict__[stat])
+    def __eq__(self, other):
+        if not other:
+            return False
+        for stat in ActivityStatistics._statKeyList:
+            if not self.__dict__[stat] == other.__dict__[stat]:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+class ActivityStatistic:
+    def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
+        self.Value = value
+        self.Average = avg
+        self.Min = min
+        self.Max = max
+        self.Gain = gain
+        self.Loss = loss
+
+        # Nothing outside of this class should be accessing _samples (though CleanStats gets a pass)
+        self._samples = {}
+        self._samples["Value"] = 1 if value is not None else 0
+        self._samples["Average"] = 1 if avg is not None else 0
+        self._samples["Min"] = 1 if min is not None else 0
+        self._samples["Max"] = 1 if max is not None else 0
+        self._samples["Gain"] = 1 if gain is not None else 0
+        self._samples["Loss"] = 1 if loss is not None else 0
+
+        self.Units = units
+
+    def asUnits(self, units):
+        if units == self.Units:
+            return self
+        newStat = ActivityStatistic(units)
+        existing_dict = dict(self.__dict__)
+        del existing_dict["Units"]
+        del existing_dict["_samples"]
+        ActivityStatistic.convertUnitsInDict(existing_dict, self.Units, units)
+        newStat.__dict__ = existing_dict
+        newStat.Units = units
+        newStat._samples = self._samples
+        return newStat
+
+    def convertUnitsInDict(values_dict, from_units, to_units):
+        for key, value in values_dict.items():
+            if value is None:
+                continue
+            values_dict[key] = ActivityStatistic.convertValue(value, from_units, to_units)
+
+    def convertValue(value, from_units, to_units):
+        conversions = {
+            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
+            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
+            (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
+            (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
+            (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
+            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
+            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
+            (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184
+        }
+        def recurseFindConversionPath(unit, target, stack):
+            assert(unit != target)
+            for transform in conversions.keys():
+                if unit in transform:
+                    if transform in stack:
+                        continue  # Prevent circular conversion
+                    if target in transform:
+                        # We've arrived at the end
+                        return stack + [transform]
+                    else:
+                        next_unit = transform[0] if transform[1] == unit else transform[1]
+                        result = recurseFindConversionPath(next_unit, target, stack + [transform])
+                        if result:
+                            return result
+            return None
+
+        conversionPath = recurseFindConversionPath(from_units, to_units, [])
+        if not conversionPath:
+            raise ValueError("No conversion from %s to %s" % (from_units, to_units))
+        for transform in conversionPath:
+            if type(conversions[transform]) is float or type(conversions[transform]) is int:
+                if from_units == transform[0]:
+                    value = value * conversions[transform]
+                    from_units = transform[1]
+                else:
+                    value = value / conversions[transform]
+                    from_units = transform[0]
+            else:
+                if from_units == transform[0]:
+                    func = conversions[transform][0] if type(conversions[transform]) is tuple else conversions[transform]
+                    value = func(value)
+                    from_units = transform[1]
+                else:
+                    if type(conversions[transform]) is not tuple:
+                        raise ValueError("No transform function for %s to %s" % (from_units, to_units))
+                    value = conversions[transform][1](value)
+                    from_units = transform[0]
+        return value
+
+    def coalesceWith(self, stat):
+        stat = stat.asUnits(self.Units)
+
+        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
+        my_items = self.__dict__
+        other_items = stat.__dict__
+        my_samples = self._samples
+        other_samples = stat._samples
+        for item in items:
+            # Only average if there's a second value
+            if other_items[item] is not None:
+                # We need to override this so we can be lazy elsewhere and just assign values (.Average = ...) and don't have to use .update(ActivityStatistic(blah, blah, blah))
+                other_samples[item] = other_samples[item] if other_samples[item] else 1
+                if my_items[item] is None:
+                    # We don't have this item's value, nothing to do really.
+                    my_items[item] = other_items[item]
+                    my_samples[item] = other_samples[item]
+                else:
+                    my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
+                    my_samples[item] += other_samples[item]
+
+    def sumWith(self, stat):
+        """ Used if you want to sum up, for instance, laps' stats to get the activity's stats
+            Not all items can be simply summed (min/max), and sum just shouldn't (average)
+        """
+        stat = stat.asUnits(self.Units)
+        summable_items = ["Value", "Gain", "Loss"]
+        other_items = stat.__dict__
+        for item in summable_items:
+            if item in other_items and other_items[item] is not None:
+                if self.__dict__[item] is not None:
+                    self.__dict__[item] += other_items[item]
+                    self._samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
+                else:
+                    self.__dict__[item] = other_items[item]
+                    self._samples[item] = stat._samples[item]
+        self.Average = None
+        self._samples["Average"] = 0
+
+        if self.Max is None or (stat.Max is not None and stat.Max > self.Max):
+            self.Max = stat.Max
+            self._samples["Max"] = stat._samples["Max"]
+        if self.Min is None or (stat.Min is not None and stat.Min < self.Min):
+            self.Min = stat.Min
+            self._samples["Min"] = stat._samples["Min"]
+
+    def update(self, stat):
+        stat = stat.asUnits(self.Units)
+        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
+        other_items = stat.__dict__
+        for item in items:
+            if item in other_items and other_items[item] is not None:
+                self.__dict__[item] = other_items[item]
+                self._samples[item] = stat._samples[item]
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        return self.Units == other.Units and self.Value == other.Value and self.Average == other.Average and self.Max == other.Max and self.Min == other.Min and self.Gain == other.Gain and self.Loss == other.Loss
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+
+class ActivityStatisticUnit:
+    Time = "s"
+    Meters = "m"
+    Kilometers = "km"
+    Feet = "f"
+    Miles = "mi"
+    DegreesCelcius = "ºC"
+    DegreesFahrenheit = "ºF"
+    KilometersPerHour = "km/h"
+    HectometersPerHour = "hm/h" # Silly Garmin Connect!
+    MetersPerSecond = "m/s"
+    MilesPerHour = "mph"
+    BeatsPerMinute = "BPM"
+    RevolutionsPerMinute = "RPM"
+    StepsPerMinute = "SPM"
+    Strides = "strides"
+    Kilocalories = "kcal"
+    Kilojoules = "kj"
+    Watts = "W"
+
 
 class WaypointType:
     Start = 0   # Start of activity
     Regular = 1 # Normal
-    Lap = 2     # A new lap starts with this
     Pause = 11  # All waypoints within a paused period should have this type
     Resume = 12 # The first waypoint after a paused period
     End = 100   # End of activity
 
-
 class Waypoint:
-    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "Type"]
-    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, temp=None):
+    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "RunCadence", "Type", "Distance", "Speed"]
+    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None, speed=None):
         self.Timestamp = timestamp
         self.Location = location
-        self.HR = hr
-        self.Calories = calories
-        self.Power = power  # I doubt there will ever be more parameters than this in terms of interchange
-        self.Temp = temp  # never say never
-        self.Cadence = cadence  # dammit this better be the last one
+        self.HR = hr # BPM
+        self.Calories = calories # kcal
+        self.Power = power  # Watts. I doubt there will ever be more parameters than this in terms of interchange
+        self.Temp = temp  # degrees C. never say never
+        self.Cadence = cadence  # RPM. dammit this better be the last one
+        self.RunCadence = runCadence  # SPM. screw it
+        self.Distance = distance # meters. I don't even care any more.
+        self.Speed = speed # m/sec. neghhhhh
         self.Type = ptType
 
     def __eq__(self, other):
-        return self.Timestamp == other.Timestamp and self.Location == other.Location and self.HR == other.HR and self.Calories == other.Calories and self.Temp == other.Temp and self.Cadence == other.Cadence and self.Type == other.Type and self.Power == other.Power
+        return self.Timestamp == other.Timestamp and self.Location == other.Location and self.HR == other.HR and self.Calories == other.Calories and self.Temp == other.Temp and self.Cadence == other.Cadence and self.Type == other.Type and self.Power == other.Power and self.RunCadence == other.RunCadence and self.Distance == other.Distance and self.Speed == other.Speed
 
     def __ne__(self, other):
         return not self.__eq__(other)

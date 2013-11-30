@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from tapiriik.services import Service, ServiceRecord, ServiceBase
-from tapiriik.services.interchange import Activity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import Activity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
 
 from datetime import datetime, timedelta
 import random
@@ -28,7 +28,7 @@ class TapiriikTestCase(TestCase):
             self.assertEqual(a.StartTime, b.StartTime)
             self.assertEqual(a.EndTime, b.EndTime)
             self.assertEqual(a.Type, b.Type)
-            self.assertEqual(a.Distance, b.Distance)
+            self.assertEqual(a.Stats.Distance, b.Stats.Distance)
             self.assertEqual(a.Name, b.Name)
             self.assertEqual(len(a.Waypoints), len(b.Waypoints))
             for idx in range(0, len(a.Waypoints) - 1):
@@ -56,14 +56,19 @@ class TestTools:
     def create_mock_svc_record(svc):
         return ServiceRecord({"Service": svc.ID, "_id": str(random.randint(1, 1000)), "ExternalID": str(random.randint(1,1000))})
 
-    def create_mock_upload_record(svc, record=None):
-        return {"ActivityID": random.randint(1, 1000), "Connection": record if record else TestTools.create_mock_svc_record(svc)}
+    def create_mock_servicedata(svc, record=None):
+        return {"ActivityID": random.randint(1, 1000), "Connection": record}
+
+    def create_mock_servicedatacollection(svc, record=None):
+        record = record if record else TestTools.create_mock_svc_record(svc)
+        return {record._id: TestTools.create_mock_servicedata(svc, record=record)}
 
     def create_blank_activity(svc=None, actType=ActivityType.Other, record=None):
         act = Activity()
         act.Type = actType
         if svc:
-            act.UploadedTo = [TestTools.create_mock_upload_record(svc, record)]
+            record = record if record else TestTools.create_mock_svc_record(svc)
+            act.ServiceDataCollection = TestTools.create_mock_servicedatacollection(svc, record=record)
         act.StartTime = datetime.now()
         act.EndTime = act.StartTime + timedelta(seconds=42)
         act.CalculateUID()
@@ -89,7 +94,7 @@ class TestTools:
             else:
                 act.StartTime = act.StartTime.replace(tzinfo=tz)
         act.EndTime = act.StartTime + timedelta(0, random.randint(60 * 5, 60 * 60))  # don't really need to upload 1000s of pts to test this...
-        act.Distance = random.random() * 10000
+        act.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=random.random() * 10000)
         act.Name = str(random.random())
         paused = False
         waypointTime = act.StartTime

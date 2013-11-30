@@ -1,9 +1,8 @@
 from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, LapIntensity, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
-
 from django.core.urlresolvers import reverse
 import pytz
 from datetime import timedelta
@@ -180,7 +179,7 @@ class SportTracksService(ServiceBase):
             res = res.json()
             for act in res["items"]:
                 activity = UploadedActivity()
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityURI": act["uri"]}]
+                activity.ServiceData = {"ActivityURI": act["uri"]}
 
                 if len(act["name"].strip()):
                     activity.Name = act["name"]
@@ -192,6 +191,7 @@ class SportTracksService(ServiceBase):
 
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
+                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["duration"])))  # OpenFit says this excludes paused times.
 
                 # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
                 if activity.TZ == pytz.utc:
@@ -205,7 +205,7 @@ class SportTracksService(ServiceBase):
                         activity.AdjustTZ()
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
-                activity.Distance = float(act["total_distance"])
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["total_distance"]))
 
                 types = [x.strip().lower() for x in act["type"].split(":")]
                 types.reverse()  # The incoming format is like "walking: hiking" and we want the most specific first
@@ -227,89 +227,146 @@ class SportTracksService(ServiceBase):
         return activities, exclusions
 
     def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
-        activityURI = [x["ActivityURI"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityURI = activity.ServiceData["ActivityURI"]
         cookies = self._get_cookies(record=serviceRecord)
         activityData = requests.get(activityURI, cookies=cookies)
         activityData = activityData.json()
-        if "location" not in activityData:
-            raise APIExcludeActivity("No points")
 
-        timerStops = []
-        if "timer_stops" in activityData:
-            for stop in activityData["timer_stops"]:
-                timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
+        if "clock_duration" in activityData:
+            activity.EndTime = activity.StartTime + timedelta(seconds=float(activityData["clock_duration"]))
 
-        def isInTimerStop(timestamp):
-            for stop in timerStops:
-                if timestamp >= stop[0] and timestamp < stop[1]:
-                    return True
-                if timestamp >= stop[1]:
-                    return False
-            return False
+        activity.Private = "sharing" in activityData and activityData["sharing"] != "public"
 
-        laps = []
+        if "notes" in activityData:
+            activity.Notes = activityData["notes"]
+
+        activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=float(activityData["calories"]))
+
+        activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(activityData["elevation_gain"]) if "elevation_gain" in activityData else None, loss=float(activityData["elevation_loss"]) if "elevation_loss" in activityData else None)
+
+        activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=activityData["avg_heartrate"] if "avg_heartrate" in activityData else None, max=activityData["max_heartrate"] if "max_heartrate" in activityData else None)
+        activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=activityData["avg_cadence"] if "avg_cadence" in activityData else None, max=activityData["max_cadence"] if "max_cadence" in activityData else None)
+        activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=activityData["avg_power"] if "avg_power" in activityData else None, max=activityData["max_power"] if "max_power" in activityData else None)
+
+        laps_info = []
+        laps_starts = []
         if "laps" in activityData:
+            laps_info = activityData["laps"]
             for lap in activityData["laps"]:
-                laps.append(dateutil.parser.parse(lap["start_time"]))
-        # Collate the individual streams into our waypoints.
-        # Everything is resampled by nearest-neighbour to the rate of the location stream.
-        parallel_indices = {}
-        parallel_stream_lengths = {}
-        for secondary_stream in ["elevation", "heartrate", "power", "cadence"]:
-            if secondary_stream in activityData:
-                parallel_indices[secondary_stream] = 0
-                parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
+                laps_starts.append(dateutil.parser.parse(lap["start_time"]))
+        lap = None
+        for lapinfo in laps_info:
+            lap = Lap()
+            activity.Laps.append(lap)
+            lap.StartTime = dateutil.parser.parse(lapinfo["start_time"])
+            lap.EndTime = lap.StartTime + timedelta(seconds=lapinfo["clock_duration"])
+            if "type" in lapinfo:
+                lap.Intensity = LapIntensity.Active if lapinfo["type"] == "ACTIVE" else LapIntensity.Rest
+            if "distance" in lapinfo:
+                lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(lapinfo["distance"]))
+            if "duration" in lapinfo:
+                lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=lapinfo["duration"]))
+            if "calories" in lapinfo:
+                lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=lapinfo["calories"])
+            if "elevation_gain" in lapinfo:
+                lap.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(lapinfo["elevation_gain"])))
+            if "elevation_loss" in lapinfo:
+                lap.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, loss=float(lapinfo["elevation_loss"])))
+            if "max_speed" in lapinfo:
+                lap.Stats.Speed.update(ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, max=float(lapinfo["max_speed"])))
+            if "max_speed" in lapinfo:
+                lap.Stats.Speed.update(ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, max=float(lapinfo["max_speed"])))
+            if "avg_speed" in lapinfo:
+                lap.Stats.Speed.update(ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=float(lapinfo["avg_speed"])))
+            if "max_heartrate" in lapinfo:
+                lap.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=float(lapinfo["max_heartrate"])))
+            if "avg_heartrate" in lapinfo:
+                lap.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(lapinfo["avg_heartrate"])))
+        if lap is None: # No explicit laps => make one that encompasses the entire activity
+            lap = Lap()
+            activity.Laps.append(lap)
+            lap.Stats = activity.Stats
+            lap.StartTime = activity.StartTime
+            lap.EndTime = activity.EndTime
 
-        activity.Waypoints = []
-        wasInPause = False
-        currentLapIdx = 0
-        for idx in range(0, len(activityData["location"]), 2):
-            # Pick the nearest indices in the parallel streams
-            for parallel_stream, parallel_index in parallel_indices.items():
-                if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
-                    continue  # We're at the end of this stream
-                # Is the next datapoint a better choice than the current?
-                if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
-                    parallel_indices[parallel_stream] += 2
+        if "location" not in activityData:
+            activity.Stationary = True
+        else:
+            activity.Stationary = False
+            timerStops = []
+            if "timer_stops" in activityData:
+                for stop in activityData["timer_stops"]:
+                    timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
 
-            waypoint = Waypoint(activity.StartTime + timedelta(0, activityData["location"][idx]))
-            waypoint.Location = Location(activityData["location"][idx+1][0], activityData["location"][idx+1][1], None)
-            if "elevation" in parallel_indices:
-                waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
+            def isInTimerStop(timestamp):
+                for stop in timerStops:
+                    if timestamp >= stop[0] and timestamp < stop[1]:
+                        return True
+                    if timestamp >= stop[1]:
+                        return False
+                return False
+
+              # Collate the individual streams into our waypoints.
+            # Everything is resampled by nearest-neighbour to the rate of the location stream.
+            parallel_indices = {}
+            parallel_stream_lengths = {}
+            for secondary_stream in ["elevation", "heartrate", "power", "cadence", "distance"]:
+                if secondary_stream in activityData:
+                    parallel_indices[secondary_stream] = 0
+                    parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
+
+            wasInPause = False
+            currentLapIdx = 0
+            lap = activity.Laps[currentLapIdx]
+            for idx in range(0, len(activityData["location"]), 2):
+                # Pick the nearest indices in the parallel streams
+                for parallel_stream, parallel_index in parallel_indices.items():
+                    if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
+                        continue  # We're at the end of this stream
+                    # Is the next datapoint a better choice than the current?
+                    if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
+                        parallel_indices[parallel_stream] += 2
+
+                waypoint = Waypoint(activity.StartTime + timedelta(0, activityData["location"][idx]))
+                waypoint.Location = Location(activityData["location"][idx+1][0], activityData["location"][idx+1][1], None)
+                if "elevation" in parallel_indices:
+                    waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
+
+                if returnFirstLocation:
+                    return waypoint.Location
+
+                if "heartrate" in parallel_indices:
+                    waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
+
+                if "power" in parallel_indices:
+                    waypoint.Power = activityData["power"][parallel_indices["power"]+1]
+
+                if "cadence" in parallel_indices:
+                    waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
+
+                if "distance" in parallel_indices:
+                    waypoint.Distance = activityData["distance"][parallel_indices["distance"]+1]
+
+                inPause = isInTimerStop(waypoint.Timestamp)
+                waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
+                if wasInPause and not inPause:
+                    waypoint.Type = WaypointType.Resume
+                wasInPause = inPause
+
+                # We only care if it's possible to start a new lap, i.e. there are more left
+                if currentLapIdx + 1 < len(laps_starts):
+                    if laps_starts[currentLapIdx + 1] < waypoint.Timestamp:
+                        # A new lap has started
+                        currentLapIdx += 1
+                        lap = activity.Laps[currentLapIdx]
+
+                lap.Waypoints.append(waypoint)
 
             if returnFirstLocation:
-                return waypoint.Location
-
-            if "heartrate" in parallel_indices:
-                waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
-
-            if "power" in parallel_indices:
-                waypoint.Power = activityData["power"][parallel_indices["power"]+1]
-
-            if "cadence" in parallel_indices:
-                waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
-
-
-            inPause = isInTimerStop(waypoint.Timestamp)
-            waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
-            if wasInPause and not inPause:
-                waypoint.Type = WaypointType.Resume
-            wasInPause = inPause
-
-            # We only care if it's possible to start a new lap, i.e. there are more left
-            if currentLapIdx + 1 < len(laps):
-                if laps[currentLapIdx + 1] < waypoint.Timestamp:
-                    # A new lap has started
-                    waypoint.Type = WaypointType.Lap
-                    currentLapIdx += 1
-
-            activity.Waypoints.append(waypoint)
-
-        if returnFirstLocation:
-            return None  # I guess there were no waypoints?
-
-        activity.Waypoints[0].Type = WaypointType.Start
-        activity.Waypoints[-1].Type = WaypointType.End
+                return None  # I guess there were no waypoints?
+            if activity.CountTotalWaypoints():
+                activity.Laps[0].Waypoints[0].Type = WaypointType.Start
+                activity.Laps[-1].Waypoints[-1].Type = WaypointType.End
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
@@ -322,47 +379,91 @@ class SportTracksService(ServiceBase):
         activityData["start_time"] = activity.StartTime.isoformat()
         if activity.Name:
             activityData["name"] = activity.Name
-
+        if activity.Notes:
+            activityData["notes"] = activity.Notes
+        activityData["sharing"] = "public" if not activity.Private else "private"
         activityData["type"] = self._reverseActivityMappings[activity.Type]
 
-        lap_starts = []
-        timer_stops = []
-        timer_stopped_at = None
+        def _mapStat(dict, key, val, naturalValue=False):
+            if val is not None:
+                if naturalValue:
+                    val = round(val)
+                dict[key] = val
+        _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds()) # Required too.
+        _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
+        _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value) # Possibly required? But rather useless without.
+        _mapStat(activityData, "calories", activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
+        _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
+        _mapStat(activityData, "elevation_loss", activity.Stats.Elevation.Loss)
+        _mapStat(activityData, "max_speed", activity.Stats.Speed.Max)
+        _mapStat(activityData, "avg_heartrate", activity.Stats.HR.Average)
+        _mapStat(activityData, "max_heartrate", activity.Stats.HR.Max)
+        _mapStat(activityData, "avg_cadence", activity.Stats.Cadence.Average)
+        _mapStat(activityData, "max_cadence", activity.Stats.Cadence.Max)
+        _mapStat(activityData, "avg_power", activity.Stats.Power.Average)
+        _mapStat(activityData, "max_power", activity.Stats.Power.Max)
 
-        def stream_append(stream, wp, data):
-            stream += [int((wp.Timestamp - activity.StartTime).total_seconds()), data]
+        activityData["laps"] = []
+        lapNum = 0
+        for lap in activity.Laps:
+            lapNum += 1
+            lapinfo = {
+                "number": lapNum,
+                "start_time": lap.StartTime.isoformat(),
+                "type": "REST" if lap.Intensity == LapIntensity.Rest else "ACTIVE"
+            }
+            _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds())
+            _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else None)
+            _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _mapStat(lapinfo, "calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
+            _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
+            _mapStat(lapinfo, "elevation_loss", lap.Stats.Elevation.Loss)
+            _mapStat(lapinfo, "max_speed", lap.Stats.Speed.Max)
+            _mapStat(lapinfo, "avg_heartrate", lap.Stats.HR.Average)
+            _mapStat(lapinfo, "max_heartrate", lap.Stats.HR.Max)
 
-        location_stream = []
-        elevation_stream = []
-        heartrate_stream = []
-        power_stream = []
-        cadence_stream = []
-        for wp in activity.Waypoints:
-            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
-                stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
-            if wp.HR:
-                stream_append(heartrate_stream, wp, int(wp.HR))
-            if wp.Cadence:
-                stream_append(cadence_stream, wp, int(wp.Cadence))
-            if wp.Power:
-                stream_append(power_stream, wp, wp.Power)
-            if wp.Location and wp.Location.Altitude:
-                stream_append(elevation_stream, wp, wp.Location.Altitude)
-            if wp.Type == WaypointType.Lap:
-                lap_starts.append(wp.Timestamp)
-            if wp.Type == WaypointType.Pause and not timer_stopped_at:
-                timer_stopped_at = wp.Timestamp
-            if wp.Type != WaypointType.Pause and timer_stopped_at:
-                timer_stops.append([timer_stopped_at, wp.Timestamp])
-                timer_stopped_at = None
+            activityData["laps"].append(lapinfo)
 
-        activityData["elevation"] = elevation_stream
-        activityData["heartrate"] = heartrate_stream
-        activityData["power"] = power_stream
-        activityData["cadence"] = cadence_stream
-        activityData["location"] = location_stream
-        activityData["laps"] = [{"start_time": x.isoformat()} for x in lap_starts]
-        activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
+        if not activity.Stationary:
+            timer_stops = []
+            timer_stopped_at = None
+
+            def stream_append(stream, wp, data):
+                stream += [int((wp.Timestamp - activity.StartTime).total_seconds()), data]
+
+            location_stream = []
+            distance_stream = []
+            elevation_stream = []
+            heartrate_stream = []
+            power_stream = []
+            cadence_stream = []
+            for lap in activity.Laps:
+                for wp in lap.Waypoints:
+                    if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                        stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
+                    if wp.HR:
+                        stream_append(heartrate_stream, wp, int(wp.HR))
+                    if wp.Distance:
+                        stream_append(distance_stream, wp, wp.Distance)
+                    if wp.Cadence or wp.RunCadence:
+                        stream_append(cadence_stream, wp, int(wp.Cadence) if wp.Cadence else int(wp.RunCadence))
+                    if wp.Power:
+                        stream_append(power_stream, wp, wp.Power)
+                    if wp.Location and wp.Location.Altitude:
+                        stream_append(elevation_stream, wp, wp.Location.Altitude)
+                    if wp.Type == WaypointType.Pause and not timer_stopped_at:
+                        timer_stopped_at = wp.Timestamp
+                    if wp.Type != WaypointType.Pause and timer_stopped_at:
+                        timer_stops.append([timer_stopped_at, wp.Timestamp])
+                        timer_stopped_at = None
+
+            activityData["elevation"] = elevation_stream
+            activityData["heartrate"] = heartrate_stream
+            activityData["power"] = power_stream
+            activityData["cadence"] = cadence_stream
+            activityData["distance"] = distance_stream
+            activityData["location"] = location_stream
+            activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
         cookies = self._get_cookies(record=serviceRecord)
         upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), cookies=cookies, headers={"Content-Type": "application/json"})

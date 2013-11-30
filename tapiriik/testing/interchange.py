@@ -55,11 +55,11 @@ class InterchangeTests(TapiriikTestCase):
         act.EndTime = act.StartTime + timedelta(hours=3)
 
         # No waypoints
-        self.assertEqual(act.GetDuration(), timedelta(hours=3))
+        self.assertRaises(ValueError, act.GetMovingTime)
 
         # Too few waypoints
         act.Waypoints = [Waypoint(timestamp=act.StartTime), Waypoint(timestamp=act.EndTime)]
-        self.assertEqual(act.GetDuration(), timedelta(hours=3))
+        self.assertRaises(ValueError, act.GetMovingTime)
 
         # straight-up calculation
         act.EndTime = act.StartTime + timedelta(seconds=14)
@@ -68,7 +68,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=6)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=10)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=14))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=14))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=14))
 
         # pauses
         act.EndTime = act.StartTime + timedelta(seconds=14)
@@ -78,7 +78,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=9), ptType=WaypointType.Pause),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=10), ptType=WaypointType.Resume),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=14))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=10))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=10))
 
         # laps - NO effect
         act.EndTime = act.StartTime + timedelta(seconds=14)
@@ -88,7 +88,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=9)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=10), ptType=WaypointType.Lap),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=14))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=14))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=14))
 
         # multiple pauses + ending after pause
         act.EndTime = act.StartTime + timedelta(seconds=20)
@@ -101,7 +101,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=16)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=17), ptType=WaypointType.Pause),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=20), ptType=WaypointType.End)]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=13))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=13))
 
         # implicit pauses (>1m5s)
         act.EndTime = act.StartTime + timedelta(seconds=20)
@@ -111,7 +111,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=120)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=124)),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=130))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=16))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=16))
 
         # mixed pauses - would this ever happen?? Either way, the explicit pause should override the implicit one and cause otherwise-ignored time to be counted
         act.EndTime = act.StartTime + timedelta(seconds=23)
@@ -121,7 +121,7 @@ class InterchangeTests(TapiriikTestCase):
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=20), ptType=WaypointType.Pause),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=24), ptType=WaypointType.Resume),
                          Waypoint(timestamp=act.StartTime + timedelta(seconds=30))]
-        self.assertEqual(act.GetDuration(), timedelta(seconds=26))
+        self.assertEqual(act.GetMovingTime(), timedelta(seconds=26))
 
     def test_activity_specificity_resolution(self):
         # Mountain biking is more specific than just cycling

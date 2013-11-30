@@ -2,8 +2,9 @@ from lxml import etree, objectify
 from pytz import UTC
 import copy
 import dateutil.parser
-from datetime import datetime
-from .interchange import WaypointType, Activity, ActivityType, Waypoint, Location
+from datetime import datetime, timedelta
+from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatistics, ActivityStatisticUnit, ActivityType, Waypoint, Location, Lap, LapIntensity, LapTriggerMethod
+from .statistic_calculator import ActivityStatisticCalculator
 
 
 class TCXIO:
@@ -22,7 +23,6 @@ class TCXIO:
         del ns[None]
 
         act = act if act else Activity()
-        act.Distance = None
 
         try:
             root = etree.XML(tcxData)
@@ -47,21 +47,88 @@ class TCXIO:
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
         endTime = None
-
-        beginSeg = False
         for xlap in xlaps:
-            beginSeg = True
             xtrkseg = xlap.find("tcx:Track", namespaces=ns)
+
+            lap = Lap()
+            act.Laps.append(lap)
+
+            lap.StartTime = dateutil.parser.parse(xlap.attrib["StartTime"])
+            lap.EndTime = lap.StartTime + timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
+            # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
+            distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
+            energyEl = xlap.find("tcx:Calories", namespaces=ns)
+
+            # Some applications slack off and omit these, despite the fact that they're required in the spec.
+            if distEl is None:
+                raise ValueError("Missing DistanceMeters on lap")
+            if energyEl is None:
+                raise ValueError("Missing Calories on lap")
+
+            lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(distEl.text))
+            lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(energyEl.text))
+            if lap.Stats.Energy.Value == 0:
+                lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
+            lap.Intensity = LapIntensity.Active if xlap.find("tcx:Intensity", namespaces=ns).text == "Active" else LapIntensity.Rest
+            lap.Trigger = ({
+                "Manual": LapTriggerMethod.Manual,
+                "Distance": LapTriggerMethod.Distance,
+                "Location": LapTriggerMethod.PositionMarked,
+                "Time": LapTriggerMethod.Time,
+                "HeartRate": LapTriggerMethod.Manual # I guess - no equivalent in FIT
+                })[xlap.find("tcx:TriggerMethod", namespaces=ns).text]
+
+            maxSpdEl = xlap.find("tcx:MaximumSpeed", namespaces=ns)
+            if maxSpdEl is not None:
+                lap.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, max=float(maxSpdEl.text))
+
+            avgHREl = xlap.find("tcx:AverageHeartRateBpm", namespaces=ns)
+            if avgHREl is not None:
+                lap.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(avgHREl.find("tcx:Value", namespaces=ns).text))
+
+            maxHREl = xlap.find("tcx:MaximumHeartRateBpm", namespaces=ns)
+            if maxHREl is not None:
+                lap.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=float(maxHREl.find("tcx:Value", namespaces=ns).text)))
+
+            # WF fills these in with invalid values.
+            lap.Stats.HR.Max = lap.Stats.HR.Max if lap.Stats.HR.Max and lap.Stats.HR.Max > 10 else None
+            lap.Stats.HR.Average = lap.Stats.HR.Average if lap.Stats.HR.Average and lap.Stats.HR.Average > 10 else None
+
+            cadEl = xlap.find("tcx:Cadence", namespaces=ns)
+            if cadEl is not None:
+                lap.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=float(cadEl.text))
+
+            extsEl = xlap.find("tcx:Extensions", namespaces=ns)
+            if extsEl is not None:
+                lxEls = extsEl.findall("tpx:LX", namespaces=ns)
+                for lxEl in lxEls:
+                    avgSpeedEl = lxEl.find("tpx:AvgSpeed", namespaces=ns)
+                    if avgSpeedEl is not None:
+                        lap.Stats.Speed.update(ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=float(avgSpeedEl.text)))
+                    maxBikeCadEl = lxEl.find("tpx:MaxBikeCadence", namespaces=ns)
+                    if maxBikeCadEl is not None:
+                        lap.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, max=float(maxBikeCadEl.text)))
+                    maxPowerEl = lxEl.find("tpx:MaxWatts", namespaces=ns)
+                    if maxPowerEl is not None:
+                        lap.Stats.Power.update(ActivityStatistic(ActivityStatisticUnit.Watts, max=float(maxPowerEl.text)))
+                    avgPowerEl = lxEl.find("tpx:AvgWatts", namespaces=ns)
+                    if avgPowerEl is not None:
+                        lap.Stats.Power.update(ActivityStatistic(ActivityStatisticUnit.Watts, avg=float(avgPowerEl.text)))
+                    maxRunCadEl = lxEl.find("tpx:MaxRunCadence", namespaces=ns)
+                    if maxRunCadEl is not None:
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, max=float(maxRunCadEl.text) * 2))
+                    avgRunCadEl = lxEl.find("tpx:AvgRunCadence", namespaces=ns)
+                    if avgRunCadEl is not None:
+                        lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=float(avgRunCadEl.text) * 2))
+                    stepsEl = lxEl.find("tpx:Steps", namespaces=ns)
+                    if stepsEl is not None:
+                        lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=int(stepsEl.text)))
+
             if xtrkseg is None:
                 # Some TCX files have laps with no track - not sure if it's valid or not.
                 continue
             for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
                 wp = Waypoint()
-                if len(act.Waypoints) == 0:
-                    wp.Type = WaypointType.Start
-                elif beginSeg:
-                    wp.Type = WaypointType.Lap
-                beginSeg = False
 
                 wp.Timestamp = dateutil.parser.parse(xtrkpt.find("tcx:Time", namespaces=ns).text)
                 wp.Timestamp.replace(tzinfo=UTC)
@@ -76,6 +143,10 @@ class TCXIO:
                 if eleEl is not None:
                     wp.Location = wp.Location if wp.Location else Location(None, None, None)
                     wp.Location.Altitude = float(eleEl.text)
+                distEl = xtrkpt.find("tcx:DistanceMeters", namespaces=ns)
+                if distEl is not None:
+                    wp.Distance = float(distEl.text)
+
                 hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
                 if hrEl is not None:
                     wp.HR = int(hrEl.find("tcx:Value", namespaces=ns).text)
@@ -89,18 +160,40 @@ class TCXIO:
                         powerEl = tpxEl.find("tpx:Watts", namespaces=ns)
                         if powerEl is not None:
                             wp.Power = float(powerEl.text)
-                act.Waypoints.append(wp)
+                        speedEl = tpxEl.find("tpx:Speed", namespaces=ns)
+                        if speedEl is not None:
+                            wp.Speed = float(speedEl.text)
+                        runCadEl = tpxEl.find("tpx:RunCadence", namespaces=ns)
+                        if runCadEl is not None:
+                            wp.RunCadence = float(runCadEl.text)
+                lap.Waypoints.append(wp)
                 xtrkpt.clear()
                 del xtrkpt
-        if not len(act.Waypoints):
-            raise ValueError("No waypoints in TCX")
+            if len(lap.Waypoints):
+                lap.EndTime = lap.Waypoints[-1].Timestamp
 
-        act.Waypoints[len(act.Waypoints)-1].Type = WaypointType.End
-        act.TZ = act.Waypoints[0].Timestamp.tzinfo
-        act.StartTime = startTime
-        act.EndTime = endTime
-        act.CalculateDistance()
+        act.StartTime = act.Laps[0].StartTime if len(act.Laps) else act.StartTime
+        act.EndTime = act.Laps[-1].EndTime if len(act.Laps) else act.EndTime
+
+        if act.CountTotalWaypoints():
+            act.GetFlatWaypoints()[0].Type = WaypointType.Start
+            act.GetFlatWaypoints()[-1].Type = WaypointType.End
+        else:
+            act.Stationary = True
+        if len(act.Laps) == 1:
+            act.Laps[0].Stats.update(act.Stats) # External source is authorative
+            act.Stats = act.Laps[0].Stats
+        else:
+            sum_stats = ActivityStatistics() # Blank
+            for lap in act.Laps:
+                sum_stats.sumWith(lap.Stats)
+            sum_stats.update(act.Stats)
+            act.Stats = sum_stats
+        if not act.TZ: # Don't overwrite the incoming TZ
+            act.TZ = UTC
+        act.AdjustTZ() # Update all timestamps to match whatever the TZ ends up being
         act.CalculateUID()
+
         return act
 
     def Dump(activity):
@@ -136,70 +229,96 @@ class TCXIO:
             act.attrib["Sport"] = "Other"
 
         etree.SubElement(act, "Id").text = activity.StartTime.astimezone(UTC).strftime(dateFormat)
-        lap = track = None
+
+        xlaps = []
+        for lap in activity.Laps:
+            xlap = etree.SubElement(act, "Lap")
+            xlaps.append(xlap)
+            etree.SubElement(xlap, "Intensity").text = "Resting" if lap.Intensity == LapIntensity.Active else "Active"
+            etree.SubElement(xlap, "TriggerMethod").text = ({
+                LapTriggerMethod.Manual: "Manual",
+                LapTriggerMethod.Distance: "Distance",
+                LapTriggerMethod.PositionMarked: "Location",
+                LapTriggerMethod.Time: "Time",
+                LapTriggerMethod.PositionStart: "Location",
+                LapTriggerMethod.PositionLap: "Location",
+                LapTriggerMethod.PositionMarked: "Location",
+                LapTriggerMethod.SessionEnd: "Manual",
+                LapTriggerMethod.FitnessEquipment: "Manual"
+                })[lap.Trigger]
+
+            xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
+            def _writeStat(parent, elName, value, wrapValue=False, naturalValue=False, default=None):
+                if value is not None or default is not None:
+                    xstat = etree.SubElement(parent, elName)
+                    if wrapValue:
+                        xstat = etree.SubElement(xstat, "Value")
+                    value = value if value is not None else default
+                    xstat.text = str(value) if not naturalValue else str(int(value))
+
+            _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
+            _writeStat(xlap, "AverageHeartRateBpm", lap.Stats.HR.Average, naturalValue=True, wrapValue=True)
+            _writeStat(xlap, "MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
+            _writeStat(xlap, "Cadence", lap.Stats.Cadence.Average, naturalValue=True)
+            _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None)
+            _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0)
+
+            if len([x for x in [lap.Stats.Cadence.Max, lap.Stats.RunCadence.Max, lap.Stats.RunCadence.Average, lap.Stats.Strides.Value, lap.Stats.Power.Max, lap.Stats.Power.Average, lap.Stats.Speed.Average] if x is not None]):
+                exts = etree.SubElement(xlap, "Extensions")
+                lapext = etree.SubElement(exts, TRKPTEXT + "LX")
+                lapext.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+                _writeStat(lapext, "MaxBikeCadence", lap.Stats.Cadence.Max, naturalValue=True)
+                # This dividing-by-two stuff is getting silly
+                _writeStat(lapext, "MaxRunCadence", lap.Stats.RunCadence.Max/2 if lap.Stats.RunCadence.Max is not None else None, naturalValue=True)
+                _writeStat(lapext, "AvgRunCadence", lap.Stats.RunCadence.Average/2 if lap.Stats.RunCadence.Average is not None else None, naturalValue=True)
+                _writeStat(lapext, "Steps", lap.Stats.Strides.Value, naturalValue=True)
+                _writeStat(lapext, "MaxWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Max, naturalValue=True)
+                _writeStat(lapext, "AvgWatts", lap.Stats.Power.asUnits(ActivityStatisticUnit.Watts).Average, naturalValue=True)
+                _writeStat(lapext, "AvgSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
+
         inPause = False
-        lapStartWpt = None
-        def newLap(wpt):
-            nonlocal lapStartWpt, lap, track
-            lapStartWpt = wpt
-            lap = etree.SubElement(act, "Lap")
-            lap.attrib["StartTime"] = wpt.Timestamp.astimezone(UTC).strftime(dateFormat)
-            if wpt.Calories and lapStartWpt.Calories:
-                etree.SubElement(lap, "Calories").text = str(wpt.Calories - lapStartWpt.Calories)
-            else:
-                etree.SubElement(lap, "Calories").text = "0"  # meh schema is meh
-            etree.SubElement(lap, "Intensity").text = "Active"
-            etree.SubElement(lap, "TriggerMethod").text = "Manual"  # I assume!
-
+        for lap in activity.Laps:
+            xlap = xlaps[activity.Laps.index(lap)]
             track = None
+            for wp in lap.Waypoints:
+                if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
+                    continue  # drop the point
+                if wp.Type == WaypointType.Pause:
+                    if inPause:
+                        continue  # this used to be an exception, but I don't think that was merited
+                    inPause = True
+                if inPause and wp.Type != WaypointType.Pause:
+                    inPause = False
+                if track is None:  # Defer creating the track until there are points
+                    track = etree.SubElement(xlap, "Track") # TODO - pauses should create new tracks instead of new laps?
+                trkpt = etree.SubElement(track, "Trackpoint")
+                if wp.Timestamp.tzinfo is None:
+                    raise ValueError("TCX export requires TZ info")
+                etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
+                if wp.Location:
+                    pos = etree.SubElement(trkpt, "Position")
+                    etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
+                    etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
 
-        def finishLap(wpt):
-            nonlocal lapStartWpt, lap
-            dist = activity.GetDistance(lapStartWpt, wpt)
-            movingTime = activity.GetDuration(lapStartWpt, wpt)
-            xdist = etree.SubElement(lap, "DistanceMeters")
-            xdist.text = str(dist)
-            totaltime = etree.SubElement(lap, "TotalTimeSeconds")
-            totaltime.text = str(movingTime.total_seconds())
-            lap.insert(0, xdist)
-            lap.insert(0, totaltime)
-
-        newLap(activity.Waypoints[0])
-        for wp in activity.Waypoints:
-            if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                continue  # drop the point
-            if wp.Type == WaypointType.Pause:
-                if inPause:
-                    continue  # this used to be an exception, but I don't think that was merited
-                inPause = True
-            if inPause and wp.Type != WaypointType.Pause or wp.Type == WaypointType.Lap:
-                # Make a new lap when they unpause
-                inPause = False
-                finishLap(wp)
-                newLap(wp)
-            if track is None:  # Defer creating the track until there are points
-                track = etree.SubElement(lap, "Track") # TODO - pauses should create new tracks instead of new laps?
-            trkpt = etree.SubElement(track, "Trackpoint")
-            if wp.Timestamp.tzinfo is None:
-                raise ValueError("TCX export requires TZ info")
-            etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
-            if wp.Location:
-                pos = etree.SubElement(trkpt, "Position")
-                etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
-                etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
-
-            if wp.Location.Altitude is not None:
-                etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
-            if wp.HR is not None:
-                xhr = etree.SubElement(trkpt, "HeartRateBpm")
-                xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
-                etree.SubElement(xhr, "Value").text = str(int(wp.HR))
-            if wp.Cadence is not None:
-                etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
-            if wp.Power is not None:
-                exts = etree.SubElement(trkpt, "Extensions")
-                gpxtpxexts = etree.SubElement(exts, "TPX")
-                gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
-                etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
-        finishLap(wp)
+                    if wp.Location.Altitude is not None:
+                        etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
+                    if wp.Distance is not None:
+                        etree.SubElement(trkpt, "DistanceMeters").text = str(wp.Distance)
+                    if wp.HR is not None:
+                        xhr = etree.SubElement(trkpt, "HeartRateBpm")
+                        xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
+                        etree.SubElement(xhr, "Value").text = str(int(wp.HR))
+                    if wp.Cadence is not None:
+                        etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
+                    if wp.Power is not None or wp.RunCadence is not None or wp.Speed is not None:
+                        exts = etree.SubElement(trkpt, "Extensions")
+                        gpxtpxexts = etree.SubElement(exts, "TPX")
+                        gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+                        if wp.Power is not None:
+                            etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
+                        if wp.RunCadence is not None:
+                            etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
+                        if wp.Speed is not None:
+                            etree.SubElement(gpxtpxexts, "Speed").text = str(wp.Speed)
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")

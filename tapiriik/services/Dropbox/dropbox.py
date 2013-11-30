@@ -11,6 +11,7 @@ import re
 import lxml
 from datetime import datetime
 import logging
+import bson
 logger = logging.getLogger(__name__)
 
 class DropboxService(ServiceBase):
@@ -19,6 +20,7 @@ class DropboxService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
     Configurable = True
+    ReceivesStationaryActivities = False
 
     ActivityTaggingTable = {  # earlier items have precedence over
         ActivityType.Running: "run",
@@ -36,7 +38,7 @@ class DropboxService(ServiceBase):
         ActivityType.Elliptical: "elliptical",
         ActivityType.Other: "(other|unknown)"
     }
-    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"gpx", "Filename":"%Y-%m-%d_#NAME"}
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"tcx", "Filename":"%Y-%m-%d_#NAME"}
 
     SupportsHR = SupportsCadence = True
 
@@ -162,15 +164,18 @@ class DropboxService(ServiceBase):
         if cachedActivityRecord:
             if cachedActivityRecord["Rev"] != metadata["rev"]:
                 logger.debug("Outdated cache hit on %s" % path)
-                cachedb.dropbox_activity_cache.remove(cachedActivityRecord)
+                cachedb.dropbox_activity_cache.remove({"ExternalID":serviceRecord.ExternalID, "Path": path})
             else:
                 logger.debug("Cache hit on %s" % path)
                 activityData = cachedActivityRecord["Data"]
-                cachedb.dropbox_activity_cache.update(cachedActivityRecord, {"$set":{"Valid": datetime.utcnow()}})
+                cachedb.dropbox_activity_cache.update({"ExternalID":serviceRecord.ExternalID, "Path": path}, {"$set":{"Valid": datetime.utcnow()}})
 
         if not activityData:
             activityData = f.read()
-            cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
+            try:
+                cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
+            except bson.errors.InvalidDocument:
+                pass # Probably too large - at least we tried.
 
 
         try:
@@ -184,7 +189,7 @@ class DropboxService(ServiceBase):
             raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
         if not act.GetFirstWaypointWithLocation():
             raise APIExcludeActivity("TCX/GPX without any waypoint with location", activityId=path)
-        act.EnsureTZ()  # activity comes out of GPXIO with TZ=utc, this will recalculate it
+        act.EnsureTZ(recalculate=True)  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -223,6 +228,7 @@ class DropboxService(ServiceBase):
                     if "EndTime" in existing:  # some cached activities may not have this, it is not essential
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
                 else:
+                    logger.debug("Retrieving %s (%s)" % (path, "outdated meta cache" if existing else "not in meta cache"))
                     # get the full activity
                     try:
                         act, rev = self._getActivity(svcRec, dbcl, path)
@@ -230,11 +236,11 @@ class DropboxService(ServiceBase):
                         logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(e)
                         continue
-                    del act.Waypoints
-                    act.Waypoints = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
+                    del act.Laps
+                    act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 tagRes = self._tagActivity(relPath)
-                act.UploadedTo = [{"Connection": svcRec, "Path": path, "Tagged":tagRes is not None}]
+                act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
 
@@ -247,20 +253,20 @@ class DropboxService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         # activity might not be populated at this point, still possible to bail out
-        if not [x["Tagged"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]:
+        if not activity.ServiceData["Tagged"]:
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
-                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
+                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServiceData["Path"])
 
         # activity might already be populated, if not download it again
-        if len(activity.Waypoints) == 0:  # in the abscence of an actual Populated variable...
-            path = [x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
-            dbcl = self._getClient(serviceRecord)
-            fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
-            fullActivity.Type = activity.Type
-            fullActivity.UploadedTo = activity.UploadedTo
-            activity = fullActivity
+        path = activity.ServiceData["Path"]
+        dbcl = self._getClient(serviceRecord)
+        fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
+        fullActivity.Type = activity.Type
+        fullActivity.ServiceDataCollection = activity.ServiceDataCollection
+        activity = fullActivity
 
-        if len(activity.Waypoints) <= 1:
+        # Dropbox doesn't support stationary activities yet.
+        if activity.CountTotalWaypoints() <= 1:
             raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
 
         return activity

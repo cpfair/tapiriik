@@ -1,5 +1,5 @@
 from tapiriik.sync import Sync
-from tapiriik.sync.requests_lib import patch_requests_with_default_timeout
+from tapiriik.requests_lib import patch_requests_with_default_timeout
 from tapiriik.database import db
 import time
 import datetime
