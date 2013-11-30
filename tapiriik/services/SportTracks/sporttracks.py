@@ -389,9 +389,9 @@ class SportTracksService(ServiceBase):
                 if naturalValue:
                     val = round(val)
                 dict[key] = val
-        _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds()) # Required too.
-        _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
-        _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value) # Possibly required? But rather useless without.
+        _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
+        _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else None)
+        _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
         _mapStat(activityData, "calories", activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
         _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
         _mapStat(activityData, "elevation_loss", activity.Stats.Elevation.Loss)
@@ -412,9 +412,9 @@ class SportTracksService(ServiceBase):
                 "start_time": lap.StartTime.isoformat(),
                 "type": "REST" if lap.Intensity == LapIntensity.Rest else "ACTIVE"
             }
-            _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds())
-            _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else None)
-            _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds()) # Required too.
+            _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
+            _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value) # Probably required.
             _mapStat(lapinfo, "calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
             _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
             _mapStat(lapinfo, "elevation_loss", lap.Stats.Elevation.Loss)
