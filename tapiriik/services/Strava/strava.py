@@ -263,23 +263,23 @@ class StravaService(ServiceBase):
                 fitData = FITIO.Dump(activity)
             files = {"file":(req["external_id"] + ".fit", fitData)}
 
-        response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
-        if response.status_code != 201:
-            if response.status_code == 401:
-                raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-            raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
+            response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
+            if response.status_code != 201:
+                if response.status_code == 401:
+                    raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
-            upload_id = response.json()["id"]
-            while not response.json()["activity_id"]:
-                time.sleep(1)
-                response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
-                logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
-                if response.json()["error"]:
-                    error = response.json()["error"]
-                    if "duplicate of activity" in error:
-                        logger.debug("Duplicate")
-                        return # I guess we're done here?
-                    raise APIException("Strava failed while processing activity - last status %s" % response.text)
+                upload_id = response.json()["id"]
+                while not response.json()["activity_id"]:
+                    time.sleep(1)
+                    response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+                    logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
+                    if response.json()["error"]:
+                        error = response.json()["error"]
+                        if "duplicate of activity" in error:
+                            logger.debug("Duplicate")
+                            return # I guess we're done here?
+                        raise APIException("Strava failed while processing activity - last status %s" % response.text)
         else:
             # Semi-undocumented stationary-activity upload
             # Requires an access_token from one of the official Strava apps to go through.
