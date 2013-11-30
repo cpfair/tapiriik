@@ -62,6 +62,7 @@ class GarminConnectService(ServiceBase):
         "mph": ActivityStatisticUnit.MilesPerHour,
         "kph": ActivityStatisticUnit.KilometersPerHour,
         "hmph": ActivityStatisticUnit.HectometersPerHour,
+        "hydph": ActivityStatisticUnit.HundredYardsPerHour,
         "celcius": ActivityStatisticUnit.DegreesCelcius,
         "fahrenheit": ActivityStatisticUnit.DegreesFahrenheit,
         "mile": ActivityStatisticUnit.Miles,

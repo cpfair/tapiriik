@@ -366,6 +366,7 @@ class ActivityStatistic:
         conversions = {
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
+            (ActivityStatisticUnit.MilesPerHour, ActivityStatisticUnit.HundredYardsPerHour): 17.6,
             (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
             (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
             (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
@@ -491,6 +492,7 @@ class ActivityStatisticUnit:
     HectometersPerHour = "hm/h" # Silly Garmin Connect!
     MetersPerSecond = "m/s"
     MilesPerHour = "mph"
+    HundredYardsPerHour = "hydph" # Hundred instead of Hecto- because imperial :<
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
     StepsPerMinute = "SPM"
