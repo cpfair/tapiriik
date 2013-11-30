@@ -325,7 +325,13 @@ class FITMessageGenerator:
 					else:
 						if field_type.PackFormat in ["B","b", "H", "h", "I", "i"]:
 							sanitized_value = round(sanitized_value)
-						result = struct.pack("<" + field_type.PackFormat, sanitized_value)
+						try:
+							result = struct.pack("<" + field_type.PackFormat, sanitized_value)
+						except struct.error as e: # I guess more specific exception types were too much to ask for.
+							if "<=" in str(e) or "out of range" in str(e):
+								result = struct.pack("<" + field_type.PackFormat, field_type.InvalidValue)
+							else:
+								raise
 			except Exception as e:
 				raise Exception("Failed packing %s=%s - %s" % (field_name, kwargs[field_name], e))
 			packResult.append(result)
