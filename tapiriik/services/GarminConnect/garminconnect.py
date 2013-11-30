@@ -253,7 +253,7 @@ class GarminConnectService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        #/proxy/upload-service-1.1/json/upload/.tcx
+        #/proxy/upload-service-1.1/json/upload/.fit
         activity.EnsureTZ()
         fit_file = FITIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
@@ -261,8 +261,10 @@ class GarminConnectService(ServiceBase):
         res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
         res = res.json()["detailedImportResult"]
 
-        if len(res["successes"]) != 1:
+        if len(res["successes"]) == 0:
             raise APIException("Unable to upload activity")
+        if len(res["successes"]) > 1:
+            raise APIException("Uploaded succeeded, resulting in too many activities")
         actid = res["successes"][0]["internalId"]
 
         if activity.Name:

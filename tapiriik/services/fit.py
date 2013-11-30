@@ -80,11 +80,11 @@ class FITMessageTemplate:
 
 
 class FITMessageGenerator:
-	_types = {}
-	_messageTemplates = {}
-	_definitions = {}
-	_result = []
 	def __init__(self):
+		self._types = {}
+		self._messageTemplates = {}
+		self._definitions = {}
+		self._result = []
 		# All our convience functions for preparing the field types to be packed.
 		def stringFormatter(input):
 			raise Exception("Not implemented")
