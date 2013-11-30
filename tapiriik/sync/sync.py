@@ -476,7 +476,7 @@ class Sync:
                     try:
                         workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                     except (ServiceException, ServiceWarning) as e:
-                        tempSyncErrors[conn._id].append(_packServiceException(SyncStep.Download, e))
+                        tempSyncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
                         if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
                             excludedServices.append(dlSvcRecord)
                         if not issubclass(e.__class__, ServiceWarning):

@@ -166,12 +166,15 @@ class StravaService(ServiceBase):
             return activity
         activityID = activity.ServiceData["ActivityID"]
 
-        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,watts_calc,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
+        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "auth")
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
-        streamdata = streamdata.json()
+        try:
+            streamdata = streamdata.json()
+        except:
+            raise APIException("Stream data returned is not JSON")
 
         if "message" in streamdata and streamdata["message"] == "Record Not Found":
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "missing")
