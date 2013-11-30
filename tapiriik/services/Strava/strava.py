@@ -117,7 +117,7 @@ class StravaService(ServiceBase):
                     before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
                 manual = False  # Determines if we bother to "download" the activity afterwards
-                if ride["start_latlng"] is None or ride["end_latlng"] is None or ride["distance"] is None or ride["distance"] == 0:
+                if ride["start_latlng"] is None or ride["end_latlng"] is None:
                     manual = True
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])

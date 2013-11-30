@@ -56,8 +56,17 @@ class TCXIO:
             lap.StartTime = dateutil.parser.parse(xlap.attrib["StartTime"])
             lap.EndTime = lap.StartTime + timedelta(seconds=float(xlap.find("tcx:TotalTimeSeconds", namespaces=ns).text))
             # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
-            lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(xlap.find("tcx:DistanceMeters", namespaces=ns).text))
-            lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(xlap.find("tcx:Calories", namespaces=ns).text))
+            distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
+            energyEl = xlap.find("tcx:Calories", namespaces=ns)
+
+            # Some applications slack off and omit these, despite the fact that they're required in the spec.
+            if distEl is None:
+                raise ValueError("Missing DistanceMeters on lap")
+            if energyEl is None:
+                raise ValueError("Missing Calories on lap")
+
+            lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(distEl.text))
+            lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(energyEl.text))
             if lap.Stats.Energy.Value == 0:
                 lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
             lap.Intensity = LapIntensity.Active if xlap.find("tcx:Intensity", namespaces=ns).text == "Active" else LapIntensity.Rest

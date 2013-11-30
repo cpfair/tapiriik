@@ -313,10 +313,12 @@ class Sync:
 
                 # ...and for this specific service
                 if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
+                    logger.info("Service %s is blocked" % conn.Service.ID)
                     excludedServices.append(conn)
                     continue
 
                 if svc.ID in DISABLED_SERVICES or svc.ID in WITHDRAWN_SERVICES:
+                    logger.info("Service %s is widthdrawn" % conn.Service.ID)
                     excludedServices.append(conn)
                     continue
 
@@ -394,13 +396,14 @@ class Sync:
                         updateServicesWithExistingActivity = True
                         break
                 if updateServicesWithExistingActivity:
+                    logger.debug("\t\tUpdating SynchronizedActivities for proceeding activity")
                     db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
                                           {"$addToSet": {"SynchronizedActivities": activity.UID}},
                                           multi=True)
 
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
-                    logger.info("\t %s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
+                    logger.info("\t%s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
                     del activity
                     continue
 
@@ -415,7 +418,7 @@ class Sync:
                 eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, connectedServices=serviceConnections, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
                 if not len(eligibleServices):
-                    logger.info("\t %s has no eligible destinations" % activity.UID)
+                    logger.info("\t%s has no eligible destinations" % activity.UID)
                     totalActivities -= 1  # Again, doesn't really count.
                     del activity
                     continue
@@ -472,7 +475,7 @@ class Sync:
                         if not issubclass(e.__class__, ServiceWarning):
                             continue
                     except APIExcludeActivity as e:
-                        logger.info("\t\t excluded by service")
+                        logger.info("\t\texcluded by service: %s" % e.Message)
                         e.Activity = workingCopy
                         Sync._accumulateExclusions(dlSvcRecord, e, tempSyncExclusions)
                         continue

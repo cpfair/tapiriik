@@ -11,6 +11,7 @@ import re
 import lxml
 from datetime import datetime
 import logging
+import bson
 logger = logging.getLogger(__name__)
 
 class DropboxService(ServiceBase):
@@ -163,15 +164,18 @@ class DropboxService(ServiceBase):
         if cachedActivityRecord:
             if cachedActivityRecord["Rev"] != metadata["rev"]:
                 logger.debug("Outdated cache hit on %s" % path)
-                cachedb.dropbox_activity_cache.remove(cachedActivityRecord)
+                cachedb.dropbox_activity_cache.remove({"ExternalID":serviceRecord.ExternalID, "Path": path})
             else:
                 logger.debug("Cache hit on %s" % path)
                 activityData = cachedActivityRecord["Data"]
-                cachedb.dropbox_activity_cache.update(cachedActivityRecord, {"$set":{"Valid": datetime.utcnow()}})
+                cachedb.dropbox_activity_cache.update({"ExternalID":serviceRecord.ExternalID, "Path": path}, {"$set":{"Valid": datetime.utcnow()}})
 
         if not activityData:
             activityData = f.read()
-            cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
+            try:
+                cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
+            except bson.errors.InvalidDocument:
+                pass # Probably too large - at least we tried.
 
 
         try:
@@ -224,6 +228,7 @@ class DropboxService(ServiceBase):
                     if "EndTime" in existing:  # some cached activities may not have this, it is not essential
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
                 else:
+                    logger.debug("Retrieving %s (%s)" % (path, "outdated meta cache" if existing else "not in meta cache"))
                     # get the full activity
                     try:
                         act, rev = self._getActivity(svcRec, dbcl, path)

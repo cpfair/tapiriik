@@ -254,6 +254,7 @@ class SportTracksService(ServiceBase):
             laps_info = activityData["laps"]
             for lap in activityData["laps"]:
                 laps_starts.append(dateutil.parser.parse(lap["start_time"]))
+        lap = None
         for lapinfo in laps_info:
             lap = Lap()
             activity.Laps.append(lap)

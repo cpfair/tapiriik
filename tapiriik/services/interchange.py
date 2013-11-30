@@ -244,7 +244,7 @@ class Activity:
             _cleanStatsObj(lap.Stats)
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " " + str(len(self.Laps)) + " laps " + str(sum([len(x.Waypoints) for x in self.Laps])) + " WPs"
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + (" stationary" if self.Stationary else "")
     __repr__ = __str__
 
     def __eq__(self, other):
