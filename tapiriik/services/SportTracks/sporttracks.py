@@ -292,6 +292,7 @@ class SportTracksService(ServiceBase):
         if "location" not in activityData:
             activity.Stationary = True
         else:
+            activity.Stationary = False
             timerStops = []
             if "timer_stops" in activityData:
                 for stop in activityData["timer_stops"]:

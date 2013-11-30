@@ -147,8 +147,10 @@ class RunKeeperService(ServiceBase):
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
         if "has_path" in rawRecord and rawRecord["has_path"] is False:
-                activity.Stationary = True
-                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, round(rawRecord["duration"]))) # Seems reasonable.
+            activity.Stationary = True
+            activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, round(rawRecord["duration"]))) # Seems reasonable.
+        else:
+            activity.Stationary = False
         activity.CalculateUID()
         return activity
 
@@ -179,8 +181,8 @@ class RunKeeperService(ServiceBase):
             activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(ridedata["climb"]))
         if "average_heart_rate" in ridedata:
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
-        if activity.CountTotalWaypoints() <= 1:
-            activity.Stationary = True
+        activity.Stationary = activity.CountTotalWaypoints() <= 1
+
 
         activity.Private = ridedata["share"] == "Just Me"
         return activity

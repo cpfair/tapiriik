@@ -142,6 +142,8 @@ class GarminConnectService(ServiceBase):
 
                 if "beginLatitude" not in act or "endLatitude" not in act or (act["beginLatitude"] is act["endLatitude"] and act["beginLongitude"] is act["endLongitude"]):
                     activity.Stationary = True
+                else:
+                    activity.Stationary = False
 
                 try:
                     activity.TZ = pytz.timezone(act["activityTimeZone"]["key"])

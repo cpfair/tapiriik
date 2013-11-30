@@ -40,7 +40,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=False):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -159,6 +159,8 @@ class Activity:
         if len(self.Laps) == 0:
                 raise ValueError("No laps")
         wptCt = sum([len(x.Waypoints) for x in self.Laps])
+        if self.Stationary is None:
+            raise ValueError("Activity is undecidedly stationary")
         if not self.Stationary:
             if wptCt == 0:
                 raise ValueError("Exactly 0 waypoints")
@@ -244,7 +246,7 @@ class Activity:
             _cleanStatsObj(lap.Stats)
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + (" stationary" if self.Stationary else "")
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " stat " + str(self.Stationary)
     __repr__ = __str__
 
     def __eq__(self, other):
