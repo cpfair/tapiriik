@@ -191,6 +191,7 @@ class TCXIO:
         act.EndTime = act.Laps[-1].EndTime if len(act.Laps) else act.EndTime
 
         if act.CountTotalWaypoints():
+            act.Stationary = False
             act.GetFlatWaypoints()[0].Type = WaypointType.Start
             act.GetFlatWaypoints()[-1].Type = WaypointType.End
         else:

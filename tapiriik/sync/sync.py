@@ -144,28 +144,36 @@ class Sync:
                                )
                               ]
             if len(existElsewhere) > 0:
+                existingActivity = existElsewhere[0]
                 # we don't merge the exclude values here, since at this stage the services have the option of just not returning those activities
-                if act.TZ is not None and existElsewhere[0].TZ is None:
-                    existElsewhere[0].TZ = act.TZ
-                    existElsewhere[0].DefineTZ()
-                existElsewhere[0].FallbackTZ = existElsewhere[0].FallbackTZ if existElsewhere[0].FallbackTZ else act.FallbackTZ
+                if act.TZ is not None and existingActivity.TZ is None:
+                    existingActivity.TZ = act.TZ
+                    existingActivity.DefineTZ()
+                existingActivity.FallbackTZ = existingActivity.FallbackTZ if existingActivity.FallbackTZ else act.FallbackTZ
                 # tortuous merging logic is tortuous
-                existElsewhere[0].StartTime = Sync._coalesceDatetime(existElsewhere[0].StartTime, act.StartTime)
-                existElsewhere[0].EndTime = Sync._coalesceDatetime(existElsewhere[0].EndTime, act.EndTime, knownTz=existElsewhere[0].StartTime.tzinfo)
-                existElsewhere[0].Name = existElsewhere[0].Name if existElsewhere[0].Name is not None else act.Name
-                existElsewhere[0].Notes = existElsewhere[0].Notes if existElsewhere[0].Notes is not None else act.Notes
-                existElsewhere[0].Laps = existElsewhere[0].Laps if len(existElsewhere[0].Laps) > len(act.Laps) else act.Laps
-                existElsewhere[0].Type = ActivityType.PickMostSpecific([existElsewhere[0].Type, act.Type])
-                existElsewhere[0].Private = existElsewhere[0].Private or act.Private
-                existElsewhere[0].Stationary = existElsewhere[0].Stationary and act.Stationary
-                existElsewhere[0].Stats.coalesceWith(act.Stats)
+                existingActivity.StartTime = Sync._coalesceDatetime(existingActivity.StartTime, act.StartTime)
+                existingActivity.EndTime = Sync._coalesceDatetime(existingActivity.EndTime, act.EndTime, knownTz=existingActivity.StartTime.tzinfo)
+                existingActivity.Name = existingActivity.Name if existingActivity.Name is not None else act.Name
+                existingActivity.Notes = existingActivity.Notes if existingActivity.Notes is not None else act.Notes
+                existingActivity.Laps = existingActivity.Laps if len(existingActivity.Laps) > len(act.Laps) else act.Laps
+                existingActivity.Type = ActivityType.PickMostSpecific([existingActivity.Type, act.Type])
+                existingActivity.Private = existingActivity.Private or act.Private
+                if act.Stationary is not None:
+                    if existingActivity.Stationary is None:
+                        existingActivity.Stationary = act.Stationary
+                    else:
+                        existingActivity.Stationary = existingActivity.Stationary and act.Stationary # Let's be optimistic here
+                else:
+                    pass # Nothing to do - existElsewhere is either more speicifc or equivalently indeterminate
+                existingActivity.Stationary = existingActivity.Stationary and act.Stationary
+                existingActivity.Stats.coalesceWith(act.Stats)
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
-                serviceDataCollection.update(existElsewhere[0].ServiceDataCollection)
-                existElsewhere[0].ServiceDataCollection = serviceDataCollection
+                serviceDataCollection.update(existingActivity.ServiceDataCollection)
+                existingActivity.ServiceDataCollection = serviceDataCollection
 
-                existElsewhere[0].UIDs += act.UIDs  # I think this is merited
-                act.UIDs = existElsewhere[0].UIDs  # stop the circular inclusion, not that it matters
+                existingActivity.UIDs += act.UIDs  # I think this is merited
+                act.UIDs = existingActivity.UIDs  # stop the circular inclusion, not that it matters
                 continue
             activityList.append(act)
 
