@@ -55,6 +55,7 @@ class FITMessageDataType:
 		self.Size = size
 		self.PackFormat = packFormat
 		self.Formatter = formatter
+		self.InvalidValue = invalid
 
 class FITMessageTemplate:
 	def __init__(self, name, number, *args, fields=None):
@@ -90,22 +91,34 @@ class FITMessageGenerator:
 		def dateTimeFormatter(input):
 			# UINT32
 			# Seconds since UTC 00:00 Dec 31 1989. If <0x10000000 = system time
+			if input is None:
+				return struct.pack("<I", 0xFFFFFFFF)
 			delta = round((input - datetime(hour=0, minute=0, month=12, day=31, year=1989)).total_seconds())
 			return struct.pack("<I", delta)
 		def msecFormatter(input):
-			# uint32
+			# UINT32
+			if input is None:
+				return struct.pack("<I", 0xFFFFFFFF)
 			return struct.pack("<I", round((input if type(input) is not timedelta else input.total_seconds()) * 1000))
 		def mmPerSecFormatter(input):
 			# UINT16
+			if input is None:
+				return struct.pack("<H", 0xFFFF)
 			return struct.pack("<H", round(input * 1000))
 		def cmFormatter(input):
 			# UINT32
+			if input is None:
+				return struct.pack("<I", 0xFFFFFFFF)
 			return struct.pack("<I", round(input * 100))
 		def altitudeFormatter(input):
 			# UINT16
+			if input is None:
+				return struct.pack("<H", 0xFFFF)
 			return struct.pack("<H", round((input + 500) * 5)) # Increments of 1/5, offset from -500m :S
 		def semicirclesFormatter(input):
 			# SINT32
+			if input is None:
+				return struct.pack("<i", 0x7FFFFFFF) # FIT-defined invalid value
 			return struct.pack("<i", round(input * (2 ** 31 / 180)))
 
 
@@ -132,12 +145,12 @@ class FITMessageGenerator:
 		defType("byte", 0x0D, 1, "B", 0xFF) # This isn't totally correct, docs say "an array of bytes"
 
 		# Not strictly FIT fields, but convenient.
-		defType("date_time", 0x86, 4, None, 0x0, formatter=dateTimeFormatter)
-		defType("duration_msec", 0x86, 4, None, 0x0, formatter=msecFormatter)
-		defType("distance_cm", 0x86, 4, None, 0x0, formatter=cmFormatter)
-		defType("mmPerSec", 0x84, 2, None, 0x0, formatter=mmPerSecFormatter)
-		defType("semicircles", 0x85, 4, None, 0x0, formatter=semicirclesFormatter)
-		defType("altitude", 0x84, 2, None, 0x0, formatter=altitudeFormatter)
+		defType("date_time", 0x86, 4, None, 0xFFFFFFFF, formatter=dateTimeFormatter)
+		defType("duration_msec", 0x86, 4, None, 0xFFFFFFFF, formatter=msecFormatter)
+		defType("distance_cm", 0x86, 4, None, 0xFFFFFFFF, formatter=cmFormatter)
+		defType("mmPerSec", 0x84, 2, None, 0xFFFF, formatter=mmPerSecFormatter)
+		defType("semicircles", 0x85, 4, None, 0x7FFFFFFF, formatter=semicirclesFormatter)
+		defType("altitude", 0x84, 2, None, 0xFFFF, formatter=altitudeFormatter)
 
 		def defMsg(name, *args):
 			self._messageTemplates[name] = FITMessageTemplate(name, *args)
@@ -307,9 +320,12 @@ class FITMessageGenerator:
 					result = field_type.Formatter(kwargs[field_name])
 				else:
 					sanitized_value = kwargs[field_name]
-					if field_type.PackFormat in ["B","b", "H", "h", "I", "i"]:
-						sanitized_value = round(sanitized_value)
-					result = struct.pack("<" + field_type.PackFormat, sanitized_value)
+					if sanitized_value is None:
+						result = struct.pack("<" + field_type.PackFormat, field_type.InvalidValue)
+					else:
+						if field_type.PackFormat in ["B","b", "H", "h", "I", "i"]:
+							sanitized_value = round(sanitized_value)
+						result = struct.pack("<" + field_type.PackFormat, sanitized_value)
 			except Exception as e:
 				raise Exception("Failed packing %s=%s - %s" % (field_name, kwargs[field_name], e))
 			packResult.append(result)
