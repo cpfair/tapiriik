@@ -58,25 +58,35 @@ class TCXIO:
             # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
             distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
             energyEl = xlap.find("tcx:Calories", namespaces=ns)
+            triggerEl = xlap.find("tcx:TriggerMethod", namespaces=ns)
+            intensityEl = xlap.find("tcx:Intensity", namespaces=ns)
 
             # Some applications slack off and omit these, despite the fact that they're required in the spec.
+            # I will, however, require lap distance, because, seriously.
             if distEl is None:
-                raise ValueError("Missing DistanceMeters on lap")
-            if energyEl is None:
-                raise ValueError("Missing Calories on lap")
+                raise ValueError("Missing lap DistanceMeters")
 
             lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(distEl.text))
-            lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(energyEl.text))
-            if lap.Stats.Energy.Value == 0:
-                lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
-            lap.Intensity = LapIntensity.Active if xlap.find("tcx:Intensity", namespaces=ns).text == "Active" else LapIntensity.Rest
-            lap.Trigger = ({
-                "Manual": LapTriggerMethod.Manual,
-                "Distance": LapTriggerMethod.Distance,
-                "Location": LapTriggerMethod.PositionMarked,
-                "Time": LapTriggerMethod.Time,
-                "HeartRate": LapTriggerMethod.Manual # I guess - no equivalent in FIT
-                })[xlap.find("tcx:TriggerMethod", namespaces=ns).text]
+            if energyEl is not None:
+                lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(energyEl.text))
+                if lap.Stats.Energy.Value == 0:
+                    lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
+
+            if intensityEl is not None:
+                lap.Intensity = LapIntensity.Active if intensityEl.text == "Active" else LapIntensity.Rest
+            else:
+                lap.Intensity = LapIntensity.Active
+
+            if triggerEl is not None:
+                lap.Trigger = ({
+                    "Manual": LapTriggerMethod.Manual,
+                    "Distance": LapTriggerMethod.Distance,
+                    "Location": LapTriggerMethod.PositionMarked,
+                    "Time": LapTriggerMethod.Time,
+                    "HeartRate": LapTriggerMethod.Manual # I guess - no equivalent in FIT
+                    })[triggerEl.text]
+            else:
+                lap.Trigger = LapTriggerMethod.Manual # One would presume
 
             maxSpdEl = xlap.find("tcx:MaximumSpeed", namespaces=ns)
             if maxSpdEl is not None:
