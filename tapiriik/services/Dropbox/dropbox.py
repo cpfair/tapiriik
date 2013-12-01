@@ -267,7 +267,7 @@ class DropboxService(ServiceBase):
 
         # Dropbox doesn't support stationary activities yet.
         if activity.CountTotalWaypoints() <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=[x["Path"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0])
+            raise APIExcludeActivity("Too few waypoints", activityId=path)
 
         return activity
 
