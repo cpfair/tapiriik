@@ -250,9 +250,9 @@ class StravaService(ServiceBase):
             source_svc = str(list(activity.ServiceDataCollection.keys())[0])
 
         if activity.CountTotalWaypoints():
-            req = { "id": 0,
+            req = {
                     "data_type": "fit",
-                    "external_id": "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ("-" + source_svc if source_svc else ""),
+                    "external_id": "tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else ""),
                     "activity_name": activity.Name,
                     "activity_type": self._activityTypeMappings[activity.Type],
                     "private": 1 if activity.Private else 0}
