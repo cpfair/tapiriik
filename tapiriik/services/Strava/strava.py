@@ -26,6 +26,7 @@ class StravaService(ServiceBase):
     UserActivityURL = "http://app.strava.com/activities/{1}"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
     ReceivesStationaryActivities = False # Grumble grumble
+    LastUpload = None
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
@@ -245,6 +246,10 @@ class StravaService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         logger.info("Activity tz " + str(activity.TZ) + " dt tz " + str(activity.StartTime.tzinfo) + " starttime " + str(activity.StartTime))
 
+        if self.LastUpload is not None:
+            while (datetime.now() - self.LastUpload).total_seconds() < 5:
+                time.sleep(1)
+                logger.debug("Inter-upload cooldown")
         source_svc = None
         if hasattr(activity, "ServiceDataCollection"):
             source_svc = str(list(activity.ServiceDataCollection.keys())[0])
@@ -271,6 +276,7 @@ class StravaService(ServiceBase):
                     raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 if "duplicate of activity" in response.text:
                     logger.debug("Duplicate")
+                    self.LastUpload = datetime.now()
                     return # Fine by me. The majority of these cases were caused by a dumb optimization that meant existing activities on services were never flagged as such if tapiriik didn't have to synchronize them elsewhere.
                 raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
@@ -282,6 +288,7 @@ class StravaService(ServiceBase):
                 if response.json()["error"]:
                     error = response.json()["error"]
                     if "duplicate of activity" in error:
+                        self.LastUpload = datetime.now()
                         logger.debug("Duplicate")
                         return # I guess we're done here?
                     raise APIException("Strava failed while processing activity - last status %s" % response.text)
@@ -304,7 +311,7 @@ class StravaService(ServiceBase):
                 if response.status_code == 401:
                     raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to upload stationary activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
-
+        self.LastUpload = datetime.now()
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
