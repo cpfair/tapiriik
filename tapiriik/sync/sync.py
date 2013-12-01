@@ -218,6 +218,15 @@ class Sync:
             identifier = str(identifier).replace(".", "_")
             tempSyncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
 
+    def _estimateFallbackTZ(activities):
+        from collections import Counter
+        # With the hope that the majority of the activity records returned will have TZs, and the user's current TZ will constitute the majority.
+        TZOffsets = [x.StartTime.utcoffset().total_seconds() / 60 for x in activities if x.TZ is not None]
+        mode = Counter(TZOffsets).most_common(1)
+        if not len(mode):
+            return None
+        return pytz.FixedOffset(mode[0][0])
+
     def PerformGlobalSync(heartbeat_callback=None):
         from tapiriik.auth import User
         users = db.users.find({
@@ -351,18 +360,16 @@ class Sync:
                     tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
                     excludedServices.append(conn)
                     continue
-                # The fallback TZ is used when there are no points to determine the TZ with.
-                # It's set before _accumulateActivities to make the deduplication more reliable, since _accumulateActivities takes TZs into account.
-                if "Timezone" in user:
-                    try:
-                        fallbackTZ = pytz.timezone(user["Timezone"])
-                    except:
-                        pass
-                    else:
-                        for act in svcActivities:
-                            act.FallbackTZ = fallbackTZ
                 Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
                 Sync._accumulateActivities(conn, svcActivities, activities)
+
+            # Attempt to assign fallback TZs to all stationary/potentially-stationary activities, since we may not be able to determine TZ any other way.
+            fallbackTZ = Sync._estimateFallbackTZ(activities)
+            if fallbackTZ:
+                logger.info("Setting fallback TZs to %s" % fallbackTZ )
+                for act in activities:
+                    if act.TZ is None and act.Stationary != False:
+                        act.FallbackTZ = fallbackTZ
 
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
