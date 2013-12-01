@@ -87,6 +87,7 @@ class GPXIO:
         act.GetFlatWaypoints()[0].Type = WaypointType.Start
         act.GetFlatWaypoints()[-1].Type = WaypointType.End
         act.TZ = act.GetFlatWaypoints()[0].Timestamp.tzinfo
+        act.Stationary = False
         act.StartTime = startTime
         act.EndTime = endTime
         act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
