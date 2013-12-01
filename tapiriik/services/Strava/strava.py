@@ -252,7 +252,6 @@ class StravaService(ServiceBase):
         if activity.CountTotalWaypoints():
             req = {
                     "data_type": "fit",
-                    "external_id": "tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else ""),
                     "activity_name": activity.Name,
                     "activity_type": self._activityTypeMappings[activity.Type],
                     "private": 1 if activity.Private else 0}
@@ -264,7 +263,7 @@ class StravaService(ServiceBase):
                 activity.EnsureTZ()
                 # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
                 fitData = FITIO.Dump(activity)
-            files = {"file":(req["external_id"] + ".fit", fitData)}
+            files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
             response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 201:
@@ -275,17 +274,17 @@ class StravaService(ServiceBase):
                     return # Fine by me. The majority of these cases were caused by a dumb optimization that meant existing activities on services were never flagged as such if tapiriik didn't have to synchronize them elsewhere.
                 raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
-                upload_id = response.json()["id"]
-                while not response.json()["activity_id"]:
-                    time.sleep(1)
-                    response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
-                    logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
-                    if response.json()["error"]:
-                        error = response.json()["error"]
-                        if "duplicate of activity" in error:
-                            logger.debug("Duplicate")
-                            return # I guess we're done here?
-                        raise APIException("Strava failed while processing activity - last status %s" % response.text)
+            upload_id = response.json()["id"]
+            while not response.json()["activity_id"]:
+                time.sleep(1)
+                response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+                logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
+                if response.json()["error"]:
+                    error = response.json()["error"]
+                    if "duplicate of activity" in error:
+                        logger.debug("Duplicate")
+                        return # I guess we're done here?
+                    raise APIException("Strava failed while processing activity - last status %s" % response.text)
         else:
             # Semi-undocumented stationary-activity upload
             # Requires an access_token from one of the official Strava apps to go through.
