@@ -105,6 +105,7 @@ class Sync:
     def _accumulateActivities(conn, svcActivities, activityList):
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
+        activityStartTZOffsetLeeway = timedelta(seconds=10)
         timezoneErrorPeriod = timedelta(hours=38)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
@@ -139,7 +140,7 @@ class Sync:
                               (x.StartTime is not None and
                                act.StartTime is not None and
                                abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
-                               act.StartTime.replace(tzinfo=None).time().replace(hour=0) == x.StartTime.replace(tzinfo=None).time().replace(hour=0)
+                               abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) < activityStartTZOffsetLeeway
                                )
                               ]
             if len(existElsewhere) > 0:
