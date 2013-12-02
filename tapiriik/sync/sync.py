@@ -415,13 +415,13 @@ class Sync:
                 updateServicesWithExistingActivity = False
                 for serviceWithExistingActivityId in activity.ServiceDataCollection.keys():
                     serviceWithExistingActivity = [x for x in serviceConnections if x._id == serviceWithExistingActivityId][0]
-                    if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or activity.UID not in serviceWithExistingActivity.SynchronizedActivities:
+                    if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or not (set(activity.UIDs) <= set(serviceWithExistingActivity.SynchronizedActivities)):
                         updateServicesWithExistingActivity = True
                         break
                 if updateServicesWithExistingActivity:
                     logger.debug("\t\tUpdating SynchronizedActivities for proceeding activity")
                     db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
-                                          {"$addToSet": {"SynchronizedActivities": activity.UID}},
+                                          {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
                                           multi=True)
 
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
@@ -559,7 +559,7 @@ class Sync:
                         continue
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord._id},
-                                          {"$addToSet": {"SynchronizedActivities": activity.UID}})
+                                          {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": dlSvc.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
                 del act
