@@ -248,6 +248,7 @@ class RunKeeperService(ServiceBase):
         if activity.Private:
             record["share"] = "Just Me"
 
+        inPause = False
         if not activity.Stationary:
             record["path"] = []
             for lap in activity.Laps:
@@ -258,6 +259,13 @@ class RunKeeperService(ServiceBase):
                         wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
                     else:
                         wpType = "gps"  # meh
+
+                    if not inPause and waypoint.Type == WaypointType.Pause:
+                        inPause = True
+                    elif inPause and waypoint.Type == WaypointType.Pause:
+                        continue # RK gets all crazy when you send it multiple pause waypoints in a row.
+                    elif inPause and waypoint.Type != WaypointType.Pause:
+                        inPause = False
 
                     if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
                         continue
