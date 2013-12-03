@@ -462,10 +462,6 @@ class Sync:
                 # The second most important line of logging in the application...
                 logger.info("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
 
-                if activity.Stationary and "AllowStationary" not in user:
-                    logger.info("\tSkipping stationary activity for user not marked")
-                    continue
-
                 # Download the full activity record
                 act = None
                 actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
@@ -535,10 +531,6 @@ class Sync:
                     # Log metadata
                     startLoc = act.GetFirstWaypointWithLocation()
                     db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
-                else:
-                    if "AllowStationary" not in user:
-                        logger.info("\tSkipping stationary activity for user not marked")
-                        continue
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)
