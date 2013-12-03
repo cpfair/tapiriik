@@ -214,6 +214,7 @@ class Sync:
                 continue  # not configured, so we won't even try
             if not destSvc.ReceivesStationaryActivities and activity.Stationary:
                 logger.info("\t\t" + destSvc.ID + " doesn't receive stationary activities")
+                continue # Missing this originally, no wonder...
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
