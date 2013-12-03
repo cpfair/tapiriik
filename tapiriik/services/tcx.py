@@ -246,11 +246,32 @@ class TCXIO:
 
         etree.SubElement(act, "Id").text = activity.StartTime.astimezone(UTC).strftime(dateFormat)
 
+        def _writeStat(parent, elName, value, wrapValue=False, naturalValue=False, default=None):
+                if value is not None or default is not None:
+                    xstat = etree.SubElement(parent, elName)
+                    if wrapValue:
+                        xstat = etree.SubElement(xstat, "Value")
+                    value = value if value is not None else default
+                    xstat.text = str(value) if not naturalValue else str(int(value))
+
         xlaps = []
         for lap in activity.Laps:
             xlap = etree.SubElement(act, "Lap")
             xlaps.append(xlap)
+
+            xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
+
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
+            _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
+            _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
+            _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0, naturalValue=True)
+            _writeStat(xlap, "AverageHeartRateBpm", lap.Stats.HR.Average, naturalValue=True, wrapValue=True)
+            _writeStat(xlap, "MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
+
             etree.SubElement(xlap, "Intensity").text = "Resting" if lap.Intensity == LapIntensity.Rest else "Active"
+
+            _writeStat(xlap, "Cadence", lap.Stats.Cadence.Average, naturalValue=True)
+
             etree.SubElement(xlap, "TriggerMethod").text = ({
                 LapTriggerMethod.Manual: "Manual",
                 LapTriggerMethod.Distance: "Distance",
@@ -263,26 +284,9 @@ class TCXIO:
                 LapTriggerMethod.FitnessEquipment: "Manual"
                 })[lap.Trigger]
 
-            xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
-            def _writeStat(parent, elName, value, wrapValue=False, naturalValue=False, default=None):
-                if value is not None or default is not None:
-                    xstat = etree.SubElement(parent, elName)
-                    if wrapValue:
-                        xstat = etree.SubElement(xstat, "Value")
-                    value = value if value is not None else default
-                    xstat.text = str(value) if not naturalValue else str(int(value))
-
-            _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
-            _writeStat(xlap, "AverageHeartRateBpm", lap.Stats.HR.Average, naturalValue=True, wrapValue=True)
-            _writeStat(xlap, "MaximumHeartRateBpm", lap.Stats.HR.Max, naturalValue=True, wrapValue=True)
-            _writeStat(xlap, "Cadence", lap.Stats.Cadence.Average, naturalValue=True)
-            _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
-            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
-            _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0)
-
             if len([x for x in [lap.Stats.Cadence.Max, lap.Stats.RunCadence.Max, lap.Stats.RunCadence.Average, lap.Stats.Strides.Value, lap.Stats.Power.Max, lap.Stats.Power.Average, lap.Stats.Speed.Average] if x is not None]):
                 exts = etree.SubElement(xlap, "Extensions")
-                lapext = etree.SubElement(exts, TRKPTEXT + "LX")
+                lapext = etree.SubElement(exts, "LX")
                 lapext.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
                 _writeStat(lapext, "MaxBikeCadence", lap.Stats.Cadence.Max, naturalValue=True)
                 # This dividing-by-two stuff is getting silly
@@ -331,10 +335,15 @@ class TCXIO:
                         exts = etree.SubElement(trkpt, "Extensions")
                         gpxtpxexts = etree.SubElement(exts, "TPX")
                         gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
-                        if wp.Power is not None:
-                            etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
-                        if wp.RunCadence is not None:
-                            etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
                         if wp.Speed is not None:
                             etree.SubElement(gpxtpxexts, "Speed").text = str(wp.Speed)
+                        if wp.RunCadence is not None:
+                            etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
+                        if wp.Power is not None:
+                            etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
+            if track is not None:
+                exts = xlap.find("Extensions")
+                if exts is not None:
+                    track.addnext(exts)
+
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
