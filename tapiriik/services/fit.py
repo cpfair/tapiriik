@@ -176,6 +176,7 @@ class FITMessageGenerator:
 			2, "start_time", "date_time", # Vs timestamp, which was whenever the record was "written"/end of the session
 			7, "total_elapsed_time", "duration_msec", # Including pauses
 			8, "total_timer_time", "duration_msec", # Excluding pauses
+			59, "total_moving_time", "duration_msec",
 			5, "sport", "enum",
 			6, "sub_sport", "enum",
 			0, "event", "enum",
@@ -208,6 +209,7 @@ class FITMessageGenerator:
 			2, "start_time", "date_time", # Vs timestamp, which was whenever the record was "written"/end of the session
 			7, "total_elapsed_time", "duration_msec", # Including pauses
 			8, "total_timer_time", "duration_msec", # Excluding pauses
+			52, "total_moving_time", "duration_msec",
 			9, "total_distance", "distance_cm",
 			11,"total_calories", "uint16",
 			13, "avg_speed", "mmPerSec",
@@ -236,7 +238,7 @@ class FITMessageGenerator:
 			4, "cadence", "uint8",
 			5, "distance", "distance_cm",
 			6, "speed", "mmPerSec",
-			7, "power", "uint8",
+			7, "power", "uint16",
 			13, "temperature", "sint8",
 			33, "calories", "uint16",
 			)
@@ -374,7 +376,7 @@ class FITIO:
 	def Parse(raw_file):
 		raise Exception("Not implemented")
 
-	def Dump(act):
+	def Dump(act, supplant_timer_time_with_moving_time=False):
 		def toUtc(ts):
 			if ts.tzinfo:
 				return ts.astimezone(pytz.utc).replace(tzinfo=None)
@@ -404,7 +406,10 @@ class FITIO:
 			if value is not None:
 				dict[key] = value
 
-		_mapStat(session_stats, "total_timer_time", act.Stats.MovingTime.Value)
+		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.Value)
+		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.Value)
+		if supplant_timer_time_with_moving_time: # This is a bug in the way Strava handles moving/timer time for Running-type activities
+			_mapStat(session_stats, "total_timer_time", act.Stats.MovingTime.Value)
 		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 		_mapStat(session_stats, "total_calories", act.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
@@ -458,7 +463,10 @@ class FITIO:
 			# Man, I love copy + paste and multi-cursor editing
 			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
 			lap_stats = {}
-			_mapStat(lap_stats, "total_timer_time", lap.Stats.MovingTime.Value)
+			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.Value)
+			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.Value)
+			if supplant_timer_time_with_moving_time:
+				_mapStat(lap_stats, "total_timer_time", lap.Stats.MovingTime.Value)
 			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 			_mapStat(lap_stats, "total_calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)

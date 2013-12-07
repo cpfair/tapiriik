@@ -138,7 +138,8 @@ class RunKeeperService(ServiceBase):
         activity = UploadedActivity()
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
-        activity.EndTime = activity.StartTime + timedelta(0, round(rawRecord["duration"]))  # this is inaccurate with pauses - excluded from hash
+        activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, float(rawRecord["duration"]))) # P. sure this is moving time
+        activity.EndTime = activity.StartTime + activity.Stats.MovingTime.Value # this is inaccurate with pauses - excluded from hash
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["total_distance"])
         # I'm fairly sure this is how the RK calculation works. I remember I removed something exactly like this from ST.mobi, but I trust them more than I trust myself to get the speed right.
         if (activity.EndTime - activity.StartTime).total_seconds() > 0:
@@ -148,7 +149,6 @@ class RunKeeperService(ServiceBase):
             activity.Type = self._activityMappings[rawRecord["type"]]
         if "has_path" in rawRecord and rawRecord["has_path"] is False:
             activity.Stationary = True
-            activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, round(rawRecord["duration"]))) # Seems reasonable.
         else:
             activity.Stationary = False
         activity.CalculateUID()
@@ -236,7 +236,7 @@ class RunKeeperService(ServiceBase):
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
-        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else (activity.EndTime - activity.StartTime).total_seconds()
+        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value else (activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime else (activity.EndTime - activity.StartTime).total_seconds())
         if activity.Stats.HR.Average is not None:
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
         if activity.Stats.Energy.Value is not None:
@@ -250,7 +250,6 @@ class RunKeeperService(ServiceBase):
 
         inPause = False
         if not activity.Stationary:
-            record["path"] = []
             for lap in activity.Laps:
                 for waypoint in lap.Waypoints:
                     timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
@@ -267,10 +266,9 @@ class RunKeeperService(ServiceBase):
                     elif inPause and waypoint.Type != WaypointType.Pause:
                         inPause = False
 
-                    if waypoint.Location is None or waypoint.Location.Latitude is None or waypoint.Location.Longitude is None:
-                        continue
-
                     if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                        if "path" not in record:
+                            record["path"] = []
                         pathPt = {"timestamp": timestamp,
                                   "latitude": waypoint.Location.Latitude,
                                   "longitude": waypoint.Location.Longitude,

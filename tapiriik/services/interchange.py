@@ -207,10 +207,6 @@ class Activity:
                         altHigh = wp.Location.Altitude
                 if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
                     pointsWithoutLocation += 1
-        if wptCt - pointsWithoutLocation == 0 and not self.Stationary:
-            raise ValueError("No points have location")
-        if wptCt - pointsWithoutLocation == 1:
-            raise ValueError("Only one point has location")
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
@@ -287,9 +283,10 @@ class Lap:
         self.Waypoints = waypointList if waypointList else []
 
 class ActivityStatistics:
-    _statKeyList = ["Distance", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
-    def __init__(self, distance=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
+    _statKeyList = ["Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
+    def __init__(self, distance=None, timer_time=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
         self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
+        self.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timer_time)  # timedelta()
         self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
         self.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal)
         self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=avg_speed, max=max_speed)
@@ -531,9 +528,7 @@ class Waypoint:
         return not self.__eq__(other)
 
     def __str__(self):
-        if self.Location is None:
-            return str(self.Type)+"@"+str(self.Timestamp)
-        return str(self.Type) + "@" + str(self.Timestamp) + " " + str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude) if self.Location.Altitude is not None else None) + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories)
+        return str(self.Type) + "@" + str(self.Timestamp) + " " + ((str(self.Location.Latitude) + "|" + str(self.Location.Longitude) + "^" + str(round(self.Location.Altitude) if self.Location.Altitude is not None else None)) if self.Location is not None else "") + "\n\tHR " + str(self.HR) + " CAD " + str(self.Cadence) + " RCAD " + str(self.RunCadence) + " TEMP " + str(self.Temp) + " PWR " + str(self.Power) + " CAL " + str(self.Calories) + " SPD " + str(self.Speed) + " DST " + str(self.Distance)
     __repr__ = __str__
 
 

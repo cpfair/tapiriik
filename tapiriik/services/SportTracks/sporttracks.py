@@ -191,7 +191,7 @@ class SportTracksService(ServiceBase):
 
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
-                activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["duration"])))  # OpenFit says this excludes paused times.
+                activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["duration"])))  # OpenFit says this excludes paused times.
 
                 # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
                 if activity.TZ == pytz.utc:
@@ -265,7 +265,7 @@ class SportTracksService(ServiceBase):
             if "distance" in lapinfo:
                 lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(lapinfo["distance"]))
             if "duration" in lapinfo:
-                lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=lapinfo["duration"]))
+                lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=lapinfo["duration"]))
             if "calories" in lapinfo:
                 lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=lapinfo["calories"])
             if "elevation_gain" in lapinfo:
@@ -288,85 +288,125 @@ class SportTracksService(ServiceBase):
             lap.Stats = activity.Stats
             lap.StartTime = activity.StartTime
             lap.EndTime = activity.EndTime
+        elif len(activity.Laps) == 1:
+            activity.Stats.update(activity.Laps[0].Stats) # Lap stats have a bit more info generally.
+            activity.Laps[0].Stats = activity.Stats
 
-        if "location" not in activityData:
-            activity.Stationary = True
-        else:
-            activity.Stationary = False
-            timerStops = []
-            if "timer_stops" in activityData:
-                for stop in activityData["timer_stops"]:
-                    timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
+        timerStops = []
+        if "timer_stops" in activityData:
+            for stop in activityData["timer_stops"]:
+                timerStops.append([dateutil.parser.parse(stop[0]), dateutil.parser.parse(stop[1])])
 
-            def isInTimerStop(timestamp):
-                for stop in timerStops:
-                    if timestamp >= stop[0] and timestamp < stop[1]:
-                        return True
-                    if timestamp >= stop[1]:
-                        return False
-                return False
+        def isInTimerStop(timestamp):
+            for stop in timerStops:
+                if timestamp >= stop[0] and timestamp < stop[1]:
+                    return True
+                if timestamp >= stop[1]:
+                    return False
+            return False
 
-              # Collate the individual streams into our waypoints.
-            # Everything is resampled by nearest-neighbour to the rate of the location stream.
-            parallel_indices = {}
-            parallel_stream_lengths = {}
-            for secondary_stream in ["elevation", "heartrate", "power", "cadence", "distance"]:
-                if secondary_stream in activityData:
-                    parallel_indices[secondary_stream] = 0
-                    parallel_stream_lengths[secondary_stream] = len(activityData[secondary_stream])
+        # Collate the individual streams into our waypoints.
+        # Global sample rate is variable - will pick the next nearest stream datapoint.
+        # Resampling happens on a lookbehind basis - new values will only appear their timestamp has been reached/passed
 
-            wasInPause = False
-            currentLapIdx = 0
-            lap = activity.Laps[currentLapIdx]
-            for idx in range(0, len(activityData["location"]), 2):
-                # Pick the nearest indices in the parallel streams
-                for parallel_stream, parallel_index in parallel_indices.items():
-                    if parallel_index + 2 == parallel_stream_lengths[parallel_stream]:
-                        continue  # We're at the end of this stream
-                    # Is the next datapoint a better choice than the current?
-                    if abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index + 2]) < abs(activityData["location"][idx] - activityData[parallel_stream][parallel_index]):
-                        parallel_indices[parallel_stream] += 2
+        wasInPause = False
+        currentLapIdx = 0
+        lap = activity.Laps[currentLapIdx]
 
-                waypoint = Waypoint(activity.StartTime + timedelta(0, activityData["location"][idx]))
-                waypoint.Location = Location(activityData["location"][idx+1][0], activityData["location"][idx+1][1], None)
-                if "elevation" in parallel_indices:
-                    waypoint.Location.Altitude = activityData["elevation"][parallel_indices["elevation"]+1]
+        streams = []
+        for stream in ["location", "elevation", "heartrate", "power", "cadence", "distance"]:
+            if stream in activityData:
+                streams.append(stream)
+        stream_indices = dict([(stream, -1) for stream in streams]) # -1 meaning the stream has yet to start
+        stream_lengths = dict([(stream, len(activityData[stream])/2) for stream in streams])
+        # Data comes as "stream":[timestamp,value,timestamp,value,...]
+        stream_values = {}
+        for stream in streams:
+            values = []
+            for x in range(0,int(len(activityData[stream])/2)):
+                values.append((activityData[stream][x * 2], activityData[stream][x * 2 + 1]))
+            stream_values[stream] = values
 
+        currentOffset = 0
+
+        def streamVal(stream):
+            nonlocal stream_values, stream_indices
+            return stream_values[stream][stream_indices[stream]][1]
+
+        def hasStreamData(stream):
+            nonlocal stream_indices, streams
+            return stream in streams and stream_indices[stream] >= 0
+        print(activityData.keys())
+        while True:
+            advance_stream = None
+            advance_offset = None
+            for stream in streams:
+                if stream_indices[stream] + 1 == stream_lengths[stream]:
+                    continue # We're at the end - can't advance
+                if advance_offset is None or stream_values[stream][stream_indices[stream] + 1][0] - currentOffset < advance_offset:
+                    advance_offset = stream_values[stream][stream_indices[stream] + 1][0] - currentOffset
+                    advance_stream = stream
+            if not advance_stream:
+                break # We've hit the end of every stream, stop
+            # Advance streams sharing the current timestamp
+            for stream in streams:
+                if stream == advance_stream:
+                    continue # For clarity, we increment this later
+                if stream_indices[stream] + 1 == stream_lengths[stream]:
+                    continue # We're at the end - can't advance
+                if stream_values[stream][stream_indices[stream] + 1][0] == stream_values[advance_stream][stream_indices[advance_stream] + 1][0]:
+                    stream_indices[stream] += 1
+            stream_indices[advance_stream] += 1 # Advance the key stream for this waypoint
+            currentOffset = stream_values[advance_stream][stream_indices[advance_stream]][0] # Update the current time offset
+
+            waypoint = Waypoint(activity.StartTime + timedelta(seconds=currentOffset))
+
+            if hasStreamData("location"):
+                waypoint.Location = Location(streamVal("location")[0], streamVal("location")[1], None)
                 if returnFirstLocation:
                     return waypoint.Location
 
-                if "heartrate" in parallel_indices:
-                    waypoint.HR = activityData["heartrate"][parallel_indices["heartrate"]+1]
+            if hasStreamData("elevation"):
+                if not waypoint.Location:
+                    waypoint.Location = Location(None, None, None)
+                waypoint.Location.Altitude = streamVal("elevation")
 
-                if "power" in parallel_indices:
-                    waypoint.Power = activityData["power"][parallel_indices["power"]+1]
+            if hasStreamData("heartrate"):
+                waypoint.HR = streamVal("heartrate")
 
-                if "cadence" in parallel_indices:
-                    waypoint.Cadence = activityData["cadence"][parallel_indices["cadence"]+1]
+            if hasStreamData("power"):
+                waypoint.Power = streamVal("power")
 
-                if "distance" in parallel_indices:
-                    waypoint.Distance = activityData["distance"][parallel_indices["distance"]+1]
+            if hasStreamData("cadence"):
+                waypoint.Cadence = streamVal("cadence")
 
-                inPause = isInTimerStop(waypoint.Timestamp)
-                waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
-                if wasInPause and not inPause:
-                    waypoint.Type = WaypointType.Resume
-                wasInPause = inPause
+            if hasStreamData("distance"):
+                waypoint.Distance = streamVal("distance")
 
-                # We only care if it's possible to start a new lap, i.e. there are more left
-                if currentLapIdx + 1 < len(laps_starts):
-                    if laps_starts[currentLapIdx + 1] < waypoint.Timestamp:
-                        # A new lap has started
-                        currentLapIdx += 1
-                        lap = activity.Laps[currentLapIdx]
+            inPause = isInTimerStop(waypoint.Timestamp)
+            waypoint.Type = WaypointType.Regular if not inPause else WaypointType.Pause
+            if wasInPause and not inPause:
+                waypoint.Type = WaypointType.Resume
+            wasInPause = inPause
 
-                lap.Waypoints.append(waypoint)
+            # We only care if it's possible to start a new lap, i.e. there are more left
+            if currentLapIdx + 1 < len(laps_starts):
+                if laps_starts[currentLapIdx + 1] < waypoint.Timestamp:
+                    # A new lap has started
+                    currentLapIdx += 1
+                    lap = activity.Laps[currentLapIdx]
 
-            if returnFirstLocation:
-                return None  # I guess there were no waypoints?
-            if activity.CountTotalWaypoints():
-                activity.Laps[0].Waypoints[0].Type = WaypointType.Start
-                activity.Laps[-1].Waypoints[-1].Type = WaypointType.End
+            lap.Waypoints.append(waypoint)
+
+        if returnFirstLocation:
+            return None  # I guess there were no waypoints?
+        if activity.CountTotalWaypoints():
+            activity.Laps[0].Waypoints[0].Type = WaypointType.Start
+            activity.Laps[-1].Waypoints[-1].Type = WaypointType.End
+            activity.Stationary = False
+        else:
+            activity.Stationary = True
+
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
@@ -390,7 +430,7 @@ class SportTracksService(ServiceBase):
                     val = round(val)
                 dict[key] = val
         _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
-        _mapStat(activityData, "duration", activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value is not None else None)
+        _mapStat(activityData, "duration", activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime.Value is not None else None)
         _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
         _mapStat(activityData, "calories", activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
         _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
@@ -413,7 +453,7 @@ class SportTracksService(ServiceBase):
                 "type": "REST" if lap.Intensity == LapIntensity.Rest else "ACTIVE"
             }
             _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds()) # Required too.
-            _mapStat(lapinfo, "duration", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
+            _mapStat(lapinfo, "duration", lap.Stats.TimerTime.Value.total_seconds() if lap.Stats.TimerTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
             _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value) # Probably required.
             _mapStat(lapinfo, "calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
             _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
@@ -423,13 +463,12 @@ class SportTracksService(ServiceBase):
             _mapStat(lapinfo, "max_heartrate", lap.Stats.HR.Max)
 
             activityData["laps"].append(lapinfo)
-
         if not activity.Stationary:
             timer_stops = []
             timer_stopped_at = None
 
             def stream_append(stream, wp, data):
-                stream += [int((wp.Timestamp - activity.StartTime).total_seconds()), data]
+                stream += [round((wp.Timestamp - activity.StartTime).total_seconds()), data]
 
             location_stream = []
             distance_stream = []
@@ -442,11 +481,11 @@ class SportTracksService(ServiceBase):
                     if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
                         stream_append(location_stream, wp, [wp.Location.Latitude, wp.Location.Longitude])
                     if wp.HR:
-                        stream_append(heartrate_stream, wp, int(wp.HR))
+                        stream_append(heartrate_stream, wp, round(wp.HR))
                     if wp.Distance:
                         stream_append(distance_stream, wp, wp.Distance)
                     if wp.Cadence or wp.RunCadence:
-                        stream_append(cadence_stream, wp, int(wp.Cadence) if wp.Cadence else int(wp.RunCadence))
+                        stream_append(cadence_stream, wp, round(wp.Cadence) if wp.Cadence else round(wp.RunCadence))
                     if wp.Power:
                         stream_append(power_stream, wp, wp.Power)
                     if wp.Location and wp.Location.Altitude:

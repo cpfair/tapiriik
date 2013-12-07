@@ -160,7 +160,7 @@ class EndomondoService(ServiceBase):
             split = row.split(";")
             if split[2] == "W":
                 # init record
-                lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(split[7])) if split[7] != "" else None)
+                lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(split[7])) if split[7] != "" else None)
                 lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(split[8]) if split[8] != "" else None)
                 lap.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(split[14]) if split[14] != "" else None, max=float(split[13]) if split[13] != "" else None)
                 lap.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, min=float(split[12]) if split[12] != "" else None, max=float(split[11]) if split[11] != "" else None)

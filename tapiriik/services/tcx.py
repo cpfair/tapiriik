@@ -57,8 +57,10 @@ class TCXIO:
             totalTimeEL = xlap.find("tcx:TotalTimeSeconds", namespaces=ns)
             if totalTimeEL is None:
                 raise ValueError("Missing lap TotalTimeSeconds")
-            lap.EndTime = lap.StartTime + timedelta(seconds=float(totalTimeEL.text))
-            # We don't set Moving Time from TotalTimeSeconds, because nobody really knows what that field is supposed to mean (GC has it as total time, ST.mobi as moving time, etc...)
+            lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, timedelta(seconds=float(totalTimeEL.text)))
+
+            lap.EndTime = lap.StartTime + lap.Stats.TimerTime.Value
+
             distEl = xlap.find("tcx:DistanceMeters", namespaces=ns)
             energyEl = xlap.find("tcx:Calories", namespaces=ns)
             triggerEl = xlap.find("tcx:TriggerMethod", namespaces=ns)
@@ -261,7 +263,7 @@ class TCXIO:
 
             xlap.attrib["StartTime"] = lap.StartTime.astimezone(UTC).strftime(dateFormat)
 
-            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.MovingTime.Value.total_seconds() if lap.Stats.MovingTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
+            _writeStat(xlap, "TotalTimeSeconds", lap.Stats.TimerTime.Value.total_seconds() if lap.Stats.TimerTime.Value else None, default=(lap.EndTime - lap.StartTime).total_seconds())
             _writeStat(xlap, "DistanceMeters", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
             _writeStat(xlap, "MaximumSpeed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Max)
             _writeStat(xlap, "Calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value, default=0, naturalValue=True)

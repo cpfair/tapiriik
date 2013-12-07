@@ -178,9 +178,11 @@ class GarminConnectService(ServiceBase):
                         if useSourceUnits:
                             activity.Stats.__dict__[statKey] = activity.Stats.__dict__[statKey].asUnits(self._unitMap[act[gcKey]["uom"]])
 
-
                 if "sumMovingDuration" in act:
                     activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["sumMovingDuration"]["value"])))
+
+                if "sumDuration" in act:
+                    activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1])))
 
 
                 mapStat("minSpeed", "Speed", "min", useSourceUnits=True) # We need to suppress conversion here, so we can fix the pace-speed issue below

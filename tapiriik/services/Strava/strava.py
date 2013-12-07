@@ -135,6 +135,7 @@ class StravaService(ServiceBase):
                 if "max_speed" in ride or "average_speed" in ride:
                     activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
                 activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=ride["moving_time"]) if "moving_time" in ride and ride["moving_time"] > 0 else None)  # They don't let you manually enter this, and I think it returns 0 for those activities.
+                # Strava doesn't handle "timer time" to the best of my knowledge - although they say they do look at the FIT total_timer_time field, so...?
                 if "average_watts" in ride:
                     activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=ride["average_watts"])
                 if "average_heartrate" in ride:
@@ -266,7 +267,7 @@ class StravaService(ServiceBase):
             else:
                 activity.EnsureTZ()
                 # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
-                fitData = FITIO.Dump(activity)
+                fitData = FITIO.Dump(activity, supplant_timer_time_with_moving_time=True)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
             response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))

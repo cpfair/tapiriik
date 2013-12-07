@@ -46,14 +46,14 @@ class ActivityStatisticCalculator:
 
         return dist
 
-    def CalculateMovingTime(act, startWpt=None, endWpt=None):
+    def CalculateTimerTime(act, startWpt=None, endWpt=None):
         flatWaypoints = []
         for lap in act.Laps:
             flatWaypoints.append(lap.Waypoints)
 
         if len(flatWaypoints) < 3:
             # Either no waypoints, or one at the start and one at the end
-            raise ValueError("Not enough waypoints to calculate moving time")
+            raise ValueError("Not enough waypoints to calculate timer time")
         duration = timedelta(0)
         if not startWpt:
             startWpt = flatWaypoints[0]
