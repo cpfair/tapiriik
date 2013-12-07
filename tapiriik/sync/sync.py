@@ -527,10 +527,11 @@ class Sync:
 
                 act.CleanStats()
 
-                if not act.Stationary:
+                startLoc = act.GetFirstWaypointWithLocation()
+                if startLoc is not None:
                     # Log metadata
-                    startLoc = act.GetFirstWaypointWithLocation()
                     db.act_metadata_loctype.update({"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude}, {"Latitude": startLoc.Latitude, "Longitude": startLoc.Longitude, "StartTime": act.StartTime, "Type": act.Type}, upsert=True)
+
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)
