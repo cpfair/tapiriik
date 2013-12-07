@@ -142,7 +142,7 @@ class GarminConnectService(ServiceBase):
                     continue
                 activity = UploadedActivity()
 
-                if "beginLatitude" not in act or "endLatitude" not in act or (act["beginLatitude"] is act["endLatitude"] and act["beginLongitude"] is act["endLongitude"]):
+                if "sumSampleCountTimestamp" not in act:
                     activity.Stationary = True
                 else:
                     activity.Stationary = False
