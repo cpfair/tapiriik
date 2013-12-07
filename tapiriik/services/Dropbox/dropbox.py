@@ -302,7 +302,7 @@ class DropboxService(ServiceBase):
                 data = GPXIO.Dump(activity)
 
         dbcl = self._getClient(serviceRecord)
-        fname = self._format_file_name(serviceRecord.GetConfiguration()["Filename"], activity) + "." + format
+        fname = self._format_file_name(serviceRecord.GetConfiguration()["Filename"], activity)[:250] + "." + format # DB has a max path component length of 255 chars, and we have to save for the file ext (4) and the leading slash (1)
 
         if not serviceRecord.Authorization["Full"]:
             fpath = "/" + fname
