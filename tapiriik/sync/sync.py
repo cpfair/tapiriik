@@ -378,8 +378,7 @@ class Sync:
             if fallbackTZ:
                 logger.info("Setting fallback TZs to %s" % fallbackTZ )
                 for act in activities:
-                    if act.TZ is None and act.Stationary != False:
-                        act.FallbackTZ = fallbackTZ
+                    act.FallbackTZ = fallbackTZ
 
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
