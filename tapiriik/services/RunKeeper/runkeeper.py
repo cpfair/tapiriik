@@ -1,6 +1,7 @@
 from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SECRET, AGGRESSIVE_CACHE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
+from tapiriik.services.stream_sampling import StreamSampler
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, WaypointType, Waypoint, Location, Lap
 from tapiriik.database import cachedb
@@ -147,10 +148,6 @@ class RunKeeperService(ServiceBase):
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
-        if "has_path" in rawRecord and rawRecord["has_path"] is False:
-            activity.Stationary = True
-        else:
-            activity.Stationary = False
         activity.CalculateUID()
         return activity
 
@@ -183,7 +180,6 @@ class RunKeeperService(ServiceBase):
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
         activity.Stationary = activity.CountTotalWaypoints() <= 1
 
-
         activity.Private = ridedata["share"] == "Just Me"
         return activity
 
@@ -192,29 +188,32 @@ class RunKeeperService(ServiceBase):
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
-        #  path is the primary stream, HR/power/etc must have fewer pts
-        hasHR = "heart_rate" in rawData and len(rawData["heart_rate"]) > 0
-        hasCalories = "calories" in rawData and len(rawData["calories"]) > 0
-        hasDistance = "distance" in rawData and len(rawData["distance"]) > 0
-        for pathpoint in rawData["path"]:
-            waypoint = Waypoint(activity.StartTime + timedelta(0, pathpoint["timestamp"]))
-            waypoint.Location = Location(pathpoint["latitude"], pathpoint["longitude"], pathpoint["altitude"] if "altitude" in pathpoint and float(pathpoint["altitude"]) != 0 else None)  # if you're running near sea level, well...
-            waypoint.Type = self._wayptTypeMappings[pathpoint["type"]] if pathpoint["type"] in self._wayptTypeMappings else WaypointType.Regular
+        print(rawData.keys())
+        streamData = {}
+        for stream in ["path", "heart_rate", "calories", "distance"]:
+            if stream in rawData and len(rawData[stream]):
+                if stream == "path":
+                    # The path stream doesn't follow the same naming convention, so we cheat and put everything in.
+                    streamData[stream] = [(x["timestamp"], x) for x in rawData[stream]]
+                else:
+                    streamData[stream] = [(x["timestamp"], x[stream]) for x in rawData[stream]] # Change up format for StreamSampler
 
-            if hasHR:
-                hrpoint = [x for x in rawData["heart_rate"] if x["timestamp"] == pathpoint["timestamp"]]
-                if len(hrpoint) > 0:
-                    waypoint.HR = hrpoint[0]["heart_rate"]
-            if hasCalories:
-                calpoint = [x for x in rawData["calories"] if x["timestamp"] == pathpoint["timestamp"]]
-                if len(calpoint) > 0:
-                    waypoint.Calories = calpoint[0]["calories"]
-            if hasDistance:
-                distpoint = [x for x in rawData["distance"] if x["timestamp"] == pathpoint["timestamp"]]
-                if len(distpoint) > 0:
-                    waypoint.Distance = distpoint[0]["distance"]
+        def _addWaypoint(timestamp, path=None, heart_rate=None, calories=None, distance=None):
+            waypoint = Waypoint(activity.StartTime + timedelta(seconds=timestamp))
+            if path:
+                waypoint.Location = Location(path["latitude"], path["longitude"], path["altitude"] if "altitude" in path and float(path["altitude"]) != 0 else None)  # if you're running near sea level, well...
+                waypoint.Type = self._wayptTypeMappings[path["type"]] if path["type"] in self._wayptTypeMappings else WaypointType.Regular
+            waypoint.HR = heart_rate
+            waypoint.Calories = calories
+            waypoint.Distance = distance
 
             lap.Waypoints.append(waypoint)
+        activity.Stationary = len(lap.Waypoints) == 0
+        if not activity.Stationary:
+            lap.Waypoints[0].Type = WaypointType.Start
+            lap.Waypoints[-1].Type = WaypointType.End
+
+        StreamSampler.SampleWithCallback(_addWaypoint, streamData)
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
@@ -249,47 +248,46 @@ class RunKeeperService(ServiceBase):
             record["share"] = "Just Me"
 
         inPause = False
-        if not activity.Stationary:
-            for lap in activity.Laps:
-                for waypoint in lap.Waypoints:
-                    timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
+        for lap in activity.Laps:
+            for waypoint in lap.Waypoints:
+                timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-                    if waypoint.Type in self._wayptTypeMappings.values():
-                        wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
-                    else:
-                        wpType = "gps"  # meh
+                if waypoint.Type in self._wayptTypeMappings.values():
+                    wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
+                else:
+                    wpType = "gps"  # meh
 
-                    if not inPause and waypoint.Type == WaypointType.Pause:
-                        inPause = True
-                    elif inPause and waypoint.Type == WaypointType.Pause:
-                        continue # RK gets all crazy when you send it multiple pause waypoints in a row.
-                    elif inPause and waypoint.Type != WaypointType.Pause:
-                        inPause = False
+                if not inPause and waypoint.Type == WaypointType.Pause:
+                    inPause = True
+                elif inPause and waypoint.Type == WaypointType.Pause:
+                    continue # RK gets all crazy when you send it multiple pause waypoints in a row.
+                elif inPause and waypoint.Type != WaypointType.Pause:
+                    inPause = False
 
-                    if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
-                        if "path" not in record:
-                            record["path"] = []
-                        pathPt = {"timestamp": timestamp,
-                                  "latitude": waypoint.Location.Latitude,
-                                  "longitude": waypoint.Location.Longitude,
-                                  "type": wpType}
-                        pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
-                        record["path"].append(pathPt)
+                if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                    if "path" not in record:
+                        record["path"] = []
+                    pathPt = {"timestamp": timestamp,
+                              "latitude": waypoint.Location.Latitude,
+                              "longitude": waypoint.Location.Longitude,
+                              "type": wpType}
+                    pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                    record["path"].append(pathPt)
 
-                    if waypoint.HR is not None:
-                        if "heart_rate" not in record:
-                            record["heart_rate"] = []
-                        record["heart_rate"].append({"timestamp": timestamp, "heart_rate": int(waypoint.HR)})
+                if waypoint.HR is not None:
+                    if "heart_rate" not in record:
+                        record["heart_rate"] = []
+                    record["heart_rate"].append({"timestamp": timestamp, "heart_rate": round(waypoint.HR)})
 
-                    if waypoint.Calories is not None:
-                        if "calories" not in record:
-                            record["calories"] = []
-                        record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+                if waypoint.Calories is not None:
+                    if "calories" not in record:
+                        record["calories"] = []
+                    record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
-                    if waypoint.Distance is not None:
-                        if "distance" not in record:
-                            record["distance"] = []
-                        record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
+                if waypoint.Distance is not None:
+                    if "distance" not in record:
+                        record["distance"] = []
+                    record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
 
         return record
 

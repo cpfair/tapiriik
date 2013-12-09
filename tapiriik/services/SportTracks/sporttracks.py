@@ -336,7 +336,7 @@ class SportTracksService(ServiceBase):
         def hasStreamData(stream):
             nonlocal stream_indices, streams
             return stream in streams and stream_indices[stream] >= 0
-        print(activityData.keys())
+
         while True:
             advance_stream = None
             advance_offset = None
