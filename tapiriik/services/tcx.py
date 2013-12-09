@@ -48,7 +48,6 @@ class TCXIO:
         startTime = None
         endTime = None
         for xlap in xlaps:
-            xtrkseg = xlap.find("tcx:Track", namespaces=ns)
 
             lap = Lap()
             act.Laps.append(lap)
@@ -139,6 +138,7 @@ class TCXIO:
                     if stepsEl is not None:
                         lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=int(stepsEl.text)))
 
+            xtrkseg = xlap.find("tcx:Track", namespaces=ns)
             if xtrkseg is None:
                 # Some TCX files have laps with no track - not sure if it's valid or not.
                 continue

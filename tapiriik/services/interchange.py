@@ -534,7 +534,7 @@ class Waypoint:
 
 class Location:
     __slots__ = ["Latitude", "Longitude", "Altitude"]
-    def __init__(self, lat, lon, alt):
+    def __init__(self, lat=None, lon=None, alt=None):
         self.Latitude = lat
         self.Longitude = lon
         self.Altitude = alt
