@@ -40,6 +40,7 @@ class UserExceptionType:
     Authorization = "auth"
     AccountFull = "full"
     AccountExpired = "expired"
+    AccountUnpaid = "unpaid" # vs. expired, which implies it was at some point function, via payment or trial or otherwise.
 
 class UserException:
     def __init__(self, type, extra=None, intervention_required=False, clear_group=None):

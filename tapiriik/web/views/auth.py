@@ -18,7 +18,7 @@ def auth_login(req, service):
 @require_POST
 def auth_login_ajax(req, service):
     res = auth_do(req, service)
-    return HttpResponse(json.dumps({"success": res}), mimetype='application/json')
+    return HttpResponse(json.dumps({"success": res == True, "result": res}), mimetype='application/json')
 
 
 def auth_do(req, service):
@@ -29,7 +29,9 @@ def auth_do(req, service):
             uid, authData, extendedAuthData = svc.Authorize(req.POST["username"], req.POST["password"])
         else:
             uid, authData = svc.Authorize(req.POST["username"], req.POST["password"])
-    except APIException:
+    except APIException as e:
+        if e.UserException is not None:
+            return {"type": e.UserException.Type, "extra": e.UserException.Extra}
         return False
     if authData is not None:
         serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData, extendedAuthDetails=extendedAuthData if svc.RequiresExtendedAuthorizationDetails else None, persistExtendedAuthDetails=bool(req.POST.get("persist", None)))
