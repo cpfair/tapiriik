@@ -183,7 +183,7 @@ class PWXIO:
 
         etree.SubElement(xworkout, "device")
 
-        etree.SubElement(xworkout, "time").text = activity.StartTime.isoformat()
+        etree.SubElement(xworkout, "time").text = activity.StartTime.replace(tzinfo=None).isoformat()
 
         def _writeMinMaxAvg(xparent, name, stat, naturalValue=False):
             if stat.Min is None and stat.Max is None and stat.Average is None:
