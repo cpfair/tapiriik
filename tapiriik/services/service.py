@@ -12,7 +12,8 @@ class Service:
                         "dropbox": Dropbox,
                         "garminconnect": GarminConnect,
                         "sporttracks": SportTracks,
-                        "rwgps": RideWithGPS
+                        "rwgps": RideWithGPS,
+                        "trainingpeaks": TrainingPeaks
                         }
 
     # These options are used as the back for all service record's configurations
@@ -27,7 +28,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, Endomondo, GarminConnect, SportTracks, Dropbox, RideWithGPS]
+        return [RunKeeper, Strava, Endomondo, GarminConnect, SportTracks, Dropbox, RideWithGPS, TrainingPeaks]
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT

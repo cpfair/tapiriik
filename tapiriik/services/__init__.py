@@ -14,5 +14,7 @@ from tapiriik.services.SportTracks import SportTracksService
 SportTracks = SportTracksService()
 from tapiriik.services.RideWithGPS import RideWithGPSService
 RideWithGPS = RideWithGPSService()
+from tapiriik.services.TrainingPeaks import TrainingPeaksService
+TrainingPeaks = TrainingPeaksService()
 from .service import *
 from .service_record import *

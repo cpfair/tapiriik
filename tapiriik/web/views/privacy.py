@@ -17,6 +17,7 @@ def privacy(request):
 	services["dropbox"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":CACHED})
 	services["runkeeper"].update({"email": NO, "password": NO, "tokens": YES, "metadata": YES, "data":NO})
 	services["rwgps"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
+	services["trainingpeaks"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
 
 	services_list = [x for key, x in services.items()]
 	return render(request, "privacy.html", {"services": services_list})

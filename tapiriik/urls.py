@@ -52,6 +52,8 @@ urlpatterns = patterns('',
 
     url(r'^privacy$', 'tapiriik.web.views.privacy.privacy', name='privacy'),
 
+    url(r'^trainingpeaks_premium$', 'tapiriik.web.views.trainingpeaks_premium.trainingpeaks_premium', name='trainingpeaks_premium'),
+
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),
     # Examples:
