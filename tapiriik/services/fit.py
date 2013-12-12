@@ -376,7 +376,7 @@ class FITIO:
 	def Parse(raw_file):
 		raise Exception("Not implemented")
 
-	def Dump(act, supplant_timer_time_with_moving_time=False):
+	def Dump(act):
 		def toUtc(ts):
 			if ts.tzinfo:
 				return ts.astimezone(pytz.utc).replace(tzinfo=None)
@@ -408,8 +408,6 @@ class FITIO:
 
 		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.Value)
 		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.Value)
-		if supplant_timer_time_with_moving_time: # This is a bug in the way Strava handles moving/timer time for Running-type activities
-			_mapStat(session_stats, "total_timer_time", act.Stats.MovingTime.Value)
 		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 		_mapStat(session_stats, "total_calories", act.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
@@ -466,8 +464,6 @@ class FITIO:
 			_mapStat(lap_stats, "total_elapsed_time", lap.EndTime - lap.StartTime)
 			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.Value)
 			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.Value)
-			if supplant_timer_time_with_moving_time:
-				_mapStat(lap_stats, "total_timer_time", lap.Stats.MovingTime.Value)
 			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 			_mapStat(lap_stats, "total_calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
