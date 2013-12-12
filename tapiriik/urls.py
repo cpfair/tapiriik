@@ -56,6 +56,7 @@ urlpatterns = patterns('',
 
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),
+    url(r'^contact$', TemplateView.as_view(template_name='static/contact.html'), name='contact'),
     # Examples:
     # url(r'^$', 'tapiriik.views.home', name='home'),
     # url(r'^tapiriik/', include('tapiriik.foo.urls')),

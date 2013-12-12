@@ -787,6 +787,16 @@ form.dropboxConfig #filename {
 	color: #aaa;
 }
 
+.contactBlock {
+	display: inline-block;
+	width:49%;
+	vertical-align: top;
+}
+
+.contactBlock a {
+	font-size:200%;
+}
+
 .settingsTable
 {
 	border-spacing: 0;

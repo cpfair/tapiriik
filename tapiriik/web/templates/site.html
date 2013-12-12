@@ -6,7 +6,7 @@
 	<meta name="Description" content="Automatically synchronize your fitness activities between Garmin Connect, Runkeeper, Strava and more.">
 	<meta name="Keywords" content="automatic, synchronize, sync, update, copy, transfer, download, back up, export, fitness, garmin, garmin connect, runkeeper, strava, sporttracks, dropbox, path, track, heart rate, free, service, gpx, tcx, health, data, service, cycling, running, swimming, walking, what other activities can I put here?, underwater basket weaving, why are you reading the SEO keywords anyways, move along, nothing to see here">
 
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css?userexc" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css?contact" />
     {% if config.in_diagnostics %}
 	<script type="text/javascript">tapiriik = {diagnostics: true};</script>
 	<link rel="stylesheet" href="{{ STATIC_URL }}css/diagnostics.css" />
@@ -41,7 +41,7 @@
 		    		</div>
 	    		</div>
 	    		<div class="footers"><a href="{% url 'faq' %}">FAQ</a> | <a href="{% url 'privacy' %}">Privacy</a> | <a href="{% url 'credits' %}">Credits</a><br/><span style="font-size:95%;font-weight:normal">All trademarks displayed are property of their respective owners</br>
-	    			<a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="mailto:contact@tapiriik.com{% if user %}?body=My tapiriik user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank">Collin Fair</a></a>
+	    			<a href="http://twitter.com/tapiriik" target="_blank">@tapiriik</a> by <a href="{% url 'contact' %}">Collin Fair</a>
 	    		</div>
 	    	</div>
     	</div>
