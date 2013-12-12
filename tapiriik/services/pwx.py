@@ -56,13 +56,17 @@ class PWXIO:
 
         def _minMaxAvg(xminMaxAvg):
             return {"min": float(xminMaxAvg.attrib["min"]) if "min" in xminMaxAvg.attrib else None, "max": float(xminMaxAvg.attrib["max"]) if "max" in xminMaxAvg.attrib else None, "avg": float(xminMaxAvg.attrib["avg"])  if "avg" in xminMaxAvg.attrib else None} # Most useful line ever
+
         def _readSummaryData(xsummary, obj, time_ref):
             obj.StartTime = time_ref + timedelta(seconds=float(xsummary.find("pwx:beginning", namespaces=ns).text))
             obj.EndTime = obj.StartTime + timedelta(seconds=float(xsummary.find("pwx:duration", namespaces=ns).text))
 
+            # "duration - durationstopped = moving time. duration stopped may be zero." - Ben
             stoppedEl = xsummary.find("pwx:durationstopped", namespaces=ns)
             if stoppedEl is not None:
                 obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=obj.EndTime - obj.StartTime - timedelta(seconds=float(stoppedEl.text)))
+            else:
+                obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=obj.EndTime - obj.StartTime)
 
             hrEl = xsummary.find("pwx:hr", namespaces=ns)
             if hrEl is not None:
@@ -110,7 +114,10 @@ class PWXIO:
             _readSummaryData(xsegment.find("pwx:summarydata", namespaces=ns), lap, time_ref=activity.StartTime)
             laps.append(lap)
 
-        if not len(laps):
+        if len(laps) == 1:
+            laps[0].Stats.update(activity.Stats)
+            activity.Stats = laps[0].Stats
+        elif not len(laps):
             laps = [Lap(startTime=activity.StartTime, endTime=activity.EndTime, stats=activity.Stats)]
 
         xsamples = xworkout.findall("pwx:sample", namespaces=ns)
@@ -160,8 +167,11 @@ class PWXIO:
         activity.Laps = laps
         activity.Stationary = activity.CountTotalWaypoints() == 0
         if not activity.Stationary:
-            activity.GetFlatWaypoints()[0].Type = WaypointType.Start
-            activity.GetFlatWaypoints()[-1].Type = WaypointType.End
+            flatWp = activity.GetFlatWaypoints()
+            flatWp[0].Type = WaypointType.Start
+            flatWp[-1].Type = WaypointType.End
+            if activity.EndTime < flatWp[-1].Timestamp: # Work around the fact that TP doesn't preserve elapsed time.
+                activity.EndTime = flatWp[-1].Timestamp
         return activity
 
     def Dump(activity):
