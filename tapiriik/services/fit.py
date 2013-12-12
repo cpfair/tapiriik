@@ -463,6 +463,7 @@ class FITIO:
 			# Man, I love copy + paste and multi-cursor editing
 			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
 			lap_stats = {}
+			_mapStat(lap_stats, "total_elapsed_time", lap.EndTime - lap.StartTime)
 			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.Value)
 			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.Value)
 			if supplant_timer_time_with_moving_time:
