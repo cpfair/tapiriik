@@ -247,47 +247,48 @@ class RunKeeperService(ServiceBase):
         if activity.Private:
             record["share"] = "Just Me"
 
-        inPause = False
-        for lap in activity.Laps:
-            for waypoint in lap.Waypoints:
-                timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
+        if activity.CountTotalWaypoints() > 1:
+            inPause = False
+            for lap in activity.Laps:
+                for waypoint in lap.Waypoints:
+                    timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
 
-                if waypoint.Type in self._wayptTypeMappings.values():
-                    wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
-                else:
-                    wpType = "gps"  # meh
+                    if waypoint.Type in self._wayptTypeMappings.values():
+                        wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
+                    else:
+                        wpType = "gps"  # meh
 
-                if not inPause and waypoint.Type == WaypointType.Pause:
-                    inPause = True
-                elif inPause and waypoint.Type == WaypointType.Pause:
-                    continue # RK gets all crazy when you send it multiple pause waypoints in a row.
-                elif inPause and waypoint.Type != WaypointType.Pause:
-                    inPause = False
+                    if not inPause and waypoint.Type == WaypointType.Pause:
+                        inPause = True
+                    elif inPause and waypoint.Type == WaypointType.Pause:
+                        continue # RK gets all crazy when you send it multiple pause waypoints in a row.
+                    elif inPause and waypoint.Type != WaypointType.Pause:
+                        inPause = False
 
-                if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
-                    if "path" not in record:
-                        record["path"] = []
-                    pathPt = {"timestamp": timestamp,
-                              "latitude": waypoint.Location.Latitude,
-                              "longitude": waypoint.Location.Longitude,
-                              "type": wpType}
-                    pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
-                    record["path"].append(pathPt)
+                    if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                        if "path" not in record:
+                            record["path"] = []
+                        pathPt = {"timestamp": timestamp,
+                                  "latitude": waypoint.Location.Latitude,
+                                  "longitude": waypoint.Location.Longitude,
+                                  "type": wpType}
+                        pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                        record["path"].append(pathPt)
 
-                if waypoint.HR is not None:
-                    if "heart_rate" not in record:
-                        record["heart_rate"] = []
-                    record["heart_rate"].append({"timestamp": timestamp, "heart_rate": round(waypoint.HR)})
+                    if waypoint.HR is not None:
+                        if "heart_rate" not in record:
+                            record["heart_rate"] = []
+                        record["heart_rate"].append({"timestamp": timestamp, "heart_rate": round(waypoint.HR)})
 
-                if waypoint.Calories is not None:
-                    if "calories" not in record:
-                        record["calories"] = []
-                    record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+                    if waypoint.Calories is not None:
+                        if "calories" not in record:
+                            record["calories"] = []
+                        record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
-                if waypoint.Distance is not None:
-                    if "distance" not in record:
-                        record["distance"] = []
-                    record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
+                    if waypoint.Distance is not None:
+                        if "distance" not in record:
+                            record["distance"] = []
+                        record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
 
         return record
 
