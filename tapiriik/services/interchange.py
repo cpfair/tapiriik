@@ -40,7 +40,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None, device=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -53,6 +53,7 @@ class Activity:
         self.Private = private
         self.Stationary = stationary
         self.PrerenderedFormats = {}
+        self.Device = device
 
     def CalculateUID(self):
         if not self.StartTime:

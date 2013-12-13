@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from .interchange import WaypointType, ActivityStatisticUnit, ActivityType, LapIntensity, LapTriggerMethod
+from .devices import DeviceIdentifier, DeviceIdentifierType
 import struct
 import sys
 import pytz
@@ -120,6 +121,11 @@ class FITMessageGenerator:
 			if input is None:
 				return struct.pack("<i", 0x7FFFFFFF) # FIT-defined invalid value
 			return struct.pack("<i", round(input * (2 ** 31 / 180)))
+		def versionFormatter(input):
+			# UINT16
+			if input is None:
+				return struct.pack("<H", 0xFFFF)
+			return struct.pack("<H", round(input * 100))
 
 
 		def defType(name, *args, **kwargs):
@@ -151,6 +157,7 @@ class FITMessageGenerator:
 		defType("mmPerSec", 0x84, 2, None, 0xFFFF, formatter=mmPerSecFormatter)
 		defType("semicircles", 0x85, 4, None, 0x7FFFFFFF, formatter=semicirclesFormatter)
 		defType("altitude", 0x84, 2, None, 0xFFFF, formatter=altitudeFormatter)
+		defType("version", 0x84, 2, None, 0xFFFF, formatter=versionFormatter)
 
 		def defMsg(name, *args):
 			self._messageTemplates[name] = FITMessageTemplate(name, *args)
@@ -162,6 +169,10 @@ class FITMessageGenerator:
 			3, "serial_number", "uint32z",
 			4, "time_created", "date_time",
 			5, "number", "uint16")
+
+		defMsg("file_creator", 49,
+			0, "software_version", "uint16",
+			1, "hardware_version", "uint8")
 
 		defMsg("activity", 34,
 			253, "timestamp", "date_time",
@@ -247,6 +258,16 @@ class FITMessageGenerator:
 			253, "timestamp", "date_time",
 			0, "event", "enum",
 			1, "event_type", "enum")
+
+		defMsg("device_info", 23,
+			253, "timestamp", "date_time",
+			0, "device_index", "uint8",
+			1, "device_type", "uint8",
+			2, "manufacturer", "manufacturer",
+			3, "serial_number", "uint32z",
+			4, "product", "uint16",
+			5, "software_version", "version"
+			)
 
 	def _write(self, contents):
 		self._result.append(contents)
@@ -383,8 +404,24 @@ class FITIO:
 			else:
 				raise ValueError("Need TZ data to produce FIT file")
 		fmg = FITMessageGenerator()
-		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), manufacturer=FITManufacturer.DEVELOPMENT, serial_number=1, product=15706)
 
+		creatorInfo = {
+			"manufacturer": FITManufacturer.DEVELOPMENT,
+			"serial_number": 0,
+			"product": 15706
+		}
+		if act.Device:
+			# GC can get along with out this, Strava needs it
+			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
+			if devId:
+				creatorInfo = {
+					"manufacturer": devId.Manufacturer,
+					"product": devId.Product,
+				}
+				if act.Device.Serial:
+					creatorInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
+
+		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), **creatorInfo)
 		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
 		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
 
@@ -507,6 +544,22 @@ class FITIO:
 		# These need to be at the end for Strava
 		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
 		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Stop)
+
+		if act.Device:
+			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
+			if devId:
+				devInfo = {
+					"manufacturer": devId.Manufacturer,
+					"product": devId.Product,
+					"device_index": 0 # Required for GC
+				}
+				if act.Device.Serial:
+					devInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
+				if act.Device.VersionMajor is not None:
+					assert act.Device.VersionMinor is not None
+					devInfo["software_version"] = act.Device.VersionMajor + act.Device.VersionMinor / 100
+				fmg.GenerateMessage("device_info", **devInfo)
+
 		records = fmg.GetResult()
 		header = FITIO._generateHeader(len(records))
 		crc = FITIO._calculateCRC(records, FITIO._calculateCRC(header))

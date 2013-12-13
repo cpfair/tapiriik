@@ -1,10 +1,10 @@
-from lxml import etree, objectify
+from lxml import etree
 from pytz import UTC
 import copy
 import dateutil.parser
-from datetime import datetime, timedelta
+from datetime import timedelta
 from .interchange import WaypointType, Activity, ActivityStatistic, ActivityStatistics, ActivityStatisticUnit, ActivityType, Waypoint, Location, Lap, LapIntensity, LapTriggerMethod
-from .statistic_calculator import ActivityStatisticCalculator
+from .devices import DeviceIdentifier, DeviceIdentifierType, Device
 
 
 class TCXIO:
@@ -43,6 +43,12 @@ class TCXIO:
                 act.Type = ActivityType.Cycling
             elif xact.attrib["Sport"] == "Running":
                 act.Type = ActivityType.Running
+
+        xcreator = xact.find("tcx:Creator", namespaces=ns)
+        if xcreator is not None:
+            devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.TCX, {"ProductID": int(xcreator.find("tcx:ProductID", namespaces=ns).text)}) # Who knows if this is unique in the TCX ecosystem? We'll find out!
+            xver = xcreator.find("tcx:Version", namespaces=ns)
+            act.Device = Device(devId, int(xcreator.find("tcx:UnitId", namespaces=ns).text), verMaj=int(xver.find("tcx:VersionMajor", namespaces=ns).text), verMin=int(xver.find("tcx:VersionMinor", namespaces=ns).text)) # ID vs Id: ???
 
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
@@ -216,7 +222,6 @@ class TCXIO:
 
     def Dump(activity):
 
-        TRKPTEXT = "{%s}" % TCXIO.Namespaces["tpx"]
         root = etree.Element("TrainingCenterDatabase", nsmap=TCXIO.Namespaces)
         activities = etree.SubElement(root, "Activities")
         act = etree.SubElement(activities, "Activity")
@@ -347,5 +352,20 @@ class TCXIO:
                 exts = xlap.find("Extensions")
                 if exts is not None:
                     track.addnext(exts)
+
+        if activity.Device and activity.Device.Identifier:
+            devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.TCX, activity.Device.Identifier)
+            if devId:
+                xcreator = etree.SubElement(act, "Creator")
+                xcreator.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "Device_t"
+                etree.SubElement(xcreator, "Name").text = devId.Name
+                etree.SubElement(xcreator, "UnitId").text = str(activity.Device.Serial) if activity.Device.Serial else "0"
+                etree.SubElement(xcreator, "ProductID").text = str(devId.ProductID)
+                xver = etree.SubElement(xcreator, "Version")
+                etree.SubElement(xver, "VersionMajor").text = str(activity.Device.VersionMajor) if activity.Device.VersionMajor else "0" # Blegh.
+                etree.SubElement(xver, "VersionMinor").text = str(activity.Device.VersionMinor) if activity.Device.VersionMinor else "0"
+                etree.SubElement(xver, "BuildMajor").text = "0"
+                etree.SubElement(xver, "BuildMinor").text = "0"
+
 
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
