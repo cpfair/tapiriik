@@ -31,6 +31,8 @@ class DeviceIdentifier:
 					return identifier
 
 	def FindEquivalentIdentifierOfType(type, identifier):
+		if not identifier:
+			return
 		if identifier.Type == type:
 			return identifier # We preemptively do this, so international variants have a chance of being preserved
 		for group in DeviceIdentifier._identifierGroups:
