@@ -95,6 +95,8 @@ class StravaService(ServiceBase):
         before = earliestDate = None
 
         while True:
+            if before is not None and before < 0:
+                break # Caused by activities that "happened" before the epoch. We generally don't care about those activities...
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             self._logAPICall("list", (svcRecord.ExternalID, str(earliestDate)), resp.status_code == 401)
