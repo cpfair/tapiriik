@@ -401,8 +401,8 @@ class SportTracksService(ServiceBase):
         if returnFirstLocation:
             return None  # I guess there were no waypoints?
         if activity.CountTotalWaypoints():
-            activity.Laps[0].Waypoints[0].Type = WaypointType.Start
-            activity.Laps[-1].Waypoints[-1].Type = WaypointType.End
+            activity.GetFlatWaypoints()[0].Type = WaypointType.Start
+            activity.GetFlatWaypoints()[-1].Type = WaypointType.End
             activity.Stationary = False
         else:
             activity.Stationary = True
