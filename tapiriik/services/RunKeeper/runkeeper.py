@@ -235,7 +235,7 @@ class RunKeeperService(ServiceBase):
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
-        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value else (activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime else (activity.EndTime - activity.StartTime).total_seconds())
+        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value else (activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime.Value else (activity.EndTime - activity.StartTime).total_seconds())
         if activity.Stats.HR.Average is not None:
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
         if activity.Stats.Energy.Value is not None:
