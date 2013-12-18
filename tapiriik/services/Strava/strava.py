@@ -25,7 +25,6 @@ class StravaService(ServiceBase):
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
-    ReceivesStationaryActivities = False # Grumble grumble
     LastUpload = None
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
@@ -295,19 +294,18 @@ class StravaService(ServiceBase):
                         return # I guess we're done here?
                     raise APIException("Strava failed while processing activity - last status %s" % response.text)
         else:
-            # Semi-undocumented stationary-activity upload
-            # Requires an access_token from one of the official Strava apps to go through.
-            uploadTS = activity.StartTime.astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S +0000")
+            localUploadTS = activity.StartTime.strftime("%Y-%m-%d %H:%M:%S")
             req = {
-                    "name": activity.Name,
+                    "name": activity.Name if activity.Name else activity.StartTime.strftime("%d/%m/%Y"), # This is required
+                    "description": activity.Notes,
                     "type": self._activityTypeMappings[activity.Type],
                     "private": 1 if activity.Private else 0,
-                    "start_date": uploadTS,
+                    "start_date_local": localUploadTS,
                     "distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
-                    "elapsed_time": int((activity.EndTime - activity.StartTime).total_seconds())
+                    "elapsed_time": round((activity.EndTime - activity.StartTime).total_seconds())
                 }
             headers = self._apiHeaders(serviceRecord)
-            response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers, files={"testf":"testf"}, proxies={"https":"http://127.0.0.1:8888"})
+            response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers)
             # FFR this method returns the same dict as the activity listing, as REST services are wont to do.
             if response.status_code != 201:
                 if response.status_code == 401:
