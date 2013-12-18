@@ -77,7 +77,7 @@ class TCXIO:
                 raise ValueError("Missing lap DistanceMeters")
 
             lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(distEl.text))
-            if energyEl is not None:
+            if energyEl is not None and energyEl.text:
                 lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, float(energyEl.text))
                 if lap.Stats.Energy.Value == 0:
                     lap.Stats.Energy.Value = None # It's dumb to make this required, but I digress.
