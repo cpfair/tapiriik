@@ -19,6 +19,7 @@ class TrainingPeaksService(ServiceBase):
     DisplayName = "TrainingPeaks"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
+    ReceivesStationaryActivities = False
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
