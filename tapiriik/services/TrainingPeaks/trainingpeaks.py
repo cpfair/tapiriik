@@ -35,6 +35,7 @@ class TrainingPeaksService(ServiceBase):
         "X-Train": ActivityType.Other,
         "Strength": ActivityType.Other,
         "Race": ActivityType.Other,
+        "Custom": ActivityType.Other,
         "Other": ActivityType.Other,
     }
     SupportedActivities = list(_workoutTypeMappings.values())
