@@ -32,7 +32,8 @@ class TrainingPeaksService(ServiceBase):
         "MTB": ActivityType.MountainBiking,
         "XC Ski": ActivityType.CrossCountrySkiing,
         "Rowing": ActivityType.Rowing,
-        "Other": ActivityType.Other
+        "X-Train": ActivityType.Other,
+        "Other": ActivityType.Other,
     }
     SupportedActivities = list(_workoutTypeMappings.values())
 
