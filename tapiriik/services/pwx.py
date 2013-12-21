@@ -164,6 +164,8 @@ class PWXIO:
                 currentLapIdx += 1
 
             laps[currentLapIdx].Waypoints.append(wp)
+        if activity.TZ:
+            activity.DefineTZ()
         activity.Laps = laps
         activity.Stationary = activity.CountTotalWaypoints() == 0
         if not activity.Stationary:
