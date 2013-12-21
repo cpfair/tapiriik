@@ -23,6 +23,7 @@
 				{% endfor %}
 			</ul>
 			{% endif %}
+			<form action="" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
 		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
 		<li><b>Sync errors (automatic):</b>
