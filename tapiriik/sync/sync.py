@@ -70,10 +70,16 @@ class Sync:
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSyncIsExhaustive": exhaustive}})
 
     def _determineRecipientServices(activity, allConnections):
-        recipientServices = allConnections
-        recipientServices = [conn for conn in recipientServices if activity.Type in conn.Service.SupportedActivities
-                                                                and (not hasattr(conn, "SynchronizedActivities") or not len([x for x in activity.UIDs if x in conn.SynchronizedActivities]))
-                                                                and conn._id not in activity.ServiceDataCollection]
+        recipientServices = []
+        for conn in allConnections:
+            if activity.Type not in conn.Service.SupportedActivities:
+                logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
+            elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
+                pass
+            elif conn._id in activity.ServiceDataCollection:
+                pass
+            else:
+                recipientServices.append(conn)
         return recipientServices
 
     def _fromSameService(activityA, activityB):
@@ -165,7 +171,6 @@ class Sync:
                         existingActivity.Stationary = existingActivity.Stationary and act.Stationary # Let's be optimistic here
                 else:
                     pass # Nothing to do - existElsewhere is either more speicifc or equivalently indeterminate
-                existingActivity.Stationary = existingActivity.Stationary and act.Stationary
                 existingActivity.Stats.coalesceWith(act.Stats)
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
@@ -403,12 +408,11 @@ class Sync:
                             activity.Origin = connectedOrigins[0]
                         else:
                             activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
-                logger.info("\t" + str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
 
             totalActivities = len(activities)
             processedActivities = 0
             for activity in activities:
-
+                logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                 # Locally mark this activity as present on the appropriate services.
                 # These needs to happen regardless of whether the activity is going to be synchronized.
                 #   Before, I had moved this under all the eligibility/recipient checks, but that could cause persistent duplicate activities when the user had already manually uploaded the same activity to multiple sites.
@@ -419,14 +423,14 @@ class Sync:
                         updateServicesWithExistingActivity = True
                         break
                 if updateServicesWithExistingActivity:
-                    logger.debug("\t\tUpdating SynchronizedActivities for proceeding activity")
+                    logger.debug("\t\tUpdating SynchronizedActivities")
                     db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
                                           {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
                                           multi=True)
 
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
-                    logger.info("\t%s is private and restricted from sync (pre-download)" % activity.UID)  # Sync exclusion instead?
+                    logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
                     del activity
                     continue
 
@@ -441,14 +445,13 @@ class Sync:
                 eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, connectedServices=serviceConnections, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
 
                 if not len(eligibleServices):
-                    logger.info("\t%s has no eligible destinations" % activity.UID)
+                    logger.info("\t\t...has no eligible destinations")
                     totalActivities -= 1  # Again, doesn't really count.
                     del activity
                     continue
 
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.Download)
-
 
 
                 if totalActivities <= 0:
@@ -459,7 +462,7 @@ class Sync:
                 db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
 
                 # The second most important line of logging in the application...
-                logger.info("\tActivity " + str(activity.UID) + " to " + str([x.Service.ID for x in recipientServices]))
+                logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
 
                 # Download the full activity record
                 act = None
@@ -474,12 +477,12 @@ class Sync:
                 for dlSvcRecId in actAvailableFromSvcIds:
                     dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId][0]
                     dlSvc = dlSvcRecord.Service
-                    logger.info("\t from " + dlSvc.ID)
+                    logger.info("\tfrom " + dlSvc.ID)
                     if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
-                        logger.info("\t\t has activity exclusion logged")
+                        logger.info("\t\t...has activity exclusion logged")
                         continue
                     if dlSvcRecord in excludedServices:
-                        logger.info("\t\t service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
+                        logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
                         continue
 
                     workingCopy = copy.copy(activity)  # we can hope
@@ -507,17 +510,18 @@ class Sync:
 
 
                     if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
-                        logger.info("\t\t is private and restricted from sync")  # Sync exclusion instead?
+                        logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
                         continue
                     try:
                         workingCopy.CheckSanity()
                     except:
-                        logger.info("\t\t failed sanity check")
+                        logger.info("\t\t...failed sanity check")
                         Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy), tempSyncExclusions)
                         continue
                     else:
                         act = workingCopy
                         break  # succesfully got the activity + passed sanity checks, can stop now
+
                 if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                     processedActivities += 1  # we tried
                     del act
@@ -536,10 +540,10 @@ class Sync:
                         heartbeat_callback(SyncStep.Upload)
                     destSvc = destinationSvcRecord.Service
                     if not destSvc.ReceivesStationaryActivities and act.Stationary:
-                        logger.info("\t\t Skipping %s - activity marked as stationary during download" % destSvc.ID)
+                        logger.info("\t\t...marked as stationary during download")
                         continue
                     try:
-                        logger.info("\t\tUploading to " + destSvc.ID)
+                        logger.info("\t  Uploading to " + destSvc.ID)
                         destSvc.UploadActivity(destinationSvcRecord, act)
                     except (ServiceException, ServiceWarning) as e:
                         tempSyncErrors[destinationSvcRecord._id].append(_packServiceException(SyncStep.Upload, e))
@@ -585,7 +589,9 @@ class Sync:
             logger.info("Finished sync for " + str(user["_id"]))
         finally:
             _global_logger.removeHandler(logging_file_handler)
+            logging_file_handler.flush()
             logging_file_handler.close()
+
 
 class SynchronizationConcurrencyException(Exception):
     pass
