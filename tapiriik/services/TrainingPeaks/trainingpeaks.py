@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
-from tapiriik.services.api import APIException, UserException, UserExceptionType
+from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.pwx import PWXIO
 from lxml import etree
 
@@ -30,7 +30,7 @@ class TrainingPeaksService(ServiceBase):
         "Walk": ActivityType.Walking,
         "Swim": ActivityType.Swimming,
         "MTB": ActivityType.MountainBiking,
-        "XC Ski": ActivityType.CrossCountrySkiing,
+        "XC-Ski": ActivityType.CrossCountrySkiing,
         "Rowing": ActivityType.Rowing,
         "X-Train": ActivityType.Other,
         "Strength": ActivityType.Other,
@@ -83,10 +83,10 @@ class TrainingPeaksService(ServiceBase):
         limitDateFormat = "%d %B %Y"
 
         if exhaustive:
-            listEnd = datetime.now() + timedelta(days=1.5) # who knows which TZ it's in
+            listEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
             listStart = datetime(day=1, month=1, year=1980) # The beginning of time
         else:
-            listEnd = datetime.now() + timedelta(days=1.5) # who knows which TZ it's in
+            listEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
             listStart = listEnd - timedelta(days=20) # Doesn't really matter
 
         lastActivityDay = None
@@ -98,6 +98,8 @@ class TrainingPeaksService(ServiceBase):
             xresp = etree.XML(resp.content)
             for xworkout in xresp:
                 activity = UploadedActivity()
+
+                workoutId = xworkout.find("tpw:WorkoutId", namespaces=ns).text
 
                 workoutDayEl = xworkout.find("tpw:WorkoutDay", namespaces=ns)
                 startTimeEl = xworkout.find("tpw:StartTime", namespaces=ns)
@@ -111,20 +113,32 @@ class TrainingPeaksService(ServiceBase):
                 if startTime is None:
                     continue # Planned but not executed yet.
                 activity.StartTime = startTime
-                activity.EndTime = activity.StartTime + timedelta(seconds=float(xworkout.find("tpw:TimeTotalInSeconds", namespaces=ns).text))
+
+                endTimeEl = xworkout.find("tpw:TimeTotalInSeconds", namespaces=ns)
+                if not endTimeEl.text:
+                    exclusions.append(APIExcludeActivity("Activity has no duration", activityId=workoutId))
+                    continue
+
+                activity.EndTime = activity.StartTime + timedelta(seconds=float(endTimeEl.text))
+
                 distEl = xworkout.find("tpw:DistanceInMeters", namespaces=ns)
                 if distEl.text:
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(distEl.text))
                 # PWX is damn near comprehensive, no need to fill in any of the other statisitcs here, really
-                workoutId = xworkout.find("tpw:WorkoutId", namespaces=ns).text
+
                 if workoutId in discoveredWorkoutIds:
                     continue # There's the possibility of query overlap, if there are multiple activities on a single day that fall across the query return limit
+                discoveredWorkoutIds.append(workoutId)
 
                 workoutTypeEl = xworkout.find("tpw:WorkoutTypeDescription", namespaces=ns)
                 if workoutTypeEl.text:
+                    if workoutTypeEl.text == "Day Off":
+                        continue # TrainingPeaks has some weird activity types...
+                    if workoutTypeEl.text not in self._workoutTypeMappings:
+                        exclusions.append(APIExcludeActivity("Activity type %s unknown" % workoutTypeEl.text, activityId=workoutId))
+                        continue
                     activity.Type = self._workoutTypeMappings[workoutTypeEl.text]
 
-                discoveredWorkoutIds.append(workoutId)
                 activity.ServiceData = {"WorkoutID": workoutId}
                 activity.CalculateUID()
                 activities.append(activity)
