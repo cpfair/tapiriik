@@ -153,6 +153,10 @@ class Activity:
         """
         if "ServiceDataCollection" in self.__dict__:
             srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
+        if (self.TZ.tzinfo is None) and (self.StartTime.tzinfo is not None):
+            raise ValueError("StartTime has TZ while Activity does not")
+        if (self.TZ.tzinfo is not None) and (self.StartTime.tzinfo is None):
+            raise ValueError("Activity has TZ while StartTime does not")
         if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
         if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
@@ -282,6 +286,10 @@ class Lap:
         self.Intensity = intensity
         self.Stats = stats if stats else ActivityStatistics()
         self.Waypoints = waypointList if waypointList else []
+
+    def __str__(self):
+        return str(self.StartTime) + "-" + str(self.EndTime) + " " + self.Intensity + " (" + self.Trigger + ") " + str(len(self.Waypoints)) + " wps"
+    __repr__ = __str__
 
 class ActivityStatistics:
     _statKeyList = ["Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
