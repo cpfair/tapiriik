@@ -290,7 +290,7 @@ class Lap:
         self.Waypoints = waypointList if waypointList else []
 
     def __str__(self):
-        return str(self.StartTime) + "-" + str(self.EndTime) + " " + self.Intensity + " (" + self.Trigger + ") " + str(len(self.Waypoints)) + " wps"
+        return str(self.StartTime) + "-" + str(self.EndTime) + " " + str(self.Intensity) + " (" + str(self.Trigger) + ") " + str(len(self.Waypoints)) + " wps"
     __repr__ = __str__
 
 class ActivityStatistics:
