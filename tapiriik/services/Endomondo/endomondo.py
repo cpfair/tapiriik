@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT
+from tapiriik.settings import WEB_ROOT, ENDOMONDO_CLIENT_KEY, ENDOMONDO_CLIENT_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
@@ -69,7 +69,14 @@ class EndomondoService(ServiceBase):
     SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
 
     def WebInit(self):
-        pass
+        self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
+
+    def GenerateUserAuthorizationURL(self, level=None):
+        return_url = WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"})
+        resp = requests.post("https://api.endomondo.com/oauth/request_token", params={"oauth_consumer_key": ENDOMONDO_CLIENT_KEY, "oauth_callback": return_url})
+        print(resp.text)
+        print(resp.status_code)
+        raise ValueError()
 
     def RetrieveAuthorizationToken(self, req, level):
         pass
