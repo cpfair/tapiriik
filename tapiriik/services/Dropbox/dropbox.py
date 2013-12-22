@@ -216,14 +216,24 @@ class DropboxService(ServiceBase):
                 else:
                     relPath = path.replace("/Apps/tapiriik/", "", 1)  # dropbox api is meh api
 
-                existing = [(k, x) for k, x in cache["Activities"].items() if x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
-                existing = existing[0] if existing else None
-                if existing is not None:
-                    existUID, existing = existing
+                hashedRelPath = self._hash_path(relPath)
+                if hashedRelPath in cache["Activities"]:
+                    existing = cache["Activities"][hashedRelPath]
+                else:
+                    existing = None
+
+                if not existing:
+                    # Continue to use the old records keyed by UID where possible
+                    existing = [(k, x) for k, x in cache["Activities"].items() if "Path" in x and x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
+                    existing = existing[0] if existing else None
+                    if existing is not None:
+                        existUID, existing = existing
+                        existing["UID"] = existUID
+
                 if existing and existing["Rev"] == file["Rev"]:
                     # don't need entire activity loaded here, just UID
                     act = UploadedActivity()
-                    act.UID = existUID
+                    act.UID = existing["UID"]
                     act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y %z")
                     if "EndTime" in existing:  # some cached activities may not have this, it is not essential
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
@@ -238,7 +248,7 @@ class DropboxService(ServiceBase):
                         continue
                     del act.Laps
                     act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
-                    cache["Activities"][act.UID] = {"Rev": rev, "Path": relPath, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
+                    cache["Activities"][hashedRelPath] = {"Rev": rev, "UID": act.UID, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 tagRes = self._tagActivity(relPath)
                 act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
 
@@ -248,7 +258,10 @@ class DropboxService(ServiceBase):
 
                 activities.append(act)
 
-        cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, cache, upsert=True)
+        if "_id" in cache:
+            cachedb.dropbox_cache.save(cache)
+        else:
+            cachedb.dropbox_cache.insert(cache)
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
@@ -270,6 +283,15 @@ class DropboxService(ServiceBase):
             raise APIExcludeActivity("Too few waypoints", activityId=path)
 
         return activity
+
+    def _hash_path(self, path):
+        import hashlib
+        # Can't use the raw file path as a dict key in Mongo, since who knows what'll be in it (periods especially)
+        # Used the activity UID for the longest time, but that causes inefficiency when >1 file represents the same activity
+        # So, this:
+        csp = hashlib.new("md5")
+        csp.update(path.encode('utf-8'))
+        return csp.hexdigest()
 
     def _clean_activity_name(self, name):
         # https://www.dropbox.com/help/145/en
@@ -315,7 +337,7 @@ class DropboxService(ServiceBase):
             self._raiseDbException(e)
         # fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord.ExternalID})
-        cache["Activities"][activity.UID] = {"Rev": metadata["rev"], "Path": "/" + fname, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
+        cache["Activities"][self._hash_path("/" + fname)] = {"Rev": metadata["rev"], "UID": activity.UID, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord.ExternalID}, cache)  # not upsert, hope the record exists at this time...
 
     def DeleteCachedData(self, serviceRecord):
