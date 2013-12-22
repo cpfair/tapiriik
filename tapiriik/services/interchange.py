@@ -153,9 +153,9 @@ class Activity:
         """
         if "ServiceDataCollection" in self.__dict__:
             srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
-        if (self.TZ.tzinfo is None) and (self.StartTime.tzinfo is not None):
+        if (self.TZ is None) and (self.StartTime.tzinfo is not None):
             raise ValueError("StartTime has TZ while Activity does not")
-        if (self.TZ.tzinfo is not None) and (self.StartTime.tzinfo is None):
+        if (self.TZ is not None) and (self.StartTime.tzinfo is None):
             raise ValueError("Activity has TZ while StartTime does not")
         if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
             raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
@@ -175,6 +175,8 @@ class Activity:
             raise ValueError("Exceedingly long activity (distance)")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
             raise ValueError("Activity is from the future")
+        if self.StartTime.replace(tzinfo=None) < datetime(1995, 1, 1):
+            raise ValueError("Activity falls implausibly far in the past")
         if self.EndTime and self.EndTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5 + 5)): # Based on the 5-day activity length limit imposed later.
             raise ValueError("Activity ends in the future")
 
