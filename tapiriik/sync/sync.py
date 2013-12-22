@@ -297,6 +297,9 @@ class Sync:
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
+        def _updateSyncProgress(step, progress):
+            db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": progress, "SynchronizationStep": step}})
+
         logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(user["_id"]) + ".log", maxBytes=5242880, backupCount=1)
         logging_file_handler.setFormatter(logging.Formatter(Sync._logFormat, Sync._logDateFormat))
         _global_logger.addHandler(logging_file_handler)
@@ -363,6 +366,7 @@ class Sync:
                         # the connection never gets saved in full again, so we can sub these in here at no risk
                         conn.ExtendedAuthorization = extAuthDetails[0]
 
+                _updateSyncProgress(SyncStep.List, svc.ID)
                 try:
                     logger.info("\tRetrieving list from " + svc.ID)
                     svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
@@ -411,6 +415,7 @@ class Sync:
 
             totalActivities = len(activities)
             processedActivities = 0
+
             for activity in activities:
                 logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                 # Locally mark this activity as present on the appropriate services.
@@ -450,16 +455,17 @@ class Sync:
                     del activity
                     continue
 
+                # This is after the above exit points since they're the most frequent (& cheapest) cases - want to avoid DB churn
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.Download)
 
-
-                if totalActivities <= 0:
+                if activitiesHandled == 0:
+                    syncProgress = 0
+                elif activitiesTotal <= 0:
                     syncProgress = 1
                 else:
-                    syncProgress = max(0, min(1, processedActivities / totalActivities))
-                # This is after the above exit point since it's the most frequent case - want to avoid DB churn
-                db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": syncProgress}})
+                    syncProgress = max(0, min(1, activitiesHandled / activitiesTotal))
+                _updateSyncProgress(SyncStep.Download, syncProgress)
 
                 # The second most important line of logging in the application...
                 logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
@@ -576,7 +582,7 @@ class Sync:
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
-            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None}, "$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
+            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None, "SynchronizationStep": None}, "$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
             if null_next_sync_on_unlock:
                 # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
                 # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.

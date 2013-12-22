@@ -29,6 +29,7 @@ def sync_status(req):
                                     "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
                                     "Synchronizing": "SynchronizationWorker" in req.user,
                                     "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
+                                    "SynchronizationStep": req.user["SynchronizationStep"] if "SynchronizationStep" in req.user else None,
                                     "Errors": errorCodes,
                                     "Hash": syncHash}), mimetype="application/json")
 
