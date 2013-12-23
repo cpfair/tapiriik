@@ -9,12 +9,14 @@ from tapiriik.services.fit import FITIO
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
+from requests_oauthlib import OAuth1Session
 import pytz
 import re
 import zlib
 import os
 import logging
 import pickle
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,8 @@ class EndomondoService(ServiceBase):
     UserProfileURL = "http://www.endomondo.com/profile/{0}"
     UserActivityURL = "http://www.endomondo.com/workouts/{1}/{0}"
 
+    PartialSyncRequiresTrigger = True
+    AuthenticationNoFrame = True
 
     _activityMappings = {
         0:  ActivityType.Running,
@@ -68,18 +72,30 @@ class EndomondoService(ServiceBase):
     SupportsHR = True
     SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
 
+    _oauth_token_secrets = {}
+
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
 
+    def _oauthSession(self, connection=None, **params):
+        if connection:
+            params["resource_owner_key"] = connection.Authorization["Token"]
+            params["resource_owner_secret"] = connection.Authorization["Secret"]
+        return OAuth1Session(ENDOMONDO_CLIENT_KEY, client_secret=ENDOMONDO_CLIENT_SECRET, **params)
+
     def GenerateUserAuthorizationURL(self, level=None):
-        return_url = WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"})
-        resp = requests.post("https://api.endomondo.com/oauth/request_token", params={"oauth_consumer_key": ENDOMONDO_CLIENT_KEY, "oauth_callback": return_url})
-        print(resp.text)
-        print(resp.status_code)
-        raise ValueError()
+        oauthSession = self._oauthSession(callback_uri=WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"}))
+        tokens = oauthSession.fetch_request_token("https://api.endomondo.com/oauth/request_token")
+        self._oauth_token_secrets[tokens["oauth_token"]] = tokens["oauth_token_secret"]
+        return oauthSession.authorization_url("https://www.endomondo.com/oauth/authorize")
 
     def RetrieveAuthorizationToken(self, req, level):
-        pass
+        oauthSession = self._oauthSession(resource_owner_secret=self._oauth_token_secrets[req.GET["oauth_token"]])
+        oauthSession.parse_authorization_response(req.get_full_path())
+        tokens = oauthSession.fetch_access_token("https://api.endomondo.com/oauth/access_token")
+        userInfo = oauthSession.get("https://api.endomondo.com/api/1/user")
+        userInfo = userInfo.json()
+        return (userInfo["id"], {"Token": tokens["oauth_token"], "Secret": tokens["oauth_token_secret"]})
 
     def RevokeAuthorization(self, serviceRecord):
         pass
@@ -91,8 +107,15 @@ class EndomondoService(ServiceBase):
 
         return activities, exclusions
 
-    def DownloadActivity(self, serviceRecord, activity):
+    def SubscribeToPartialSyncTrigger(self, serviceRecord):
+        resp = self._oauthSession(serviceRecord).put("https://api.endomondo.com/api/1/subscriptions/workout/%s" % serviceRecord.ExternalID)
+        assert resp.status_code in [200, 201] # Created, or already existed
 
+    def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
+        resp = self._oauthSession(serviceRecord).delete("https://api.endomondo.com/api/1/subscriptions/workout/%s" % serviceRecord.ExternalID)
+        assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
+
+    def DownloadActivity(self, serviceRecord, activity):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):

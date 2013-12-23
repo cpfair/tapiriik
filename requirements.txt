@@ -7,3 +7,4 @@ python-dateutil
 Django==1.5.1
 pycrypto
 celery
+requests_oauthlib==0.4.0
