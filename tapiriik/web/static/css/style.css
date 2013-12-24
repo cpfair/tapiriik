@@ -146,7 +146,7 @@ body {
 	overflow:hidden;
 }
 
-.mountains div {
+.mountains .mountain {
 	position:absolute;
 	bottom:0;
 
@@ -169,6 +169,16 @@ body {
 	left:70px;
 	border-width:300px;
 	border-bottom: 225px solid #95cbe5;
+}
+
+.mountains .snow {
+	position: absolute;
+	bottom: 80px;
+	left: 0;
+	width:565px;
+	height:521px;
+	background-size: 100% 100%;
+	background-image: url('../img/snow.png');
 }
 
 .sun {
