@@ -33,4 +33,7 @@ def stringformat(value, *args):
 def percentage(value, *args):
     if not value:
         return "NaN"
-    return str(round(float(value) * 100)) + "%"
+    try:
+        return str(round(float(value) * 100)) + "%"
+    except ValueError:
+        return value
