@@ -1,22 +1,13 @@
 from tapiriik.settings import WEB_ROOT, ENDOMONDO_CLIENT_KEY, ENDOMONDO_CLIENT_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
-from tapiriik.services.sessioncache import SessionCache
-from tapiriik.services.fit import FITIO
 
 from django.core.urlresolvers import reverse
-from datetime import datetime, timedelta
-import requests
+from datetime import timedelta
+import dateutil.parser
 from requests_oauthlib import OAuth1Session
-import pytz
-import re
-import zlib
-import os
 import logging
-import pickle
-import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -31,41 +22,44 @@ class EndomondoService(ServiceBase):
     PartialSyncRequiresTrigger = True
     AuthenticationNoFrame = True
 
+    # The complete list:
+    # running,cycling transportation,cycling sport,mountain biking,skating,roller skiing,skiing cross country,skiing downhill,snowboarding,kayaking,kite surfing,rowing,sailing,windsurfing,fitness walking,golfing,hiking,orienteering,walking,riding,swimming,spinning,other,aerobics,badminton,baseball,basketball,boxing,stair climbing,cricket,cross training,dancing,fencing,american football,rugby,soccer,handball,hockey,pilates,polo,scuba diving,squash,table tennis,tennis,beach volley,volleyball,weight training,yoga,martial arts,gymnastics,step counter,crossfit,treadmill running,skateboarding,surfing,snowshoeing,wheelchair,climbing,treadmill walking
     _activityMappings = {
-        0:  ActivityType.Running,
-        2:  ActivityType.Cycling,  # the order of these matters since it picks the first match for uploads
-        1:  ActivityType.Cycling,
-        3:  ActivityType.MountainBiking,
-        4:  ActivityType.Skating,
-        6:  ActivityType.CrossCountrySkiing,
-        7:  ActivityType.DownhillSkiing,
-        8:  ActivityType.Snowboarding,
-        11: ActivityType.Rowing,
-        9:  ActivityType.Rowing,  # canoeing
-        18: ActivityType.Walking,
-        14: ActivityType.Walking,  # fitness walking
-        16: ActivityType.Hiking,
-        17: ActivityType.Hiking,  # orienteering
-        20: ActivityType.Swimming,
-        40: ActivityType.Swimming,  # scuba diving
-        22: ActivityType.Other,
-        92: ActivityType.Wheelchair
+        "running": ActivityType.Running,
+        "cycling transportation": ActivityType.Cycling,
+        "cycling sport": ActivityType.Cycling,
+        "mountain biking": ActivityType.MountainBiking,
+        "skating": ActivityType.Skating,
+        "skiing cross country": ActivityType.CrossCountrySkiing,
+        "skiing downhill": ActivityType.DownhillSkiing,
+        "snowboarding": ActivityType.Snowboarding,
+        "rowing": ActivityType.Rowing,
+        "fitness walking": ActivityType.Walking,
+        "hiking": ActivityType.Walking,
+        "orienteering": ActivityType.Walking,
+        "walking": ActivityType.Walking,
+        "swimming": ActivityType.Swimming,
+        "other": ActivityType.Other,
+        "treadmill running": ActivityType.Running,
+        "snowshoeing": ActivityType.Walking,
+        "wheelchair": ActivityType.Wheelchair,
+        "treadmill walking": ActivityType.Walking
     }
 
-    _reverseActivityMappings = {  # so that ambiguous events get mapped back to reasonable types
-        0:  ActivityType.Running,
-        2:  ActivityType.Cycling,
-        3:  ActivityType.MountainBiking,
-        4:  ActivityType.Skating,
-        6:  ActivityType.CrossCountrySkiing,
-        7:  ActivityType.DownhillSkiing,
-        8:  ActivityType.Snowboarding,
-        11: ActivityType.Rowing,
-        18: ActivityType.Walking,
-        16: ActivityType.Hiking,
-        20: ActivityType.Swimming,
-        22: ActivityType.Other,
-        92: ActivityType.Wheelchair
+    _reverseActivityMappings = {
+        "running": ActivityType.Running,
+        "cycling sport": ActivityType.Cycling,
+        "mountain biking": ActivityType.MountainBiking,
+        "skating": ActivityType.Skating,
+        "skiing cross country": ActivityType.CrossCountrySkiing,
+        "skiing downhill": ActivityType.DownhillSkiing,
+        "snowboarding": ActivityType.Snowboarding,
+        "rowing": ActivityType.Rowing,
+        "walking": ActivityType.Walking,
+        "swimming": ActivityType.Swimming,
+        "other": ActivityType.Other,
+        "snowshoeing": ActivityType.Walking,
+        "wheelchair": ActivityType.Wheelchair,
     }
 
     SupportedActivities = list(_activityMappings.values())
@@ -101,9 +95,74 @@ class EndomondoService(ServiceBase):
         pass
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
+        oauthSession = self._oauthSession(serviceRecord)
 
         activities = []
         exclusions = []
+
+        while True:
+            resp = oauthSession.get("https://api.endomondo.com/api/1/workouts", params={"before_id": activities[-1].ServiceData["WorkoutID"] if len(activities) else None})
+            respList = resp.json()["data"]
+            for actInfo in respList:
+                activity = UploadedActivity()
+                activity.StartTime = dateutil.parser.parse(actInfo["start_time"])
+
+                if "end_time" in actInfo:
+                    activity.EndTime = dateutil.parser.parse(actInfo["end_time"])
+                else:
+                    continue
+
+                if actInfo["sport"] in self._activityMappings:
+                    activity.Type = self._activityMappings[actInfo["sport"]]
+
+                # "duration" is timer time
+                if "duration_total" in actInfo:
+                    activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(actInfo["duration_total"])))
+
+                if "distance_total" in actInfo:
+                    activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(actInfo["distance_total"]))
+
+                if "calories_total" in actInfo:
+                    activity.Stats.Energy = ActivityStatisticUnit(ActivityStatisticUnit.Kilocalories, value=float(actInfo["calories_total"]))
+
+                activity.Stats.Elevation = ActivityStatisticUnit(ActivityStatisticUnit.Meters)
+
+                if "altitude_max" in actInfo:
+                    activity.Stats.Elevation.Max = float(actInfo["altitude_max"])
+
+                if "altitude_min" in actInfo:
+                    activity.Stats.Elevation.Min = float(actInfo["altitude_min"])
+
+                if "total_ascent" in actInfo:
+                    activity.Stats.Elevation.Gain = float(actInfo["total_ascent"])
+
+                if "total_descent" in actInfo:
+                    activity.Stats.Elevation.Loss = float(actInfo["total_descent"])
+
+                if "speed_max" in actInfo:
+                    activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, max=float(actInfo["speed_max"]))
+
+                if "heart_rate_avg" in actInfo:
+                    activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(actInfo["heart_rate_avg"]))
+
+                if "heart_rate_max" in actInfo:
+                    activity.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=float(actInfo["heart_rate_max"])))
+
+                if "cadence_avg" in actInfo:
+                    activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=int(actInfo["cadence_avg"]))
+
+                if "cadence_max" in actInfo:
+                    activity.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, max=int(actInfo["cadence_max"])))
+
+                if "title" in actInfo:
+                    activity.Name = actInfo["title"]
+
+                activity.ServiceData = {"WorkoutID": int(actInfo["id"])}
+
+                activities.append(activity)
+
+            if not exhaustive or not len(respList):
+                break
 
         return activities, exclusions
 
@@ -116,6 +175,12 @@ class EndomondoService(ServiceBase):
         assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
 
     def DownloadActivity(self, serviceRecord, activity):
+        resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
+
+        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
+        activity.Laps = [lap]
+        lap.Waypoints = []
+
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
