@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD, SITE_VER
 from tapiriik.database import db
 from tapiriik.sync import Sync
@@ -227,7 +228,7 @@ def diag_payments(req):
 @diag_requireAuth
 def diag_ip(req):
     from ipware.ip import get_real_ip
-    return str(get_real_ip(req))
+    return HttpResponse(get_real_ip(req))
 
 def diag_login(req):
     if "password" in req.POST:
