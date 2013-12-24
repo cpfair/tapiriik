@@ -459,12 +459,12 @@ class Sync:
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.Download)
 
-                if activitiesHandled == 0:
+                if processedActivities == 0:
                     syncProgress = 0
-                elif activitiesTotal <= 0:
+                elif totalActivities <= 0:
                     syncProgress = 1
                 else:
-                    syncProgress = max(0, min(1, activitiesHandled / activitiesTotal))
+                    syncProgress = max(0, min(1, processedActivities / totalActivities))
                 _updateSyncProgress(SyncStep.Download, syncProgress)
 
                 # The second most important line of logging in the application...
