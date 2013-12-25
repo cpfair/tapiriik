@@ -473,14 +473,15 @@ class Sync:
                 # Download the full activity record
                 act = None
                 actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
+                actAvailableFromSvcs = [[x for x in serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromSvcIds]
+                # Sort by service priority. I'm about to leave the house for christsmas dinner, so making this not hardcoded can wait.
+                servicePriority = ["garminconnect", "sporttracks", "dropbox", "trainingpeaks", "ridewithgps", "strava", "runkeeper", "endomondo"]
+                actAvailableFromSvcIds.sort(key=lambda x: servicePriority.index(x.Service.ID))
 
+                # TODO: redo this, it was completely broken:
                 # Prefer retrieving the activity from its original source.
-                if hasattr(activity, "Origin") and activity.Origin.Service.ID in actAvailableFromSvcIds:
-                    # Move this service to the front of the line.
-                    actAvailableFromSvcIds.remove(activity.Origin.Service.ID)
-                    actAvailableFromSvcIds.insert(0, activity.Origin.Service.ID)
 
-                for dlSvcRecId in actAvailableFromSvcIds:
+                for dlSvcRecord in actAvailableFromSvcs:
                     dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId][0]
                     dlSvc = dlSvcRecord.Service
                     logger.info("\tfrom " + dlSvc.ID)
@@ -493,7 +494,7 @@ class Sync:
 
                     workingCopy = copy.copy(activity)  # we can hope
                     # Load in the service data in the same place they left it.
-                    workingCopy.ServiceData = workingCopy.ServiceDataCollection[dlSvcRecId] if dlSvcRecId in workingCopy.ServiceDataCollection else None
+                    workingCopy.ServiceData = workingCopy.ServiceDataCollection[dlSvcRecord._id] if dlSvcRecord._id in workingCopy.ServiceDataCollection else None
                     try:
                         workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
                     except (ServiceException, ServiceWarning) as e:
