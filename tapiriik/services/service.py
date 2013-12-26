@@ -30,6 +30,21 @@ class Service:
     def List():
         return [RunKeeper, Strava, Endomondo, GarminConnect, SportTracks, Dropbox, RideWithGPS, TrainingPeaks]
 
+    def PreferredDownloadPriorityList():
+        # Ideally, we'd make an informed decision based on whatever features the activity had
+        # ...but that would require either a) downloading it from evry service or b) storing a lot more activity metadata
+        # So, I think this will do for now
+        return [
+            GarminConnect, # The reference
+            SportTracks, # Pretty much equivalent to GC, no temperature (not that GC temperature works all thar well now, but I digress)
+            TrainingPeaks, # No seperate run cadence, but has temperature
+            Dropbox, # Equivalent to any of the above
+            RideWithGPS, # Uses TCX for everything, so same as Dropbox
+            Strava, # No laps
+            Endomondo, # No laps, no cadence
+            RunKeeper, # No laps, no cadence, no power
+        ]
+
     def WebInit():
         from tapiriik.settings import WEB_ROOT
         from django.core.urlresolvers import reverse

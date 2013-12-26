@@ -1,5 +1,5 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
+from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from datetime import datetime, timedelta
 import sys
@@ -474,15 +474,14 @@ class Sync:
                 act = None
                 actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
                 actAvailableFromSvcs = [[x for x in serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromSvcIds]
-                # Sort by service priority. I'm about to leave the house for christsmas dinner, so making this not hardcoded can wait.
-                servicePriority = ["garminconnect", "sporttracks", "dropbox", "trainingpeaks", "ridewithgps", "strava", "runkeeper", "endomondo"]
-                actAvailableFromSvcIds.sort(key=lambda x: servicePriority.index(x.Service.ID))
+
+                servicePriorityList = Service.PreferredDownloadPriorityList()
+                actAvailableFromSvcs.sort(key=lambda x: servicePriorityList.index(x.Service))
 
                 # TODO: redo this, it was completely broken:
                 # Prefer retrieving the activity from its original source.
 
                 for dlSvcRecord in actAvailableFromSvcs:
-                    dlSvcRecord = [x for x in serviceConnections if x._id == dlSvcRecId][0]
                     dlSvc = dlSvcRecord.Service
                     logger.info("\tfrom " + dlSvc.ID)
                     if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
