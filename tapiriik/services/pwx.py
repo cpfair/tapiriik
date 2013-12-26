@@ -222,7 +222,10 @@ class PWXIO:
             _writeMinMaxAvg(xsummary, "hr", obj.Stats.HR.asUnits(ActivityStatisticUnit.BeatsPerMinute))
             _writeMinMaxAvg(xsummary, "spd", obj.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond))
             _writeMinMaxAvg(xsummary, "pwr", obj.Stats.Power.asUnits(ActivityStatisticUnit.Watts))
-            _writeMinMaxAvg(xsummary, "cad", obj.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute))
+            if obj.Stats.Cadence.Min is not None or obj.Stats.Cadence.Max is not None or obj.Stats.Cadence.Average is not None:
+                _writeMinMaxAvg(xsummary, "cad", obj.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute))
+            else:
+                _writeMinMaxAvg(xsummary, "cad", obj.Stats.RunCadence.asUnits(ActivityStatisticUnit.StepsPerMinute))
             if obj.Stats.Distance.Value:
                 etree.SubElement(xsummary, "dist").text = str(obj.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
             _writeMinMaxAvg(xsummary, "alt", altStat)
@@ -254,6 +257,9 @@ class PWXIO:
 
             if wp.Cadence is not None:
                 etree.SubElement(xsample, "cad").text = str(round(wp.Cadence))
+            else:
+                if wp.RunCadence is not None:
+                    etree.SubElement(xsample, "cad").text = str(round(wp.RunCadence))
 
             if wp.Distance is not None:
                 etree.SubElement(xsample, "dist").text = str(wp.Distance)
