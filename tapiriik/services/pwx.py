@@ -20,6 +20,19 @@ class PWXIO:
         "Other": ActivityType.Other
     }
 
+    _reverseSportTypeMappings = {
+        ActivityType.Cycling: "Bike",
+        ActivityType.Running: "Run",
+        ActivityType.Walking: "Walk",
+        ActivityType.Hiking: "Walk", # Hilly walking?
+        ActivityType.Swimming: "Swim",
+        ActivityType.MountainBiking: "Mountain Bike",
+        ActivityType.CrossCountrySkiing: "XC Ski",
+        ActivityType.DownhillSkiing: "XC Ski", # For whatever reason there's no "ski" type
+        ActivityType.Rowing: "Rowing",
+        ActivityType.Other: "Other",
+    }
+
     def Parse(pwxData, activity=None):
         ns = copy.deepcopy(PWXIO.Namespaces)
         ns["pwx"] = ns[None]
@@ -184,8 +197,8 @@ class PWXIO:
 
         xworkout = etree.SubElement(xroot, "workout")
 
-        if activity.Type in PWXIO._sportTypeMappings.values():
-            etree.SubElement(xworkout, "sportType").text = [key for key,value in PWXIO._sportTypeMappings.items() if value == activity.Type][0]
+        if activity.Type in PWXIO._reverseSportTypeMappings:
+            etree.SubElement(xworkout, "sportType").text = PWXIO._reverseSportTypeMappings[activity.Type]
 
         if activity.Name:
             etree.SubElement(xworkout, "title").text = activity.Name

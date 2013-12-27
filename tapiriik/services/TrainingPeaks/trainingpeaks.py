@@ -38,7 +38,7 @@ class TrainingPeaksService(ServiceBase):
         "Custom": ActivityType.Other,
         "Other": ActivityType.Other,
     }
-    SupportedActivities = list(_workoutTypeMappings.values())
+    SupportedActivities = ActivityType.List() # All.
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})

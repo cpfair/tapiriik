@@ -21,6 +21,9 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     Elliptical = "Elliptical"
     Other = "Other"
 
+    def List():
+        return [ActivityType.Running, ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.Walking, ActivityType.Hiking, ActivityType.DownhillSkiing, ActivityType.CrossCountrySkiing, ActivityType.Snowboarding, ActivityType.Skating, ActivityType.Swimming, ActivityType.Wheelchair, ActivityType.Rowing, ActivityType.Elliptical, ActivityType.Other]
+
     # The right-most element is the "most specific."
     _hierarchy = [
         [Cycling, MountainBiking],
