@@ -180,6 +180,7 @@ class RunKeeperService(ServiceBase):
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
         activity.Stationary = activity.CountTotalWaypoints() <= 1
 
+        # This could cause confusion, since when I upload activities to RK I populate the notes field with the activity name. My response is to... well... not sure.
         activity.Notes = ridedata["notes"] if "notes" in ridedata else None
         activity.Private = ridedata["share"] == "Just Me"
         return activity

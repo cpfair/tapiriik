@@ -197,7 +197,8 @@ class Activity:
                 raise ValueError("Activity with 1 lap has mismatching statistics between activity and lap")
         altLow = None
         altHigh = None
-        pointsWithoutLocation = 0
+        pointsWithLocation = 0
+        unpausedPoints = 0
         for lap in self.Laps:
             if not lap.StartTime:
                 raise ValueError("Lap has no start time")
@@ -206,6 +207,8 @@ class Activity:
             for wp in lap.Waypoints:
                 if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
                     raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
+                if wp.Type != WaypointType.Pause:
+                    unpausedPoints += 1
                 if wp.Location:
                     if wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                         raise ValueError("Invalid lat/lng")
@@ -215,8 +218,12 @@ class Activity:
                         altLow = wp.Location.Altitude
                     if wp.Location.Altitude is not None and (altHigh is None or wp.Location.Altitude > altHigh):
                         altHigh = wp.Location.Altitude
-                if not wp.Location or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                    pointsWithoutLocation += 1
+                if wp.Location and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                    pointsWithLocation += 1
+        if unpausedPoints == 1:
+            raise ValueError("0 < n <= 1 unpaused points in activity")
+        if pointsWithLocation == 1:
+            raise ValueError("0 < n <= 1 geographic points in activity") # Make RK happy
         if altLow is not None and altLow == altHigh and altLow == 0:  # some activities have very sporadic altitude data, we'll let it be...
             raise ValueError("Invalid altitudes / no change from " + str(altLow))
 
