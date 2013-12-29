@@ -180,6 +180,7 @@ class RunKeeperService(ServiceBase):
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["average_heart_rate"]))
         activity.Stationary = activity.CountTotalWaypoints() <= 1
 
+        activity.Notes = ridedata["notes"] if "notes" in ridedata else None
         activity.Private = ridedata["share"] == "Just Me"
         return activity
 
