@@ -259,6 +259,7 @@ class StravaService(ServiceBase):
             req = {
                     "data_type": "fit",
                     "activity_name": activity.Name,
+                    "description": activity.Notes, # Paul Mach said so.
                     "activity_type": self._activityTypeMappings[activity.Type],
                     "private": 1 if activity.Private else 0}
 
