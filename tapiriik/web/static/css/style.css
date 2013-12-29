@@ -866,6 +866,17 @@ form.dropboxConfig #filename {
 	border-bottom-right-radius:5px;
 }
 
+ul.credits {
+	margin-left:0;
+	padding-left: 0;
+}
+
+ul.credits li {
+	margin-left: 0;
+	padding-left: 0;
+	margin-bottom: 15px;
+}
+
 .privacyTable {
 	width:100%;
 	border-spacing: 0;
@@ -957,21 +968,43 @@ form.dropboxConfig #filename {
 	font-size:70%;
 }
 
-@media only screen and (max-device-width: 480px) {
+@media only screen and (max-width: 1065px) { /* Magic # so that there's no jump when resizing. Not that anyone would ever notive... */
 	.contentOuterBorder {
 		width:90%;
 		left:5%;
 		margin-left:0;
 	}
-	.environsWrap {
-		position:static;
-	}
+
 	.environs .mountains {
 		display: none;
 	}
-	.environs .sun {
-		position:absolute;
-		border-width:77px;
 
+	.environsWrap {
+		position:static;
+	}
+}
+
+@media only screen and (max-width: 480px) {
+	.contentOuterBorder {
+		width:100%;
+		left:0;
+		margin-left:0;
+	}
+
+	.environs {
+		display: none;
+	}
+
+	.faqBlocks div.right {
+		float:left;
+		clear:left;
+	}
+
+	.faqBlocks div {
+		width:95%;
+	}
+
+	.contactBlock {
+		width:100%;
 	}
 }
