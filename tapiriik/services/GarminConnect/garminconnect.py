@@ -29,6 +29,7 @@ class GarminConnectService(ServiceBase):
                                 "hiking": ActivityType.Hiking,
                                 "resort_skiing_snowboarding": ActivityType.DownhillSkiing,
                                 "cross_country_skiing": ActivityType.CrossCountrySkiing,
+                                "skate_skiing": ActivityType.CrossCountrySkiing, # Well, it ain't downhill?
                                 "backcountry_skiing_snowboarding": ActivityType.CrossCountrySkiing,  # ish
                                 "skating": ActivityType.Skating,
                                 "swimming": ActivityType.Swimming,
