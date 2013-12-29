@@ -153,8 +153,11 @@ class GarminConnectService(ServiceBase):
                     activity.TZ = pytz.FixedOffset(float(act["activityTimeZone"]["offset"]) * 60)
 
                 logger.debug("Name " + act["activityName"]["value"] + ":")
-                if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled":
+                if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled": # This doesn't work for internationalized accounts, oh well.
                     activity.Name = act["activityName"]["value"]
+
+                if len(act["activityDescription"]["value"].strip()):
+                    activity.Notes = act["activityDescription"]["value"]
                 # beginTimestamp/endTimestamp is in UTC
                 activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
                 if "sumElapsedDuration" in act:
