@@ -8,11 +8,7 @@ import json
 
 
 def auth_login(req, service):
-    if "password" in req.POST:
-        res = auth_do(req, service)
-        if res:
-            return redirect("dashboard")
-    return render(req, "auth/login.html", {"serviceid": service, "service": Service.FromID(service)})
+    return redirect("/#/auth/%s" % service)
 
 
 @require_POST

@@ -16,11 +16,6 @@
 				{% with svc=connection.Service %}
 					{% if svc.ID not in config.withdrawn_services %}
 						{% include "service-button.html" with provider=svc connection=connection %}
-						{% if svc.Configurable %}
-							<noscript>
-							<p><a href="/configure/{{ connection.Service }}">Configure {{ svc.DisplayName }} &raquo;</a></p>
-							</noscript>
-						{% endif %}
 					{% endif %}
 				{% endwith %}
 			{% endfor %}
