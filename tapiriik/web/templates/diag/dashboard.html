@@ -7,6 +7,8 @@
 	<ul style="list-style:none;margin:0;padding:0;">
 		<li><b>Users:</b> {{ userCt }} ({{ autosyncCt }} automatically synchronizing)</li>
 		<li><b>Aggregated distance:</b> {{ stats.TotalDistanceSynced|format_meters }} km</li>
+		<li><b>Sync distance rate (24hr):</b> {{ stats.LastDayDistanceSynced|format_daily_meters_hourly_rate }} km/h</li>
+		<li><b>Sync distance rate (1hr):</b> {{ stats.LastHourDistanceSynced|format_meters }} km/h</li>
 		<li><b>Sync time used:</b> {{ stats.TotalSyncTimeUsed|floatformat:0 }} sec</li>
 		<li><b>Active Workers:</b> {% for worker in activeWorkers %}<tt>{{ worker.Process }}@{{ worker.Host }}</tt> {% if worker.Version != config.siteVer %} (out of date){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
 		<li><b>Stalled Workers:</b> <span style="color:red">{% for worker in stalledWorkers %}<form action="" method="POST"><tt>{{ worker.Process }}@{{ worker.Host }}</tt> since {{ worker.Heartbeat }} UTC{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>{% endfor %}</span></li>

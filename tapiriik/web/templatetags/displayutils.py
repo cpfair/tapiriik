@@ -10,6 +10,13 @@ def meters_to_kms(value):
     except:
         return "NaN"
 
+@register.filter(name="format_daily_meters_hourly_rate")
+def meters_per_day_to_km_per_hour(value):
+    try:
+        return (value / 24) / 1000
+    except:
+        return "0"
+
 @register.filter(name='json')
 def jsonit(obj):
     return json.dumps(obj)

@@ -1,7 +1,13 @@
 from tapiriik.database import db
 from datetime import datetime, timedelta
-#  total distance synced
+# total distance synced
 distanceSynced = db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
+
+# last 24hr, for rate calculation
+lastDayDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
+
+# similarly, last 1hr
+lastHourDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
 
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
@@ -55,7 +61,7 @@ db.sync_status_stats.insert({
         "SyncTimeUsed": timeUsed
 })
 
-db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
+db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
 
 
 def aggregateCommonErrors():
