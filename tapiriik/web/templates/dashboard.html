@@ -1,6 +1,7 @@
 {% extends "site.html" %}
 {% load services %}
 {% load users %}
+{% load displayutils %}
 {% block title %}{% if user != none %}dashboard{% else %}sync your runs, rides & more{% endif %}{% endblock %}
 
 {% block content %}
@@ -9,6 +10,11 @@
 		<h1>Substituting user</h1>
 		<a href="{% url 'diagnostics_unsu' %}">Return</a>
 		<hr/>
+		{% endif %}
+		{% if user.ConnectedServices|length > 1 %}
+			{% infotip connectedWillSync %}Connected services will be synchronized {% if user|has_active_payment %}automatically{% else %}when you click Synchronize now{% endif %}{% endinfotip %}
+		{% else %}
+			{% infotip connectOneMore %}Connected a second service to synchronize your activities to &amp; from{% endinfotip %}
 		{% endif %}
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
@@ -47,7 +53,7 @@
 
 	{% for provider in user.ConnectedServices|svc_providers_except %}
 		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
-			{% if forloop.first %}<hr>{% endif %}
+			{% if forloop.first %}<hr>{% infotip connectMore %}You can synchronize more services by connecting them below{% endinfotip %}{% endif %}
 			{% include "service-button.html" with provider=provider inactive=True %}
 		{% endif %}
 	{% endfor %}

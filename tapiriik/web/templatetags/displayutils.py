@@ -44,3 +44,23 @@ def percentage(value, *args):
         return str(round(float(value) * 100)) + "%"
     except ValueError:
         return value
+
+
+def do_infotip(parser, token):
+    tagname, infotipId = token.split_contents()
+    nodelist = parser.parse(('endinfotip',))
+    parser.delete_first_token()
+    return InfoTipNode(nodelist, infotipId)
+
+class InfoTipNode(template.Node):
+    def __init__(self, nodelist, infotipId):
+        self.nodelist = nodelist
+        self.infotipId = infotipId
+    def render(self, context):
+        hidden_infotips = context.get('hidden_infotips', None)
+        if hidden_infotips and self.infotipId in hidden_infotips:
+            return ""
+        output = self.nodelist.render(context)
+        return "<p class=\"infotip\" id=\"%s\">%s</p>" % (self.infotipId, output)
+
+register.tag("infotip", do_infotip)
