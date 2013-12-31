@@ -526,6 +526,7 @@ class Sync:
                         continue
                     else:
                         act = workingCopy
+                        act.SourceConnection = dlSvcRecord
                         break  # succesfully got the activity + passed sanity checks, can stop now
 
                 if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken

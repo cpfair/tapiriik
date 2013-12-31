@@ -203,7 +203,12 @@ class PWXIO:
         if activity.Notes:
             etree.SubElement(xworkout, "cmt").text = activity.Notes
 
-        etree.SubElement(xworkout, "device")
+        xdevice = etree.SubElement(xworkout, "device")
+
+        # By Ben's request
+        etree.SubElement(xdevice, "make").text = "tapiriik"
+        if hasattr(activity, "SourceConnection"):
+            etree.SubElement(xdevice, "model").text = activity.SourceConnection.Service.ID
 
         etree.SubElement(xworkout, "time").text = activity.StartTime.replace(tzinfo=None).isoformat()
 
