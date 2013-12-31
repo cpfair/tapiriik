@@ -713,11 +713,15 @@ tapiriik.UpdateSyncCountdown = function(){
 		tapiriik.Synchronizing = data.Synchronizing;
 		tapiriik.SynchronizationProgress = data.SynchronizationProgress;
 		tapiriik.SynchronizationStep = data.SynchronizationStep;
+		tapiriik.SynchronizationWaitTime = data.SynchronizationWaitTime;
 		tapiriik.RefreshSyncCountdown();
 	}});
 };
 tapiriik.FormatTimespan = function(spanMillis){
-	if (Math.abs(spanMillis/1000)>60){
+	if (Math.abs(spanMillis/1000) > 60 * 60){
+		return Math.round(spanMillis/1000/60/60)+" hour"+(Math.ceil(spanMillis/1000/60/60)!=1?"s":"");
+	}
+	else if (Math.abs(spanMillis/1000) > 60){
 		return Math.round(spanMillis/1000/60)+" minute"+(Math.ceil(spanMillis/1000/60)!=1?"s":"");
 	} else {
 		return Math.ceil(spanMillis/1000)+" second"+(Math.ceil(spanMillis/1000)!=1?"s":"");
@@ -757,11 +761,15 @@ tapiriik.RefreshSyncCountdown = function(){
 			$("#syncButton").hide();
 
 			if (!tapiriik.Synchronizing){
-				$("#syncStatusPreamble").text("Queuing to synchronize");
+				var waitTimeMessage = "";
+				if (tapiriik.SynchronizationWaitTime > 60) { // Otherwise you'd expect a countdown, which this is generally not.
+					waitTimeMessage = " (approximately " + tapiriik.FormatTimespan(tapiriik.SynchronizationWaitTime * 1000) + ")";
+				}
+				$("#syncStatusPreamble").text("Queuing to synchronize" + waitTimeMessage);
 			} else {
 				var progress = "";
 				if (tapiriik.SynchronizationStep == "list") {
-					progress = "(checking " + tapiriik.ServiceInfo[tapiriik.SynchronizationProgress].DisplayName + ")"
+					progress = "(checking " + tapiriik.ServiceInfo[tapiriik.SynchronizationProgress].DisplayName + ")";
 				} else {
 					progress = "(" + Math.round(tapiriik.SynchronizationProgress*100) + "% complete)";
 				}

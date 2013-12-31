@@ -12,6 +12,7 @@ def sync_status(req):
     if not req.user:
         return HttpResponse(status=403)
 
+    stats = db.stats.find_one()
     syncHash = 1  # Just used to refresh the dashboard page, until I get on the Angular bandwagon.
     conns = User.GetConnectionRecordsByUser(req.user)
     errorCodes = []
@@ -30,6 +31,7 @@ def sync_status(req):
                                     "Synchronizing": "SynchronizationWorker" in req.user,
                                     "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
                                     "SynchronizationStep": req.user["SynchronizationStep"] if "SynchronizationStep" in req.user else None,
+                                    "SynchronizationWaitTime": (stats["QueueHeadTime"] - (datetime.utcnow() - req.user["NextSynchronization"]).total_seconds()) if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
                                     "Errors": errorCodes,
                                     "Hash": syncHash}), mimetype="application/json")
 

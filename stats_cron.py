@@ -9,6 +9,13 @@ lastDayDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt"
 # similarly, last 1hr
 lastHourDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
 
+# sync wait time, to save making 1 query/sec-user-browser
+queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker":None}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
+queueHeadTime = timedelta(0)
+for queuedUser in queueHead:
+    queueHeadTime += datetime.utcnow() - queuedUser["NextSynchronization"]
+queueHeadTime /= len(queueHead)
+
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
 timeUsed = db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}])["result"][0]["total"]
@@ -58,10 +65,11 @@ db.sync_status_stats.insert({
         "Pending": pendingSynchronizations,
         "ErrorUsers": usersWithErrors,
         "TotalErrors": totalErrors,
-        "SyncTimeUsed": timeUsed
+        "SyncTimeUsed": timeUsed,
+        "SyncQueueHeadTime": queueHeadTime.total_seconds()
 })
 
-db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "Updated": datetime.utcnow()}}, upsert=True)
+db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "QueueHeadTime": queueHeadTime.total_seconds(), "Updated": datetime.utcnow()}}, upsert=True)
 
 
 def aggregateCommonErrors():
