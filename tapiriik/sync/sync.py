@@ -389,12 +389,14 @@ class Sync:
                 for act in activities:
                     act.FallbackTZ = fallbackTZ
 
+            logger.info("Reading activity origins")
             origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
             activitiesWithOrigins = [x["ActivityUID"] for x in origins]
 
             # Makes reading the logs much easier.
             activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
 
+            logger.info("Populating origins")
             # Populate origins
             for activity in activities:
                 if len(activity.ServiceDataCollection.keys()) == 1:
@@ -556,6 +558,7 @@ class Sync:
                     except Exception as e:
                         tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
                         continue
+                    logger.info("\t  Uploaded")
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord._id},
                                           {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
@@ -566,6 +569,7 @@ class Sync:
 
                 processedActivities += 1
 
+            logger.info("Writing back service data")
             nonblockingSyncErrorsCount = 0
             blockingSyncErrorsCount = 0
             syncExclusionCount = 0
@@ -575,6 +579,7 @@ class Sync:
                 blockingSyncErrorsCount += len([x for x in tempSyncErrors[conn._id] if "Block" in x and x["Block"]])
                 syncExclusionCount += len(tempSyncExclusions[conn._id].items())
 
+            logger.info("Finalizing")
             # clear non-persisted extended auth details
             cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
             # unlock the row
