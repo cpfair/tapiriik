@@ -61,10 +61,10 @@ class GPXIO:
                     if gpxtpxExtEl is not None:
                         hrEl = gpxtpxExtEl.find("gpxtpx:hr", namespaces=ns)
                         if hrEl is not None:
-                            wp.HR = int(hrEl.text)
+                            wp.HR = float(hrEl.text)
                         cadEl = gpxtpxExtEl.find("gpxtpx:cad", namespaces=ns)
                         if cadEl is not None:
-                            wp.Cadence = int(cadEl.text)
+                            wp.Cadence = float(cadEl.text)
                         tempEl = gpxtpxExtEl.find("gpxtpx:atemp", namespaces=ns)
                         if tempEl is not None:
                             wp.Temp = float(tempEl.text)
