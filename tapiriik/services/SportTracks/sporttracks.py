@@ -110,6 +110,7 @@ class SportTracksService(ServiceBase):
         "swimming": ActivityType.Swimming,
         "rowing": ActivityType.Rowing,
         "elliptical": ActivityType.Elliptical,
+        "gym": ActivityType.Gym,
         "other": ActivityType.Other
     }
 
@@ -126,6 +127,7 @@ class SportTracksService(ServiceBase):
         ActivityType.Swimming: "swimming",
         ActivityType.Rowing: "rowing",
         ActivityType.Elliptical: "gym: elliptical",
+        ActivityType.Gym: "gym",
         ActivityType.Other: "other"
     }
 
