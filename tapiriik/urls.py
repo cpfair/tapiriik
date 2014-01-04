@@ -18,6 +18,7 @@ urlpatterns = patterns('',
     url(r'^auth/login-ajax/(?P<service>.+)$', 'tapiriik.web.views.auth_login_ajax', {}, name='auth_simple_ajax', ),
     url(r'^auth/disconnect/(?P<service>.+)$', 'tapiriik.web.views.auth_disconnect', {}, name='auth_disconnect', ),
     url(r'^auth/disconnect-ajax/(?P<service>.+)$', 'tapiriik.web.views.auth_disconnect_ajax', {}, name='auth_disconnect_ajax', ),
+    url(r'^auth/logout$', 'tapiriik.web.views.auth_logout', {}, name='auth_logout', ),
 
     url(r'^account/setemail$', 'tapiriik.web.views.account_setemail', {}, name='account_set_email', ),
     url(r'^account/settz$', 'tapiriik.web.views.account_settimezone', {}, name='account_set_timezone', ),

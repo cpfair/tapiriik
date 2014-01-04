@@ -19,6 +19,10 @@ class User:
         req.session["userid"] = str(user["_id"])
         req.user = user
 
+    def Logout(req):
+        del req.session["userid"]
+        del req.user
+
     def Create():
         uid = db.users.insert({"Created": datetime.utcnow()})  # will mongodb insert an almost empty doc, i.e. _id?
         return db.users.find_one({"_id": uid})

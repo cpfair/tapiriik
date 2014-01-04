@@ -54,7 +54,6 @@ def auth_disconnect(req, service):
     return render(req, "auth/disconnect.html", {"serviceid": service, "service": Service.FromID(service)})
 
 
-@csrf_protect
 @require_POST  # don't want this getting called by just anything
 def auth_disconnect_ajax(req, service):
     try:
@@ -75,3 +74,8 @@ def auth_disconnect_do(req, service):
     Service.DeleteServiceRecord(svcRec)
     User.DisconnectService(svcRec)
     return True
+
+@require_POST
+def auth_logout(req):
+    User.Logout(req)
+    return redirect("/")

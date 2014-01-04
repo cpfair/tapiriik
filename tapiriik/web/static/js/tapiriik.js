@@ -796,6 +796,10 @@ tapiriik.ShowDebugInfo = function(){
 	infoPane.slideDown();
 };
 
+tapiriik.Logout = function(){
+	$().redirect("/auth/logout", {csrfmiddlewaretoken: csrftoken});
+};
+
 $(window).load(tapiriik.Init);
 
 // Seems like a waste of a HTTP request just for this...
