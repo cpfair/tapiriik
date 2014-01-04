@@ -142,7 +142,7 @@ class TCXIO:
                         lap.Stats.RunCadence.update(ActivityStatistic(ActivityStatisticUnit.StepsPerMinute, avg=float(avgRunCadEl.text) * 2))
                     stepsEl = lxEl.find("tpx:Steps", namespaces=ns)
                     if stepsEl is not None:
-                        lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=int(stepsEl.text)))
+                        lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=float(stepsEl.text)))
 
             xtrkseg = xlap.find("tcx:Track", namespaces=ns)
             if xtrkseg is None:
@@ -172,10 +172,10 @@ class TCXIO:
 
                 hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
                 if hrEl is not None:
-                    wp.HR = int(hrEl.find("tcx:Value", namespaces=ns).text)
+                    wp.HR = float(hrEl.find("tcx:Value", namespaces=ns).text)
                 cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
                 if cadEl is not None:
-                    wp.Cadence = int(cadEl.text)
+                    wp.Cadence = float(cadEl.text)
                 extsEl = xtrkpt.find("tcx:Extensions", namespaces=ns)
                 if extsEl is not None:
                     tpxEl = extsEl.find("tpx:TPX", namespaces=ns)
