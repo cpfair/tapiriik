@@ -29,7 +29,7 @@ class StravaService(ServiceBase):
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
-    # For mapping Strava->common; no ambiguity in Strava activity type
+    # For mapping common->Strava; no ambiguity in Strava activity type
     _activityTypeMappings = {
         ActivityType.Cycling: "Ride",
         ActivityType.MountainBiking: "Ride",
@@ -40,26 +40,26 @@ class StravaService(ServiceBase):
         ActivityType.Skating: "IceSkate",
         ActivityType.CrossCountrySkiing: "BackcountrySki",
         ActivityType.DownhillSkiing: "NordicSki",
-        ActivityType.DownhillSkiing: "AlpineSki",
         ActivityType.Swimming: "Swim",
         ActivityType.Gym: "Workout"
     }
 
-    # For mapping common->Strava
+    # For mapping Strava->common
     _reverseActivityTypeMappings = {
-        ActivityType.Cycling: "Ride",
-        ActivityType.MountainBiking: "MountainBiking",
-        ActivityType.Running: "Run",
-        ActivityType.Hiking: "Hike",
-        ActivityType.Walking: "Walk",
-        ActivityType.DownhillSkiing: "AlpineSki",
-        ActivityType.CrossCountrySkiing: "BackcountrySki",
-        ActivityType.Swimming: "Swim",
-        ActivityType.Skating: "IceSkate",
-        ActivityType.Gym: "Workout"
+        "Ride": ActivityType.Cycling,
+        "MountainBiking": ActivityType.MountainBiking,
+        "Run": ActivityType.Running,
+        "Hike": ActivityType.Hiking,
+        "Walk": ActivityType.Walking,
+        "AlpineSki": ActivityType.DownhillSkiing,
+        "NordicSki": ActivityType.DownhillSkiing,
+        "BackcountrySki": ActivityType.CrossCountrySkiing,
+        "Swim": ActivityType.Swimming,
+        "IceSkate": ActivityType.Skating,
+        "Workout": ActivityType.Gym
     }
 
-    SupportedActivities = list(_reverseActivityTypeMappings.keys())
+    SupportedActivities = list(_activityTypeMappings.keys())
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://www.strava.com/oauth/authorize?scope=write%20view_private&client_id=" + STRAVA_CLIENT_ID + "&response_type=code&redirect_uri=http://tapiriik.com"  + reverse("oauth_return", kwargs={"service": "strava"})
@@ -127,13 +127,12 @@ class StravaService(ServiceBase):
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
                 activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
 
-                actType = [k for k, v in self._reverseActivityTypeMappings.items() if v == ride["type"]]
-                if not len(actType):
+                if ride["type"] not in self._reverseActivityTypeMappings:
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"]))
                     logger.debug("\t\tUnknown activity")
                     continue
 
-                activity.Type = actType[0]
+                activity.Type = self._reverseActivityTypeMappings[ride["type"]]
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=ride["distance"])
                 if "max_speed" in ride or "average_speed" in ride:
                     activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=ride["average_speed"] if "average_speed" in ride else None, max=ride["max_speed"] if "max_speed" in ride else None)
