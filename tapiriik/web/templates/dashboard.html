@@ -29,7 +29,6 @@
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
-		<p><b style="color:maroon">Queuing to synchronize?</b> Sorry! Thanks to a <a href="http://www.dcrainmaker.com/2013/12/automatically-training-fitness.html">certain sports-technology blog</a> there have been a huge number of new users in the past hours. I'm actively working to clear the backlog, but in the meantime I will have to ask for your patience. <b>You can close this window</b> - your account will still be processed.</p>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'faq' %}#partial" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
