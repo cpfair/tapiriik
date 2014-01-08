@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.tcx import TCXIO
+from tapiriik.services.gpx import GPXIO
 from tapiriik.services.fit import FITIO
 from tapiriik.services.sessioncache import SessionCache
 
@@ -255,9 +256,29 @@ class GarminConnectService(ServiceBase):
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
             raise APIExcludeActivity("TCX parse error " + str(e))
+
         if len(activity.Laps) == 1:
             activity.Laps[0].Stats.update(activity.Stats) # I trust Garmin Connect's stats more than whatever shows up in the TCX
             activity.Stats = activity.Laps[0].Stats # They must be identical to pass the verification
+
+        if activity.Stats.Temperature.Min is not None or activity.Stats.Temperature.Max is not None or activity.Stats.Temperature.Average is not None:
+            logger.debug("Retrieving additional temperature data")
+            # TCX doesn't have temperature, for whatever reason...
+            res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/" + str(activityID) + "?full=true", cookies=cookies)
+            try:
+                temp_act = GPXIO.Parse(res.content)
+            except ValueError as e:
+                raise APIExcludeActivity("GPX parse error " + str(e))
+
+            logger.debug("Merging additional temperature data")
+            full_waypoints = activity.GetFlatWaypoints()
+            temp_waypoints = temp_act.GetFlatWaypoints()
+
+            assert len(full_waypoints) == len(temp_waypoints)
+
+            for x in range(len(full_waypoints)):
+                full_waypoints[x].Temp = temp_waypoints[x].Temp
+
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
