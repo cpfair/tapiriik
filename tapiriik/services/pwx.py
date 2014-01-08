@@ -169,8 +169,8 @@ class PWXIO:
                     wp.Location.Longitude = float(xsampleData.text)
             assert wp.Location is None or ((wp.Location.Latitude is None) == (wp.Location.Longitude is None)) # You never know...
 
-            # Pick the closest lap (under the assumption of chronologically ordered samples)
-            while currentLapIdx < len(laps) - 1 and abs(wp.Timestamp - laps[currentLapIdx].EndTime) > abs(wp.Timestamp - laps[currentLapIdx + 1].StartTime):
+            # If we've left one lap, move to the next immediately
+            while currentLapIdx < len(laps) - 1 and wp.Timestamp > laps[currentLapIdx].EndTime:
                 currentLapIdx += 1
 
             laps[currentLapIdx].Waypoints.append(wp)
