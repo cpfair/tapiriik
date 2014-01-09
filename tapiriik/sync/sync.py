@@ -347,7 +347,7 @@ class Sync:
 
                 # ...and for this specific service
                 if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
-                    logger.info("Service %s is blocked:\n%s" % conn.Service.ID)
+                    logger.info("Service %s is blocked:" % conn.Service.ID)
                     excludedServices.append(conn)
                     continue
 
