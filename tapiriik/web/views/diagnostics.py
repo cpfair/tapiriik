@@ -88,9 +88,17 @@ def diag_dashboard(req):
 
 @diag_requireAuth
 def diag_user(req, user):
-    userRec = db.users.find_one({"_id": ObjectId(user)})
+    try:
+        userRec = db.users.find_one({"_id": ObjectId(user)})
+    except:
+        userRec = None
     if not userRec:
-        userRec = db.users.find_one({"AncestorAccounts": ObjectId(user)})
+        searchOpts = [{"Payments.Txn": user}, {"Payments.Email": user}]
+        try:
+            searchOpts.append({"AncestorAccounts": ObjectId(user)})
+        except:
+            pass # Invalid format for ObjectId
+        userRec = db.users.find_one({"$or":searchOpts})
         if userRec:
             return redirect("diagnostics_user", user=userRec["_id"])
     if not userRec:
