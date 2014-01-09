@@ -260,7 +260,7 @@ class Activity:
             _cleanStatsObj(lap.Stats)
 
     def __str__(self):
-        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.StartTime.tzinfo if self.StartTime else "") + " End " + str(self.EndTime) + " stat " + str(self.Stationary)
+        return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.TZ) + " End " + str(self.EndTime) + " stat " + str(self.Stationary)
     __repr__ = __str__
 
     def __eq__(self, other):
