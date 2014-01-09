@@ -192,7 +192,7 @@ class Sync:
             flowException = False
 
             sources = [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
-            if hasattr(activity, "Origin"):
+            if hasattr(activity, "Origin") and "SkipOriginCheck" not in user:
                 sources = [activity.Origin]
             for src in sources:
                 if User.CheckFlowException(user, src, destinationSvcRecord):
@@ -206,7 +206,7 @@ class Sync:
                 # Other places this activity exists - the alternate routes
                 secondLevelSources += [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
                 for secondLevelSrc in secondLevelSources:
-                    if secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                    if (secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] or "SkipOriginCheck" in user) and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
                         flowException = False
                         break
 
@@ -347,7 +347,7 @@ class Sync:
 
                 # ...and for this specific service
                 if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
-                    logger.info("Service %s is blocked" % conn.Service.ID)
+                    logger.info("Service %s is blocked:\n%s" % conn.Service.ID)
                     excludedServices.append(conn)
                     continue
 
