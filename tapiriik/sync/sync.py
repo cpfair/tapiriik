@@ -159,8 +159,8 @@ class Sync:
                 # tortuous merging logic is tortuous
                 existingActivity.StartTime = Sync._coalesceDatetime(existingActivity.StartTime, act.StartTime)
                 existingActivity.EndTime = Sync._coalesceDatetime(existingActivity.EndTime, act.EndTime, knownTz=existingActivity.StartTime.tzinfo)
-                existingActivity.Name = existingActivity.Name if existingActivity.Name is not None else act.Name
-                existingActivity.Notes = existingActivity.Notes if existingActivity.Notes is not None else act.Notes
+                existingActivity.Name = existingActivity.Name if existingActivity.Name else act.Name
+                existingActivity.Notes = existingActivity.Notes if existingActivity.Notes else act.Notes
                 existingActivity.Laps = existingActivity.Laps if len(existingActivity.Laps) > len(act.Laps) else act.Laps
                 existingActivity.Type = ActivityType.PickMostSpecific([existingActivity.Type, act.Type])
                 existingActivity.Private = existingActivity.Private or act.Private
