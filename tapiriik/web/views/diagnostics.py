@@ -96,6 +96,7 @@ def diag_user(req, user):
         searchOpts = [{"Payments.Txn": user}, {"Payments.Email": user}]
         try:
             searchOpts.append({"AncestorAccounts": ObjectId(user)})
+            searchOpts.append({"ConnectedServices.ID": ObjectId(user)})
         except:
             pass # Invalid format for ObjectId
         userRec = db.users.find_one({"$or":searchOpts})
