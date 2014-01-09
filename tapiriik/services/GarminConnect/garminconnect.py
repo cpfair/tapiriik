@@ -274,10 +274,12 @@ class GarminConnectService(ServiceBase):
             full_waypoints = activity.GetFlatWaypoints()
             temp_waypoints = temp_act.GetFlatWaypoints()
 
-            assert len(full_waypoints) == len(temp_waypoints)
+            merge_idx = 0
 
-            for x in range(len(full_waypoints)):
-                full_waypoints[x].Temp = temp_waypoints[x].Temp
+            for x in range(len(temp_waypoints)):
+                while full_waypoints[merge_idx].Timestamp < temp_waypoints[x].Timestamp and merge_idx < len(full_waypoints) - 1:
+                    merge_idx += 1
+                full_waypoints[merge_idx].Temp = temp_waypoints[x].Temp
 
         return activity
 
