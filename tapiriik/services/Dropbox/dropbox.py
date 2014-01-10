@@ -237,6 +237,7 @@ class DropboxService(ServiceBase):
                     act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y %z")
                     if "EndTime" in existing:  # some cached activities may not have this, it is not essential
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
+                    act.TZ = act.StartTime.tzinfo
                 else:
                     logger.debug("Retrieving %s (%s)" % (path, "outdated meta cache" if existing else "not in meta cache"))
                     # get the full activity
