@@ -51,7 +51,8 @@ class PWXIO:
         if xsportType is not None:
             sportType = xsportType.text
             if sportType in PWXIO._sportTypeMappings:
-                activity.Type = PWXIO._sportTypeMappings[sportType]
+                if PWXIO._sportTypeMappings[sportType] != ActivityType.Other:
+                    activity.Type = PWXIO._sportTypeMappings[sportType]
 
         xtitle = xworkout.find("pwx:title", namespaces=ns)
         if xtitle is not None:
