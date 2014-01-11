@@ -539,6 +539,14 @@ class Sync:
                     continue
 
                 act.CleanStats()
+                try:
+                    act.EnsureTZ()
+                except:
+                    logger.error("\tCould not determine TZ")
+                    Sync._accumulateExclusions(act.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=act), tempSyncExclusions)
+                    continue
+                else:
+                    logger.debug("\tDetermined TZ %s" % act.TZ)
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:

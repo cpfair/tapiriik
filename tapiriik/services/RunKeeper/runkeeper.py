@@ -232,7 +232,6 @@ class RunKeeperService(ServiceBase):
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''
-        activity.EnsureTZ()
         record = {}
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]

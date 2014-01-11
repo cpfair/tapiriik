@@ -268,7 +268,6 @@ class StravaService(ServiceBase):
                 logger.debug("Using prerendered FIT")
                 fitData = activity.PrerenderedFormats["fit"]
             else:
-                activity.EnsureTZ()
                 # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
                 fitData = FITIO.Dump(activity)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}

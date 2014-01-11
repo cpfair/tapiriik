@@ -202,7 +202,6 @@ class EndomondoService(ServiceBase):
                     break
         lap.Waypoints = sorted(activity.Waypoints, key=lambda v: v.Timestamp)
         if wptsWithLocation:
-            activity.EnsureTZ(recalculate=True)
             if not wptsWithNonZeroAltitude:  # do this here so, should the activity run near sea level, altitude data won't be spotty
                 for x in lap.Waypoints:  # clear waypoints of altitude data if all of them were logged at 0m (invalid)
                     if x.Location is not None:
@@ -389,7 +388,6 @@ class EndomondoService(ServiceBase):
         #       uploadSubmit=1
         #   Get ID from form
         #   Get confirm target <a class="next" name="reviewSumbit" id="id191" value="Save" onclick="document.getElementById('fileSaveWaitIcon').style.display='block';var wcall=wicketSubmitFormById('id190', '?wicket:interface=:13:importPanel:wizardStepPanel:reviewForm:reviewSumbit::IActivePageBehaviorListener:0:-1&amp;wicket:ignoreIfNotActive=true', 'reviewSumbit' ,function() { }.bind(this),function() { }.bind(this), function() {return Wicket.$$(this)&amp;&amp;Wicket.$$('id190')}.bind(this));;; return false;">Save</a>
-        activity.EnsureTZ()
         fit_file = FITIO.Dump(activity)
         files = {"uploadFile": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         data = {"uploadSumbit":1, upload_form_id + "_hf_0":""}

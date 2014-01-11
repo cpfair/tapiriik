@@ -149,7 +149,6 @@ class RideWithGPSService(ServiceBase):
 
     def UploadActivity(self, serviceRecord, activity):
         # https://ridewithgps.com/trips.json
-        activity.EnsureTZ()
 
         tcx_file = TCXIO.Dump(activity)
         files = {"data_file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_file)}

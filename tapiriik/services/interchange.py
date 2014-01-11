@@ -86,7 +86,7 @@ class Activity:
         return loc_wp
 
     def DefineTZ(self):
-        """ run localize() on all contained dates (doesn't change values) """
+        """ run localize() on all contained dates to tag them with the activity TZ (doesn't change values) """
         if self.TZ is None:
             raise ValueError("TZ not set")
         if self.StartTime and self.StartTime.tzinfo is None:
@@ -102,7 +102,7 @@ class Activity:
         self.CalculateUID()
 
     def AdjustTZ(self):
-        """ run astimezone() on all contained dates (requires non-naive DTs) """
+        """ run astimezone() on all contained dates to align them with the activity TZ (requires non-naive DTs) """
         if self.TZ is None:
             raise ValueError("TZ not set")
         self.StartTime = self.StartTime.astimezone(self.TZ)
@@ -157,14 +157,6 @@ class Activity:
         """
         if "ServiceDataCollection" in self.__dict__:
             srcs = self.ServiceDataCollection  # this is just so I can see the source of the activity in the exception message
-        if (self.TZ is None) and (self.StartTime.tzinfo is not None):
-            raise ValueError("StartTime has TZ while Activity does not")
-        if (self.TZ is not None) and (self.StartTime.tzinfo is None):
-            raise ValueError("Activity has TZ while StartTime does not")
-        if self.TZ and self.TZ.utcoffset(self.StartTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.StartTime.replace(tzinfo=None)):
-            raise ValueError("Inconsistent timezone between StartTime (" + str(self.StartTime) + ") and activity (" + str(self.TZ) + ")")
-        if self.TZ and self.TZ.utcoffset(self.EndTime.replace(tzinfo=None)) != self.StartTime.tzinfo.utcoffset(self.EndTime.replace(tzinfo=None)):
-            raise ValueError("Inconsistent timezone between EndTime (" + str(self.EndTime) + ") and activity (" + str(self.TZ) + ")")
         if len(self.Laps) == 0:
                 raise ValueError("No laps")
         wptCt = sum([len(x.Waypoints) for x in self.Laps])
@@ -206,8 +198,6 @@ class Activity:
             if not lap.EndTime:
                 raise ValueError("Lap has no end time")
             for wp in lap.Waypoints:
-                if self.TZ and self.TZ.utcoffset(wp.Timestamp.replace(tzinfo=None)) != wp.Timestamp.tzinfo.utcoffset(wp.Timestamp.replace(tzinfo=None)):
-                    raise ValueError("WP " + str(wp.Timestamp) + " and activity timezone (" + str(self.TZ) + ") are inconsistent")
                 if wp.Type != WaypointType.Pause:
                     unpausedPoints += 1
                 if wp.Location:

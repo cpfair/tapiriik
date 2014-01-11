@@ -189,7 +189,6 @@ class DropboxService(ServiceBase):
             raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
         if not act.GetFirstWaypointWithLocation():
             raise APIExcludeActivity("TCX/GPX without any waypoint with location", activityId=path)
-        act.EnsureTZ(recalculate=True)  # activity comes out of GPXIO with TZ=utc, this will recalculate it
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -308,7 +307,6 @@ class DropboxService(ServiceBase):
         return name
 
     def UploadActivity(self, serviceRecord, activity):
-        activity.EnsureTZ()
         format = serviceRecord.GetConfiguration()["Format"]
         if format == "tcx":
             if "tcx" in activity.PrerenderedFormats:

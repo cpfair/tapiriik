@@ -203,7 +203,7 @@ class SportTracksService(ServiceBase):
                     except APIExcludeActivity:
                         pass
                     else:
-                        activity.CalculateTZ(firstLocation)
+                        activity.CalculateTZ(firstLocation, recalculate=True)
                         activity.AdjustTZ()
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
@@ -415,7 +415,6 @@ class SportTracksService(ServiceBase):
         return self._downloadActivity(serviceRecord, activity)
 
     def UploadActivity(self, serviceRecord, activity):
-        activity.EnsureTZ()
         activityData = {}
         # Props to the SportTracks API people for seamlessly supprting activities with or without TZ data.
         activityData["start_time"] = activity.StartTime.isoformat()

@@ -213,9 +213,7 @@ class TCXIO:
                 sum_stats.sumWith(lap.Stats)
             sum_stats.update(act.Stats)
             act.Stats = sum_stats
-        if not act.TZ: # Don't overwrite the incoming TZ
-            act.TZ = UTC
-        act.AdjustTZ() # Update all timestamps to match whatever the TZ ends up being
+
         act.CalculateUID()
 
         return act

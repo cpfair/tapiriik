@@ -285,7 +285,6 @@ class GarminConnectService(ServiceBase):
 
     def UploadActivity(self, serviceRecord, activity):
         #/proxy/upload-service-1.1/json/upload/.fit
-        activity.EnsureTZ()
         fit_file = FITIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         cookies = self._get_cookies(record=serviceRecord)
@@ -299,28 +298,28 @@ class GarminConnectService(ServiceBase):
         actid = res["successes"][0]["internalId"]
 
         if activity.Name:
-            res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
-            res = res.json()
-            if "display" not in res or res["display"]["value"] != activity.Name:
-                raise APIWarning("Unable to set activity name")
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
+                    res = res.json()
+                if "display" not in res or res["display"]["value"] != activity.Name:
+                    raise APIWarning("Unable to set activity name")
 
         if activity.Notes:
-            res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
-            res = res.json()
-            if "display" not in res or res["display"]["value"] != activity.Notes:
-                raise APIWarning("Unable to set activity notes")
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
+                    res = res.json()
+                if "display" not in res or res["display"]["value"] != activity.Notes:
+                    raise APIWarning("Unable to set activity notes")
 
-        if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
-            # Set the legit activity type - whatever it is, it's not supported by the TCX schema
-            acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
-            if len(acttype) == 0:
-                raise APIWarning("GarminConnect does not support activity type " + activity.Type)
-            else:
-                acttype = acttype[0]
-            res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
-            res = res.json()
-            if "activityType" not in res or res["activityType"]["key"] != acttype:
-                raise APIWarning("Unable to set activity type")
+            if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
+                # Set the legit activity type - whatever it is, it's not supported by the TCX schema
+                acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
+                if len(acttype) == 0:
+                    raise APIWarning("GarminConnect does not support activity type " + activity.Type)
+                else:
+                    acttype = acttype[0]
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
+                res = res.json()
+                if "activityType" not in res or res["activityType"]["key"] != acttype:
+                    raise APIWarning("Unable to set activity type")
 
 
 
