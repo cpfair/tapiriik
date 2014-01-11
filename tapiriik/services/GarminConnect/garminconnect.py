@@ -297,18 +297,34 @@ class GarminConnectService(ServiceBase):
             raise APIException("Uploaded succeeded, resulting in too many activities")
         actid = res["successes"][0]["internalId"]
 
-        if activity.Name:
+        warnings = []
+        try:
+            if activity.Name and activity.Name.strip():
                 res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
+                cookies = res.cookies
+                try:
                     res = res.json()
+                except:
+                    raise APIWarning("Activity name request failed - %s" % res.text)
                 if "display" not in res or res["display"]["value"] != activity.Name:
                     raise APIWarning("Unable to set activity name")
+        except APIWarning as e:
+            warnings.append(e)
 
-        if activity.Notes:
+        try:
+            if activity.Notes and activity.Notes.strip():
                 res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
+                cookies = res.cookies
+                try:
                     res = res.json()
+                except:
+                    raise APIWarning("Activity notes request failed - %s" % res.text)
                 if "display" not in res or res["display"]["value"] != activity.Notes:
                     raise APIWarning("Unable to set activity notes")
+        except APIWarning as e:
+            warnings.append(e)
 
+        try:
             if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
                 # Set the legit activity type - whatever it is, it's not supported by the TCX schema
                 acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
@@ -320,6 +336,11 @@ class GarminConnectService(ServiceBase):
                 res = res.json()
                 if "activityType" not in res or res["activityType"]["key"] != acttype:
                     raise APIWarning("Unable to set activity type")
+        except APIWarning as e:
+            warnings.append(e)
+
+        if len(warnings):
+            raise APIWarning(str(warnings)) # Meh
 
 
 
