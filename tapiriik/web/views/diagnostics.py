@@ -99,7 +99,16 @@ def diag_user(req, user):
             searchOpts.append({"ConnectedServices.ID": ObjectId(user)})
         except:
             pass # Invalid format for ObjectId
-        userRec = db.users.find_one({"$or":searchOpts})
+        userRec = db.users.find_one({"$or": searchOpts})
+        if not userRec:
+            searchOpts = [{"ExternalID": user}]
+            try:
+                searchOpts.append({"ExternalID": int(user)})
+            except:
+                pass # Not an int
+            svcRec = db.connections.find_one({"$or": searchOpts})
+            if svcRec:
+                userRec = db.users.find_one({"ConnectedServices.ID": svcRec["_id"]})
         if userRec:
             return redirect("diagnostics_user", user=userRec["_id"])
     if not userRec:
