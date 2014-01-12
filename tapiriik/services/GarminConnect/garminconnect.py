@@ -99,7 +99,10 @@ class GarminConnectService(ServiceBase):
         if resp.status_code >= 500 and resp.status_code<600:
             raise APIException("Remote API failure")
         if resp.status_code != 302:  # yep
-            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            if "errorMessage" in resp.text:
+                raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            else:
+                raise APIException("Mystery login error %s" % resp.text)
         if record:
             self._sessionCache.Set(record.ExternalID, preResp.cookies)
         return preResp.cookies
