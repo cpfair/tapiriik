@@ -14,7 +14,7 @@ class GPXIO:
         "gpxext": "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
     }
 
-    def Parse(gpxData):
+    def Parse(gpxData, suppress_validity_errors=False):
         ns = copy.deepcopy(GPXIO.Namespaces)
         ns["gpx"] = ns[None]
         del ns[None]
@@ -76,25 +76,29 @@ class GPXIO:
                         wp.Cadence = float(gpxdataCadence.text)
                 lap.Waypoints.append(wp)
             act.Laps.append(lap)
-            if not len(lap.Waypoints):
+            if not len(lap.Waypoints) and not suppress_validity_errors:
                 raise ValueError("Track segment without points")
-            lap.StartTime = lap.Waypoints[0].Timestamp
-            lap.EndTime = lap.Waypoints[-1].Timestamp
+            elif len(lap.Waypoints):
+                lap.StartTime = lap.Waypoints[0].Timestamp
+                lap.EndTime = lap.Waypoints[-1].Timestamp
 
-        if not len(act.Laps):
+        if not len(act.Laps) and not suppress_validity_errors:
             raise ValueError("File with no track segments")
 
-        act.GetFlatWaypoints()[0].Type = WaypointType.Start
-        act.GetFlatWaypoints()[-1].Type = WaypointType.End
+        if act.CountTotalWaypoints():
+            act.GetFlatWaypoints()[0].Type = WaypointType.Start
+            act.GetFlatWaypoints()[-1].Type = WaypointType.End
+            act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
+
+            if len(act.Laps) == 1:
+                # GPX encodes no real per-lap/segment statistics, so this is the only case where we can fill this in.
+                # I've made an exception for the activity's total distance, but only because I want it later on for stats.
+                act.Laps[0].Stats = act.Stats
 
         act.Stationary = False
         act.StartTime = startTime
         act.EndTime = endTime
-        act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
-        if len(act.Laps) == 1:
-            # GPX encodes no real per-lap/segment statistics, so this is the only case where we can fill this in.
-            # I've made an exception for the activity's total distance, but only because I want it later on for stats.
-            act.Laps[0].Stats = act.Stats
+
         act.CalculateUID()
         return act
 

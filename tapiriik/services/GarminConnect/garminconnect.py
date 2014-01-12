@@ -266,7 +266,7 @@ class GarminConnectService(ServiceBase):
             # TCX doesn't have temperature, for whatever reason...
             res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/" + str(activityID) + "?full=true", cookies=cookies)
             try:
-                temp_act = GPXIO.Parse(res.content)
+                temp_act = GPXIO.Parse(res.content, suppress_validity_errors=True)
             except ValueError as e:
                 raise APIExcludeActivity("GPX parse error " + str(e))
 
