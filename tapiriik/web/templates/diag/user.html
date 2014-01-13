@@ -12,6 +12,7 @@
 			<li><b>Ancestor accounts:</b> {% for ancestor in user.AncestorAccounts %}<tt>{{ ancestor }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
 		{% endif %}
 		<li><b>Email:</b> {% if user.Email %}<a href="mailto:{{ user.Email }}">{{ user.Email }}</a>{% else %}Not given{% endif %}</li>
+		<li><b>TZ:</b> <tt>{{ user.Timezone }}</tt></li>
 		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
 		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
