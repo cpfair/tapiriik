@@ -235,12 +235,14 @@ class Sync:
             identifier = str(identifier).replace(".", "_")
             tempSyncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
 
-    def _estimateFallbackTZ(activities):
+    def _estimateFallbackTZ(user, activities):
         from collections import Counter
         # With the hope that the majority of the activity records returned will have TZs, and the user's current TZ will constitute the majority.
         TZOffsets = [x.StartTime.utcoffset().total_seconds() / 60 for x in activities if x.TZ is not None]
         mode = Counter(TZOffsets).most_common(1)
         if not len(mode):
+            if "Timezone" in user:
+                return pytz.timezone(user["Timezone"])
             return None
         return pytz.FixedOffset(mode[0][0])
 
@@ -385,7 +387,7 @@ class Sync:
                 Sync._accumulateActivities(conn, svcActivities, activities)
 
             # Attempt to assign fallback TZs to all stationary/potentially-stationary activities, since we may not be able to determine TZ any other way.
-            fallbackTZ = Sync._estimateFallbackTZ(activities)
+            fallbackTZ = Sync._estimateFallbackTZ(user, activities)
             if fallbackTZ:
                 logger.info("Setting fallback TZs to %s" % fallbackTZ )
                 for act in activities:
@@ -545,7 +547,7 @@ class Sync:
                     act.EnsureTZ()
                 except:
                     logger.error("\tCould not determine TZ")
-                    Sync._accumulateExclusions(act.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=act), tempSyncExclusions)
+                    Sync._accumulateExclusions(act.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=act, permanent=False), tempSyncExclusions)
                     continue
                 else:
                     logger.debug("\tDetermined TZ %s" % act.TZ)
