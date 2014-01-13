@@ -38,6 +38,13 @@ class TCXIO:
         if xact is None:
             raise ValueError("No activity element in TCX")
 
+        xauthor = root.find("tcx:Author", namespaces=ns)
+        if xauthor is not None:
+            xauthorname = xauthor.find("tcx:Name", namespaces=ns)
+            if xauthorname is not None:
+                if xauthorname.text == "tapiriik":
+                    act.OriginatedFromTapiriik = True
+
         if not act.Type or act.Type == ActivityType.Other:
             if xact.attrib["Sport"] == "Biking":
                 act.Type = ActivityType.Cycling
@@ -215,7 +222,6 @@ class TCXIO:
             act.Stats = sum_stats
 
         act.CalculateUID()
-
         return act
 
     def Dump(activity):

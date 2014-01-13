@@ -187,8 +187,6 @@ class DropboxService(ServiceBase):
             raise APIExcludeActivity("Invalid GPX/TCX " + str(e), activityId=path)
         except lxml.etree.XMLSyntaxError as e:
             raise APIExcludeActivity("LXML parse error " + str(e), activityId=path)
-        if not act.GetFirstWaypointWithLocation():
-            raise APIExcludeActivity("TCX/GPX without any waypoint with location", activityId=path)
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -245,6 +243,16 @@ class DropboxService(ServiceBase):
                         logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(e)
                         continue
+                    if hasattr(act, "OriginatedFromTapiriik") and not act.CountTotalWaypoints():
+                        # This is one of the files created when TCX export was hopelessly broken for non-GPS activities.
+                        # Right now, no activities in dropbox from tapiriik should be devoid of waypoints - since dropbox doesn't receive stationary activities
+                        # In the future when this changes, will obviously have to modify this code to also look at modification dates or similar.
+                        if ".tcx.summary-data" in path:
+                            logger.info("...summary file already moved")
+                        else:
+                            logger.info("...moving summary-only file")
+                            dbcl.file_move(path, path.replace(".tcx", ".tcx.summary-data"))
+                        continue # DON'T include in listing - it'll be regenerated
                     del act.Laps
                     act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][hashedRelPath] = {"Rev": rev, "UID": act.UID, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
