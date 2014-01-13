@@ -59,7 +59,7 @@ def _garminIdentifier(name, *fitIds):
 
 # This list is REGEXed from the FIT SDK - I have no clue what some of the entries are...
 # Some products have international variants with different FIT IDs - the first ID given is used for TCX
-DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("HRM1", 1))
+# DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("HRM1", 1)) - Garmin Connect reports itself as ID 1 too.
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("AXH01", 2))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("AXB01", 3))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("AXB02", 4))
