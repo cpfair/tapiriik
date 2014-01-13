@@ -307,8 +307,6 @@ class TCXIO:
             xlap = xlaps[activity.Laps.index(lap)]
             track = None
             for wp in lap.Waypoints:
-                if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
-                    continue  # drop the point
                 if wp.Type == WaypointType.Pause:
                     if inPause:
                         continue  # this used to be an exception, but I don't think that was merited
@@ -322,30 +320,32 @@ class TCXIO:
                     raise ValueError("TCX export requires TZ info")
                 etree.SubElement(trkpt, "Time").text = wp.Timestamp.astimezone(UTC).strftime(dateFormat)
                 if wp.Location:
-                    pos = etree.SubElement(trkpt, "Position")
-                    etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
-                    etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
+                    if wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                        pos = etree.SubElement(trkpt, "Position")
+                        etree.SubElement(pos, "LatitudeDegrees").text = str(wp.Location.Latitude)
+                        etree.SubElement(pos, "LongitudeDegrees").text = str(wp.Location.Longitude)
 
                     if wp.Location.Altitude is not None:
                         etree.SubElement(trkpt, "AltitudeMeters").text = str(wp.Location.Altitude)
-                    if wp.Distance is not None:
-                        etree.SubElement(trkpt, "DistanceMeters").text = str(wp.Distance)
-                    if wp.HR is not None:
-                        xhr = etree.SubElement(trkpt, "HeartRateBpm")
-                        xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
-                        etree.SubElement(xhr, "Value").text = str(int(wp.HR))
-                    if wp.Cadence is not None:
-                        etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
-                    if wp.Power is not None or wp.RunCadence is not None or wp.Speed is not None:
-                        exts = etree.SubElement(trkpt, "Extensions")
-                        gpxtpxexts = etree.SubElement(exts, "TPX")
-                        gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
-                        if wp.Speed is not None:
-                            etree.SubElement(gpxtpxexts, "Speed").text = str(wp.Speed)
-                        if wp.RunCadence is not None:
-                            etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
-                        if wp.Power is not None:
-                            etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
+
+                if wp.Distance is not None:
+                    etree.SubElement(trkpt, "DistanceMeters").text = str(wp.Distance)
+                if wp.HR is not None:
+                    xhr = etree.SubElement(trkpt, "HeartRateBpm")
+                    xhr.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] = "HeartRateInBeatsPerMinute_t"
+                    etree.SubElement(xhr, "Value").text = str(int(wp.HR))
+                if wp.Cadence is not None:
+                    etree.SubElement(trkpt, "Cadence").text = str(int(wp.Cadence))
+                if wp.Power is not None or wp.RunCadence is not None or wp.Speed is not None:
+                    exts = etree.SubElement(trkpt, "Extensions")
+                    gpxtpxexts = etree.SubElement(exts, "TPX")
+                    gpxtpxexts.attrib["xmlns"] = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+                    if wp.Speed is not None:
+                        etree.SubElement(gpxtpxexts, "Speed").text = str(wp.Speed)
+                    if wp.RunCadence is not None:
+                        etree.SubElement(gpxtpxexts, "RunCadence").text = str(int(wp.RunCadence))
+                    if wp.Power is not None:
+                        etree.SubElement(gpxtpxexts, "Watts").text = str(int(wp.Power))
             if track is not None:
                 exts = xlap.find("Extensions")
                 if exts is not None:
