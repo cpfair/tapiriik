@@ -206,6 +206,8 @@ class Sync:
                 # Other places this activity exists - the alternate routes
                 secondLevelSources += [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
                 for secondLevelSrc in secondLevelSources:
+                    if secondLevelSrc.Service.ID in WITHDRAWN_SERVICES:
+                        continue
                     if (secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] or "SkipOriginCheck" in user) and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
                         flowException = False
                         break
