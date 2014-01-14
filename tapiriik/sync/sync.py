@@ -605,6 +605,7 @@ class Sync:
         except:
             # oops.
             logger.exception("Core sync exception")
+            raise
         else:
             logger.info("Finished sync for " + str(user["_id"]))
         finally:
