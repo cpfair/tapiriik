@@ -160,22 +160,8 @@ class DropboxService(ServiceBase):
         except rest.ErrorResponse as e:
             self._raiseDbException(e)
 
-        cachedActivityRecord = cachedb.dropbox_activity_cache.find_one({"ExternalID":serviceRecord.ExternalID, "Path": path})
-        if cachedActivityRecord:
-            if cachedActivityRecord["Rev"] != metadata["rev"]:
-                logger.debug("Outdated cache hit on %s" % path)
-                cachedb.dropbox_activity_cache.remove({"ExternalID":serviceRecord.ExternalID, "Path": path})
-            else:
-                logger.debug("Cache hit on %s" % path)
-                activityData = cachedActivityRecord["Data"]
-                cachedb.dropbox_activity_cache.update({"ExternalID":serviceRecord.ExternalID, "Path": path}, {"$set":{"Valid": datetime.utcnow()}})
-
         if not activityData:
             activityData = f.read()
-            try:
-                cachedb.dropbox_activity_cache.insert({"ExternalID": serviceRecord.ExternalID, "Rev": metadata["rev"], "Data": activityData, "Path": path, "Valid": datetime.utcnow()})
-            except bson.errors.InvalidDocument:
-                pass # Probably too large - at least we tried.
 
 
         try:
@@ -348,4 +334,3 @@ class DropboxService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.dropbox_cache.remove({"ExternalID": serviceRecord.ExternalID})
-        cachedb.dropbox_activity_cache.remove({"ExternalID": serviceRecord.ExternalID})
