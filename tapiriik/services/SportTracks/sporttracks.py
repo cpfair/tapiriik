@@ -203,8 +203,13 @@ class SportTracksService(ServiceBase):
                     except APIExcludeActivity:
                         pass
                     else:
-                        activity.CalculateTZ(firstLocation, recalculate=True)
-                        activity.AdjustTZ()
+                        try:
+                            activity.CalculateTZ(firstLocation, recalculate=True)
+                        except:
+                            # We tried!
+                            pass
+                        else:
+                            activity.AdjustTZ()
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["total_distance"]))
