@@ -29,7 +29,6 @@
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
-		<p><b style="color:maroon">Queuing to synchronize?</b> Sorry! tapiriik is currently repairing a large volume of activities that, when first synchronized, were missing critical data. <b>You can close this window</b> - your account will still be processed.</p>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'faq' %}#partial" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
