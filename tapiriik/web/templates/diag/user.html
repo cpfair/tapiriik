@@ -25,7 +25,7 @@
 		<h3>Payments</h3>
 		<ul style="list-style:none;margin:0;padding:0;">
 		{% for payment in user.Payments %}
-			<li><b>Txn:</b> <tt>{{ payment.Txn }}</tt> on {{ payment.Timestamp }} UTC ~ {{ payment.Expiry }} UTC </li>
+			<li><b>Txn:</b> <tt>{{ payment.Txn }}</tt> from <tt>{{ payment.Email }}</tt> on {{ payment.Timestamp }} UTC ~ {{ payment.Expiry }} UTC </li>
 		{% endfor %}
 		</ul>
 	{% endif %}
