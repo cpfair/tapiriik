@@ -149,7 +149,7 @@ class GarminConnectService(ServiceBase):
                     continue
                 activity = UploadedActivity()
 
-                if "sumSampleCountTimestamp" not in act:
+                if "sumSampleCountSpeed" not in act and "sumSampleCountTimestamp" not in act: # Don't really know why sumSampleCountTimestamp doesn't appear in swim activities - they're definitely timestamped...
                     activity.Stationary = True
                 else:
                     activity.Stationary = False
