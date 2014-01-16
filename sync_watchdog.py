@@ -19,9 +19,9 @@ for worker in db.sync_workers.find({"Host": socket.gethostname()}):
     else:
         timeout = timedelta(minutes=10)  # But everything else shouldn't
 
-    # if alive and worker["Heartbeat"] < datetime.utcnow() - timeout:
-    #     os.kill(worker["Process"], signal.SIGKILL)
-    #     alive = False
+    if alive and worker["Heartbeat"] < datetime.utcnow() - timeout:
+        os.kill(worker["Process"], signal.SIGKILL)
+        alive = False
 
     # Clear it from the database if it's not alive.
     if not alive:
