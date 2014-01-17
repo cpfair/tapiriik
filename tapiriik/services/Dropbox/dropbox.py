@@ -2,6 +2,7 @@ from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DRO
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, ServiceExceptionScope, UserException, UserExceptionType, APIExcludeActivity, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
+from tapiriik.services.exception_tools import strip_context
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.tcx import TCXIO
 from tapiriik.database import cachedb
@@ -227,7 +228,7 @@ class DropboxService(ServiceBase):
                         act, rev = self._getActivity(svcRec, dbcl, path)
                     except APIExcludeActivity as e:
                         logger.info("Encountered APIExcludeActivity %s" % str(e))
-                        exclusions.append(e)
+                        exclusions.append(strip_context(e))
                         continue
                     if hasattr(act, "OriginatedFromTapiriik") and not act.CountTotalWaypoints():
                         # This is one of the files created when TCX export was hopelessly broken for non-GPS activities.
