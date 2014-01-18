@@ -559,9 +559,10 @@ class Sync:
                     if not destSvc.ReceivesStationaryActivities and act.Stationary:
                         logger.info("\t\t...marked as stationary during download")
                         continue
+                    uploaded_external_id = None
                     try:
                         logger.info("\t  Uploading to " + destSvc.ID)
-                        destSvc.UploadActivity(destinationSvcRecord, act)
+                        uploaded_external_id = destSvc.UploadActivity(destinationSvcRecord, act)
                     except (ServiceException, ServiceWarning) as e:
                         tempSyncErrors[destinationSvcRecord._id].append(_packServiceException(SyncStep.Upload, e))
                         if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
@@ -572,6 +573,9 @@ class Sync:
                         tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
                         continue
                     logger.info("\t  Uploaded")
+                    if uploaded_external_id:
+                        # record external ID, for posterity (and later debugging)
+                        db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID})
                     # flag as successful
                     db.connections.update({"_id": destinationSvcRecord._id},
                                           {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})

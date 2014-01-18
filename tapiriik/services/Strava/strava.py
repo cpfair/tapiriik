@@ -256,6 +256,7 @@ class StravaService(ServiceBase):
         if hasattr(activity, "ServiceDataCollection"):
             source_svc = str(list(activity.ServiceDataCollection.keys())[0])
 
+        upload_id = None
         if activity.CountTotalWaypoints():
             req = {
                     "data_type": "fit",
@@ -294,6 +295,7 @@ class StravaService(ServiceBase):
                         logger.debug("Duplicate")
                         return # I guess we're done here?
                     raise APIException("Strava failed while processing activity - last status %s" % response.text)
+            upload_id = response.json()["activity_id"]
         else:
             localUploadTS = activity.StartTime.strftime("%Y-%m-%d %H:%M:%S")
             req = {
@@ -312,7 +314,10 @@ class StravaService(ServiceBase):
                 if response.status_code == 401:
                     raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to upload stationary activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
+            upload_id = response.json()["id"]
+
         self.LastUpload = datetime.now()
+        return upload_id
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})

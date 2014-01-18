@@ -229,6 +229,7 @@ class RunKeeperService(ServiceBase):
             if response.status_code == 401 or response.status_code == 403:
                 raise APIException("No authorization to upload activity " + activity.UID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
+        return response.headers["location"]
 
     def _createUploadData(self, activity):
         ''' create data dict for posting to RK API '''

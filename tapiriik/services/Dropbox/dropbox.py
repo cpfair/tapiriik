@@ -332,6 +332,7 @@ class DropboxService(ServiceBase):
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord.ExternalID})
         cache["Activities"][self._hash_path("/" + fname)] = {"Rev": metadata["rev"], "UID": activity.UID, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord.ExternalID}, cache)  # not upsert, hope the record exists at this time...
+        return fpath
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.dropbox_cache.remove({"ExternalID": serviceRecord.ExternalID})

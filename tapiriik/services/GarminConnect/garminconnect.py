@@ -344,6 +344,7 @@ class GarminConnectService(ServiceBase):
 
         if len(warnings):
             raise APIWarning(str(warnings)) # Meh
+        return actid
 
 
 
