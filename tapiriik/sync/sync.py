@@ -124,30 +124,40 @@ class Sync:
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
-            existElsewhere = [x for x in activityList if x.UID == act.UID
-                              or  # check to see if the activities are reasonably close together to be considered duplicate
-                              (x.StartTime is not None and
-                               act.StartTime is not None and
-                               (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
-                               abs(act.StartTime-x.StartTime) < activityStartLeeway
-                              )
-                              or  # try comparing the time as if it were TZ-aware and in the expected TZ (this won't actually change the value of the times being compared)
-                              (x.StartTime is not None and
-                               act.StartTime is not None and
-                               (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
-                               abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < activityStartLeeway
-                              )
-                              or
-                              # Sometimes wacky stuff happens and we get two activities with the same mm:ss but different hh, because of a TZ issue somewhere along the line.
-                              # So, we check for any activities +/- 14, wait, 38 hours that have the same minutes and seconds values.
-                              #  (14 hours because Kiribati, and later, 38 hours because of some really terrible import code that existed on a service that shall not be named).
-                              # There's a very low chance that two activities in this period would intersect and be merged together.
-                              # But, given the fact that most users have maybe 0.05 activities per this period, it's an acceptable tradeoff.
-                              (x.StartTime is not None and
-                               act.StartTime is not None and
-                               abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
-                               abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) < activityStartTZOffsetLeeway
+            existElsewhere = [
+                              x for x in activityList if
+                              (
+                                  # Identical
+                                  x.UID == act.UID
+                                  or
+                                  # Check to see if the activities are reasonably close together to be considered duplicate
+                                  (x.StartTime is not None and
+                                   act.StartTime is not None and
+                                   (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
+                                   abs(act.StartTime-x.StartTime) < activityStartLeeway
+                                  )
+                                  or
+                                  # Try comparing the time as if it were TZ-aware and in the expected TZ (this won't actually change the value of the times being compared)
+                                  (x.StartTime is not None and
+                                   act.StartTime is not None and
+                                   (act.StartTime.tzinfo is not None) != (x.StartTime.tzinfo is not None) and
+                                   abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < activityStartLeeway
+                                  )
+                                  or
+                                  # Sometimes wacky stuff happens and we get two activities with the same mm:ss but different hh, because of a TZ issue somewhere along the line.
+                                  # So, we check for any activities +/- 14, wait, 38 hours that have the same minutes and seconds values.
+                                  #  (14 hours because Kiribati, and later, 38 hours because of some really terrible import code that existed on a service that shall not be named).
+                                  # There's a very low chance that two activities in this period would intersect and be merged together.
+                                  # But, given the fact that most users have maybe 0.05 activities per this period, it's an acceptable tradeoff.
+                                  (x.StartTime is not None and
+                                   act.StartTime is not None and
+                                   abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
+                                   abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) < activityStartTZOffsetLeeway
+                                   )
                                )
+                                and
+                                # Prevents closely-spaced activities of known different type from being lumped together - esp. important for manually-enetered ones
+                                (x.Type == ActivityType.Other or act.Type == ActivityType.Other or act.Type == x.Type)
                               ]
             if len(existElsewhere) > 0:
                 existingActivity = existElsewhere[0]
