@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, LapIntensity, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
+from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 import pytz
 from datetime import timedelta
@@ -168,13 +169,18 @@ class SportTracksService(ServiceBase):
         pass  # No auth tokens to revoke...
 
     def DeleteCachedData(self, serviceRecord):
-        pass  # No cached data...
+        cachedb.sporttracks_meta_cache.remove({"ExternalID": serviceRecord.ExternalID})
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         cookies = self._get_cookies(record=serviceRecord)
         activities = []
         exclusions = []
         pageUri = self.OpenFitEndpoint + "/fitnessActivities.json"
+
+        activity_tz_cache_raw = cachedb.sporttracks_meta_cache.find_one({"ExternalID": serviceRecord.ExternalID})
+        activity_tz_cache_raw = activity_tz_cache_raw if activity_tz_cache_raw else {"Activities":[]}
+        activity_tz_cache = dict([(x["ActivityURI"], x["TZ"]) for x in activity_tz_cache_raw["Activities"]])
+
         while True:
             logger.debug("Req against " + pageUri)
             res = requests.get(pageUri, cookies=cookies)
@@ -197,19 +203,24 @@ class SportTracksService(ServiceBase):
 
                 # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
                 if activity.TZ == pytz.utc:
-                    # So, we get the first location in the activity and calculate the TZ from that.
-                    try:
-                        firstLocation = self._downloadActivity(serviceRecord, activity, returnFirstLocation=True)
-                    except APIExcludeActivity:
-                        pass
+                    if act["uri"] in activity_tz_cache:
+                        activity.TZ = pytz.FixedOffset(activity_tz_cache[act["uri"]])
                     else:
+                        # So, we get the first location in the activity and calculate the TZ from that.
                         try:
-                            activity.CalculateTZ(firstLocation, recalculate=True)
-                        except:
-                            # We tried!
+                            firstLocation = self._downloadActivity(serviceRecord, activity, returnFirstLocation=True)
+                        except APIExcludeActivity:
                             pass
                         else:
-                            activity.AdjustTZ()
+                            try:
+                                activity.CalculateTZ(firstLocation, recalculate=True)
+                            except:
+                                # We tried!
+                                pass
+                            else:
+                                activity.AdjustTZ()
+                            finally:
+                                activity_tz_cache[act["uri"]] = activity.StartTime.utcoffset().total_seconds() / 60
 
                 logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["total_distance"]))
@@ -231,6 +242,8 @@ class SportTracksService(ServiceBase):
                 break
             else:
                 pageUri = res["next"]
+        logger.debug("Writing back meta cache")
+        cachedb.sporttracks_meta_cache.update({"ExternalID": serviceRecord.ExternalID}, {"ExternalID": serviceRecord.ExternalID, "Activities": [{"ActivityURI": k, "TZ": v} for k, v in activity_tz_cache.items()]}, upsert=True)
         return activities, exclusions
 
     def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
