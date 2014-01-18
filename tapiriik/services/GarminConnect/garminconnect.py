@@ -303,8 +303,7 @@ class GarminConnectService(ServiceBase):
         warnings = []
         try:
             if activity.Name and activity.Name.strip():
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
-                cookies = res.cookies
+                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
                 try:
                     res = res.json()
                 except:
@@ -316,8 +315,7 @@ class GarminConnectService(ServiceBase):
 
         try:
             if activity.Notes and activity.Notes.strip():
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
-                cookies = res.cookies
+                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
                 try:
                     res = res.json()
                 except:
@@ -335,7 +333,7 @@ class GarminConnectService(ServiceBase):
                     raise APIWarning("GarminConnect does not support activity type " + activity.Type)
                 else:
                     acttype = acttype[0]
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
+                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
                 res = res.json()
                 if "activityType" not in res or res["activityType"]["key"] != acttype:
                     raise APIWarning("Unable to set activity type")
