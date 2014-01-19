@@ -1,5 +1,6 @@
 from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_CURRENCY
 from tapiriik.auth import Payments, User
+from tapiriik.web.views.ab import ab_experiment_complete, ab_register_experiment
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -7,7 +8,6 @@ from django.core.urlresolvers import reverse
 import urllib.request
 import logging
 import json
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,10 @@ def payments_ipn(req):
     payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"], initialAssociatedAccount=req.POST["custom"], email=req.POST["payer_email"])
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
+    try:
+        ab_experiment_complete("autosync", user["_id"], float(req.POST["mc_gross"]))
+    except:
+        logger.error("AB experiment did not complete - no experiment running?")
     return HttpResponse()
 
 
@@ -40,6 +44,7 @@ def payments_return(req):
         return redirect("/")
     return render(req, "payments/return.html")
 
+ab_register_experiment("autosync", [2,5])
 
 def payments_claim(req):
     err = False

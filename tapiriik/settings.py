@@ -109,6 +109,7 @@ TEMPLATE_DIRS = (
 )
 
 TEMPLATE_CONTEXT_PROCESSORS = (
+    'tapiriik.web.views.ab_experiment_context',
     'tapiriik.web.context_processors.user',
     'tapiriik.web.context_processors.config',
     'tapiriik.web.context_processors.js_bridge',

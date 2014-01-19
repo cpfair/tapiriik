@@ -2,7 +2,7 @@
 <script>
 function validatePrice() {
 	var amount = $(".paymentForm input[type=text]").val();
-	var valid = amount==+amount && amount && amount > 0;
+	var valid = amount == +amount && amount && amount > 0;
 	if (valid) {
 		$(".paymentForm button[name=submit]").removeClass("disabled");
 	} else {
@@ -31,7 +31,7 @@ $(function(){
 	<input type="hidden" name="business" value="GZYUSWR6MQVGJ">
 	<input type="hidden" name="lc" value="CA">
 	<input type="hidden" name="item_name" value="Automatic tapiriik synchronization (365 days)">
-	<span style="font-size: 150%;">$</span> <input type="text" name="amount" value="2.00" style="width:75px; text-align:center;"><br/>
+	<span style="font-size: 150%;">$</span> <input type="text" name="amount" value="{% if ab_autosync_5 %}5.00{% else %}2.00{% endif %}" style="width:75px; text-align:center;"><br/>
 	<input type="hidden" name="currency_code" value="USD">
 	<input type="hidden" name="button_subtype" value="services">
 	<input type="hidden" name="no_note" value="1">

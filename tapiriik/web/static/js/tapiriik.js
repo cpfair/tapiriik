@@ -48,6 +48,7 @@ tapiriik.Init = function(){
 	$(".paymentButton").click(function(){
 		$(".paymentButton").slideUp();
 		$(".paymentForm").slideDown();
+		tapiriik.AB_Begin("autosync");
 		return false;
 	});
 	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
@@ -798,6 +799,10 @@ tapiriik.ShowDebugInfo = function(){
 
 tapiriik.Logout = function(){
 	$().redirect("/auth/logout", {csrfmiddlewaretoken: csrftoken});
+};
+
+tapiriik.AB_Begin = function(key){
+	$.post("/ab/begin/" + key);
 };
 
 $(window).load(tapiriik.Init);
