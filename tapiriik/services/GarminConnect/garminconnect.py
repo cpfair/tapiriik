@@ -96,7 +96,7 @@ class GarminConnectService(ServiceBase):
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
         resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
-        if resp.status_code >= 500 and resp.status_code<600:
+        if resp.status_code >= 500 and resp.status_code < 600:
             raise APIException("Remote API failure")
         if resp.status_code != 302:  # yep
             if "errorMessage" in resp.text:
@@ -300,10 +300,11 @@ class GarminConnectService(ServiceBase):
             raise APIException("Uploaded succeeded, resulting in too many activities")
         actid = res["successes"][0]["internalId"]
 
+        encoding_headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"} # GC really, really needs this part, otherwise it throws obscure errors like "Invalid signature for signature method HMAC-SHA1"
         warnings = []
         try:
             if activity.Name and activity.Name.strip():
-                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name}, cookies=cookies)
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
@@ -315,7 +316,7 @@ class GarminConnectService(ServiceBase):
 
         try:
             if activity.Notes and activity.Notes.strip():
-                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes}, cookies=cookies)
+                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
