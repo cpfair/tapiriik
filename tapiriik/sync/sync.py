@@ -154,6 +154,14 @@ class Sync:
                                    abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
                                    abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) < activityStartTZOffsetLeeway
                                    )
+                                  or
+                                  # Similarly, for half-hour time zones (there are a handful of quarter-hour ones, but I've got to draw a line somewhere, even if I revise it several times)
+                                  (x.StartTime is not None and
+                                   act.StartTime is not None and
+                                   abs(act.StartTime.replace(tzinfo=None)-x.StartTime.replace(tzinfo=None)) < timezoneErrorPeriod and
+                                   abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) > timedelta(minutes=30) - (activityStartTZOffsetLeeway / 2) and
+                                   abs(act.StartTime.replace(tzinfo=None).replace(hour=0) - x.StartTime.replace(tzinfo=None).replace(hour=0)) < timedelta(minutes=30) + (activityStartTZOffsetLeeway / 2)
+                                   )
                                )
                                 and
                                 # Prevents closely-spaced activities of known different type from being lumped together - esp. important for manually-enetered ones
