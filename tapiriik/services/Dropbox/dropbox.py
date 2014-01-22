@@ -230,6 +230,12 @@ class DropboxService(ServiceBase):
                         logger.info("Encountered APIExcludeActivity %s" % str(e))
                         exclusions.append(strip_context(e))
                         continue
+
+                    try:
+                        act.EnsureTZ()
+                    except:
+                        pass # We tried.
+
                     if hasattr(act, "OriginatedFromTapiriik") and not act.CountTotalWaypoints():
                         # This is one of the files created when TCX export was hopelessly broken for non-GPS activities.
                         # Right now, no activities in dropbox from tapiriik should be devoid of waypoints - since dropbox doesn't receive stationary activities
