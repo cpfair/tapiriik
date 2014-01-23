@@ -2,6 +2,7 @@ from tapiriik.settings import WEB_ROOT
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
+from tapiriik.services.statistic_calculator import ActivityStatisticCalculator
 from tapiriik.services.tcx import TCXIO
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.fit import FITIO
@@ -237,10 +238,23 @@ class GarminConnectService(ServiceBase):
                     if ":" in act["weightedMeanSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Average:
                         activity.Stats.Speed.Average = 60 / activity.Stats.Speed.Average
 
+                # Similarly, they do weird stuff with HR at times - %-of-max and zones
+                # ...and we can't just fix these, so we have to calculate it after the fact (blegh)
+                recalcHR = False
+                if "maxHeartRate" in act:
+                    if "%" in act["maxHeartRate"]["withUnitAbbr"] or "z" in act["maxHeartRate"]["withUnitAbbr"]:
+                        activity.Stats.HR.Max = None
+                        recalcHR = True
+                if "weightedMeanHeartRate" in act:
+                    if "%" in act["weightedMeanHeartRate"]["withUnitAbbr"] or "z" in act["weightedMeanHeartRate"]["withUnitAbbr"]:
+                        activity.Stats.HR.Average = None
+                        recalcHR = True
+
+
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
-                activity.ServiceData = {"ActivityID": act["activityId"]}
+                activity.ServiceData = {"ActivityID": act["activityId"], "RecalcHR": recalcHR}
 
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
@@ -259,6 +273,11 @@ class GarminConnectService(ServiceBase):
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
             raise APIExcludeActivity("TCX parse error " + str(e))
+
+        if activity.ServiceData["RecalcHR"]:
+            logger.debug("Recalculating HR")
+            avgHR, maxHR = ActivityStatisticCalculator.CalculateAverageMaxHR(activity)
+            activity.Stats.HR.coalesceWith(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=maxHR, avg=avgHR))
 
         if len(activity.Laps) == 1:
             activity.Laps[0].Stats.update(activity.Stats) # I trust Garmin Connect's stats more than whatever shows up in the TCX
@@ -283,6 +302,8 @@ class GarminConnectService(ServiceBase):
                 while full_waypoints[merge_idx].Timestamp < temp_waypoints[x].Timestamp and merge_idx < len(full_waypoints) - 1:
                     merge_idx += 1
                 full_waypoints[merge_idx].Temp = temp_waypoints[x].Temp
+
+
 
         return activity
 

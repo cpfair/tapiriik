@@ -73,3 +73,32 @@ class ActivityStatisticCalculator:
         if duration.total_seconds() == 0 and startWpt is None and endWpt is None:
             raise ValueError("Zero-duration activity")
         return duration
+
+    def CalculateAverageMaxHR(act, startWpt=None, endWpt=None):
+        flatWaypoints = act.GetFlatWaypoints()
+
+        # Python can handle 600+ digit numbers, think it can handle this
+        maxHR = 0
+        cumulHR = 0
+        samples = 0
+
+        if not startWpt:
+            startWpt = flatWaypoints[0]
+        if not endWpt:
+            endWpt = flatWaypoints[-1]
+
+        for x in range(flatWaypoints.index(startWpt), flatWaypoints.index(endWpt) + 1):
+            wpt = flatWaypoints[x]
+            if wpt.HR:
+                if wpt.HR > maxHR:
+                    maxHR = wpt.HR
+                cumulHR += wpt.HR
+                samples += 1
+
+        if not samples:
+            return None, None
+
+        cumulHR = cumulHR / samples
+        return cumulHR, maxHR
+
+
