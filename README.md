@@ -8,7 +8,7 @@ Check out the [setup guide on the wiki](https://github.com/cpfair/tapiriik/wiki/
 
 ## Want to help with development?
 
-**Great!** If you're looking for a quick primer on how tapiriik functions under the hood, head on over to the [technical introduction wiki article](https://github.com/cpfair/tapiriik/wiki/tapiriik-internals-(the-crash-course)). Once you're ready, send in a pull request and I'll work with you to get it merged.
+**Great!** If you're looking for a quick primer on how tapiriik functions under the hood, head on over to the [technical introduction wiki article](https://github.com/cpfair/tapiriik/wiki/tapiriik-internals-%28the-crash-course%29). Once you're ready, send in a pull request and I'll work with you to get it merged.
 
 ## Just want to synchronize your fitness activities?
 Visit [tapiriik.com](https://tapiriik.com) - everything's already set up for you.
