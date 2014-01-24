@@ -535,10 +535,6 @@ class Sync:
                     except Exception as e:
                         tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
                         continue
-                    finally:
-                        # Clear this data now that we're done with it - it should never get used again
-                        activity.ServiceDataCollection[dlSvcRecord._id] = None
-
 
                     if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                         logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
