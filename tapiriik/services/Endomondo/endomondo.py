@@ -73,6 +73,7 @@ class EndomondoService(ServiceBase):
 
     def _oauthSession(self, connection=None, **params):
         if connection:
+            print(connection.Authorization)
             params["resource_owner_key"] = connection.Authorization["Token"]
             params["resource_owner_secret"] = connection.Authorization["Secret"]
         return OAuth1Session(ENDOMONDO_CLIENT_KEY, client_secret=ENDOMONDO_CLIENT_SECRET, **params)
@@ -123,9 +124,9 @@ class EndomondoService(ServiceBase):
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(actInfo["distance_total"]))
 
                 if "calories_total" in actInfo:
-                    activity.Stats.Energy = ActivityStatisticUnit(ActivityStatisticUnit.Kilocalories, value=float(actInfo["calories_total"]))
+                    activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(actInfo["calories_total"]))
 
-                activity.Stats.Elevation = ActivityStatisticUnit(ActivityStatisticUnit.Meters)
+                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters)
 
                 if "altitude_max" in actInfo:
                     activity.Stats.Elevation.Max = float(actInfo["altitude_max"])
@@ -176,7 +177,7 @@ class EndomondoService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
-
+        print(resp.text)
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
         lap.Waypoints = []
