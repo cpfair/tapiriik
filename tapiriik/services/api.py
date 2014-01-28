@@ -26,21 +26,37 @@ class APIWarning(ServiceWarning):
 # It's on the to-do list.
 
 class APIExcludeActivity(Exception):
-    def __init__(self, message, activity=None, activityId=None, permanent=True):
+    def __init__(self, message, activity=None, activityId=None, permanent=True, user_exception=None):
         Exception.__init__(self, message)
         self.Message = message
         self.Activity = activity
         self.ExternalActivityID = activityId
         self.Permanent = permanent
+        self.UserException = user_exception
 
     def __str__(self):
         return self.Message + " (activity " + str(self.ExternalActivityID) + ")"
 
 class UserExceptionType:
+    # Account-level exceptions (not a hardcoded thing, just to keep these seperate)
     Authorization = "auth"
     AccountFull = "full"
     AccountExpired = "expired"
     AccountUnpaid = "unpaid" # vs. expired, which implies it was at some point function, via payment or trial or otherwise.
+
+    # Activity-level exceptions
+    FlowException = "flow"
+    Private = "private"
+    NotTriggered = "notrigger"
+    MissingCredentials = "credentials_missing" # They forgot to check the "Remember these details" box
+    NotConfigured = "config_missing" # Don't think this error is even possible any more.
+    StationaryUnsupported = "stationary"
+    DownloadError = "download"
+    ListingError = "list" # Cases when a service fails listing, so nothing can be uploaded to it.
+    UploadError = "upload"
+    SanityError = "sanity"
+    UnknownTZ = "tz_unknown"
+    Other = "other"
 
 class UserException:
     def __init__(self, type, extra=None, intervention_required=False, clear_group=None):
