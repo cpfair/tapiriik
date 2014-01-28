@@ -15,6 +15,7 @@ import requests
 import os
 import math
 import logging
+import time
 logger = logging.getLogger(__name__)
 
 class GarminConnectService(ServiceBase):
@@ -96,14 +97,21 @@ class GarminConnectService(ServiceBase):
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
         preResp = requests.get("https://connect.garmin.com/signin")
-        resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
-        if resp.status_code >= 500 and resp.status_code < 600:
-            raise APIException("Remote API failure")
-        if resp.status_code != 302:  # yep
-            if "errorMessage" in resp.text:
-                raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-            else:
-                raise APIException("Mystery login error %s" % resp.text)
+        auth_retries = 3 # Did I mention Garmin Connect is silly?
+        for retries in range(auth_retries):
+            resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
+            if resp.status_code >= 500 and resp.status_code < 600:
+                raise APIException("Remote API failure")
+            if resp.status_code != 302:  # yep
+                if "errorMessage" in resp.text:
+                    if retries < auth_retries - 1:
+                        time.sleep(1)
+                        continue
+                    else:
+                        raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                else:
+                    raise APIException("Mystery login error %s" % resp.text)
+            break
         if record:
             self._sessionCache.Set(record.ExternalID, preResp.cookies)
         return preResp.cookies
