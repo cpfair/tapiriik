@@ -57,9 +57,6 @@ class Sync:
     MinimumSyncInterval = timedelta(seconds=30)
     MaximumIntervalBeforeExhaustiveSync = timedelta(days=14)  # Based on the general page size of 50 activites, this would be >3/day...
 
-    _logFormat = '[%(levelname)-8s] %(asctime)s (%(name)s:%(lineno)d) %(message)s'
-    _logDateFormat = '%Y-%m-%d %H:%M:%S'
-
     def ScheduleImmediateSync(user, exhaustive=None):
         if exhaustive is None:
             db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": datetime.utcnow()}})
@@ -69,9 +66,131 @@ class Sync:
     def SetNextSyncIsExhaustive(user, exhaustive=False):
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSyncIsExhaustive": exhaustive}})
 
-    def _determineRecipientServices(activity, allConnections):
+    def PerformGlobalSync(heartbeat_callback=None):
+        from tapiriik.auth import User
+        users = db.users.find({
+                "NextSynchronization": {"$lte": datetime.utcnow()},
+                "SynchronizationWorker": None,
+                "$or": [
+                    {"SynchronizationHostRestriction": {"$exists": False}},
+                    {"SynchronizationHostRestriction": socket.gethostname()}
+                    ]
+            }).sort("NextSynchronization").limit(1)
+        userCt = 0
+        for user in users:
+            userCt += 1
+            syncStart = datetime.utcnow()
+
+            # Always to an exhaustive sync if there were errors
+            #   Sometimes services report that uploads failed even when they succeeded.
+            #   If a partial sync was done, we'd be assuming that the accounts were consistent past the first page
+            #       e.g. If an activity failed to upload far in the past, it would never be attempted again.
+            #   So we need to verify the full state of the accounts.
+            # But, we can still do a partial sync if there are *only* blocking errors
+            #   In these cases, the block will protect that service from being improperly manipulated (though tbqh I can't come up with a situation where this would happen, it's more of a performance thing).
+            #   And, when the block is cleared, NextSyncIsExhaustive is set.
+
+            exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
+            if "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0:
+                exhaustive = True
+
+            try:
+                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
+            except SynchronizationConcurrencyException:
+                pass  # another worker picked them
+            else:
+                nextSync = None
+                if User.HasActivePayment(user):
+                    nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
+                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
+                syncTime = (datetime.utcnow() - syncStart).total_seconds()
+                db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
+        return userCt
+
+    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
+        SynchronizationTask(user).Run(exhaustive=exhaustive, null_next_sync_on_unlock=null_next_sync_on_unlock, heartbeat_callback=heartbeat_callback)
+
+
+class SynchronizationTask:
+    _logFormat = '[%(levelname)-8s] %(asctime)s (%(name)s:%(lineno)d) %(message)s'
+    _logDateFormat = '%Y-%m-%d %H:%M:%S'
+
+    def __init__(self, user):
+        self.user = user
+
+    def _lockUser(self):
+        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
+        lockCheck = db.users.find_one({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()})
+        if lockCheck is None:
+            raise SynchronizationConcurrencyException  # failed to get lock
+
+    def _unlockUser(self, null_next_sync_on_unlock):
+        update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None}}
+        if null_next_sync_on_unlock:
+            # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
+            # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
+            update_values["$unset"]["NextSynchronization"] = None
+        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+
+    def _loadServiceData(self):
+        self._connectedServiceIds = [x["ID"] for x in self.user["ConnectedServices"]]
+        self._serviceConnections = [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": self._connectedServiceIds}})]
+
+    def _updateSyncProgress(self, step, progress):
+        db.users.update({"_id": self.user["_id"]}, {"$set": {"SynchronizationProgress": progress, "SynchronizationStep": step}})
+
+    def _initializeUserLogging(self):
+        self._logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(self.user["_id"]) + ".log", maxBytes=5242880, backupCount=1)
+        self._logging_file_handler.setFormatter(logging.Formatter(self._logFormat, self._logDateFormat))
+        _global_logger.addHandler(self._logging_file_handler)
+
+    def _closeUserLogging(self):
+        _global_logger.removeHandler(self._logging_file_handler)
+        self._logging_file_handler.flush()
+        self._logging_file_handler.close()
+
+    def _loadExtendedAuthData(self):
+        self._extendedAuthDetails = list(cachedb.extendedAuthDetails.find({"ID": {"$in": self._connectedServiceIds}}))
+
+    def _destroyExtendedAuthData(self):
+        cachedb.extendedAuthDetails.remove({"ID": {"$in": self._connectedServiceIds}})
+
+    def _initializePersistedSyncErrorsAndExclusions(self):
+        self._syncErrors = {}
+        self._syncExclusions = {}
+
+        for conn in self.serviceConnections:
+            if hasattr(conn, "SyncErrors"):
+                # Remove non-blocking errors
+                self._syncErrors[conn._id] = [x for x in conn.SyncErrors if "Block" in x and x["Block"]]
+                del conn.SyncErrors
+            else:
+                self._syncErrors[conn._id] = []
+
+            # Remove temporary exclusions (live tracking etc).
+            self._syncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
+
+            if conn.ExcludedActivities:
+                del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
+
+    def _writeBackSyncErrorsAndExclusions(self):
+        nonblockingSyncErrorsCount = 0
+        blockingSyncErrorsCount = 0
+        syncExclusionCount = 0
+        for conn in self._serviceConnections:
+            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": self._syncErrors[conn._id], "ExcludedActivities": self._syncExclusions[conn._id]}})
+            nonblockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" not in x or not x["Block"]])
+            blockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"]])
+            syncExclusionCount += len(self._syncExclusions[conn._id].items())
+
+        db.users.update({"_id": self.user["_id"]}, {"$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}})
+
+    def _excludeService(self, serviceRecord):
+        self._excludedServices.append(serviceRecord)
+
+    def _determineRecipientServices(self, activity):
         recipientServices = []
-        for conn in allConnections:
+        for conn in self._serviceConnections:
             if activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
             elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
@@ -82,14 +201,7 @@ class Sync:
                 recipientServices.append(conn)
         return recipientServices
 
-    def _fromSameService(activityA, activityB):
-        otherSvcIds = activityB.ServiceDataCollection.keys()
-        for uploadAId in activityA.ServiceDataCollection.keys():
-            if uploadAId in otherSvcIds:
-                return True
-        return False
-
-    def _coalesceDatetime(a, b, knownTz=None):
+    def _coalesceDatetime(self, a, b, knownTz=None):
         """ Returns the most informative (TZ-wise) datetime of those provided - defaulting to the first if they are equivalently descriptive """
         if not b:
             if knownTz and a and not a.tzinfo:
@@ -108,7 +220,7 @@ class Sync:
                 return a.replace(tzinfo=knownTz)
             return a
 
-    def _accumulateActivities(conn, svcActivities, activityList):
+    def _accumulateActivities(self, conn, svcActivities):
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
         activityStartTZOffsetLeeway = timedelta(seconds=10)
@@ -125,12 +237,12 @@ class Sync:
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
             existElsewhere = [
-                              x for x in activityList if
+                              x for x in self._activities if
                               (
                                   # Identical
                                   x.UID == act.UID
                                   or
-                                  # Check to see if the activities are reasonably close together to be considered duplicate
+                                  # Check to see if the self._activities are reasonably close together to be considered duplicate
                                   (x.StartTime is not None and
                                    act.StartTime is not None and
                                    (act.StartTime.tzinfo is not None) == (x.StartTime.tzinfo is not None) and
@@ -175,8 +287,8 @@ class Sync:
                     existingActivity.DefineTZ()
                 existingActivity.FallbackTZ = existingActivity.FallbackTZ if existingActivity.FallbackTZ else act.FallbackTZ
                 # tortuous merging logic is tortuous
-                existingActivity.StartTime = Sync._coalesceDatetime(existingActivity.StartTime, act.StartTime)
-                existingActivity.EndTime = Sync._coalesceDatetime(existingActivity.EndTime, act.EndTime, knownTz=existingActivity.StartTime.tzinfo)
+                existingActivity.StartTime = self._coalesceDatetime(existingActivity.StartTime, act.StartTime)
+                existingActivity.EndTime = self._coalesceDatetime(existingActivity.EndTime, act.EndTime, knownTz=existingActivity.StartTime.tzinfo)
                 existingActivity.Name = existingActivity.Name if existingActivity.Name else act.Name
                 existingActivity.Notes = existingActivity.Notes if existingActivity.Notes else act.Notes
                 existingActivity.Laps = existingActivity.Laps if len(existingActivity.Laps) > len(act.Laps) else act.Laps
@@ -198,22 +310,22 @@ class Sync:
                 existingActivity.UIDs += act.UIDs  # I think this is merited
                 act.UIDs = existingActivity.UIDs  # stop the circular inclusion, not that it matters
                 continue
-            activityList.append(act)
+            self._activities.append(act)
 
-    def _determineEligibleRecipientServices(activity, connectedServices, recipientServices, excludedServices, user):
+    def _determineEligibleRecipientServices(self, activity, recipientServices):
         from tapiriik.auth import User
         eligibleServices = []
         for destinationSvcRecord in recipientServices:
-            if destinationSvcRecord in excludedServices:
+            if destinationSvcRecord in self._excludedServices:
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
 
-            sources = [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
-            if hasattr(activity, "Origin") and "SkipOriginCheck" not in user:
+            sources = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
+            if hasattr(activity, "Origin") and "SkipOriginCheck" not in self.user:
                 sources = [activity.Origin]
             for src in sources:
-                if User.CheckFlowException(user, src, destinationSvcRecord):
+                if User.CheckFlowException(self.user, src, destinationSvcRecord):
                     flowException = True
                     break
             # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
@@ -222,11 +334,11 @@ class Sync:
                 # Eventual destinations, since it'd eventually be synced from these anyways
                 secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
                 # Other places this activity exists - the alternate routes
-                secondLevelSources += [[y for y in connectedServices if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
+                secondLevelSources += [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
                 for secondLevelSrc in secondLevelSources:
                     if secondLevelSrc.Service.ID in WITHDRAWN_SERVICES:
                         continue
-                    if (secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] or "SkipOriginCheck" in user) and not User.CheckFlowException(user, secondLevelSrc, destinationSvcRecord):
+                    if (secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] or "SkipOriginCheck" in self.user) and not User.CheckFlowException(self.user, secondLevelSrc, destinationSvcRecord):
                         flowException = False
                         break
 
@@ -243,7 +355,7 @@ class Sync:
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
-    def _accumulateExclusions(serviceRecord, exclusions, tempSyncExclusions):
+    def _accumulateExclusions(self, serviceRecord, exclusions):
         if type(exclusions) is not list:
             exclusions = [exclusions]
         for exclusion in exclusions:
@@ -251,213 +363,231 @@ class Sync:
             if not identifier:
                 raise ValueError("Activity excluded with no identifying information")
             identifier = str(identifier).replace(".", "_")
-            tempSyncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
+            self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
 
-    def _estimateFallbackTZ(user, activities):
+    def _downloadActivityList(self, conn, exhaustive):
+        svc = conn.Service
+        # Bail out as appropriate for the entire account (_syncErrors contains only blocking errors at this point)
+        if [x for x in self._syncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Account]:
+            raise SynchronizationCompleteException()
+
+        # ...and for this specific service
+        if [x for x in self._syncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
+            logger.info("Service %s is blocked:" % conn.Service.ID)
+            self._excludeService(conn)
+            return
+
+        if svc.ID in DISABLED_SERVICES or svc.ID in WITHDRAWN_SERVICES:
+            logger.info("Service %s is widthdrawn" % conn.Service.ID)
+            self._excludeService(conn)
+            return
+
+        if svc.RequiresExtendedAuthorizationDetails:
+            if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
+                extAuthDetails = [x["ExtendedAuthorization"] for x in self._extendedAuthDetails if x["ID"] == conn._id]
+                if not len(extAuthDetails):
+                    logger.info("No extended auth details for " + svc.ID)
+                    self._excludeService(conn)
+                    return
+                # the connection never gets saved in full again, so we can sub these in here at no risk
+                conn.ExtendedAuthorization = extAuthDetails[0]
+
+        try:
+            logger.info("\tRetrieving list from " + svc.ID)
+            svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
+        except (ServiceException, ServiceWarning) as e:
+            self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
+            self._excludeService(conn)
+            if not issubclass(e.__class__, ServiceWarning):
+                return
+        except Exception as e:
+            self._syncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
+            self._excludeService(conn)
+            return
+        self._accumulateExclusions(conn, svcExclusions)
+        self._accumulateActivities(conn, svcActivities)
+
+    def _estimateFallbackTZ(self, activities):
         from collections import Counter
         # With the hope that the majority of the activity records returned will have TZs, and the user's current TZ will constitute the majority.
         TZOffsets = [x.StartTime.utcoffset().total_seconds() / 60 for x in activities if x.TZ is not None]
         mode = Counter(TZOffsets).most_common(1)
         if not len(mode):
-            if "Timezone" in user:
-                return pytz.timezone(user["Timezone"])
+            if "Timezone" in self.user:
+                return pytz.timezone(self.user["Timezone"])
             return None
         return pytz.FixedOffset(mode[0][0])
 
-    def PerformGlobalSync(heartbeat_callback=None, version=None):
-        from tapiriik.auth import User
-        users = db.users.find({
-                "NextSynchronization": {"$lte": datetime.utcnow()},
-                "SynchronizationWorker": None,
-                "$or": [
-                    {"SynchronizationHostRestriction": {"$exists": False}},
-                    {"SynchronizationHostRestriction": socket.gethostname()}
-                    ]
-            }).sort("NextSynchronization").limit(1)
-        userCt = 0
-        for user in users:
-            userCt += 1
-            syncStart = datetime.utcnow()
+    def _applyFallbackTZ(self):
+        # Attempt to assign fallback TZs to all stationary/potentially-stationary activities, since we may not be able to determine TZ any other way.
+        fallbackTZ = self._estimateFallbackTZ(self._activities)
+        if fallbackTZ:
+            logger.info("Setting fallback TZs to %s" % fallbackTZ )
+            for act in self._activities:
+                act.FallbackTZ = fallbackTZ
 
-            # Always to an exhaustive sync if there were errors
-            #   Sometimes services report that uploads failed even when they succeeded.
-            #   If a partial sync was done, we'd be assuming that the accounts were consistent past the first page
-            #       e.g. If an activity failed to upload far in the past, it would never be attempted again.
-            #   So we need to verify the full state of the accounts.
-            # But, we can still do a partial sync if there are *only* blocking errors
-            #   In these cases, the block will protect that service from being improperly manipulated (though tbqh I can't come up with a situation where this would happen, it's more of a performance thing).
-            #   And, when the block is cleared, NextSyncIsExhaustive is set.
+    def _processActivityOrigins(self):
+        logger.info("Reading activity origins")
+        origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in self._activities]}}))
+        activitiesWithOrigins = [x["ActivityUID"] for x in origins]
 
-            exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
-            if "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0:
-                exhaustive = True
-
-            try:
-                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
-            except SynchronizationConcurrencyException:
-                pass  # another worker picked them
+        logger.info("Populating origins")
+        # Populate origins
+        for activity in self._activities:
+            if len(activity.ServiceDataCollection.keys()) == 1:
+                if not len(self._excludedServices):  # otherwise it could be incorrectly recorded
+                    # we can log the origin of this activity
+                    if activity.UID not in activitiesWithOrigins:  # No need to hammer the database updating these when they haven't changed
+                        logger.info("\t\t Updating db with origin for proceeding activity")
+                        db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0].Service.ID, "ExternalID": [[y.ExternalID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]}})
+                    activity.Origin = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]
             else:
-                nextSync = None
-                if User.HasActivePayment(user):
-                    nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
-                syncTime = (datetime.utcnow() - syncStart).total_seconds()
-                db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
-        return userCt
+                if activity.UID in activitiesWithOrigins:
+                    knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
+                    connectedOrigins = [x for x in self._serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
+                    if len(connectedOrigins) > 0:  # they might have disconnected it
+                        activity.Origin = connectedOrigins[0]
+                    else:
+                        activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
 
-    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
-        from tapiriik.services.interchange import ActivityStatisticUnit
-        # And thus begins the monolithic sync function that's a pain to test.
-        connectedServiceIds = [x["ID"] for x in user["ConnectedServices"]]
+    def _updateSynchronizedActivities(self, activity):
+        # Locally mark this activity as present on the appropriate services.
+        # These needs to happen regardless of whether the activity is going to be synchronized.
+        #   Before, I had moved this under all the eligibility/recipient checks, but that could cause persistent duplicate self._activities when the user had already manually uploaded the same activity to multiple sites.
+        updateServicesWithExistingActivity = False
+        for serviceWithExistingActivityId in activity.ServiceDataCollection.keys():
+            serviceWithExistingActivity = [x for x in self._serviceConnections if x._id == serviceWithExistingActivityId][0]
+            if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or not (set(activity.UIDs) <= set(serviceWithExistingActivity.SynchronizedActivities)):
+                updateServicesWithExistingActivity = True
+                break
 
-        if len(connectedServiceIds) <= 1:
-            return  # nothing's going anywhere anyways
+        if updateServicesWithExistingActivity:
+            logger.debug("\t\tUpdating SynchronizedActivities")
+            db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
+                                  {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
+                                  multi=True)
 
-        # mark this user as in-progress
-        db.users.update({"_id": user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationProgress": 0, "SynchronizationStartTime": datetime.utcnow()}})
-        lockCheck = db.users.find_one({"_id": user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()})
-        if lockCheck is None:
-            raise SynchronizationConcurrencyException  # failed to get lock
+    def _downloadActivity(self, activity):
+        act = None
+        actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
+        actAvailableFromSvcs = [[x for x in self._serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromSvcIds]
 
-        def _updateSyncProgress(step, progress):
-            db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": progress, "SynchronizationStep": step}})
+        servicePriorityList = Service.PreferredDownloadPriorityList()
+        actAvailableFromSvcs.sort(key=lambda x: servicePriorityList.index(x.Service))
 
-        logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(user["_id"]) + ".log", maxBytes=0, backupCount=10)
-        logging_file_handler.setFormatter(logging.Formatter(Sync._logFormat, Sync._logDateFormat))
-        logging_file_handler.doRollover()
-        _global_logger.addHandler(logging_file_handler)
+        # TODO: redo this, it was completely broken:
+        # Prefer retrieving the activity from its original source.
 
-        logger.info("Beginning sync for " + str(user["_id"]) + "(exhaustive: " + str(exhaustive) + ")")
+        for dlSvcRecord in actAvailableFromSvcs:
+            dlSvc = dlSvcRecord.Service
+            logger.info("\tfrom " + dlSvc.ID)
+            if activity.UID in self._syncExclusions[dlSvcRecord._id]:
+                logger.info("\t\t...has activity exclusion logged")
+                continue
+            if dlSvcRecord in self._excludedServices:
+                logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
+                continue
+
+            workingCopy = copy.copy(activity)  # we can hope
+            # Load in the service data in the same place they left it.
+            workingCopy.ServiceData = workingCopy.ServiceDataCollection[dlSvcRecord._id] if dlSvcRecord._id in workingCopy.ServiceDataCollection else None
+            try:
+                workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
+            except (ServiceException, ServiceWarning) as e:
+                self._syncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
+                if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
+                    self._excludeService(dlSvcRecord)
+                if not issubclass(e.__class__, ServiceWarning):
+                    continue
+            except APIExcludeActivity as e:
+                logger.info("\t\texcluded by service: %s" % e.Message)
+                e.Activity = workingCopy
+                self._accumulateExclusions(dlSvcRecord, e)
+                continue
+            except Exception as e:
+                self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
+                continue
+
+            if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
+                logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
+                continue
+            try:
+                workingCopy.CheckSanity()
+            except:
+                logger.info("\t\t...failed sanity check")
+                self._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
+                continue
+            else:
+                act = workingCopy
+                act.SourceConnection = dlSvcRecord
+                break  # succesfully got the activity + passed sanity checks, can stop now
+        return act, dlSvc
+
+    def _uploadActivity(self, activity, destinationServiceRec):
+        destSvc = destinationServiceRec.Service
         try:
-            serviceConnections = [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": connectedServiceIds}})]
-            allExtendedAuthDetails = list(cachedb.extendedAuthDetails.find({"ID": {"$in": connectedServiceIds}}))
-            activities = []
+            return destSvc.UploadActivity(destinationServiceRec, activity)
+        except (ServiceException, ServiceWarning) as e:
+            self._syncErrors[destinationServiceRec._id].append(_packServiceException(SyncStep.Upload, e))
+            if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
+                self._excludeService(destinationServiceRec)
+            if not issubclass(e.__class__, ServiceWarning):
+                raise UploadException()
+        except Exception as e:
+            self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
+            raise UploadException()
 
-            excludedServices = []
+    def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
+        if len(self.user["ConnectedServices"]) <= 1:
+            return # Done and done!
+        from tapiriik.services.interchange import ActivityStatisticUnit
 
-            tempSyncErrors = {}
-            tempSyncExclusions = {}
+        # Mark this user as in-progress.
+        self._lockUser()
 
-            for conn in serviceConnections:
+        # Reset their progress
+        self._updateSyncProgress(SyncStep.List, 0)
 
-                svc = conn.Service
+        self._initializeUserLogging()
 
-                if hasattr(conn, "SyncErrors"):
-                    # Remove non-blocking errors
-                    tempSyncErrors[conn._id] = [x for x in conn.SyncErrors if "Block" in x and x["Block"]]
-                    del conn.SyncErrors
-                else:
-                    tempSyncErrors[conn._id] = []
+        logger.info("Beginning sync for " + str(self.user["_id"]) + "(exhaustive: " + str(exhaustive) + ")")
 
-                # Remove temporary exclusions (live tracking etc).
-                tempSyncExclusions[conn._id] = dict((k, v) for k, v in (conn.ExcludedActivities if conn.ExcludedActivities else {}).items() if v["Permanent"])
+        # Sets up serviceConnections
+        self._loadServiceData()
 
-                if conn.ExcludedActivities:
-                    del conn.ExcludedActivities  # Otherwise the exception messages get really, really, really huge and break mongodb.
+        self._loadExtendedAuthData()
 
+        self._activities = []
+        self._excludedServices = []
+
+        self._initializePersistedSyncErrorsAndExclusions()
+
+        try:
+            for conn in self._serviceConnections:
                 # If we're not going to be doing anything anyways, stop now
-                if len(serviceConnections) - len(excludedServices) <= 1:
-                    activities = []
-                    break
+                if len(self._serviceConnections) - len(self._excludedServices) <= 1:
+                    raise SynchronizationCompleteException()
 
                 if heartbeat_callback:
                     heartbeat_callback(SyncStep.List)
 
-                # Bail out as appropriate for the entire account (tempSyncErrors contains only blocking errors at this point)
-                if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Account]:
-                    activities = [] # Kinda meh, I'll make it better when I break this into seperate functions, whenever that happens...
-                    break
+                self._updateSyncProgress(SyncStep.List, conn.Service.ID)
+                self._downloadActivityList(conn, exhaustive)
 
-                # ...and for this specific service
-                if [x for x in tempSyncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
-                    logger.info("Service %s is blocked:" % conn.Service.ID)
-                    excludedServices.append(conn)
-                    continue
+            self._applyFallbackTZ()
 
-                if svc.ID in DISABLED_SERVICES or svc.ID in WITHDRAWN_SERVICES:
-                    logger.info("Service %s is widthdrawn" % conn.Service.ID)
-                    excludedServices.append(conn)
-                    continue
-
-                if svc.RequiresExtendedAuthorizationDetails:
-                    if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
-                        extAuthDetails = [x["ExtendedAuthorization"] for x in allExtendedAuthDetails if x["ID"] == conn._id]
-                        if not len(extAuthDetails):
-                            logger.info("No extended auth details for " + svc.ID)
-                            excludedServices.append(conn)
-                            continue
-                        # the connection never gets saved in full again, so we can sub these in here at no risk
-                        conn.ExtendedAuthorization = extAuthDetails[0]
-
-                _updateSyncProgress(SyncStep.List, svc.ID)
-                try:
-                    logger.info("\tRetrieving list from " + svc.ID)
-                    svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
-                except (ServiceException, ServiceWarning) as e:
-                    tempSyncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
-                    excludedServices.append(conn)
-                    if not issubclass(e.__class__, ServiceWarning):
-                        continue
-                except Exception as e:
-                    tempSyncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
-                    excludedServices.append(conn)
-                    continue
-                Sync._accumulateExclusions(conn, svcExclusions, tempSyncExclusions)
-                Sync._accumulateActivities(conn, svcActivities, activities)
-
-            # Attempt to assign fallback TZs to all stationary/potentially-stationary activities, since we may not be able to determine TZ any other way.
-            fallbackTZ = Sync._estimateFallbackTZ(user, activities)
-            if fallbackTZ:
-                logger.info("Setting fallback TZs to %s" % fallbackTZ )
-                for act in activities:
-                    act.FallbackTZ = fallbackTZ
-
-            logger.info("Reading activity origins")
-            origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in activities]}}))
-            activitiesWithOrigins = [x["ActivityUID"] for x in origins]
+            self._processActivityOrigins()
 
             # Makes reading the logs much easier.
-            activities = sorted(activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
+            self._activities = sorted(self._activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
 
-            logger.info("Populating origins")
-            # Populate origins
-            for activity in activities:
-                if len(activity.ServiceDataCollection.keys()) == 1:
-                    if not len(excludedServices):  # otherwise it could be incorrectly recorded
-                        # we can log the origin of this activity
-                        if activity.UID not in activitiesWithOrigins:  # No need to hammer the database updating these when they haven't changed
-                            logger.info("\t\t Updating db with origin for proceeding activity")
-                            db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": [[y for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0].Service.ID, "ExternalID": [[y.ExternalID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]}})
-                        activity.Origin = [[y for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]
-                else:
-                    if activity.UID in activitiesWithOrigins:
-                        knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
-                        connectedOrigins = [x for x in serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
-                        if len(connectedOrigins) > 0:  # they might have disconnected it
-                            activity.Origin = connectedOrigins[0]
-                        else:
-                            activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
-
-            totalActivities = len(activities)
+            totalActivities = len(self._activities)
             processedActivities = 0
 
-            for activity in activities:
-                logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
+            for activity in self._activities:
+                logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                 logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
-                # Locally mark this activity as present on the appropriate services.
-                # These needs to happen regardless of whether the activity is going to be synchronized.
-                #   Before, I had moved this under all the eligibility/recipient checks, but that could cause persistent duplicate activities when the user had already manually uploaded the same activity to multiple sites.
-                updateServicesWithExistingActivity = False
-                for serviceWithExistingActivityId in activity.ServiceDataCollection.keys():
-                    serviceWithExistingActivity = [x for x in serviceConnections if x._id == serviceWithExistingActivityId][0]
-                    if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or not (set(activity.UIDs) <= set(serviceWithExistingActivity.SynchronizedActivities)):
-                        updateServicesWithExistingActivity = True
-                        break
-                if updateServicesWithExistingActivity:
-                    logger.debug("\t\tUpdating SynchronizedActivities")
-                    db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
-                                          {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
-                                          multi=True)
+                self._updateSynchronizedActivities(activity)
 
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
@@ -466,14 +596,14 @@ class Sync:
                     continue
 
                 # recipientServices are services that don't already have this activity
-                recipientServices = Sync._determineRecipientServices(activity, serviceConnections)
+                recipientServices = self._determineRecipientServices(activity)
                 if len(recipientServices) == 0:
                     totalActivities -= 1  # doesn't count
                     del activity
                     continue
 
                 # eligibleServices are services that are permitted to receive this activity - taking into account flow exceptions, excluded services, unfufilled configuration requirements, etc.
-                eligibleServices = Sync._determineEligibleRecipientServices(activity=activity, connectedServices=serviceConnections, recipientServices=recipientServices, excludedServices=excludedServices, user=user)
+                eligibleServices = self._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices)
 
                 if not len(eligibleServices):
                     logger.info("\t\t...has no eligible destinations")
@@ -491,103 +621,45 @@ class Sync:
                     syncProgress = 1
                 else:
                     syncProgress = max(0, min(1, processedActivities / totalActivities))
-                _updateSyncProgress(SyncStep.Download, syncProgress)
+                self._updateSyncProgress(SyncStep.Download, syncProgress)
 
                 # The second most important line of logging in the application...
                 logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
 
                 # Download the full activity record
-                act = None
-                actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
-                actAvailableFromSvcs = [[x for x in serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromSvcIds]
+                activity, activitySource = self._downloadActivity(activity)
 
-                servicePriorityList = Service.PreferredDownloadPriorityList()
-                actAvailableFromSvcs.sort(key=lambda x: servicePriorityList.index(x.Service))
-
-                # TODO: redo this, it was completely broken:
-                # Prefer retrieving the activity from its original source.
-
-                for dlSvcRecord in actAvailableFromSvcs:
-                    dlSvc = dlSvcRecord.Service
-                    logger.info("\tfrom " + dlSvc.ID)
-                    if activity.UID in tempSyncExclusions[dlSvcRecord._id]:
-                        logger.info("\t\t...has activity exclusion logged")
-                        continue
-                    if dlSvcRecord in excludedServices:
-                        logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
-                        continue
-
-                    workingCopy = copy.copy(activity)  # we can hope
-                    # Load in the service data in the same place they left it.
-                    workingCopy.ServiceData = workingCopy.ServiceDataCollection[dlSvcRecord._id] if dlSvcRecord._id in workingCopy.ServiceDataCollection else None
-                    try:
-                        workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
-                    except (ServiceException, ServiceWarning) as e:
-                        tempSyncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
-                        if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
-                            excludedServices.append(dlSvcRecord)
-                        if not issubclass(e.__class__, ServiceWarning):
-                            continue
-                    except APIExcludeActivity as e:
-                        logger.info("\t\texcluded by service: %s" % e.Message)
-                        e.Activity = workingCopy
-                        Sync._accumulateExclusions(dlSvcRecord, e, tempSyncExclusions)
-                        continue
-                    except Exception as e:
-                        tempSyncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
-                        continue
-
-                    if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
-                        logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
-                        continue
-                    try:
-                        workingCopy.CheckSanity()
-                    except:
-                        logger.info("\t\t...failed sanity check")
-                        Sync._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy), tempSyncExclusions)
-                        continue
-                    else:
-                        act = workingCopy
-                        act.SourceConnection = dlSvcRecord
-                        break  # succesfully got the activity + passed sanity checks, can stop now
-
-                if act is None:  # couldn't download it from anywhere, or the places that had it said it was broken
+                if activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                     processedActivities += 1  # we tried
-                    del act
-                    del activity
                     continue
 
-                act.CleanStats()
+                activity.CleanStats()
+
                 try:
-                    act.EnsureTZ()
+                    activity.EnsureTZ()
                 except:
                     logger.error("\tCould not determine TZ")
-                    Sync._accumulateExclusions(act.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=act, permanent=False), tempSyncExclusions)
+                    self._accumulateExclusions(activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=activity, permanent=False))
                     continue
                 else:
-                    logger.debug("\tDetermined TZ %s" % act.TZ)
+                    logger.debug("\tDetermined TZ %s" % activity.TZ)
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)
                     destSvc = destinationSvcRecord.Service
-                    if not destSvc.ReceivesStationaryActivities and act.Stationary:
+                    if not destSvc.ReceivesStationaryActivities and activity.Stationary:
                         logger.info("\t\t...marked as stationary during download")
                         continue
+
                     uploaded_external_id = None
+                    logger.info("\t  Uploading to " + destSvc.ID)
                     try:
-                        logger.info("\t  Uploading to " + destSvc.ID)
-                        uploaded_external_id = destSvc.UploadActivity(destinationSvcRecord, act)
-                    except (ServiceException, ServiceWarning) as e:
-                        tempSyncErrors[destinationSvcRecord._id].append(_packServiceException(SyncStep.Upload, e))
-                        if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
-                            excludedServices.append(destinationSvcRecord)
-                        if not issubclass(e.__class__, ServiceWarning):
-                            continue
-                    except Exception as e:
-                        tempSyncErrors[destinationSvcRecord._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
+                        uploaded_external_id = self._uploadActivity(activity, destinationSvcRecord)
+                    except UploadException:
                         continue
                     logger.info("\t  Uploaded")
+
                     if uploaded_external_id:
                         # record external ID, for posterity (and later debugging)
                         db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID})
@@ -595,43 +667,38 @@ class Sync:
                     db.connections.update({"_id": destinationSvcRecord._id},
                                           {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
 
-                    db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": dlSvc.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
-                del act
+                    db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
                 del activity
 
                 processedActivities += 1
 
             logger.info("Writing back service data")
-            nonblockingSyncErrorsCount = 0
-            blockingSyncErrorsCount = 0
-            syncExclusionCount = 0
-            for conn in serviceConnections:
-                db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": tempSyncErrors[conn._id], "ExcludedActivities": tempSyncExclusions[conn._id]}})
-                nonblockingSyncErrorsCount += len([x for x in tempSyncErrors[conn._id] if "Block" not in x or not x["Block"]])
-                blockingSyncErrorsCount += len([x for x in tempSyncErrors[conn._id] if "Block" in x and x["Block"]])
-                syncExclusionCount += len(tempSyncExclusions[conn._id].items())
+            self._writeBackSyncErrorsAndExclusions()
 
             logger.info("Finalizing")
-            # clear non-persisted extended auth details
-            cachedb.extendedAuthDetails.remove({"ID": {"$in": connectedServiceIds}})
-            # unlock the row
-            update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None, "SynchronizationProgress": None, "SynchronizationStep": None}, "$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}}
-            if null_next_sync_on_unlock:
-                # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
-                # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
-                update_values["$unset"]["NextSynchronization"] = None
-            db.users.update({"_id": user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+            # Clear non-persisted extended auth details.
+            self._destroyExtendedAuthData()
+            # Unlock the user.
+            self._unlockUser(null_next_sync_on_unlock)
+
+        except SynchronizationCompleteException:
+            logger.info("Finished sync prematurely for %s" % self._user["_id"])
+        except SynchronizationConcurrencyException:
+            raise # Don't spit out the "Core sync exception" error
         except:
             # oops.
             logger.exception("Core sync exception")
             raise
         else:
-            logger.info("Finished sync for " + str(user["_id"]))
+            logger.info("Finished sync for %s" % self._user["_id"])
         finally:
-            _global_logger.removeHandler(logging_file_handler)
-            logging_file_handler.flush()
-            logging_file_handler.close()
+            self._closeUserLogging()
 
+class UploadException(Exception):
+    pass
+
+class SynchronizationCompleteException(Exception):
+    pass
 
 class SynchronizationConcurrencyException(Exception):
     pass
