@@ -10,7 +10,7 @@ lastDayDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt"
 lastHourDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
 
 # sync wait time, to save making 1 query/sec-user-browser
-queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker":None}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
+queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
 queueHeadTime = timedelta(0)
 for queuedUser in queueHead:
     queueHeadTime += datetime.utcnow() - queuedUser["NextSynchronization"]
