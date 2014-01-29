@@ -85,6 +85,15 @@ class GarminConnectService(ServiceBase):
 
     def __init__(self):
         self._activityHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").json()["dictionary"]
+        self._rate_lock = open("/tmp/gc_rate.lock", "w")
+
+    def _rate_limit(self):
+        import fcntl
+        fcntl.flock(self._rate_lock.fileno(),fcntl.LOCK_EX)
+        try:
+            time.sleep(1/20) # I appear to been banned from Garmin Connect while determining this.
+        finally:
+            fcntl.flock(self._rate_lock.fileno(),fcntl.LOCK_UN)
 
     def _get_cookies(self, record=None, email=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
@@ -96,9 +105,11 @@ class GarminConnectService(ServiceBase):
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
         params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
+        self._rate_limit()
         preResp = requests.get("https://connect.garmin.com/signin")
         auth_retries = 3 # Did I mention Garmin Connect is silly?
         for retries in range(auth_retries):
+            self._rate_limit()
             resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
             if resp.status_code >= 500 and resp.status_code < 600:
                 raise APIException("Remote API failure")
@@ -122,6 +133,7 @@ class GarminConnectService(ServiceBase):
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
         cookies = self._get_cookies(email=email, password=password)
+        self._rate_limit()
         username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         if not len(username):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -147,6 +159,7 @@ class GarminConnectService(ServiceBase):
         exclusions = []
         while True:
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
+            self._rate_limit()
             res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
             res = res.json()["results"]
             if "activities" not in res:
@@ -276,6 +289,7 @@ class GarminConnectService(ServiceBase):
         #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
         activityID = activity.ServiceData["ActivityID"]
         cookies = self._get_cookies(record=serviceRecord)
+        self._rate_limit()
         res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
         try:
             TCXIO.Parse(res.content, activity)
@@ -294,6 +308,7 @@ class GarminConnectService(ServiceBase):
         if activity.Stats.Temperature.Min is not None or activity.Stats.Temperature.Max is not None or activity.Stats.Temperature.Average is not None:
             logger.debug("Retrieving additional temperature data")
             # TCX doesn't have temperature, for whatever reason...
+            self._rate_limit()
             res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/" + str(activityID) + "?full=true", cookies=cookies)
             try:
                 temp_act = GPXIO.Parse(res.content, suppress_validity_errors=True)
@@ -320,6 +335,7 @@ class GarminConnectService(ServiceBase):
         fit_file = FITIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         cookies = self._get_cookies(record=serviceRecord)
+        self._rate_limit()
         res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
         res = res.json()["detailedImportResult"]
 
@@ -333,6 +349,7 @@ class GarminConnectService(ServiceBase):
         warnings = []
         try:
             if activity.Name and activity.Name.strip():
+                self._rate_limit()
                 res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
@@ -345,6 +362,7 @@ class GarminConnectService(ServiceBase):
 
         try:
             if activity.Notes and activity.Notes.strip():
+                self._rate_limit()
                 res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
@@ -363,6 +381,7 @@ class GarminConnectService(ServiceBase):
                     raise APIWarning("GarminConnect does not support activity type " + activity.Type)
                 else:
                     acttype = acttype[0]
+                self._rate_limit()
                 res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
                 res = res.json()
                 if "activityType" not in res or res["activityType"]["key"] != acttype:
