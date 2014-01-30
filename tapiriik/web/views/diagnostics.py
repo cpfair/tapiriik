@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
+from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD, SITE_VER
 from tapiriik.database import db
 from tapiriik.sync import Sync
 from tapiriik.auth import TOTP
@@ -61,8 +61,8 @@ def diag_dashboard(req):
     autoSyncErrorSummary = []
     for error in syncErrorListing:
         serviceSet = set(error["value"]["connections"])
-        affected_auto_users = [{"id":user["_id"], "highlight": user["LastSynchronization"] > datetime.utcnow() - timedelta(minutes=5)} for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet and "NextSynchronization" in user and user["NextSynchronization"] is not None]
-        affected_users = [{"id": user["_id"], "highlight": False} for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet and ("NextSynchronization" not in user or user["NextSynchronization"] is None)]
+        affected_auto_users = [{"id":user["_id"], "highlight": user["LastSynchronization"] > datetime.utcnow() - timedelta(minutes=5), "outdated": user["LastSynchronizationVersion"] != SITE_VER if "LastSynchronizationVersion" in user else True} for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet and "NextSynchronization" in user and user["NextSynchronization"] is not None]
+        affected_users = [{"id": user["_id"], "highlight": False, "outdated": False} for user in syncErrorsAffectingUsers if set([conn["ID"] for conn in user["ConnectedServices"]]) & serviceSet and ("NextSynchronization" not in user or user["NextSynchronization"] is None)]
         if len(affected_auto_users):
             autoSyncErrorSummary.append({"message": error["value"]["exemplar"], "count": int(error["value"]["count"]), "affected_users": affected_auto_users})
         if len(affected_users):

@@ -1,6 +1,7 @@
 from tapiriik.sync import Sync
 from tapiriik.requests_lib import patch_requests_with_default_timeout
 from tapiriik.database import db
+from tapiriik.settings import SITE_VER
 import time
 import datetime
 import os
@@ -15,6 +16,8 @@ RecycleInterval = 10 # Number of users processed before the worker is recycled. 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
 os.chdir(oldCwd)
+
+SITE_VER = WorkerVersion
 
 def sync_interrupt(signal, frame):
     global Run

@@ -30,7 +30,7 @@
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
 		<li><b>Sync errors (automatic):</b>
 			<ul>{% for error in autoSyncErrorSummary %}
-				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user.id %}" {% if affected_user.highlight %}style="color:magenta"{% endif %}>{{ affected_user.id }}</a> {% endfor %}</li>
+				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user.id %}" {% if affected_user.outdated %}style="color:#aaa;"{% elif affected_user.highlight %}style="color:magenta"{% endif %}>{{ affected_user.id }}</a> {% endfor %}</li>
 				{% endfor %}
 			</ul>
 		</li>
