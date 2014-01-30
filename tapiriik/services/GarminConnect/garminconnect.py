@@ -7,6 +7,7 @@ from tapiriik.services.tcx import TCXIO
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.fit import FITIO
 from tapiriik.services.sessioncache import SessionCache
+from tapiriik.database import cachedb
 
 from django.core.urlresolvers import reverse
 import pytz
@@ -16,6 +17,7 @@ import os
 import math
 import logging
 import time
+import json
 logger = logging.getLogger(__name__)
 
 class GarminConnectService(ServiceBase):
@@ -84,7 +86,13 @@ class GarminConnectService(ServiceBase):
     }
 
     def __init__(self):
-        self._activityHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").json()["dictionary"]
+        cachedHierarchy = cachedb.gc_type_hierarchy.find_one()
+        if not cachedHierarchy:
+            rawHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").text
+            self._activityHierarchy = json.loads(rawHierarchy)["dictionary"]
+            cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
+        else:
+            self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])["dictionary"]
         self._rate_lock = open("/tmp/gc_rate.lock", "w")
 
     def _rate_limit(self):
