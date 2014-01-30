@@ -97,11 +97,14 @@ class GarminConnectService(ServiceBase):
 
     def _rate_limit(self):
         import fcntl
-        fcntl.flock(self._rate_lock.fileno(),fcntl.LOCK_EX)
+        print("Waiting for lock")
+        fcntl.flock(self._rate_lock,fcntl.LOCK_EX)
         try:
-            time.sleep(1/5) # I appear to been banned from Garmin Connect while determining this.
+            print("Have lock")
+            time.sleep(1) # I appear to been banned from Garmin Connect while determining this.
+            print("Rate limited")
         finally:
-            fcntl.flock(self._rate_lock.fileno(),fcntl.LOCK_UN)
+            fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
     def _get_cookies(self, record=None, email=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
