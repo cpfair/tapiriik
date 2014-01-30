@@ -12,9 +12,10 @@ lastHourDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt
 # sync wait time, to save making 1 query/sec-user-browser
 queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
 queueHeadTime = timedelta(0)
-for queuedUser in queueHead:
-    queueHeadTime += datetime.utcnow() - queuedUser["NextSynchronization"]
-queueHeadTime /= len(queueHead)
+if len(queueHead):
+    for queuedUser in queueHead:
+        queueHeadTime += datetime.utcnow() - queuedUser["NextSynchronization"]
+    queueHeadTime /= len(queueHead)
 
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
