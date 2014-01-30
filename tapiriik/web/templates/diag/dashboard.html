@@ -20,7 +20,7 @@
 			{% if lockedSyncRecords > 0 %}
 			<ul>{% for lockedUser in lockedSyncUsers %}
 					{% with userId=lockedUser|dict_get:'_id' %}
-					<li><a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a> @ {{ lockedUser.SynchronizationProgress|percentage }} {% if lockedUser.SynchronizationWorker not in allWorkerPIDs %} <span style="color:red">(orphaned)</span>{% endif %}{% if lockedUser.SynchronizationWorker in stalledWorkerPIDs %} <span style="color:orange;">(stalled)</span>{% endif %}</li>
+					<li><tt>{{ lockedUser.SynchronizationWorker }}@{{ lockedUser.SynchronizationHost }}</tt> <a href="{% url 'diagnostics_user' user=userId %}">{{ userId }}</a> @ {{ lockedUser.SynchronizationProgress|percentage }} {% if lockedUser.SynchronizationWorker not in allWorkerPIDs %} <span style="color:red">(orphaned)</span>{% endif %}{% if lockedUser.SynchronizationWorker in stalledWorkerPIDs %} <span style="color:orange;">(stalled)</span>{% endif %}</li>
 					{% endwith %}
 				{% endfor %}
 			</ul>
@@ -30,13 +30,13 @@
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
 		<li><b>Sync errors (automatic):</b>
 			<ul>{% for error in autoSyncErrorSummary %}
-				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user %}">{{ affected_user }}</a> {% endfor %}</li>
+				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user.id %}" {% if affected_user.highlight %}style="color:magenta"{% endif %}>{{ affected_user.id }}</a> {% endfor %}</li>
 				{% endfor %}
 			</ul>
 		</li>
 		<li><b>Sync errors (manual):</b>
 			<ul>{% for error in syncErrorSummary %}
-				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user %}">{{ affected_user }}</a> {% endfor %}</li>
+				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user.id %}">{{ affected_user.id }}</a> {% endfor %}</li>
 				{% endfor %}
 			</ul>
 		</li>
