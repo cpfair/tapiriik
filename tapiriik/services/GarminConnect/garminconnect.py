@@ -101,7 +101,7 @@ class GarminConnectService(ServiceBase):
         fcntl.flock(self._rate_lock,fcntl.LOCK_EX)
         try:
             print("Have lock")
-            time.sleep(1) # I appear to been banned from Garmin Connect while determining this.
+            time.sleep(1/2) # I appear to been banned from Garmin Connect while determining this.
             print("Rate limited")
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
