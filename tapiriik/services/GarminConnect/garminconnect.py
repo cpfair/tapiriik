@@ -165,7 +165,7 @@ class GarminConnectService(ServiceBase):
         #http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities?&start=0&limit=50
         cookies = self._get_cookies(record=serviceRecord)
         page = 1
-        pageSz = 50
+        pageSz = 100
         activities = []
         exclusions = []
         while True:
