@@ -322,8 +322,9 @@ class Sync:
         def _updateSyncProgress(step, progress):
             db.users.update({"_id": user["_id"]}, {"$set": {"SynchronizationProgress": progress, "SynchronizationStep": step}})
 
-        logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(user["_id"]) + ".log", maxBytes=5242880, backupCount=1)
+        logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(user["_id"]) + ".log", maxBytes=0, backupCount=10)
         logging_file_handler.setFormatter(logging.Formatter(Sync._logFormat, Sync._logDateFormat))
+        logging_file_handler.doRollover()
         _global_logger.addHandler(logging_file_handler)
 
         logger.info("Beginning sync for " + str(user["_id"]) + "(exhaustive: " + str(exhaustive) + ")")
