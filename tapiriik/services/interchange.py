@@ -234,7 +234,8 @@ class Activity:
                 "RunCadence": [ActivityStatisticUnit.StepsPerMinute, 0, 255], # FIT
                 "Strides": [ActivityStatisticUnit.Strides, 1, 9999999],
                 "Temperature": [ActivityStatisticUnit.DegreesCelcius, -62, 50],
-                "Energy": [ActivityStatisticUnit.Kilocalories, 1, 65535] # FIT
+                "Energy": [ActivityStatisticUnit.Kilocalories, 1, 65535], # FIT
+                "Distance": [ActivityStatisticUnit.Kilometers, 0, 1000] # You can let me know when you ride 1000 km and I'll up this.
             }
             checkFields = ["Average", "Max", "Min", "Value"]
             for key in ranges:
