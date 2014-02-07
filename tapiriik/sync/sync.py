@@ -66,13 +66,13 @@ class Sync:
     def SetNextSyncIsExhaustive(user, exhaustive=False):
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSyncIsExhaustive": exhaustive}})
 
-    def PerformGlobalSync(heartbeat_callback=None):
+    def PerformGlobalSync(heartbeat_callback=None, version=None):
         from tapiriik.auth import User
         users = db.users.find({
                 "NextSynchronization": {"$lte": datetime.utcnow()},
                 "SynchronizationWorker": None,
                 "$or": [
-                    {"SynchronizationHostRestriction": {"$exists": False}},
+                    #{"SynchronizationHostRestriction": {"$exists": False}},
                     {"SynchronizationHostRestriction": socket.gethostname()}
                     ]
             }).sort("NextSynchronization").limit(1)
@@ -102,7 +102,7 @@ class Sync:
                 nextSync = None
                 if User.HasActivePayment(user):
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow()}, "$unset": {"NextSyncIsExhaustive": None}})
+                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
         return userCt
@@ -140,8 +140,9 @@ class SynchronizationTask:
         db.users.update({"_id": self.user["_id"]}, {"$set": {"SynchronizationProgress": progress, "SynchronizationStep": step}})
 
     def _initializeUserLogging(self):
-        self._logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(self.user["_id"]) + ".log", maxBytes=5242880, backupCount=1)
+        self._logging_file_handler = logging.handlers.RotatingFileHandler(USER_SYNC_LOGS + str(self.user["_id"]) + ".log", maxBytes=0, backupCount=10)
         self._logging_file_handler.setFormatter(logging.Formatter(self._logFormat, self._logDateFormat))
+        self._logging_file_handler.doRollover()
         _global_logger.addHandler(self._logging_file_handler)
 
     def _closeUserLogging(self):
