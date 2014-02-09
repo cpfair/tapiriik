@@ -233,7 +233,7 @@ class SportTracksService(ServiceBase):
                         activity.Type = self._activityMappings[type_key]
                         break
                 if not activity.Type:
-                    exclusions.append(APIExcludeActivity("Unknown activity type %s" % act["type"], activityId=act["uri"]))
+                    exclusions.append(APIExcludeActivity("Unknown activity type %s" % act["type"], activityId=act["uri"], userException=UserException(UserExceptionType.Other)))
                     continue
 
                 activity.CalculateUID()

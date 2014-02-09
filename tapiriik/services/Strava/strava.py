@@ -128,7 +128,7 @@ class StravaService(ServiceBase):
                 activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
 
                 if ride["type"] not in self._reverseActivityTypeMappings:
-                    exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"]))
+                    exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"], userException=UserException(UserExceptionType.Other)))
                     logger.debug("\t\tUnknown activity")
                     continue
 
@@ -241,7 +241,7 @@ class StravaService(ServiceBase):
             lap.Waypoints.append(waypoint)
         if not hasLocation:
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "faulty")
-            raise APIExcludeActivity("No waypoints with location", activityId=activityID)
+            raise APIExcludeActivity("No waypoints with location", activityId=activityID, userException=UserException(UserExceptionType.Corrupt))
         self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), None)
         return activity
 

@@ -103,10 +103,10 @@ class RideWithGPSService(ServiceBase):
             total_pages = math.ceil(int(res["results_count"]) / pageSz)
             for act in res["results"]:
                 if "first_lat" not in act or "last_lat" not in act:
-                    exclusions.append(APIExcludeActivity("No points", activityId=act["activityId"]))
+                    exclusions.append(APIExcludeActivity("No points", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
                     continue
                 if "distance" not in act:
-                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"]))
+                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
                     continue
                 activity = UploadedActivity()
 
@@ -143,7 +143,7 @@ class RideWithGPSService(ServiceBase):
         try:
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e))
+            raise APIExcludeActivity("TCX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
 
         return activity
 

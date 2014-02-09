@@ -1,6 +1,7 @@
 from tapiriik.database import db, cachedb
-from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning
+from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning, UserException, UserExceptionType
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
+from .activity_record import ActivityRecord
 from datetime import datetime, timedelta
 import sys
 import os
@@ -43,12 +44,26 @@ def _formatExc():
     finally:
         del exc_traceback, exc_value, exc_type
 
+# It's practically an ORM!
+
 def _packServiceException(step, e):
     res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope}
     if e.UserException:
-        res["UserException"] = {"Type": e.UserException.Type, "Extra": e.UserException.Extra, "InterventionRequired": e.UserException.InterventionRequired, "ClearGroup": e.UserException.ClearGroup}
+        res["UserException"] = _packUserException(e.UserException)
     return res
 
+def _packUserException(userException):
+    if userException:
+        return {"Type": userException.Type, "Extra": userException.Extra, "InterventionRequired": userException.InterventionRequired, "ClearGroup": userException.ClearGroup}
+
+def _unpackUserException(raw):
+    if "UserException" in raw:
+        raw = raw["UserException"]
+    if not raw:
+        return None
+    if "Type" not in raw:
+        return None
+    return UserException(raw["Type"], extra=raw["Extra"], intervention_required=raw["InterventionRequired"], clear_group=raw["ClearGroup"])
 
 class Sync:
 
@@ -186,14 +201,51 @@ class SynchronizationTask:
 
         db.users.update({"_id": self.user["_id"]}, {"$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}})
 
-    def _excludeService(self, serviceRecord):
-        self._excludedServices.append(serviceRecord)
+    def _writeBackActivityRecords(self):
+        def _activityPrescences(prescences):
+            return dict([(svcId if svcId else "",
+                {
+                    "Processed": presc.ProcessedTimestamp,
+                    "Synchronized": presc.SynchronizedTimestamp,
+                    "Exception": _packUserException(presc.UserException)
+                }) for svcId, presc in prescences.items()])
+
+        db.activity_records.update(
+            {"UserID": self.user["_id"]},
+            {
+                "$set": {
+                    "UserID": self.user["_id"],
+                    "Activities": [
+                        {
+                            "StartTime": x.StartTime,
+                            "Type": x.Type,
+                            "Name": x.Name,
+                            "Notes": x.Notes,
+                            "Prescence": _activityPrescences(x.PresentOnServices),
+                            "Abscence": _activityPrescences(x.NotPresentOnServices)
+                        }
+                        for x in self._activityRecords
+                    ]
+                }
+            },
+            upsert=True
+        )
+
+    def _excludeService(self, serviceRecord, userException):
+        self._excludedServices[serviceRecord._id] = userException if userException else True
+
+    def _isServiceExcluded(self, serviceRecord):
+        return serviceRecord._id in self._excludedServices
+
+    def _getServiceExclusionUserException(self, serviceRecord):
+        return self._excludedServices[serviceRecord._id]
 
     def _determineRecipientServices(self, activity):
         recipientServices = []
         for conn in self._serviceConnections:
             if activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
+                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
             elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
                 pass
             elif conn._id in activity.ServiceDataCollection:
@@ -317,8 +369,9 @@ class SynchronizationTask:
         from tapiriik.auth import User
         eligibleServices = []
         for destinationSvcRecord in recipientServices:
-            if destinationSvcRecord in self._excludedServices:
+            if self._isServiceExcluded(destinationSvcRecord):
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, self._getServiceExclusionUserException(destinationSvcRecord))
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = False
 
@@ -345,13 +398,17 @@ class SynchronizationTask:
 
             if flowException:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.FlowException))
                 continue
+
             destSvc = destinationSvcRecord.Service
             if destSvc.RequiresConfiguration(destinationSvcRecord):
                 logger.info("\t\t" + destSvc.ID + " not configured")
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NotConfigured))
                 continue  # not configured, so we won't even try
             if not destSvc.ReceivesStationaryActivities and activity.Stationary:
                 logger.info("\t\t" + destSvc.ID + " doesn't receive stationary activities")
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
                 continue # Missing this originally, no wonder...
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
@@ -375,12 +432,12 @@ class SynchronizationTask:
         # ...and for this specific service
         if [x for x in self._syncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service]:
             logger.info("Service %s is blocked:" % conn.Service.ID)
-            self._excludeService(conn)
+            self._excludeService(conn, _unpackUserException([x for x in self._syncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Service][0]))
             return
 
         if svc.ID in DISABLED_SERVICES or svc.ID in WITHDRAWN_SERVICES:
             logger.info("Service %s is widthdrawn" % conn.Service.ID)
-            self._excludeService(conn)
+            self._excludeService(conn, UserException(UserExceptionType.Other))
             return
 
         if svc.RequiresExtendedAuthorizationDetails:
@@ -388,7 +445,7 @@ class SynchronizationTask:
                 extAuthDetails = [x["ExtendedAuthorization"] for x in self._extendedAuthDetails if x["ID"] == conn._id]
                 if not len(extAuthDetails):
                     logger.info("No extended auth details for " + svc.ID)
-                    self._excludeService(conn)
+                    self._excludeService(conn, UserException(UserExceptionType.MissingCredentials))
                     return
                 # the connection never gets saved in full again, so we can sub these in here at no risk
                 conn.ExtendedAuthorization = extAuthDetails[0]
@@ -398,12 +455,12 @@ class SynchronizationTask:
             svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
         except (ServiceException, ServiceWarning) as e:
             self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
-            self._excludeService(conn)
+            self._excludeService(conn, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
                 return
         except Exception as e:
             self._syncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
-            self._excludeService(conn)
+            self._excludeService(conn, UserException(UserExceptionType.System))
             return
         self._accumulateExclusions(conn, svcExclusions)
         self._accumulateActivities(conn, svcActivities)
@@ -468,6 +525,11 @@ class SynchronizationTask:
                                   {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
                                   multi=True)
 
+    def _updateActivityRecordInitialPrescence(self, activity):
+        for connWithExistingActivityId in activity.ServiceDataCollection.keys():
+            connWithExistingActivity = [x for x in self._serviceConnections if x._id == connWithExistingActivityId][0]
+            activity.Record.MarkAsPresentOn(connWithExistingActivity)
+
     def _downloadActivity(self, activity):
         act = None
         actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
@@ -485,7 +547,7 @@ class SynchronizationTask:
             if activity.UID in self._syncExclusions[dlSvcRecord._id]:
                 logger.info("\t\t...has activity exclusion logged")
                 continue
-            if dlSvcRecord in self._excludedServices:
+            if self._isServiceExcluded(dlSvcRecord):
                 logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
                 continue
 
@@ -497,31 +559,37 @@ class SynchronizationTask:
             except (ServiceException, ServiceWarning) as e:
                 self._syncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
                 if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
-                    self._excludeService(dlSvcRecord)
+                    self._excludeService(dlSvcRecord, e.UserException)
+                activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                 if not issubclass(e.__class__, ServiceWarning):
                     continue
             except APIExcludeActivity as e:
                 logger.info("\t\texcluded by service: %s" % e.Message)
                 e.Activity = workingCopy
                 self._accumulateExclusions(dlSvcRecord, e)
+                activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                 continue
             except Exception as e:
                 self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.System))
                 continue
 
             if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                 logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
                 continue
             try:
                 workingCopy.CheckSanity()
             except:
                 logger.info("\t\t...failed sanity check")
                 self._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError))
                 continue
             else:
                 act = workingCopy
                 act.SourceConnection = dlSvcRecord
                 break  # succesfully got the activity + passed sanity checks, can stop now
+        # If nothing was downloaded at this point, the activity record will show the most recent error - which is fine enough, since only one service is needed to get the activity.
         return act, dlSvc
 
     def _uploadActivity(self, activity, destinationServiceRec):
@@ -531,11 +599,13 @@ class SynchronizationTask:
         except (ServiceException, ServiceWarning) as e:
             self._syncErrors[destinationServiceRec._id].append(_packServiceException(SyncStep.Upload, e))
             if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
-                self._excludeService(destinationServiceRec)
+                self._excludeService(destinationServiceRec, e.UserException)
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.System)
             raise UploadException()
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
@@ -559,9 +629,11 @@ class SynchronizationTask:
         self._loadExtendedAuthData()
 
         self._activities = []
-        self._excludedServices = []
+        self._excludedServices = {}
 
         self._initializePersistedSyncErrorsAndExclusions()
+
+        self._activityRecords = []
 
         try:
             for conn in self._serviceConnections:
@@ -588,7 +660,12 @@ class SynchronizationTask:
             for activity in self._activities:
                 logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                 logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
+
+                activity.Record = ActivityRecord.FromActivity(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
+                self._activityRecords.append(activity.Record)
+
                 self._updateSynchronizedActivities(activity)
+                self._updateActivityRecordInitialPrescence(activity)
 
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
@@ -631,6 +708,7 @@ class SynchronizationTask:
                 full_activity, activitySource = self._downloadActivity(activity)
 
                 if full_activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
+                    # The activity record gets updated in _downloadActivity
                     processedActivities += 1  # we tried
                     continue
 
@@ -641,9 +719,12 @@ class SynchronizationTask:
                 except:
                     logger.error("\tCould not determine TZ")
                     self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
+                    activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ))
                     continue
                 else:
                     logger.debug("\tDetermined TZ %s" % full_activity.TZ)
+
+                full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
@@ -651,6 +732,7 @@ class SynchronizationTask:
                     destSvc = destinationSvcRecord.Service
                     if not destSvc.ReceivesStationaryActivities and full_activity.Stationary:
                         logger.info("\t\t...marked as stationary during download")
+                        activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
                         continue
 
                     uploaded_external_id = None
@@ -677,6 +759,9 @@ class SynchronizationTask:
             logger.info("Writing back service data")
             self._writeBackSyncErrorsAndExclusions()
 
+            logger.info("Writing back activity records")
+            self._writeBackActivityRecords()
+
             logger.info("Finalizing")
             # Clear non-persisted extended auth details.
             self._destroyExtendedAuthData()
@@ -696,11 +781,14 @@ class SynchronizationTask:
         finally:
             self._closeUserLogging()
 
+
 class UploadException(Exception):
     pass
 
+
 class SynchronizationCompleteException(Exception):
     pass
+
 
 class SynchronizationConcurrencyException(Exception):
     pass
@@ -710,4 +798,3 @@ class SyncStep:
     List = "list"
     Download = "download"
     Upload = "upload"
-

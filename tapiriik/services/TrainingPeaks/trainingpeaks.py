@@ -116,7 +116,7 @@ class TrainingPeaksService(ServiceBase):
 
                 endTimeEl = xworkout.find("tpw:TimeTotalInSeconds", namespaces=ns)
                 if not endTimeEl.text:
-                    exclusions.append(APIExcludeActivity("Activity has no duration", activityId=workoutId))
+                    exclusions.append(APIExcludeActivity("Activity has no duration", activityId=workoutId, userException=UserException(UserExceptionType.Corrupt)))
                     continue
 
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(endTimeEl.text))
@@ -135,7 +135,7 @@ class TrainingPeaksService(ServiceBase):
                     if workoutTypeEl.text == "Day Off":
                         continue # TrainingPeaks has some weird activity types...
                     if workoutTypeEl.text not in self._workoutTypeMappings:
-                        exclusions.append(APIExcludeActivity("Activity type %s unknown" % workoutTypeEl.text, activityId=workoutId))
+                        exclusions.append(APIExcludeActivity("Activity type %s unknown" % workoutTypeEl.text, activityId=workoutId, userException=UserException(UserExceptionType.Corrupt)))
                         continue
                     activity.Type = self._workoutTypeMappings[workoutTypeEl.text]
 

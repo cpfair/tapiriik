@@ -178,7 +178,7 @@ class GarminConnectService(ServiceBase):
             for act in res["activities"]:
                 act = act["activity"]
                 if "sumDistance" not in act:
-                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"]))
+                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"]), userException=UserException(UserExceptionType.Corrupt))
                     continue
                 activity = UploadedActivity()
 
@@ -305,7 +305,7 @@ class GarminConnectService(ServiceBase):
         try:
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e))
+            raise APIExcludeActivity("TCX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
 
         if activity.ServiceData["RecalcHR"]:
             logger.debug("Recalculating HR")
@@ -324,7 +324,7 @@ class GarminConnectService(ServiceBase):
             try:
                 temp_act = GPXIO.Parse(res.content, suppress_validity_errors=True)
             except ValueError as e:
-                raise APIExcludeActivity("GPX parse error " + str(e))
+                raise APIExcludeActivity("GPX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
 
             logger.debug("Merging additional temperature data")
             full_waypoints = activity.GetFlatWaypoints()

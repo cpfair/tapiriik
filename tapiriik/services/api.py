@@ -51,11 +51,16 @@ class UserExceptionType:
     MissingCredentials = "credentials_missing" # They forgot to check the "Remember these details" box
     NotConfigured = "config_missing" # Don't think this error is even possible any more.
     StationaryUnsupported = "stationary"
+    TypeUnsupported = "type_unsupported"
     DownloadError = "download"
     ListingError = "list" # Cases when a service fails listing, so nothing can be uploaded to it.
     UploadError = "upload"
     SanityError = "sanity"
+    Corrupt = "corrupt" # Kind of a scary term for what's generally "some data is missing"
+    Untagged = "untagged"
+    LiveTracking = "live"
     UnknownTZ = "tz_unknown"
+    System = "system"
     Other = "other"
 
 class UserException:

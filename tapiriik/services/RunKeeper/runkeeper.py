@@ -123,7 +123,7 @@ class RunKeeperService(ServiceBase):
             try:
                 activity = self._populateActivity(act)
             except KeyError as e:
-                exclusions.append(APIExcludeActivity("Missing key in activity data " + str(e), activityId=act["uri"]))
+                exclusions.append(APIExcludeActivity("Missing key in activity data " + str(e), activityId=act["uri"], userException=UserException(UserExceptionType.Corrupt)))
                 continue
 
             logger.debug("\tActivity s/t " + str(activity.StartTime))
@@ -167,10 +167,10 @@ class RunKeeperService(ServiceBase):
                 cachedb.rk_activity_cache.insert(ridedata)
 
         if "is_live" in ridedata and ridedata["is_live"] is True:
-            raise APIExcludeActivity("Not complete", activityId=activityID, permanent=False)
+            raise APIExcludeActivity("Not complete", activityId=activityID, permanent=False, userException=UserException(UserExceptionType.LiveTracking))
 
         if "userID" in ridedata and int(ridedata["userID"]) != int(serviceRecord.ExternalID):
-            raise APIExcludeActivity("Not the user's own activity", activityId=activityID)
+            raise APIExcludeActivity("Not the user's own activity", activityId=activityID, userException=UserException(UserExceptionType.Other))
 
         self._populateActivityWaypoints(ridedata, activity)
 
