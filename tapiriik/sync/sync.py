@@ -160,7 +160,7 @@ class SynchronizationTask:
         self._syncErrors = {}
         self._syncExclusions = {}
 
-        for conn in self.serviceConnections:
+        for conn in self._serviceConnections:
             if hasattr(conn, "SyncErrors"):
                 # Remove non-blocking errors
                 self._syncErrors[conn._id] = [x for x in conn.SyncErrors if "Block" in x and x["Block"]]
@@ -628,37 +628,37 @@ class SynchronizationTask:
                 logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
 
                 # Download the full activity record
-                activity, activitySource = self._downloadActivity(activity)
+                full_activity, activitySource = self._downloadActivity(activity)
 
-                if activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
+                if full_activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
                     processedActivities += 1  # we tried
                     continue
 
-                activity.CleanStats()
+                full_activity.CleanStats()
 
                 try:
-                    activity.EnsureTZ()
+                    full_activity.EnsureTZ()
                 except:
                     logger.error("\tCould not determine TZ")
-                    self._accumulateExclusions(activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=activity, permanent=False))
+                    self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
                     continue
                 else:
-                    logger.debug("\tDetermined TZ %s" % activity.TZ)
+                    logger.debug("\tDetermined TZ %s" % full_activity.TZ)
 
                 for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.Upload)
                     destSvc = destinationSvcRecord.Service
-                    if not destSvc.ReceivesStationaryActivities and activity.Stationary:
+                    if not destSvc.ReceivesStationaryActivities and full_activity.Stationary:
                         logger.info("\t\t...marked as stationary during download")
                         continue
 
                     uploaded_external_id = None
                     logger.info("\t  Uploading to " + destSvc.ID)
                     try:
-                        uploaded_external_id = self._uploadActivity(activity, destinationSvcRecord)
+                        uploaded_external_id = self._uploadActivity(full_activity, destinationSvcRecord)
                     except UploadException:
-                        continue
+                        continue # At this point it's already been added to the error collection, so we can just bail.
                     logger.info("\t  Uploaded")
 
                     if uploaded_external_id:
@@ -669,6 +669,7 @@ class SynchronizationTask:
                                           {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
 
                     db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
+                del full_activity
                 del activity
 
                 processedActivities += 1
@@ -683,7 +684,7 @@ class SynchronizationTask:
             self._unlockUser(null_next_sync_on_unlock)
 
         except SynchronizationCompleteException:
-            logger.info("Finished sync prematurely for %s" % self._user["_id"])
+            logger.info("Finished sync prematurely for %s" % self.user["_id"])
         except SynchronizationConcurrencyException:
             raise # Don't spit out the "Core sync exception" error
         except:
@@ -691,7 +692,7 @@ class SynchronizationTask:
             logger.exception("Core sync exception")
             raise
         else:
-            logger.info("Finished sync for %s" % self._user["_id"])
+            logger.info("Finished sync for %s" % self.user["_id"])
         finally:
             self._closeUserLogging()
 
