@@ -3,6 +3,13 @@ from datetime import datetime
 
 class ActivityRecord:
     def __init__(self, dbRec=None, activity=None):
+        self.StartTime = None
+        self.Name = None
+        self.Notes = None
+        self.Type = None
+        self.PresentOnServices = {}
+        self.NotPresentOnServices = {}
+
         # It's practically an ORM!
         if dbRec:
             self.__dict__.update(dbRec)
@@ -14,13 +21,6 @@ class ActivityRecord:
 
     def __deepcopy__(self, x):
         return ActivityRecord(self.__dict__)
-
-    StartTime = None
-    Name = None
-    Notes = None
-    Type = None
-    PresentOnServices = {}
-    NotPresentOnServices = {}
 
     def FromActivity(activity):
         record = ActivityRecord()
