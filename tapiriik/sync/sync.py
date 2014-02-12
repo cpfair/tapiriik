@@ -245,14 +245,14 @@ class SynchronizationTask:
     def _determineRecipientServices(self, activity):
         recipientServices = []
         for conn in self._serviceConnections:
-            if activity.Type not in conn.Service.SupportedActivities:
-                logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
-                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
-            elif conn._id in activity.ServiceDataCollection:
+            if conn._id in activity.ServiceDataCollection:
                 # The activity record is updated earlier for these, blegh.
                 pass
             elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
                 pass
+            elif activity.Type not in conn.Service.SupportedActivities:
+                logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
+                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
             else:
                 recipientServices.append(conn)
         return recipientServices
