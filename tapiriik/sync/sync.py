@@ -210,22 +210,24 @@ class SynchronizationTask:
                     "Exception": _packUserException(presc.UserException)
                 }) for svcId, presc in prescences.items()])
 
+        composed_records = [
+            {
+                "StartTime": x.StartTime,
+                "Type": x.Type,
+                "Name": x.Name,
+                "Notes": x.Notes,
+                "Prescence": _activityPrescences(x.PresentOnServices),
+                "Abscence": _activityPrescences(x.NotPresentOnServices)
+            }
+            for x in self._activityRecords
+        ]
+        logger.info("Composed activity records")
         db.activity_records.update(
             {"UserID": self.user["_id"]},
             {
                 "$set": {
                     "UserID": self.user["_id"],
-                    "Activities": [
-                        {
-                            "StartTime": x.StartTime,
-                            "Type": x.Type,
-                            "Name": x.Name,
-                            "Notes": x.Notes,
-                            "Prescence": _activityPrescences(x.PresentOnServices),
-                            "Abscence": _activityPrescences(x.NotPresentOnServices)
-                        }
-                        for x in self._activityRecords
-                    ]
+                    "Activities": composed_records
                 }
             },
             upsert=True
@@ -245,7 +247,9 @@ class SynchronizationTask:
         for conn in self._serviceConnections:
             if activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
+                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
             elif conn._id in activity.ServiceDataCollection:
+                # The activity record is updated earlier for these, blegh.
                 pass
             elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
                 pass
@@ -420,7 +424,7 @@ class SynchronizationTask:
             if not identifier:
                 raise ValueError("Activity excluded with no identifying information")
             identifier = str(identifier).replace(".", "_")
-            self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow()}
+            self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow(), "UserException": _packUserException(exclusion.UserException)}
 
     def _downloadActivityList(self, conn, exhaustive):
         svc = conn.Service
@@ -547,7 +551,7 @@ class SynchronizationTask:
             dlSvc = dlSvcRecord.Service
             logger.info("\tfrom " + dlSvc.ID)
             if activity.UID in self._syncExclusions[dlSvcRecord._id]:
-                activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id]))
+                activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id][activity.UID]))
                 logger.info("\t\t...has activity exclusion logged")
                 continue
             if self._isServiceExcluded(dlSvcRecord):
@@ -564,8 +568,8 @@ class SynchronizationTask:
                 self._syncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
                 if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
                     self._excludeService(dlSvcRecord, e.UserException)
-                activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                 if not issubclass(e.__class__, ServiceWarning):
+                    activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                     continue
             except APIExcludeActivity as e:
                 logger.info("\t\texcluded by service: %s" % e.Message)
@@ -604,8 +608,8 @@ class SynchronizationTask:
             self._syncErrors[destinationServiceRec._id].append(_packServiceException(SyncStep.Upload, e))
             if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
                 self._excludeService(destinationServiceRec, e.UserException)
-            activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
+                activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException)
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
@@ -748,6 +752,8 @@ class SynchronizationTask:
                     except UploadException:
                         continue # At this point it's already been added to the error collection, so we can just bail.
                     logger.info("\t  Uploaded")
+
+                    activity.Record.MarkAsSynchronizedTo(destinationServiceRec)
 
                     if uploaded_external_id:
                         # record external ID, for posterity (and later debugging)

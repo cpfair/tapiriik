@@ -26,13 +26,13 @@ class APIWarning(ServiceWarning):
 # It's on the to-do list.
 
 class APIExcludeActivity(Exception):
-    def __init__(self, message, activity=None, activityId=None, permanent=True, user_exception=None):
+    def __init__(self, message, activity=None, activityId=None, permanent=True, userException=None):
         Exception.__init__(self, message)
         self.Message = message
         self.Activity = activity
         self.ExternalActivityID = activityId
         self.Permanent = permanent
-        self.UserException = user_exception
+        self.UserException = userException
 
     def __str__(self):
         return self.Message + " (activity " + str(self.ExternalActivityID) + ")"

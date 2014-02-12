@@ -179,7 +179,7 @@ class GarminConnectService(ServiceBase):
             for act in res["activities"]:
                 act = act["activity"]
                 if "sumDistance" not in act:
-                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"]), userException=UserException(UserExceptionType.Corrupt))
+                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
                     continue
                 activity = UploadedActivity()
 

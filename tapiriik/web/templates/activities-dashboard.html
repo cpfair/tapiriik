@@ -14,7 +14,7 @@
 		</tr>
 		<tr class="activity" ng-class="{fullySynchronized: activity.FullySynchronized}" ng-repeat-start="activity in activities" ng-click="activity.ShowDetail = !activity.ShowDetail">
 			<td class="activityHeader">
-				<span class="date">{[ activity.StartTime|date ]}</span> <span class="type">{[ activity.Type ]}</span> {[ activity.Name ]}
+				<span class="date" title="{[ activity.StartTime ]}">{[ activity.StartTime|date ]}</span> <span class="type">{[ activity.Type ]}</span> {[ activity.Name ]}
 			</td>
 			<td ng-repeat="prescence in activity.Prescence" class="prescence-cell"><span class="prescence" ng-class="{present: prescence.Present, absent: !prescence.Present}">Present</span></td>
 		</tr>

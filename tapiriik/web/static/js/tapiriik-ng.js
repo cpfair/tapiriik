@@ -49,7 +49,10 @@ function ActivitiesController($scope, $http) {
           if (!tapiriik.ServiceInfo[svcidx].Connected) continue;
           // Expand the "otherwise" entry.
           if (activity.Prescence[svcidx] === undefined){
-            activity.Prescence[svcidx] = activity.Prescence[""];
+            activity.Prescence[svcidx] = angular.copy(activity.Prescence[""]);
+            if (activity.Prescence[svcidx] === undefined){
+              activity.Prescence[svcidx] = {"Exception":{"Type":"other"}};
+            }
           }
           if (activity.Prescence[svcidx].Exception) fully_synchronized = false;
           activity.Prescence[svcidx].Present = activity.Prescence[svcidx].Exception === undefined;
