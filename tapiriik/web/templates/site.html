@@ -15,7 +15,9 @@
     <script src="{{ STATIC_URL }}js/jquery.address-1.5.min.js"></script>
     <script src="{{ STATIC_URL }}js/tapiriik.js?ab"></script>
     {% if user %}
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js"></script>
     <script src="{{ STATIC_URL }}js/jstz.min.js"></script>
+    <script src="{{ STATIC_URL }}js/tapiriik-ng.js"></script>
     {% endif %}
     <title>{% block site_title %}{% block title %}dashboard{% endblock %} &bull; tapiriik{% endblock %}</title>
 

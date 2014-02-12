@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class DropboxService(ServiceBase):
     ID = "dropbox"
     DisplayName = "Dropbox"
+    DisplayAbbreviation = "DB"
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True  # damn dropbox, spoiling my slick UI
     Configurable = True

@@ -245,10 +245,9 @@ class SynchronizationTask:
         for conn in self._serviceConnections:
             if activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
-                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
-            elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
-                pass
             elif conn._id in activity.ServiceDataCollection:
+                pass
+            elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
                 pass
             else:
                 recipientServices.append(conn)
@@ -529,6 +528,9 @@ class SynchronizationTask:
         for connWithExistingActivityId in activity.ServiceDataCollection.keys():
             connWithExistingActivity = [x for x in self._serviceConnections if x._id == connWithExistingActivityId][0]
             activity.Record.MarkAsPresentOn(connWithExistingActivity)
+        for conn in self._serviceConnections:
+            if hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
+                activity.Record.MarkAsPresentOn(conn)
 
     def _downloadActivity(self, activity):
         act = None
@@ -545,9 +547,11 @@ class SynchronizationTask:
             dlSvc = dlSvcRecord.Service
             logger.info("\tfrom " + dlSvc.ID)
             if activity.UID in self._syncExclusions[dlSvcRecord._id]:
+                activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id]))
                 logger.info("\t\t...has activity exclusion logged")
                 continue
             if self._isServiceExcluded(dlSvcRecord):
+                activity.Record.MarkAsNotPresentOtherwise(self._getServiceExclusionUserException(dlSvcRecord))
                 logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
                 continue
 
@@ -670,6 +674,7 @@ class SynchronizationTask:
                 # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                 if activity.Private:
                     logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
+                    activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
                     del activity
                     continue
 
@@ -723,6 +728,7 @@ class SynchronizationTask:
                     continue
                 else:
                     logger.debug("\tDetermined TZ %s" % full_activity.TZ)
+                    activity.Record.StartTime = activity.StartTime # Hedge our bets on the TZ accuracy front
 
                 full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 

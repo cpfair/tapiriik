@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 class StravaService(ServiceBase):
     ID = "strava"
     DisplayName = "Strava"
+    DisplayAbbreviation = "STV"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"

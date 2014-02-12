@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class RunKeeperService(ServiceBase):
     ID = "runkeeper"
     DisplayName = "RunKeeper"
+    DisplayAbbreviation = "RK"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = "http://runkeeper.com/user/{0}/profile"
     AuthenticationNoFrame = True  # Chrome update broke this

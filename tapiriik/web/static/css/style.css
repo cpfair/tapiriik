@@ -897,21 +897,120 @@ ul.credits li {
 	margin-bottom: 15px;
 }
 
-.privacyTable {
+.fancyTable {
 	width:100%;
 	border-spacing: 0;
 }
 
-.privacyTable .headers {
+.fancyTable .headers {
 	background-color:#8ec1da;
 	vertical-align: bottom;
 }
 
-.privacyTable th {
+.fancyTable th {
 	color:white;
 	font-weight: normal;
 	font-size:25px;
 	padding:10px 0;
+}
+
+.fancyTable tr:first-child th:first-child {
+	border-top-left-radius: 5px;
+}
+
+.fancyTable tr:first-child th:last-child {
+	border-top-right-radius: 5px;
+}
+
+.fancyTable tr:last-child td:first-child {
+	border-bottom-left-radius: 5px;
+}
+
+.fancyTable tr:last-child td:last-child {
+	border-bottom-right-radius: 5px;
+}
+
+.activitiesTable .service-col {
+	width:40px;
+}
+
+.activitiesTable .activity td {
+	border-bottom:1px solid #E6F7FF;
+	cursor:pointer;
+}
+
+.activitiesTable .activity.fullySynchronized td {
+	cursor: default;
+}
+
+.activitiesTable .activity td:first-child {
+	border-left:1px solid #E6F7FF;
+}
+
+.activitiesTable .activity td:last-child {
+	border-right:1px solid #E6F7FF;
+}
+
+.activitiesTable td.activityHeader {
+	font-size:120%;
+	text-align: left;
+	padding-left:10px;
+}
+
+.activitiesTable .date {
+	color:#777;
+	font-weight: bold;
+}
+
+.activitiesTable .type {
+	display: inline-block;
+	color:#777;
+	border:1px solid #777;
+	padding: 3px;
+	border-radius: 3px;
+	margin:5px;
+}
+
+.activitiesTable .prescence {
+	padding-left:18px;
+	background-repeat: no-repeat;
+	background-position: left center;
+}
+
+.activitiesTable .prescence.present {
+	display: inline-block;
+	background-image: url('../img/privacy-yes.png');
+	text-indent: -9999px;
+}
+
+.activitiesTable .prescence.absent {
+	display: inline-block;
+	background-image: url('../img/privacy-no.png');
+	text-indent: -9999px;
+}
+
+.activitiesTable .prescence.absent.sundry {
+	opacity: 0.5;
+}
+
+.activitiesTable .activityDetail {
+	background-color:#E6F7FF;
+	text-align: left;
+}
+
+.activitiesTable .activityDetail td {
+	padding:0 10px;
+}
+
+.activitiesTable .disclosure {
+	position: absolute;
+	width: 0;
+	height: 0;
+	left:25px;
+	margin-top:-2px;
+	border-left: 20px solid transparent;
+	border-right: 20px solid transparent;
+	border-top: 20px solid white;
 }
 
 .privacyTable .serviceCol {
@@ -928,22 +1027,6 @@ ul.credits li {
 
 .privacyTable tr.odd {
 	background-color:#E6F7FF;
-}
-
-.privacyTable tr:first-child th:first-child {
-	border-top-left-radius: 5px;
-}
-
-.privacyTable tr:first-child th:last-child {
-	border-top-right-radius: 5px;
-}
-
-.privacyTable tr:last-child td:first-child {
-	border-bottom-left-radius: 5px;
-}
-
-.privacyTable tr:last-child td:last-child {
-	border-bottom-right-radius: 5px;
 }
 
 .privacyTable .policy {

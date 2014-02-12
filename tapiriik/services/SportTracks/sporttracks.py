@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class SportTracksService(ServiceBase):
     ID = "sporttracks"
     DisplayName = "SportTracks"
+    DisplayAbbreviation = "ST"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
     OpenFitEndpoint = SPORTTRACKS_OPENFIT_ENDPOINT

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class TrainingPeaksService(ServiceBase):
     ID = "trainingpeaks"
     DisplayName = "TrainingPeaks"
+    DisplayAbbreviation = "TP"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
     ReceivesStationaryActivities = False

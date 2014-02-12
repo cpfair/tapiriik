@@ -28,6 +28,7 @@ def js_bridge(req):
             svcRec = None
         info = {
             "DisplayName": svc.DisplayName,
+            "DisplayAbbreviation": svc.DisplayAbbreviation,
             "AuthenticationType": svc.AuthenticationType,
             "UsesExtendedAuth": svc.RequiresExtendedAuthorizationDetails,
             "AuthorizationURL": svc.UserAuthorizationURL,

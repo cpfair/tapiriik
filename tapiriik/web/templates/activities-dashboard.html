@@ -1,0 +1,37 @@
+{% extends "site.html" %}
+{% load services %}
+{% load users %}
+{% load displayutils %}
+{% block title %}activities{% endblock %}
+
+{% block content %}
+<h1>Your activities</h1>
+<div ng-app="tapiriik" ng-controller="ActivitiesController">
+	<table class="fancyTable activitiesTable">
+		<tr class="headers">
+			<th>&nbsp;</th>
+			<th class="service-col" ng-repeat="svc in ServiceInfo|filter:{Connected:true}" title="{[ svc.DisplayName ]}">{[ svc.DisplayAbbreviation ]}</th>
+		</tr>
+		<tr class="activity" ng-class="{fullySynchronized: activity.FullySynchronized}" ng-repeat-start="activity in activities" ng-click="activity.ShowDetail = !activity.ShowDetail">
+			<td class="activityHeader">
+				<span class="date">{[ activity.StartTime|date ]}</span> <span class="type">{[ activity.Type ]}</span> {[ activity.Name ]}
+			</td>
+			<td ng-repeat="prescence in activity.Prescence" class="prescence-cell"><span class="prescence" ng-class="{present: prescence.Present, absent: !prescence.Present}">Present</span></td>
+		</tr>
+		<tr class="activityDetail" ng-repeat-end ng-show="activity.ShowDetail && !activity.FullySynchronized">
+			<td colspan="8">
+				<span class="disclosure"></span>
+				<span ng-hide="activity.FullySynchronized">
+					<p>This activity was not synchronized to the following services:</p>
+					<ul>
+						<li ng-repeat="absence in activity.Prescence|filter:{Present:false}">
+							<b>{[ DisplayNameByService(absence.Service) ]}</b>: {[ ExceptionExplanation(absence) ]}
+						</li>
+					</ul>
+				</span>
+			</td>
+		</tr>
+	</table>
+	<p>(only the most recent activities across your accounts are shown, unless there was trouble synchronizing earlier activities)</p>
+</div>
+{% endblock %}

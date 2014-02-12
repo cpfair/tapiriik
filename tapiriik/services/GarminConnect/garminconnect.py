@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 class GarminConnectService(ServiceBase):
     ID = "garminconnect"
     DisplayName = "Garmin Connect"
+    DisplayAbbreviation = "GC"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
 

@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 class RideWithGPSService(ServiceBase):
     ID = "rwgps"
     DisplayName = "Ride With GPS"
+    DisplayAbbreviation = "RWG"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
 
