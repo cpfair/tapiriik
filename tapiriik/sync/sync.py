@@ -87,7 +87,7 @@ class Sync:
                 "NextSynchronization": {"$lte": datetime.utcnow()},
                 "SynchronizationWorker": None,
                 "$or": [
-                    #{"SynchronizationHostRestriction": {"$exists": False}},
+                    {"SynchronizationHostRestriction": {"$exists": False}},
                     {"SynchronizationHostRestriction": socket.gethostname()}
                     ]
             }).sort("NextSynchronization").limit(1)
