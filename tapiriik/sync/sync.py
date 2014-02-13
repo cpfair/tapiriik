@@ -645,130 +645,134 @@ class SynchronizationTask:
         self._activityRecords = []
 
         try:
-            for conn in self._serviceConnections:
-                # If we're not going to be doing anything anyways, stop now
-                if len(self._serviceConnections) - len(self._excludedServices) <= 1:
-                    raise SynchronizationCompleteException()
+            try:
+                for conn in self._serviceConnections:
+                    # If we're not going to be doing anything anyways, stop now
+                    if len(self._serviceConnections) - len(self._excludedServices) <= 1:
+                        raise SynchronizationCompleteException()
 
-                if heartbeat_callback:
-                    heartbeat_callback(SyncStep.List)
-
-                self._updateSyncProgress(SyncStep.List, conn.Service.ID)
-                self._downloadActivityList(conn, exhaustive)
-
-            self._applyFallbackTZ()
-
-            self._processActivityOrigins()
-
-            # Makes reading the logs much easier.
-            self._activities = sorted(self._activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
-
-            totalActivities = len(self._activities)
-            processedActivities = 0
-
-            for activity in self._activities:
-                logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
-                logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
-
-                activity.Record = ActivityRecord.FromActivity(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
-                self._activityRecords.append(activity.Record)
-
-                self._updateSynchronizedActivities(activity)
-                self._updateActivityRecordInitialPrescence(activity)
-
-                # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
-                if activity.Private:
-                    logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
-                    activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
-                    del activity
-                    continue
-
-                # recipientServices are services that don't already have this activity
-                recipientServices = self._determineRecipientServices(activity)
-                if len(recipientServices) == 0:
-                    totalActivities -= 1  # doesn't count
-                    del activity
-                    continue
-
-                # eligibleServices are services that are permitted to receive this activity - taking into account flow exceptions, excluded services, unfufilled configuration requirements, etc.
-                eligibleServices = self._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices)
-
-                if not len(eligibleServices):
-                    logger.info("\t\t...has no eligible destinations")
-                    totalActivities -= 1  # Again, doesn't really count.
-                    del activity
-                    continue
-
-                # This is after the above exit points since they're the most frequent (& cheapest) cases - want to avoid DB churn
-                if heartbeat_callback:
-                    heartbeat_callback(SyncStep.Download)
-
-                if processedActivities == 0:
-                    syncProgress = 0
-                elif totalActivities <= 0:
-                    syncProgress = 1
-                else:
-                    syncProgress = max(0, min(1, processedActivities / totalActivities))
-                self._updateSyncProgress(SyncStep.Download, syncProgress)
-
-                # The second most important line of logging in the application...
-                logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
-
-                # Download the full activity record
-                full_activity, activitySource = self._downloadActivity(activity)
-
-                if full_activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
-                    # The activity record gets updated in _downloadActivity
-                    processedActivities += 1  # we tried
-                    continue
-
-                full_activity.CleanStats()
-
-                try:
-                    full_activity.EnsureTZ()
-                except:
-                    logger.error("\tCould not determine TZ")
-                    self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
-                    activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ))
-                    continue
-                else:
-                    logger.debug("\tDetermined TZ %s" % full_activity.TZ)
-
-                activity.Record.SetActivity(activity) # Update with whatever more accurate information we may have.
-
-                full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
-
-                for destinationSvcRecord in eligibleServices:
                     if heartbeat_callback:
-                        heartbeat_callback(SyncStep.Upload)
-                    destSvc = destinationSvcRecord.Service
-                    if not destSvc.ReceivesStationaryActivities and full_activity.Stationary:
-                        logger.info("\t\t...marked as stationary during download")
-                        activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
+                        heartbeat_callback(SyncStep.List)
+
+                    self._updateSyncProgress(SyncStep.List, conn.Service.ID)
+                    self._downloadActivityList(conn, exhaustive)
+
+                self._applyFallbackTZ()
+
+                self._processActivityOrigins()
+
+                # Makes reading the logs much easier.
+                self._activities = sorted(self._activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
+
+                totalActivities = len(self._activities)
+                processedActivities = 0
+
+                for activity in self._activities:
+                    logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
+                    logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
+
+                    activity.Record = ActivityRecord.FromActivity(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
+                    self._activityRecords.append(activity.Record)
+
+                    self._updateSynchronizedActivities(activity)
+                    self._updateActivityRecordInitialPrescence(activity)
+
+                    # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
+                    if activity.Private:
+                        logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
+                        activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
+                        del activity
                         continue
 
-                    uploaded_external_id = None
-                    logger.info("\t  Uploading to " + destSvc.ID)
+                    # recipientServices are services that don't already have this activity
+                    recipientServices = self._determineRecipientServices(activity)
+                    if len(recipientServices) == 0:
+                        totalActivities -= 1  # doesn't count
+                        del activity
+                        continue
+
+                    # eligibleServices are services that are permitted to receive this activity - taking into account flow exceptions, excluded services, unfufilled configuration requirements, etc.
+                    eligibleServices = self._determineEligibleRecipientServices(activity=activity, recipientServices=recipientServices)
+
+                    if not len(eligibleServices):
+                        logger.info("\t\t...has no eligible destinations")
+                        totalActivities -= 1  # Again, doesn't really count.
+                        del activity
+                        continue
+
+                    # This is after the above exit points since they're the most frequent (& cheapest) cases - want to avoid DB churn
+                    if heartbeat_callback:
+                        heartbeat_callback(SyncStep.Download)
+
+                    if processedActivities == 0:
+                        syncProgress = 0
+                    elif totalActivities <= 0:
+                        syncProgress = 1
+                    else:
+                        syncProgress = max(0, min(1, processedActivities / totalActivities))
+                    self._updateSyncProgress(SyncStep.Download, syncProgress)
+
+                    # The second most important line of logging in the application...
+                    logger.info("\t\t...to " + str([x.Service.ID for x in recipientServices]))
+
+                    # Download the full activity record
+                    full_activity, activitySource = self._downloadActivity(activity)
+
+                    if full_activity is None:  # couldn't download it from anywhere, or the places that had it said it was broken
+                        # The activity record gets updated in _downloadActivity
+                        processedActivities += 1  # we tried
+                        continue
+
+                    full_activity.CleanStats()
+
                     try:
-                        uploaded_external_id = self._uploadActivity(full_activity, destinationSvcRecord)
-                    except UploadException:
-                        continue # At this point it's already been added to the error collection, so we can just bail.
-                    logger.info("\t  Uploaded")
+                        full_activity.EnsureTZ()
+                    except:
+                        logger.error("\tCould not determine TZ")
+                        self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
+                        activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ))
+                        continue
+                    else:
+                        logger.debug("\tDetermined TZ %s" % full_activity.TZ)
 
-                    activity.Record.MarkAsSynchronizedTo(destinationSvcRecord)
+                    activity.Record.SetActivity(activity) # Update with whatever more accurate information we may have.
 
-                    if uploaded_external_id:
-                        # record external ID, for posterity (and later debugging)
-                        db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID})
-                    # flag as successful
-                    db.connections.update({"_id": destinationSvcRecord._id},
-                                          {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
+                    full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 
-                    db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
-                del full_activity
-                del activity
+                    for destinationSvcRecord in eligibleServices:
+                        if heartbeat_callback:
+                            heartbeat_callback(SyncStep.Upload)
+                        destSvc = destinationSvcRecord.Service
+                        if not destSvc.ReceivesStationaryActivities and full_activity.Stationary:
+                            logger.info("\t\t...marked as stationary during download")
+                            activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
+                            continue
 
-                processedActivities += 1
+                        uploaded_external_id = None
+                        logger.info("\t  Uploading to " + destSvc.ID)
+                        try:
+                            uploaded_external_id = self._uploadActivity(full_activity, destinationSvcRecord)
+                        except UploadException:
+                            continue # At this point it's already been added to the error collection, so we can just bail.
+                        logger.info("\t  Uploaded")
+
+                        activity.Record.MarkAsSynchronizedTo(destinationSvcRecord)
+
+                        if uploaded_external_id:
+                            # record external ID, for posterity (and later debugging)
+                            db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID})
+                        # flag as successful
+                        db.connections.update({"_id": destinationSvcRecord._id},
+                                              {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
+
+                        db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
+                    del full_activity
+                    del activity
+                    processedActivities += 1
+
+            except SynchronizationCompleteException:
+                # This gets thrown when there is obviously nothing left to do - but we still need to clean things up.
+                logger.info("SynchronizationCompleteException thrown")
 
             logger.info("Writing back service data")
             self._writeBackSyncErrorsAndExclusions()
@@ -782,8 +786,6 @@ class SynchronizationTask:
             # Unlock the user.
             self._unlockUser(null_next_sync_on_unlock)
 
-        except SynchronizationCompleteException:
-            logger.info("Finished sync prematurely for %s" % self.user["_id"])
         except SynchronizationConcurrencyException:
             raise # Don't spit out the "Core sync exception" error
         except:
