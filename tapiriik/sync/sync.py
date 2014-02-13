@@ -614,7 +614,7 @@ class SynchronizationTask:
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
-            activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.System)
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.System))
             raise UploadException()
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
