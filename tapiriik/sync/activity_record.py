@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from tapiriik.services.interchange import ActivityStatisticUnit
 
 class ActivityRecord:
     def __init__(self, dbRec=None, activity=None):
@@ -7,6 +7,7 @@ class ActivityRecord:
         self.Name = None
         self.Notes = None
         self.Type = None
+        self.Distance = None
         self.PresentOnServices = {}
         self.NotPresentOnServices = {}
 
@@ -24,12 +25,16 @@ class ActivityRecord:
 
     def FromActivity(activity):
         record = ActivityRecord()
-        record.StartTime = activity.StartTime
-        record.Name = activity.Name
-        record.Notes = activity.Notes
-        record.Type = activity.Type
-        # We miiiight be able to populate PresentOnServices here, but at the price of a lot of coupling.
+        record.SetActivity(activity)
         return record
+
+    def SetActivity(self, activity):
+        self.StartTime = activity.StartTime
+        self.Name = activity.Name
+        self.Notes = activity.Notes
+        self.Type = activity.Type
+        self.Distance = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
+        # We miiiight be able to populate PresentOnServices here, but at the price of a lot of coupling.
 
     def MarkAsPresentOn(self, serviceRecord):
         if serviceRecord.Service.ID not in self.PresentOnServices:

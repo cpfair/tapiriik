@@ -216,6 +216,7 @@ class SynchronizationTask:
                 "Type": x.Type,
                 "Name": x.Name,
                 "Notes": x.Notes,
+                "Distance": x.Distance,
                 "Prescence": _activityPrescences(x.PresentOnServices),
                 "Abscence": _activityPrescences(x.NotPresentOnServices)
             }
@@ -732,7 +733,8 @@ class SynchronizationTask:
                     continue
                 else:
                     logger.debug("\tDetermined TZ %s" % full_activity.TZ)
-                    activity.Record.StartTime = activity.StartTime # Hedge our bets on the TZ accuracy front
+
+                activity.Record.SetActivity(activity) # Update with whatever more accurate information we may have.
 
                 full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 
