@@ -755,7 +755,7 @@ class SynchronizationTask:
                         continue # At this point it's already been added to the error collection, so we can just bail.
                     logger.info("\t  Uploaded")
 
-                    activity.Record.MarkAsSynchronizedTo(destinationServiceRec)
+                    activity.Record.MarkAsSynchronizedTo(destinationSvcRecord)
 
                     if uploaded_external_id:
                         # record external ID, for posterity (and later debugging)
