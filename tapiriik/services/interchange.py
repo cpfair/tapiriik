@@ -42,6 +42,12 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
                         most_specific = act_type
         return most_specific
 
+    def AreVariants(types):
+        for definition in ActivityType._hierarchy:
+            if len([x for x in types if x in definition]) == len(types):
+                return True
+        return False
+
 
 class Activity:
     def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None, device=None):
