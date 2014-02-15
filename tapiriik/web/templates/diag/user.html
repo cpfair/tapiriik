@@ -36,7 +36,7 @@
 			<h3>{{ connection.Service }}</h3>
 			<ul style="list-style:none;margin:0;padding:0;">
 				<li><b>ID:</b> <tt>{{ connection|dict_get:'_id' }}</tt></li>
-				<li><b>Ext ID:</b> {% if svc.UserProfileURL %}<a target="_blank" href="{{ svc.UserProfileURL|format:connection.ExternalID }}">{% endif %} <tt>{{ connection.ExternalID }}</tt>{% if svc.UserProfileURL %} &raquo;</a>{% endif %}</li>
+				<li><b>Ext ID:</b> {% if svc.UserProfileURL %}<a target="_blank" href="{{ svc.UserProfileURL|format:connection.ExternalID }}">{% endif %} <tt>{{ connection.ExternalID }}</tt>{% if svc.UserProfileURL %} &raquo;</a>{% endif %} [{{ connection.ExternalID }}]</li>
 				<li><b>Synced Activity Count:</b> <tt>{{ connection.SynchronizedActivities|length }}</tt></li>
 				<li><b>Auth:</b> <tt> {{ connection.Authorization }}</tt></li>
 				<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
