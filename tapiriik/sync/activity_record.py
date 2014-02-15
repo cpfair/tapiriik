@@ -9,6 +9,8 @@ class ActivityRecord:
         self.Notes = None
         self.Type = None
         self.Distance = None
+        self.Stationary = None
+        self.Private = None
         self.PresentOnServices = {}
         self.NotPresentOnServices = {}
 
@@ -35,7 +37,8 @@ class ActivityRecord:
         self.Notes = activity.Notes
         self.Type = activity.Type
         self.Distance = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
-        # We miiiight be able to populate PresentOnServices here, but at the price of a lot of coupling.
+        self.Stationary = activity.Stationary
+        self.Private = activity.Private
 
     def MarkAsPresentOn(self, serviceRecord):
         if serviceRecord.Service.ID not in self.PresentOnServices:

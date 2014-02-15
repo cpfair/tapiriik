@@ -216,6 +216,8 @@ class SynchronizationTask:
                 "Type": x.Type,
                 "Name": x.Name,
                 "Notes": x.Notes,
+                "Private": x.Private,
+                "Stationary": x.Stationary,
                 "Distance": x.Distance,
                 "Prescence": _activityPrescences(x.PresentOnServices),
                 "Abscence": _activityPrescences(x.NotPresentOnServices)
