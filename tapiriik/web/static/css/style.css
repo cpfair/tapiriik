@@ -955,20 +955,35 @@ ul.credits li {
 	font-size:120%;
 	text-align: left;
 	padding-left:10px;
+	height:50px;
+	vertical-align: middle;
 }
 
 .activitiesTable .date {
+	display: inline-block;
 	color:#777;
 	font-weight: bold;
+	padding:3px;
+	margin:5px;
+	margin-left:0;
 }
 
-.activitiesTable .type {
-	display: inline-block;
+.activitiesTable .tag {
 	color:#777;
 	border:1px solid #777;
 	padding: 3px;
 	border-radius: 3px;
 	margin:5px;
+}
+
+.activitiesTable .tag.float {
+	float:right;
+}
+
+.activitiesTable .tag.mini {
+	font-size: 50%;
+	border-style: dashed;
+	margin:3px;
 }
 
 .activitiesTable .prescence {
@@ -1006,7 +1021,7 @@ ul.credits li {
 	position: absolute;
 	width: 0;
 	height: 0;
-	left:25px;
+	left:28px; /* Magic value to align with the date */
 	margin-top:-2px;
 	border-left: 20px solid transparent;
 	border-right: 20px solid transparent;

@@ -14,7 +14,9 @@
 		</tr>
 		<tr class="activity" ng-class="{fullySynchronized: activity.FullySynchronized}" ng-repeat-start="activity in activities" ng-click="activity.ShowDetail = !activity.ShowDetail">
 			<td class="activityHeader">
-				<span class="date" title="{[ activity.StartTime ]}">{[ activity.StartTime|date ]}</span> <span class="type">{[ activity.Type ]}</span> {[ activity.Name ]}
+				<span class="date" title="{[ activity.StartTime ]}">{[ activity.StartTime|date ]}</span> {[ activity.Name ]}
+				<span class="tag mini private" title="You've marked this activity as private." ng-show="activity.Private">Private</span><span class="tag mini stationary" title="This activity has no sensor data." ng-show="activity.Stationary">Stationary</span>
+				<span class="tag float type">{[ activity.Type ]}</span>
 			</td>
 			<td ng-repeat="prescence in activity.Prescence" class="prescence-cell"><span class="prescence" ng-class="{present: prescence.Present, absent: !prescence.Present}">Present</span></td>
 		</tr>
