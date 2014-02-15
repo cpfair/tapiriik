@@ -380,25 +380,10 @@ class SynchronizationTask:
             flowException = False
 
             sources = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
-            if hasattr(activity, "Origin") and "SkipOriginCheck" not in self.user:
-                sources = [activity.Origin]
             for src in sources:
                 if User.CheckFlowException(self.user, src, destinationSvcRecord):
                     flowException = True
                     break
-            # This isn't an absolute failure - it's possible we could still take an indirect route around this exception
-            # But only if they've allowed it
-            if flowException:
-                # Eventual destinations, since it'd eventually be synced from these anyways
-                secondLevelSources = [x for x in recipientServices if x != destinationSvcRecord]
-                # Other places this activity exists - the alternate routes
-                secondLevelSources += [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
-                for secondLevelSrc in secondLevelSources:
-                    if secondLevelSrc.Service.ID in WITHDRAWN_SERVICES:
-                        continue
-                    if (secondLevelSrc.GetConfiguration()["allow_activity_flow_exception_bypass_via_self"] or "SkipOriginCheck" in self.user) and not User.CheckFlowException(self.user, secondLevelSrc, destinationSvcRecord):
-                        flowException = False
-                        break
 
             if flowException:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
