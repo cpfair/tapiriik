@@ -930,6 +930,10 @@ ul.credits li {
 	border-bottom-right-radius: 5px;
 }
 
+.activitiesTable-empty-message {
+	color:#777;
+}
+
 .activitiesTable .service-col {
 	width:40px;
 }

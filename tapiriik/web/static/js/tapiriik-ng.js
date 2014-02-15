@@ -35,11 +35,12 @@ function ActivitiesController($scope, $http) {
     return explanations[type].replace("%(service)", $scope.DisplayNameByService(presc.Service));
   };
 
+  $scope.loading = true; // Will change if I ever add scroll-based pagination...
+
   var loadActivities = function(pageStartDate) {
-    loading = true;
     $http.get("/activities/fetch")
     .success(function(activities) {
-      loading = false;
+      $scope.loading = false;
       for (var actidx in activities){
         var activity = activities[actidx];
         // Convert dict to an array sorted by the display order.
@@ -64,10 +65,6 @@ function ActivitiesController($scope, $http) {
       }
       $scope.activities = activities;
     });
-  };
-
-  $scope.isLoading = function() {
-    return loading;
   };
 
   loadActivities();
