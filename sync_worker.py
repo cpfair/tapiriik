@@ -21,6 +21,7 @@ def sync_interrupt(signal, frame):
     Run = False
 
 signal.signal(signal.SIGINT, sync_interrupt)
+signal.signal(signal.SIGUSR2, sync_interrupt)
 
 def sync_heartbeat(state):
     db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow(), "State": state}})
