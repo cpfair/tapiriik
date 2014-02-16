@@ -71,6 +71,6 @@ class ActivityServicePrescence:
         self.SynchronizedTimestamp = syncTimestamp
         # If these is a UserException then this object is actually indicating the abscence of an activity from a service.
         if userException is not None and not isinstance(userException, UserException):
-            raise ValueError("Provided UserException %s is not a UserException")
+            raise ValueError("Provided UserException %s is not a UserException" % userException)
         self.UserException = userException
 

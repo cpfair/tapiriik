@@ -237,7 +237,7 @@ class SynchronizationTask:
         )
 
     def _excludeService(self, serviceRecord, userException):
-        self._excludedServices[serviceRecord._id] = userException if userException else True
+        self._excludedServices[serviceRecord._id] = userException if userException else None
 
     def _isServiceExcluded(self, serviceRecord):
         return serviceRecord._id in self._excludedServices
