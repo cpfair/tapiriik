@@ -38,7 +38,7 @@ function ActivitiesController($scope, $http) {
   $scope.loading = true; // Will change if I ever add scroll-based pagination...
 
   var loadActivities = function(pageStartDate) {
-    $http.get("/activities/fetch")
+    $http.get("/activities/fetch" + window.location.search)
     .success(function(activities) {
       $scope.loading = false;
       for (var actidx in activities){
