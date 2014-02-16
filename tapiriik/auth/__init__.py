@@ -3,6 +3,7 @@ from .totp import *
 from tapiriik.database import db
 from tapiriik.sync import Sync
 from tapiriik.services import ServiceRecord
+from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 
@@ -149,13 +150,19 @@ class User:
         forwardException = {"Target": {"Service": targetServiceRecord.Service.ID, "ExternalID": targetServiceRecord.ExternalID}, "Source": {"Service": sourceServiceRecord.Service.ID, "ExternalID": sourceServiceRecord.ExternalID}}
         return "FlowExceptions" in user and forwardException in user["FlowExceptions"]
 
+class DiagnosticsUser:
+    def IsAuthenticated(req):
+        return DIAG_AUTH_TOTP_SECRET is None or DIAG_AUTH_PASSWORD is None or ("diag_auth" in req.session and req.session["diag_auth"] is True)
+
+    def Authorize(req):
+        req.session["diag_auth"] = True
 
 class SessionAuth:
     def process_request(self, req):
         userId = req.session.get("userid")
         isSU = False
-        if req.session.get("substituteUserid") is not None:
-            userId = req.session.get("substituteUserid")
+        if req.session.get("substituteUserid") is not None or ("su" in req.GET and DiagnosticsUser.IsAuthenticated(req)):
+            userId = req.GET["su"] if "su" in req.GET else req.session.get("substituteUserid")
             isSU = True
 
         if userId is None:

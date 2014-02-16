@@ -2,25 +2,21 @@ from django.shortcuts import render, redirect
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD, SITE_VER
 from tapiriik.database import db
 from tapiriik.sync import Sync
-from tapiriik.auth import TOTP
+from tapiriik.auth import TOTP, DiagnosticsUser
 from bson.objectid import ObjectId
 import hashlib
 import json
 from datetime import datetime, timedelta
 
-
 def diag_requireAuth(view):
     def authWrapper(req, *args, **kwargs):
-        if DIAG_AUTH_TOTP_SECRET is not None and DIAG_AUTH_PASSWORD is not None and ("diag_auth" not in req.session or req.session["diag_auth"] is not True):
+        if not DiagnosticsUser.IsAuthenticated(req):
             return redirect("diagnostics_login")
         return view(req, *args, **kwargs)
     return authWrapper
 
-
 @diag_requireAuth
 def diag_dashboard(req):
-
-
     context = {}
     lockedSyncRecords = db.users.aggregate([
                                            {"$match": {"SynchronizationWorker": {"$ne": None}}},
@@ -179,6 +175,6 @@ def diag_payments(req):
 def diag_login(req):
     if "password" in req.POST:
         if hashlib.sha512(req.POST["password"].encode("utf-8")).hexdigest().upper() == DIAG_AUTH_PASSWORD and TOTP.Get(DIAG_AUTH_TOTP_SECRET) == int(req.POST["totp"]):
-            req.session["diag_auth"] = True
+            DiagnosticsUser.Authorize(req)
             return redirect("diagnostics_dashboard")
     return render(req, "diag/login.html")
