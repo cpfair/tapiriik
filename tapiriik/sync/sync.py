@@ -1,7 +1,7 @@
 from tapiriik.database import db, cachedb
 from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning, UserException, UserExceptionType
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
-from .activity_record import ActivityRecord
+from .activity_record import ActivityRecord, ActivityServicePrescence
 from datetime import datetime, timedelta
 import sys
 import os
@@ -57,6 +57,8 @@ def _packUserException(userException):
         return {"Type": userException.Type, "Extra": userException.Extra, "InterventionRequired": userException.InterventionRequired, "ClearGroup": userException.ClearGroup}
 
 def _unpackUserException(raw):
+    if not raw:
+        return None
     if "UserException" in raw:
         raw = raw["UserException"]
     if not raw:
@@ -210,6 +212,7 @@ class SynchronizationTask:
                     "Exception": _packUserException(presc.UserException)
                 }) for svcId, presc in prescences.items()])
 
+        self._activityRecords.sort(key=lambda x: x.StartTime.replace(tzinfo=None), reverse=True)
         composed_records = [
             {
                 "StartTime": x.StartTime,
@@ -219,12 +222,13 @@ class SynchronizationTask:
                 "Private": x.Private,
                 "Stationary": x.Stationary,
                 "Distance": x.Distance,
+                "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
                 "Abscence": _activityPrescences(x.NotPresentOnServices)
             }
             for x in self._activityRecords
         ]
-        logger.info("Composed activity records")
+
         db.activity_records.update(
             {"UserID": self.user["_id"]},
             {
@@ -235,6 +239,41 @@ class SynchronizationTask:
             },
             upsert=True
         )
+
+    def _initializeActivityRecords(self):
+        raw_records = db.activity_records.find_one({"UserID": self.user["_id"]})
+        self._activityRecords = []
+        if not raw_records:
+            return
+        else:
+            raw_records = raw_records["Activities"]
+            for raw_record in raw_records:
+                if "UIDs" not in raw_record:
+                    continue # From the few days where this was rolled out without this key...
+                rec = ActivityRecord(raw_record)
+                rec.UIDs = set(rec.UIDs)
+                # Did I mention I should really start using an ORM-type deal any day now?
+                for svc, absent in rec.Abscence.items():
+                    rec.NotPresentOnServices[svc] = ActivityServicePrescence(absent["Processed"], absent["Synchronized"], _unpackUserException(absent["Exception"]))
+                for svc, present in rec.Prescence.items():
+                    rec.PresentOnServices[svc] = ActivityServicePrescence(present["Processed"], present["Synchronized"], _unpackUserException(present["Exception"]))
+                del rec.Prescence
+                del rec.Abscence
+                rec.Touched = False
+                self._activityRecords.append(rec)
+
+    def _findOrCreateActivityRecord(self, activity):
+        for record in self._activityRecords:
+            if record.UIDs & activity.UIDs:
+                record.Touched = True
+                return record
+        record = ActivityRecord.FromActivity(activity)
+        record.Touched = True
+        self._activityRecords.append(record)
+        return record
+
+    def _dropUntouchedActivityRecords(self):
+        self._activityRecords[:] = [x for x in self._activityRecords if x.Touched]
 
     def _excludeService(self, serviceRecord, userException):
         self._excludedServices[serviceRecord._id] = userException if userException else None
@@ -286,7 +325,7 @@ class SynchronizationTask:
         timezoneErrorPeriod = timedelta(hours=38)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
-            act.UIDs = [act.UID]
+            act.UIDs = set([act.UID])
             if not hasattr(act, "ServiceDataCollection"):
                 act.ServiceDataCollection = {}
             if hasattr(act, "ServiceData") and act.ServiceData is not None:
@@ -366,7 +405,7 @@ class SynchronizationTask:
                 serviceDataCollection.update(existingActivity.ServiceDataCollection)
                 existingActivity.ServiceDataCollection = serviceDataCollection
 
-                existingActivity.UIDs += act.UIDs  # I think this is merited
+                existingActivity.UIDs |= act.UIDs  # I think this is merited
                 act.UIDs = existingActivity.UIDs  # stop the circular inclusion, not that it matters
                 continue
             self._activities.append(act)
@@ -506,14 +545,14 @@ class SynchronizationTask:
         updateServicesWithExistingActivity = False
         for serviceWithExistingActivityId in activity.ServiceDataCollection.keys():
             serviceWithExistingActivity = [x for x in self._serviceConnections if x._id == serviceWithExistingActivityId][0]
-            if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or not (set(activity.UIDs) <= set(serviceWithExistingActivity.SynchronizedActivities)):
+            if not hasattr(serviceWithExistingActivity, "SynchronizedActivities") or not (activity.UIDs <= set(serviceWithExistingActivity.SynchronizedActivities)):
                 updateServicesWithExistingActivity = True
                 break
 
         if updateServicesWithExistingActivity:
             logger.debug("\t\tUpdating SynchronizedActivities")
             db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
-                                  {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}},
+                                  {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}},
                                   multi=True)
 
     def _updateActivityRecordInitialPrescence(self, activity):
@@ -629,7 +668,7 @@ class SynchronizationTask:
 
         self._initializePersistedSyncErrorsAndExclusions()
 
-        self._activityRecords = []
+        self._initializeActivityRecords()
 
         try:
             try:
@@ -658,8 +697,7 @@ class SynchronizationTask:
                     logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                     logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
 
-                    activity.Record = ActivityRecord.FromActivity(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
-                    self._activityRecords.append(activity.Record)
+                    activity.Record = self._findOrCreateActivityRecord(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
 
                     self._updateSynchronizedActivities(activity)
                     self._updateActivityRecordInitialPrescence(activity)
@@ -750,7 +788,7 @@ class SynchronizationTask:
                             db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID})
                         # flag as successful
                         db.connections.update({"_id": destinationSvcRecord._id},
-                                              {"$addToSet": {"SynchronizedActivities": {"$each": activity.UIDs}}})
+                                              {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
 
                         db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
                     del full_activity
@@ -763,6 +801,11 @@ class SynchronizationTask:
 
             logger.info("Writing back service data")
             self._writeBackSyncErrorsAndExclusions()
+
+            if exhaustive:
+                # Clean up potentially orphaned records, since we know everything is here.
+                logger.info("Clearing old activity records")
+                self._dropUntouchedActivityRecords()
 
             logger.info("Writing back activity records")
             self._writeBackActivityRecords()

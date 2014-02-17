@@ -3,7 +3,7 @@ from tapiriik.services.interchange import ActivityStatisticUnit
 from tapiriik.services.api import UserException
 
 class ActivityRecord:
-    def __init__(self, dbRec=None, activity=None):
+    def __init__(self, dbRec=None):
         self.StartTime = None
         self.Name = None
         self.Notes = None
@@ -11,14 +11,13 @@ class ActivityRecord:
         self.Distance = None
         self.Stationary = None
         self.Private = None
+        self.UIDs = []
         self.PresentOnServices = {}
         self.NotPresentOnServices = {}
 
         # It's practically an ORM!
         if dbRec:
             self.__dict__.update(dbRec)
-        if activity:
-            self.FromActivity(activity)
 
     def __repr__(self):
         return "<ActivityRecord> " + str(self.__dict__)
@@ -39,6 +38,7 @@ class ActivityRecord:
         self.Distance = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
         self.Stationary = activity.Stationary
         self.Private = activity.Private
+        self.UIDs = activity.UIDs
 
     def MarkAsPresentOn(self, serviceRecord):
         if serviceRecord.Service.ID not in self.PresentOnServices:
