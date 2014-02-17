@@ -420,6 +420,7 @@ p.infotip .close:hover {
 .service .controlsInner {
 	margin-top: 3px;
 	position: relative;
+	top:0;
 }
 
 .service .controlsInner, .service .controls {
