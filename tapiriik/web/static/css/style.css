@@ -634,24 +634,68 @@ p.infotip .close:hover {
 	background-image:url('../img/sync-fail.png');
 }
 
-.syncStatus {
-	color:#aaa;
+.syncButtonBlock {
+	margin:30px 0;
+	opacity: 0;
 }
 
-.syncStatus a {
-	text-decoration: none;
-	color:inherit;
-	cursor:default;
+.syncButton {
+	display: inline-block;
+	position:relative;
+	border:50px solid #c0deed;
+	border-radius:50px;
+	height:0;
+	width:0;
+	vertical-align: middle;
 }
 
-.syncStatus a.active {
-	text-decoration: none;
-	color:#a6cfe3;
+.syncButton.active {
 	cursor:pointer;
 }
 
-.syncStatus a.active:hover {
-	text-decoration: underline;
+.syncButtonIcon {
+	background-image: url('../img/sync-go.png');
+	position:absolute;
+	left:-40px;
+	top:-40px;
+	width:80px;
+	height:80px;
+}
+
+.syncButtonAttachment {
+	vertical-align: middle;
+	display: inline-block;
+	background-color:#8ec1da;
+	color:white;
+	padding:15px 15px;
+	border-radius:5px;
+	font-size:120%;
+	white-space: nowrap; /* otherwise the animations break soooo bad */
+}
+
+.syncButtonAttachment.left {
+	padding-right:20px;
+	margin-right:-15px;
+}
+
+.syncButtonAttachment.right {
+	padding-left:20px;
+	margin-left:-15px;
+}
+
+.syncButton.engaged .syncButtonIcon {
+	-webkit-animation: rotation 2s infinite linear;
+	animation: rotation 2s infinite linear;
+}
+
+@-webkit-keyframes rotation {
+from {-webkit-transform: rotate(0deg);}
+to {-webkit-transform: rotate(359deg);}
+}
+
+@keyframes rotation {
+from {transform: rotate(0deg);}
+to {transform: rotate(359deg);}
 }
 
 .paymentButton, .reclaimButton {

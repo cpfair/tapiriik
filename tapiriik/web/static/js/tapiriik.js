@@ -23,7 +23,7 @@ tapiriik.Init = function(){
 	// I swear, getting this to happen automatically in CSS or Django templating is nearly impossible.
 	$(".controls").each(function(){if ($(".row",this).length>2) {$(this).addClass("multi");}});
 	// ...
-	$("#syncButton").click(tapiriik.ImmediateSyncRequested);
+	$(".syncButton").click(tapiriik.ImmediateSyncRequested);
 	$("a.authDialog").click(tapiriik.AuthDialogLinkClicked);
 	$(".service a.configDialog").click(tapiriik.ConfigDialogLinkClicked);
 	$(".service a.deauthDialog").click(tapiriik.DeauthDialogLinkClicked);
@@ -692,7 +692,7 @@ tapiriik.ClearExceptionLinkClicked = function(){
 };
 
 tapiriik.ImmediateSyncRequested = function(){
-	if (!$("#syncButton").hasClass("active")) return false;
+	if (!$(".syncButton").hasClass("active")) return false;
 
 	$.post("/sync/schedule/now");
 	tapiriik.NextSync = new Date();
@@ -729,29 +729,21 @@ tapiriik.FormatTimespan = function(spanMillis){
 	}
 };
 tapiriik.RefreshSyncCountdown = function(){
+	var sync_button_active = false;
+	var sync_button_engaged = false;
+	var sync_state_text = "";
+	var sync_post_text = "";
 	if (tapiriik.SyncHash !== undefined){
-
 		var delta = tapiriik.NextSync - (new Date());
 		if (delta>0 || tapiriik.NextSync === null){
 			$("#syncButton").show();
 			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000;
+			sync_button_active = !inCooldown;
 			if (tapiriik.NextSync !== null){
-				if (!inCooldown) {
-					$("#syncButton").addClass("active");
-				} else {
-					$("#syncButton").removeClass("active");
-				}
-				$("#syncStatusPreamble").text("Next synchronization in ");
-				$("#syncButton").text(tapiriik.FormatTimespan(delta));
+				sync_state_text = "Next sync in " + tapiriik.FormatTimespan(delta);
 			} else {
-				if (!inCooldown){
-					$("#syncButton").addClass("active");
-					$("#syncStatusPreamble").text("");
-					$("#syncButton").text("Synchronize now");
-				} else {
-					$("#syncButton").removeClass("active");
-					$("#syncStatusPreamble").text("Synchronized");
-					$("#syncButton").text("");
+				if (inCooldown){
+					sync_state_text = "Synchronized";
 				}
 			}
 			if (tapiriik.FastUpdateCountdownTimer !== undefined){
@@ -759,28 +751,65 @@ tapiriik.RefreshSyncCountdown = function(){
 				tapiriik.FastUpdateCountdownTimer = undefined;
 			}
 		} else {
-			$("#syncButton").hide();
+			sync_button_active = false;
+			sync_button_engaged = true;
 
 			if (!tapiriik.Synchronizing){
 				var waitTimeMessage = "";
 				if (tapiriik.SynchronizationWaitTime > 60) { // Otherwise you'd expect a countdown, which this is generally not.
-					waitTimeMessage = " (approximately " + tapiriik.FormatTimespan(tapiriik.SynchronizationWaitTime * 1000) + ")";
+					waitTimeMessage = " (approx. " + tapiriik.FormatTimespan(tapiriik.SynchronizationWaitTime * 1000) + ")";
 				}
-				$("#syncStatusPreamble").text("Queuing to synchronize" + waitTimeMessage);
+				sync_state_text = "Queuing" + waitTimeMessage;
 			} else {
 				var progress = "";
 				if (tapiriik.SynchronizationStep == "list") {
-					progress = "(checking " + tapiriik.ServiceInfo[tapiriik.SynchronizationProgress].DisplayName + ")";
+					sync_state_text = "Checking " + tapiriik.ServiceInfo[tapiriik.SynchronizationProgress].DisplayName;
 				} else {
-					progress = "(" + Math.round(tapiriik.SynchronizationProgress*100) + "% complete)";
+					sync_state_text = Math.round(tapiriik.SynchronizationProgress*100) + "% complete";
 				}
-				$("#syncStatusPreamble").text("Synchronizing now " + progress);
 			}
 			if (tapiriik.FastUpdateCountdownTimer === undefined){
 				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 1000);
 			}
+
 		}
-		setTimeout(function(){$(".syncStatus").animate({"opacity":1});}, 500);
+
+		var measureText = function(txt){
+			var temp = $(".syncButtonAttachment:first").clone();
+			temp.text(txt);
+			$("body").append(temp);
+			temp.css("width", "auto");
+			var width = temp.width();
+			temp.remove();
+			return width;
+		};
+		$(".syncButton").toggleClass("engaged", sync_button_engaged);
+		$(".syncButton").toggleClass("active", sync_button_active).attr("title", sync_button_active ? "Synchronize now" : (sync_button_engaged ? "Synchronizing now..." : "You just synchronized!"));
+		// I don't like this, so I'm only doing it for the left-hand stuff. Note to future self several years down the road: still in use, I know, right?
+		if (sync_state_text != $(".syncButtonAttachment.left").text()){
+			var currentWidth = $(".syncButtonAttachment.left").width();
+			var newWidth = measureText(sync_state_text);
+			if (currentWidth > newWidth) {
+				$(".syncButtonAttachment.left").text(sync_state_text);
+			}
+			$(".syncButtonAttachment.left").animate({"width": newWidth + "px"}, 150, function(){
+				if (currentWidth < newWidth) {
+					$(".syncButtonAttachment.left").text(sync_state_text);
+				}
+			});
+		}
+		$(".syncButtonAttachment.right").text(sync_post_text);
+		if (sync_state_text) {
+			$(".syncButtonAttachment.left").show(200);
+		} else {
+			$(".syncButtonAttachment.left").hide(200);
+		}
+		if (sync_post_text) {
+			$(".syncButtonAttachment.right").show(200);
+		} else {
+			$(".syncButtonAttachment.right").hide(200);
+		}
+		setTimeout(function(){$(".syncButtonBlock").animate({"opacity":1});}, 500);
 	}
 };
 

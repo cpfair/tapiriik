@@ -28,7 +28,8 @@
 			</div>
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
-		<div class="syncStatus" style="opacity:0;"><span id="syncStatusPreamble">Next synchronization in </span><a href="#" id="syncButton">a period of time</a></em></div>
+		<div class="syncButtonBlock">
+			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncButtonAttachment right">Attached info 10%</div></div>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
