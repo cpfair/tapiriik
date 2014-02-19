@@ -490,7 +490,7 @@ class SynchronizationTask:
                 return
         except Exception as e:
             self._syncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
-            self._excludeService(conn, UserException(UserExceptionType.System))
+            self._excludeService(conn, UserException(UserExceptionType.ListingError))
             return
         self._accumulateExclusions(conn, svcExclusions)
         self._accumulateActivities(conn, svcActivities)
@@ -606,7 +606,7 @@ class SynchronizationTask:
                 continue
             except Exception as e:
                 self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
-                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.System))
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError))
                 continue
 
             if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
@@ -640,7 +640,7 @@ class SynchronizationTask:
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
-            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.System))
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError))
             raise UploadException()
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
