@@ -13,7 +13,17 @@ def activities_dashboard(req):
 def activities_fetch_json(req):
     if not req.user:
         return HttpResponse(status=403)
-    activityRecords = db.activity_records.find_one({"UserID": req.user["_id"]})
+
+    retrieve_fields = [
+        "Activities.Prescence",
+        "Activities.Abscence",
+        "Activities.Type",
+        "Activities.Name",
+        "Activities.StartTime",
+        "Activities.Private",
+        "Activities.Stationary"
+    ]
+    activityRecords = db.activity_records.find_one({"UserID": req.user["_id"]}, dict([(x, 1) for x in retrieve_fields]))
     if not activityRecords:
         return HttpResponse("[]", content_type="application/json")
     cleanedRecords = []
