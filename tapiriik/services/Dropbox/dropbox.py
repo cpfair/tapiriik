@@ -219,7 +219,10 @@ class DropboxService(ServiceBase):
                     # don't need entire activity loaded here, just UID
                     act = UploadedActivity()
                     act.UID = existing["UID"]
-                    act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y %z")
+                    try:
+                        act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y %z")
+                    except:
+                        act.StartTime = datetime.strptime(existing["StartTime"], "%H:%M:%S %d %m %Y") # Exactly one user has managed to break %z :S
                     if "EndTime" in existing:  # some cached activities may not have this, it is not essential
                         act.EndTime = datetime.strptime(existing["EndTime"], "%H:%M:%S %d %m %Y %z")
                 else:
