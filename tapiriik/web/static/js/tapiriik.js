@@ -789,7 +789,7 @@ tapiriik.RefreshSyncCountdown = function(){
 		if (sync_state_text != $(".syncButtonAttachment.left").text()){
 			var currentWidth = $(".syncButtonAttachment.left").width();
 			var newWidth = measureText(sync_state_text);
-			if (currentWidth > newWidth) {
+			if (currentWidth >= newWidth) {
 				$(".syncButtonAttachment.left").text(sync_state_text);
 			}
 			$(".syncButtonAttachment.left").animate({"width": newWidth + "px"}, 150, function(){
