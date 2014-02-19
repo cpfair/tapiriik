@@ -45,12 +45,16 @@ class ActivityRecord:
             self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(listTimestamp=datetime.utcnow())
         else:
             self.PresentOnServices[serviceRecord.Service.ID].ProcessedTimestamp = datetime.utcnow()
+        if serviceRecord.Service.ID in self.NotPresentOnServices:
+            del self.NotPresentOnServices[serviceRecord.Service.ID]
 
     def MarkAsSynchronizedTo(self, serviceRecord):
         if serviceRecord.Service.ID not in self.PresentOnServices:
             self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(syncTimestamp=datetime.utcnow())
         else:
             self.PresentOnServices[serviceRecord.Service.ID].SynchronizedTimestamp = datetime.utcnow()
+        if serviceRecord.Service.ID in self.NotPresentOnServices:
+            del self.NotPresentOnServices[serviceRecord.Service.ID]
 
     def MarkAsNotPresentOtherwise(self, userException):
         self.MarkAsNotPresentOn(None, userException)
