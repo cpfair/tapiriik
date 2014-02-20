@@ -163,17 +163,28 @@ class GarminConnectService(ServiceBase):
             return False
         ticket = ticket_match.groups(1)[0]
 
+        # ...AND WE'RE NOT DONE YET!
+
         self._rate_limit()
-        resp = requests.post("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False)
-        if resp.status_code != 302:
-            raise APIException("SSO ticket redemption error %s %s" % (resp.status_code, resp.text))
-        # Normally this redirects to a page that sets the cookie (?! ikr) which we can bypass
-        sid = re.search("jsessionid=(.+)$", resp.headers["location"]).groups(1)[0]
-        resp.cookies["jsessionid"] = sid
+        gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False, cookies=ssoResp.cookies)
+        # Needs to get this redirect - if we go straight to /en-US/ then things go off the rails for whatever reason.
+        if gcPreResp.status_code != 302:
+            raise APIException("GC prestart error %s %s" % (gcPreResp.status_code, gcPreResp.text))
+
+        self._rate_limit()
+        gcRedeemResp1 = requests.get("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False, cookies=gcPreResp.cookies)
+        if gcRedeemResp1.status_code != 302:
+            raise APIException("GC redeem 1 error %s %s" % (gcRedeemResp1.status_code, gcRedeemResp1.text))
+
+        self._rate_limit()
+        gcRedeemResp2 = requests.get(gcRedeemResp1.headers["location"], cookies=gcPreResp.cookies, allow_redirects=False)
+        if gcRedeemResp2.status_code != 302:
+            raise APIException("GC redeem 2 error %s %s" % (gcRedeemResp2.status_code, gcRedeemResp2.text))
 
         if record:
-            self._sessionCache.Set(record.ExternalID, resp.cookies)
-        return resp.cookies
+            self._sessionCache.Set(record.ExternalID, gcPreResp.cookies)
+
+        return gcPreResp.cookies
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
