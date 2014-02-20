@@ -18,6 +18,7 @@ import math
 import logging
 import time
 import json
+import re
 logger = logging.getLogger(__name__)
 
 class GarminConnectService(ServiceBase):
@@ -116,28 +117,63 @@ class GarminConnectService(ServiceBase):
             #  longing for C style overloads...
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
-        params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
+        # JSIG CAS, cool I guess.
+        # Not quite OAuth though, so I'll continue to collect raw credentials.
+        # Commented stuff left in case this ever breaks because of missing parameters...
+        data = {
+            "username": email,
+            "password": password,
+            "_eventId": "submit",
+            "embed": "true",
+            # "displayNameRequired": "false"
+        }
+        params = {
+            "service": "http://connect.garmin.com/post-auth/login",
+            # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/post-auth/login",
+            # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
+            # "webhost": "olaxpw-connect00.garmin.com",
+            "clientId": "GarminConnect",
+            # "gauthHost": "https://sso.garmin.com/sso",
+            # "rememberMeShown": "true",
+            # "rememberMeChecked": "false",
+            "consumeServiceTicket": "false",
+            # "id": "gauth-widget",
+            # "embedWidget": "false",
+            # "cssUrl": "https://static.garmincdn.com/com.garmin.connect/ui/src-css/gauth-custom.css",
+            # "source": "http://connect.garmin.com/en-US/signin",
+            # "createAccountShown": "true",
+            # "openCreateAccount": "false",
+            # "usernameShown": "true",
+            # "displayNameShown": "false",
+            # "initialFocus": "true",
+            # "locale": "en"
+        }
+        # I may never understand what motivates people to mangle a perfectly good protocol like HTTP in the ways they do...
+        preResp = requests.get("https://sso.garmin.com/sso/login", params=params)
+        if preResp.status_code != 200:
+            raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
+        data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
+
+        ssoResp = requests.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False, cookies=preResp.cookies)
+        if ssoResp.status_code != 200:
+            raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
+
+        ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
+        if not ticket_match:
+            return False
+        ticket = ticket_match.groups(1)[0]
+
         self._rate_limit()
-        preResp = requests.get("https://connect.garmin.com/signin")
-        auth_retries = 3 # Did I mention Garmin Connect is silly?
-        for retries in range(auth_retries):
-            self._rate_limit()
-            resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=preResp.cookies)
-            if resp.status_code >= 500 and resp.status_code < 600:
-                raise APIException("Remote API failure")
-            if resp.status_code != 302:  # yep
-                if "errorMessage" in resp.text:
-                    if retries < auth_retries - 1:
-                        time.sleep(1)
-                        continue
-                    else:
-                        raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-                else:
-                    raise APIException("Mystery login error %s" % resp.text)
-            break
+        resp = requests.post("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False)
+        if resp.status_code != 302:
+            raise APIException("SSO ticket redemption error %s %s" % (resp.status_code, resp.text))
+        # Normally this redirects to a page that sets the cookie (?! ikr) which we can bypass
+        sid = re.search("jsessionid=(.+)$", resp.headers["location"]).groups(1)[0]
+        resp.cookies["jsessionid"] = sid
+
         if record:
-            self._sessionCache.Set(record.ExternalID, preResp.cookies)
-        return preResp.cookies
+            self._sessionCache.Set(record.ExternalID, resp.cookies)
+        return resp.cookies
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
