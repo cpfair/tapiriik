@@ -1,5 +1,4 @@
-from tapiriik.settings import WEB_ROOT
-from tapiriik import settings # Since we rely on values set by the synchronization worker at startup
+from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
@@ -96,7 +95,7 @@ class GarminConnectService(ServiceBase):
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
             self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])["dictionary"]
-        self._rate_lock = open("/tmp/gc_rate.%s.lock" % settings.HTTP_SOURCE_ADDR, "w")
+        self._rate_lock = open("/tmp/gc_rate.%s.lock" % HTTP_SOURCE_ADDR, "w")
 
     def _rate_limit(self):
         import fcntl

@@ -1,4 +1,3 @@
-from tapiriik.sync import Sync
 from tapiriik.requests_lib import patch_requests_with_default_timeout, patch_requests_source_address
 from tapiriik import settings
 from tapiriik.database import db
@@ -38,6 +37,10 @@ if isinstance(settings.HTTP_SOURCE_ADDR, list):
     patch_requests_source_address((settings.HTTP_SOURCE_ADDR, 0))
 
 print(" -> Index %s\n -> Interface %s" % (settings.WORKER_INDEX, settings.HTTP_SOURCE_ADDR))
+
+# We defer including the main body of the application till here so the settings aren't captured before we've set them up.
+# The better way would be to defer initializing services until they're requested, but it's 10:30 and this will work just as well.
+from tapiriik.sync import Sync
 
 while Run:
     cycleStart = datetime.datetime.utcnow()
