@@ -117,69 +117,89 @@ class GarminConnectService(ServiceBase):
             #  longing for C style overloads...
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
-        # JSIG CAS, cool I guess.
-        # Not quite OAuth though, so I'll continue to collect raw credentials.
-        # Commented stuff left in case this ever breaks because of missing parameters...
-        data = {
-            "username": email,
-            "password": password,
-            "_eventId": "submit",
-            "embed": "true",
-            # "displayNameRequired": "false"
-        }
-        params = {
-            "service": "http://connect.garmin.com/post-auth/login",
-            # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/post-auth/login",
-            # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
-            # "webhost": "olaxpw-connect00.garmin.com",
-            "clientId": "GarminConnect",
-            # "gauthHost": "https://sso.garmin.com/sso",
-            # "rememberMeShown": "true",
-            # "rememberMeChecked": "false",
-            "consumeServiceTicket": "false",
-            # "id": "gauth-widget",
-            # "embedWidget": "false",
-            # "cssUrl": "https://static.garmincdn.com/com.garmin.connect/ui/src-css/gauth-custom.css",
-            # "source": "http://connect.garmin.com/en-US/signin",
-            # "createAccountShown": "true",
-            # "openCreateAccount": "false",
-            # "usernameShown": "true",
-            # "displayNameShown": "false",
-            # "initialFocus": "true",
-            # "locale": "en"
-        }
-        # I may never understand what motivates people to mangle a perfectly good protocol like HTTP in the ways they do...
-        preResp = requests.get("https://sso.garmin.com/sso/login", params=params)
-        if preResp.status_code != 200:
-            raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
-        data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
-
-        ssoResp = requests.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False, cookies=preResp.cookies)
-        if ssoResp.status_code != 200:
-            raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
-
-        ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
-        if not ticket_match:
-            return False
-        ticket = ticket_match.groups(1)[0]
-
-        # ...AND WE'RE NOT DONE YET!
 
         self._rate_limit()
-        gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False, cookies=ssoResp.cookies)
-        # Needs to get this redirect - if we go straight to /en-US/ then things go off the rails for whatever reason.
-        if gcPreResp.status_code != 302:
-            raise APIException("GC prestart error %s %s" % (gcPreResp.status_code, gcPreResp.text))
+        gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False)
+        # New site gets this redirect, old one does not
+        if gcPreResp.status_code == 200:
+            params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
+            auth_retries = 3 # Did I mention Garmin Connect is silly?
+            for retries in range(auth_retries):
+                self._rate_limit()
+                resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=gcPreResp.cookies)
+                if resp.status_code >= 500 and resp.status_code < 600:
+                    raise APIException("Remote API failure")
+                if resp.status_code != 302:  # yep
+                    if "errorMessage" in resp.text:
+                        if retries < auth_retries - 1:
+                            time.sleep(1)
+                            continue
+                        else:
+                            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                    else:
+                        raise APIException("Mystery login error %s" % resp.text)
+                break
+        elif gcPreResp.status_code == 302:
+            # JSIG CAS, cool I guess.
+            # Not quite OAuth though, so I'll continue to collect raw credentials.
+            # Commented stuff left in case this ever breaks because of missing parameters...
+            data = {
+                "username": email,
+                "password": password,
+                "_eventId": "submit",
+                "embed": "true",
+                # "displayNameRequired": "false"
+            }
+            params = {
+                "service": "http://connect.garmin.com/post-auth/login",
+                # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/post-auth/login",
+                # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
+                # "webhost": "olaxpw-connect00.garmin.com",
+                "clientId": "GarminConnect",
+                # "gauthHost": "https://sso.garmin.com/sso",
+                # "rememberMeShown": "true",
+                # "rememberMeChecked": "false",
+                "consumeServiceTicket": "false",
+                # "id": "gauth-widget",
+                # "embedWidget": "false",
+                # "cssUrl": "https://static.garmincdn.com/com.garmin.connect/ui/src-css/gauth-custom.css",
+                # "source": "http://connect.garmin.com/en-US/signin",
+                # "createAccountShown": "true",
+                # "openCreateAccount": "false",
+                # "usernameShown": "true",
+                # "displayNameShown": "false",
+                # "initialFocus": "true",
+                # "locale": "en"
+            }
+            # I may never understand what motivates people to mangle a perfectly good protocol like HTTP in the ways they do...
+            preResp = requests.get("https://sso.garmin.com/sso/login", params=params)
+            if preResp.status_code != 200:
+                raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
+            data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
 
-        self._rate_limit()
-        gcRedeemResp1 = requests.get("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False, cookies=gcPreResp.cookies)
-        if gcRedeemResp1.status_code != 302:
-            raise APIException("GC redeem 1 error %s %s" % (gcRedeemResp1.status_code, gcRedeemResp1.text))
+            ssoResp = requests.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False, cookies=preResp.cookies)
+            if ssoResp.status_code != 200:
+                raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
-        self._rate_limit()
-        gcRedeemResp2 = requests.get(gcRedeemResp1.headers["location"], cookies=gcPreResp.cookies, allow_redirects=False)
-        if gcRedeemResp2.status_code != 302:
-            raise APIException("GC redeem 2 error %s %s" % (gcRedeemResp2.status_code, gcRedeemResp2.text))
+            ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
+            if not ticket_match:
+                raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            ticket = ticket_match.groups(1)[0]
+
+            # ...AND WE'RE NOT DONE YET!
+
+            self._rate_limit()
+            gcRedeemResp1 = requests.get("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False, cookies=gcPreResp.cookies)
+            if gcRedeemResp1.status_code != 302:
+                raise APIException("GC redeem 1 error %s %s" % (gcRedeemResp1.status_code, gcRedeemResp1.text))
+
+            self._rate_limit()
+            gcRedeemResp2 = requests.get(gcRedeemResp1.headers["location"], cookies=gcPreResp.cookies, allow_redirects=False)
+            if gcRedeemResp2.status_code != 302:
+                raise APIException("GC redeem 2 error %s %s" % (gcRedeemResp2.status_code, gcRedeemResp2.text))
+
+        else:
+            raise APIException("Unknown GC prestart response %s %s" % (gcPreResp.status_code, gcPreResp.text))
 
         if record:
             self._sessionCache.Set(record.ExternalID, gcPreResp.cookies)
