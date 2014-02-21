@@ -122,9 +122,14 @@ class GarminConnectService(ServiceBase):
         gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False)
         # New site gets this redirect, old one does not
         if gcPreResp.status_code == 200:
-            params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In", "javax.faces.ViewState": "j_id1"}
+            self._rate_limit()
+            gcPreResp = requests.get("https://connect.garmin.com/signin", allow_redirects=False)
+            req_count = int(re.search("j_id(\d+)", gcPreResp.text).groups(1)[0])
+            params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In"}
             auth_retries = 3 # Did I mention Garmin Connect is silly?
             for retries in range(auth_retries):
+                params["javax.faces.ViewState"] = "j_id%d" % req_count
+                req_count += 1
                 self._rate_limit()
                 resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=gcPreResp.cookies)
                 if resp.status_code >= 500 and resp.status_code < 600:
