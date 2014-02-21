@@ -142,7 +142,7 @@ class SynchronizationTask:
             raise SynchronizationConcurrencyException  # failed to get lock
 
     def _unlockUser(self, null_next_sync_on_unlock):
-        update_values = {"$unset": {"SynchronizationWorker": None, "SynchronizationHost": None}}
+        update_values = {"$unset": {"SynchronizationWorker": None}}
         if null_next_sync_on_unlock:
             # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
             # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
