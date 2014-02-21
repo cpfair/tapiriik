@@ -1,5 +1,6 @@
 from tapiriik.sync import Sync
-from tapiriik.requests_lib import patch_requests_with_default_timeout
+from tapiriik.requests_lib import patch_requests_with_default_timeout, patch_requests_source_address
+from tapiriik import settings
 from tapiriik.database import db
 import time
 import datetime
@@ -26,11 +27,17 @@ signal.signal(signal.SIGUSR2, sync_interrupt)
 def sync_heartbeat(state):
     db.sync_workers.update({"Process": os.getpid()}, {"$set": {"Heartbeat": datetime.datetime.utcnow(), "State": state}})
 
-print("Sync worker starting at " + datetime.datetime.now().ctime() + " pid " + str(os.getpid()))
+print("Sync worker starting at " + datetime.datetime.now().ctime() + " \n -> PID " + str(os.getpid()))
 db.sync_workers.update({"Process": os.getpid()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Startup":  datetime.datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname(), "State": "startup"}, upsert=True)
 sys.stdout.flush()
 
 patch_requests_with_default_timeout(timeout=60)
+
+if isinstance(settings.HTTP_SOURCE_ADDR, list):
+    settings.HTTP_SOURCE_ADDR = settings.HTTP_SOURCE_ADDR[settings.WORKER_INDEX % len(settings.HTTP_SOURCE_ADDR)]
+    patch_requests_source_address((settings.HTTP_SOURCE_ADDR, 0))
+
+print(" -> Index %s\n -> Interface %s" % (settings.WORKER_INDEX, settings.HTTP_SOURCE_ADDR))
 
 while Run:
     cycleStart = datetime.datetime.utcnow()

@@ -1,3 +1,4 @@
+import os
 # Django settings for tapiriik project.
 
 DEBUG = True
@@ -174,22 +175,22 @@ PAYMENT_AMOUNT = 2
 PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
 
-# hidden from regular signup
+# Hidden from regular signup
 SOFT_LAUNCH_SERVICES = []
 
-# visibly disabled + excluded from synchronization
+# Visibly disabled + excluded from synchronization
 DISABLED_SERVICES = []
 
 # Services no longer available - will be removed across the site + excluded from sync.
 WITHDRAWN_SERVICES = ["endomondo"]
 
-# where to put per-user sync logs
+# Where to put per-user sync logs
 USER_SYNC_LOGS = "./"
 
-# set at startup
+# Set at startup
 SITE_VER = "unknown"
 
-# cache lots of stuff to make local debugging faster
+# Cache lots of stuff to make local debugging faster
 AGGRESSIVE_CACHE = True
 
 # Diagnostics auth, None = no auth
@@ -199,5 +200,11 @@ SPORTTRACKS_OPENFIT_ENDPOINT = "http://sporttracks.mobi/openfitapi/api"
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = './sent_emails'
+
+WORKER_INDEX = int(os.environ.get("TAPIRIIK_WORKER_INDEX", 0))
+
+# Used for distributing outgoing calls across multiple interfaces
+
+HTTP_SOURCE_ADDR = "0.0.0.0"
 
 from .local_settings import *
