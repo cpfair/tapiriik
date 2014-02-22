@@ -444,13 +444,20 @@ class SportTracksService(ServiceBase):
         activityData["sharing"] = "public" if not activity.Private else "private"
         activityData["type"] = self._reverseActivityMappings[activity.Type]
 
+        def _resolveDuration(obj):
+            if obj.Stats.TimerTime.Value:
+                return obj.Stats.TimerTime.Value.total_seconds()
+            if obj.Stats.MovingTime.Value:
+                return obj.Stats.MovingTime.Value.total_seconds()
+            return (obj.EndTime - obj.StartTime).total_seconds()
+
         def _mapStat(dict, key, val, naturalValue=False):
             if val is not None:
                 if naturalValue:
                     val = round(val)
                 dict[key] = val
         _mapStat(activityData, "clock_duration", (activity.EndTime - activity.StartTime).total_seconds())
-        _mapStat(activityData, "duration", activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime.Value is not None else None)
+        _mapStat(activityData, "duration", _resolveDuration(activity)) # This has to be set, otherwise all time shows up as "stopped" :(
         _mapStat(activityData, "total_distance", activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
         _mapStat(activityData, "calories", activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
         _mapStat(activityData, "elevation_gain", activity.Stats.Elevation.Gain)
@@ -473,7 +480,7 @@ class SportTracksService(ServiceBase):
                 "type": "REST" if lap.Intensity == LapIntensity.Rest else "ACTIVE"
             }
             _mapStat(lapinfo, "clock_duration", (lap.EndTime - lap.StartTime).total_seconds()) # Required too.
-            _mapStat(lapinfo, "duration", lap.Stats.TimerTime.Value.total_seconds() if lap.Stats.TimerTime.Value is not None else (lap.EndTime - lap.StartTime).total_seconds()) # This field is required for laps to be created.
+            _mapStat(lapinfo, "duration", _resolveDuration(lap)) # This field is required for laps to be created.
             _mapStat(lapinfo, "distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value) # Probably required.
             _mapStat(lapinfo, "calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilojoules).Value, naturalValue=True)
             _mapStat(lapinfo, "elevation_gain", lap.Stats.Elevation.Gain)
