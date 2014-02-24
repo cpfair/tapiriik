@@ -5,7 +5,9 @@ import signal
 import socket
 from datetime import timedelta, datetime
 
-for worker in db.sync_workers.find({"Host": socket.gethostname()}):
+host = socket.gethostname()
+
+for worker in db.sync_workers.find({"Host": host}):
     # Does the process still exist?
     alive = True
     try:
@@ -26,5 +28,5 @@ for worker in db.sync_workers.find({"Host": socket.gethostname()}):
     # Clear it from the database if it's not alive.
     if not alive:
         db.sync_workers.remove({"_id": worker["_id"]})
-
-
+        # Unlock users attached to it.
+        db.users.update({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}, {"$unset":{"SynchronizationWorker": True}}, multi=True)
