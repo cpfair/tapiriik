@@ -375,7 +375,7 @@ class SynchronizationTask:
                                )
                                 and
                                 # Prevents closely-spaced activities of known different type from being lumped together - esp. important for manually-enetered ones
-                                (x.Type == ActivityType.Other or act.Type == ActivityType.Other or ActivityType.AreVariants([act.Type, x.Type]))
+                                (x.Type == ActivityType.Other or act.Type == ActivityType.Other or x.Type == act.Type or ActivityType.AreVariants([act.Type, x.Type]))
                               ]
             if len(existElsewhere) > 0:
                 existingActivity = existElsewhere[0]
