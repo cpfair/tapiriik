@@ -397,20 +397,18 @@ class GarminConnectService(ServiceBase):
             try:
                 temp_act = GPXIO.Parse(res.content, suppress_validity_errors=True)
             except ValueError as e:
-                raise APIExcludeActivity("GPX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
+                pass
+            else:
+                logger.debug("Merging additional temperature data")
+                full_waypoints = activity.GetFlatWaypoints()
+                temp_waypoints = temp_act.GetFlatWaypoints()
 
-            logger.debug("Merging additional temperature data")
-            full_waypoints = activity.GetFlatWaypoints()
-            temp_waypoints = temp_act.GetFlatWaypoints()
+                merge_idx = 0
 
-            merge_idx = 0
-
-            for x in range(len(temp_waypoints)):
-                while full_waypoints[merge_idx].Timestamp < temp_waypoints[x].Timestamp and merge_idx < len(full_waypoints) - 1:
-                    merge_idx += 1
-                full_waypoints[merge_idx].Temp = temp_waypoints[x].Temp
-
-
+                for x in range(len(temp_waypoints)):
+                    while full_waypoints[merge_idx].Timestamp < temp_waypoints[x].Timestamp and merge_idx < len(full_waypoints) - 1:
+                        merge_idx += 1
+                    full_waypoints[merge_idx].Temp = temp_waypoints[x].Temp
 
         return activity
 
