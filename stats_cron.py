@@ -4,11 +4,18 @@ from datetime import datetime, timedelta
 distanceSynced = db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
 
 # last 24hr, for rate calculation
-lastDayDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
+lastDayDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+if lastDayDistanceSyncedAggr:
+    lastDayDistanceSynced=lastDayDistanceSyncedAggr[0]["total"]
+else:
+    lastDayDistanceSynced = 0
 
 # similarly, last 1hr
-lastHourDistanceSynced = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
-
+lastHourDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+if lastHourDistanceSyncedAggr: 
+    lastHourDistanceSynced = lastHourDistanceSyncedAggr[0]["total"]
+else:
+    lastHourDistanceSynced = 0 
 # sync wait time, to save making 1 query/sec-user-browser
 queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
 queueHeadTime = timedelta(0)
@@ -19,7 +26,11 @@ if len(queueHead):
 
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
-timeUsed = db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}])["result"][0]["total"]
+timeUsedAgg = db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}])["result"]
+if timeUsedAgg: 
+    timeUsed = timeUsedAgg [0]["total"]
+else:
+    timeUsed = 0
 
 # error/pending/locked stats
 lockedSyncRecords = db.users.aggregate([
