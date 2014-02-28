@@ -95,16 +95,33 @@ class GarminConnectService(ServiceBase):
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
             self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])["dictionary"]
-        self._rate_lock = open("/tmp/gc_rate.%s.lock" % HTTP_SOURCE_ADDR, "w")
+        rate_lock_path = "/tmp/gc_rate.%s.lock" % HTTP_SOURCE_ADDR
+        # Ensure the rate lock file exists (...the easy way)
+        open(rate_lock_path, "a").close()
+        self._rate_lock = open(rate_lock_path, "r+")
 
     def _rate_limit(self):
-        import fcntl
+        import fcntl, struct, time
+        min_period = 1  # I appear to been banned from Garmin Connect while determining this.
         print("Waiting for lock")
         fcntl.flock(self._rate_lock,fcntl.LOCK_EX)
         try:
             print("Have lock")
-            time.sleep(1) # I appear to been banned from Garmin Connect while determining this.
-            print("Rate limited")
+            self._rate_lock.seek(0)
+            last_req_start = self._rate_lock.read()
+            if not last_req_start:
+                last_req_start = 0
+            else:
+                last_req_start = float(last_req_start)
+
+            wait_time = max(0, min_period - (time.time() - last_req_start))
+            time.sleep(wait_time)
+
+            self._rate_lock.seek(0)
+            self._rate_lock.write(str(time.time()))
+            self._rate_lock.flush()
+
+            print("Rate limited for %f" % wait_time)
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
@@ -118,7 +135,8 @@ class GarminConnectService(ServiceBase):
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
 
-        self._rate_limit()
+        for x in range(10):
+            self._rate_limit()
         gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False)
         # New site gets this redirect, old one does not
         if gcPreResp.status_code == 200:
