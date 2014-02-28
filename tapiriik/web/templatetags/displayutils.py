@@ -17,6 +17,13 @@ def meters_per_day_to_km_per_hour(value):
     except:
         return "0"
 
+@register.filter(name="format_seconds_minutes")
+def meters_to_kms(value):
+    try:
+        return round(value / 60, 1)
+    except:
+        return "NaN"
+
 @register.filter(name='json')
 def jsonit(obj):
     return json.dumps(obj)
