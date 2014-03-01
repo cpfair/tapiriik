@@ -11,6 +11,8 @@
 		<li><b>Sync distance rate (1hr):</b> {{ stats.LastHourDistanceSynced|format_meters }} km/h</li>
 		<li><b>Sync queue head wait:</b> {{ stats.QueueHeadTime|format_seconds_minutes }} min</li>
 		<li><b>Sync time used:</b> {{ stats.TotalSyncTimeUsed|format_seconds_minutes }} min</li>
+		<li><b>Sync ops:</b> {{ stats.LastHourSynchronizationCount }}</li>
+		<li><b>Avg time/sync (1hr):</b> {{ stats.AverageSyncDuration|format_seconds_minutes }} min</li>
 		<li><b>Active Workers:</b> {% for worker in activeWorkers %}<tt>{{ worker.Process }}@{{ worker.Host }}</tt> {% if worker.Version != config.siteVer %} (out of date){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
 		<li><b>Stalled Workers:</b> <span style="color:red">{% for worker in stalledWorkers %}<form action="" method="POST"><tt>{{ worker.Process }}@{{ worker.Host }}</tt> since {{ worker.Heartbeat }} UTC{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>{% endfor %}</span></li>
 		<li><b>Stats update:</b> {{ stats.Updated }} UTC</li>
