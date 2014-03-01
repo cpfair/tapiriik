@@ -144,8 +144,7 @@ class GarminConnectService(ServiceBase):
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
 
-        for x in range(10):
-            self._rate_limit()
+        self._rate_limit()
         gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False)
         # New site gets this redirect, old one does not
         if gcPreResp.status_code == 200:
