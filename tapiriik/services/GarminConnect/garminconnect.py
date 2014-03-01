@@ -1,5 +1,6 @@
-from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR
+from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR, GARMIN_CONNECT_USER_WATCH_ACCOUNTS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
+from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.statistic_calculator import ActivityStatisticCalculator
@@ -7,7 +8,7 @@ from tapiriik.services.tcx import TCXIO
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.fit import FITIO
 from tapiriik.services.sessioncache import SessionCache
-from tapiriik.database import cachedb
+from tapiriik.database import cachedb, db
 
 from django.core.urlresolvers import reverse
 import pytz
@@ -19,6 +20,7 @@ import logging
 import time
 import json
 import re
+import random
 logger = logging.getLogger(__name__)
 
 class GarminConnectService(ServiceBase):
@@ -27,6 +29,13 @@ class GarminConnectService(ServiceBase):
     DisplayAbbreviation = "GC"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
+    PartialSyncRequiresTrigger = True
+    PartialSyncTriggerPollInterval = timedelta(minutes=10)
+
+    ConfigurationDefaults = {
+        "WatchUserKey": None,
+        "WatchUserLastID": 0
+    }
 
     _activityMappings = {
                                 "running": ActivityType.Running,
@@ -493,7 +502,86 @@ class GarminConnectService(ServiceBase):
             raise APIWarning(str(warnings)) # Meh
         return actid
 
+    def _user_watch_user(self, serviceRecord):
+        if not serviceRecord.GetConfiguration()["WatchUserKey"]:
+            user_key = random.choice(list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys()))
+            logger.info("Assigning %s a new watch user %s" % (serviceRecord.ExternalID, user_key))
+            serviceRecord.SetConfiguration({"WatchUserKey": user_key})
+            return GARMIN_CONNECT_USER_WATCH_ACCOUNTS[user_key]
+        else:
+            return GARMIN_CONNECT_USER_WATCH_ACCOUNTS[serviceRecord.GetConfiguration()["WatchUserKey"]]
 
+    def SubscribeToPartialSyncTrigger(self, serviceRecord):
+        # PUT http://connect.garmin.com/proxy/userprofile-service/connection/request/cpfair
+        # (the poll worker finishes the connection)
+        user_name = self._user_watch_user(serviceRecord)["Name"]
+        logger.info("Requesting connection to %s from %s" % (user_name, serviceRecord.ExternalID))
+        resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name, cookies=self._get_cookies(record=serviceRecord))
+        try:
+            assert resp.status_code == 200
+            assert resp.json()["requestStatus"] == "Created"
+        except:
+            raise APIException("Connection request failed with user watch account %s: %s %s" % (user_name, resp.status_code, resp.text))
+
+    def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
+        # GET http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections to get the ID
+        #  {"fullName":null,"userConnections":[{"userId":5754439,"displayName":"TapiirikAPITEST","fullName":null,"location":null,"profileImageUrlMedium":null,"profileImageUrlSmall":null,"connectionRequestId":1566024,"userConnectionStatus":2,"userRoles":["ROLE_CONNECTUSER","ROLE_FITNESS_USER"],"userPro":false}]}
+        # PUT http://connect.garmin.com/proxy/userprofile-service/connection/end/1904201
+        # Unfortunately there's no way to delete a pending request - the poll worker will do this from the other end
+        active_watch_user = self._user_watch_user(serviceRecord)
+        cookies = self._get_cookies(email=active_watch_user["Username"], password=active_watch_user["Password"])
+        connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections", cookies=cookies).json()
+
+        for connection in connections["userConnections"]:
+            if connection["displayName"] == serviceRecord.ExternalID:
+                dc_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % connection["connectionRequestId"], cookies=cookies)
+                if dc_resp.status_code != 200:
+                    raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, connection["displayName"], dc_resp.status_code, dc_resp.text))
+
+        serviceRecord.SetConfiguration({"WatchUserKey": None})
+
+
+    def PollPartialSyncTrigger(self, multiple_index):
+        # TODO: ensure the appropriate users are connected
+        # GET http://connect.garmin.com/proxy/userprofile-service/connection/pending to get ID
+        #  [{"userId":6244126,"displayName":"tapiriik-sync-ulukhaktok","fullName":"tapiriik sync ulukhaktok","profileImageUrlSmall":null,"connectionRequestId":1904086,"requestViewed":true,"userRoles":["ROLE_CONNECTUSER"],"userPro":false}]
+        # PUT http://connect.garmin.com/proxy/userprofile-service/connection/accept/1904086
+        # ...later...
+        # GET http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10
+
+        # First, accept any pending connections
+        watch_user_key = list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys())[multiple_index]
+        watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
+        cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
+
+        pending_connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies).json()
+        valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
+        logger.info("Accepting %d, denying %d connection requests" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids)))
+        for pending_connect in pending_connections:
+            if pending_connect["displayName"] in valid_pending_connections_external_ids:
+                connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+                if connect_resp.status_code != 200:
+                    raise APIException("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
+            else:
+                ignore_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+
+        # Then, check for users with new activities
+        watch_activities = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10", cookies=cookies).json()
+        active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
+        active_user_pairs.sort(key=lambda x: x[1], reverse=True) # Highest IDs first
+        active_users = dict(active_user_pairs)
+
+        active_user_recs = [ServiceRecord(x) for x in db.connections.find({"Config.WatchUserKey": watch_user_key, "ExternalID": {"$in": list(active_users.keys())}}, {"Config": 1, "ExternalID": 1, "Service": 1})]
+
+        to_sync_ids = []
+        for active_user_rec in active_user_recs:
+            last_active_id = active_user_rec.GetConfiguration()["WatchUserLastID"]
+            this_active_id = active_users[active_user_rec.ExternalID]
+            if this_active_id > last_active_id:
+                to_sync_ids.append(active_user_rec._id)
+                active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id})
+
+        return to_sync_ids
 
     def RevokeAuthorization(self, serviceRecord):
         # nothing to do here...

@@ -207,4 +207,6 @@ WORKER_INDEX = int(os.environ.get("TAPIRIIK_WORKER_INDEX", 0))
 
 HTTP_SOURCE_ADDR = "0.0.0.0"
 
+GARMIN_CONNECT_USER_WATCH_ACCOUNTS = {}
+
 from .local_settings import *
