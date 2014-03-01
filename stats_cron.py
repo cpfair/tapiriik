@@ -12,10 +12,10 @@ else:
 
 # similarly, last 1hr
 lastHourDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
-if lastHourDistanceSyncedAggr: 
+if lastHourDistanceSyncedAggr:
     lastHourDistanceSynced = lastHourDistanceSyncedAggr[0]["total"]
 else:
-    lastHourDistanceSynced = 0 
+    lastHourDistanceSynced = 0
 # sync wait time, to save making 1 query/sec-user-browser
 queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
 queueHeadTime = timedelta(0)
@@ -27,10 +27,13 @@ if len(queueHead):
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
 timeUsedAgg = db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}])["result"]
-if timeUsedAgg: 
-    timeUsed = timeUsedAgg [0]["total"]
+totalSyncOps = db.sync_worker_stats.count()
+if timeUsedAgg:
+    timeUsed = timeUsedAgg[0]["total"]
+    avgSyncTime = timeUsed / totalSyncOps
 else:
     timeUsed = 0
+    avgSyncTime = 0
 
 # error/pending/locked stats
 lockedSyncRecords = db.users.aggregate([
@@ -81,7 +84,7 @@ db.sync_status_stats.insert({
         "SyncQueueHeadTime": queueHeadTime.total_seconds()
 })
 
-db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "QueueHeadTime": queueHeadTime.total_seconds(), "Updated": datetime.utcnow()}}, upsert=True)
+db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "AverageSyncDuration": avgSyncTime, "LastHourSynchronizationCount": totalSyncOps, "QueueHeadTime": queueHeadTime.total_seconds(), "Updated": datetime.utcnow()}}, upsert=True)
 
 
 def aggregateCommonErrors():
