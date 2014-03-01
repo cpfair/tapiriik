@@ -16,6 +16,7 @@ class ServiceBase:
     UserAuthorizationURL = None
     UserProfileURL = UserActivityURL = None
     AuthenticationNoFrame = False
+    PartialSyncRequiresTrigger = False
     ConfigurationDefaults = {}
 
     def WebInit(self):
@@ -37,6 +38,17 @@ class ServiceBase:
         raise NotImplementedError
 
     def DeleteCachedData(self, serviceRecord):
+        raise NotImplementedError
+
+    def SubscribeToPartialSyncTrigger(self, serviceRecord):
+        if self.PartialSyncRequiresTrigger:
+            raise NotImplementedError
+
+    def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
+        if self.PartialSyncRequiresTrigger:
+            raise NotImplementedError
+
+    def ServiceRecordIDsForPartialSyncTrigger(self, req):
         raise NotImplementedError
 
     def ConfigurationUpdating(self, serviceRecord, newConfig, oldConfig):

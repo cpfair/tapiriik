@@ -38,6 +38,8 @@ urlpatterns = patterns('',
     url(r'^activities$', 'tapiriik.web.views.activities_dashboard', {}, name='activities_dashboard'),
     url(r'^activities/fetch$', 'tapiriik.web.views.activities_fetch_json', {}, name='activities_fetch_json'),
 
+    url(r'^sync/remote_callback/trigger_partial_sync/(?P<service>)$', 'tapiriik.web.views.sync_trigger_partial_sync_callback', {}, name='sync_trigger_partial_sync_callback'),
+
     url(r'^diagnostics/$', 'tapiriik.web.views.diag_dashboard', {}, name='diagnostics_dashboard'),
     url(r'^diagnostics/user/unsu$', 'tapiriik.web.views.diag_unsu', {}, name='diagnostics_unsu'),
     url(r'^diagnostics/user/(?P<user>.+)$', 'tapiriik.web.views.diag_user', {}, name='diagnostics_user'),
