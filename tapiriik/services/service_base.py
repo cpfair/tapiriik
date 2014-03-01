@@ -2,25 +2,63 @@ class ServiceAuthenticationType:
     OAuth = "oauth"
     UsernamePassword = "direct"
 
+class InvalidServiceOperationException(Exception):
+    pass
 
 class ServiceBase:
-    ID = AuthenticationType = DisplayName = SupportedActivities = None
+    # Short ID used everywhere in logging and DB storage
+    ID = None
+    # Full display name given to users
+    DisplayName = None
+    # 2-3 letter abbreviated name
+    DisplayAbbreviation = None
+
+    # One of ServiceAuthenticationType
+    AuthenticationType = None
+
+    # Enables extended auth ("Save these details") functionality
     RequiresExtendedAuthorizationDetails = False
-    Configurable = False
 
-    def RequiresConfiguration(self, serviceRecord):  # this needs to be a pseudo-property since Dropbox needs to decide at runtime
-        return False  # true means no sync until user configures
-
-    SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
-    ReceivesStationaryActivities = True
+    # URL to direct user to when starting authentication
     UserAuthorizationURL = None
-    UserProfileURL = UserActivityURL = None
+
+    # Don't attempt to IFrame the OAuth login
     AuthenticationNoFrame = False
+
+    # List of ActivityTypes
+    SupportedActivities = None
+
+    # Used only in tests
+    SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
+
+    # Does it?
+    ReceivesStationaryActivities = True
+
+    # Causes synchronizations to be skipped until...
+    #  - One is triggered (via IDs returned by ServiceRecordIDsForPartialSyncTrigger or PollPartialSyncTrigger)
+    #  - One is necessitated (non-partial sync, possibility of uploading new activities, etc)
     PartialSyncRequiresTrigger = False
+    # Timedelta for polling to happen at (or None for no polling)
+    PartialSyncTriggerPollInterval = None
+    # How many times to call the polling method per interval (this is for the multiple_index kwarg)
+    PartialSyncTriggerPollMultiple = 1
+
+    # Adds the Setup button to the service configuration pane, and not much else
+    Configurable = False
+    # Defaults for per-service configuration
     ConfigurationDefaults = {}
+
+    # For the diagnostics dashboard
+    UserProfileURL = UserActivityURL = None
+
+    def RequiresConfiguration(self, serviceRecord):  # Should convert this into a real property
+        return False  # True means no sync until user configures
 
     def WebInit(self):
         pass
+
+    def GenerateUserAuthorizationURL(self, level=None):
+        raise NotImplementedError
 
     def Authorize(self, email, password, store=False):
         raise NotImplementedError
@@ -43,10 +81,20 @@ class ServiceBase:
     def SubscribeToPartialSyncTrigger(self, serviceRecord):
         if self.PartialSyncRequiresTrigger:
             raise NotImplementedError
+        else:
+            raise InvalidServiceOperationException
 
     def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
         if self.PartialSyncRequiresTrigger:
             raise NotImplementedError
+        else:
+            raise InvalidServiceOperationException
+
+    def PollPartialSyncTrigger(self, multiple_index):
+        if self.PartialSyncRequiresTrigger and self.PartialSyncTriggerPollInterval:
+            raise NotImplementedError
+        else:
+            raise InvalidServiceOperationException
 
     def ServiceRecordIDsForPartialSyncTrigger(self, req):
         raise NotImplementedError
