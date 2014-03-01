@@ -136,10 +136,10 @@ class GarminConnectService(ServiceBase):
 
     def _get_cookies(self, record=None, email=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
-        if record:
-            cached = self._sessionCache.Get(record.ExternalID)
-            if cached:
+        cached = self._sessionCache.Get(record.ExternalID if record else email)
+        if cached:
                 return cached
+        if record:
             #  longing for C style overloads...
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
@@ -232,8 +232,8 @@ class GarminConnectService(ServiceBase):
         else:
             raise APIException("Unknown GC prestart response %s %s" % (gcPreResp.status_code, gcPreResp.text))
 
-        if record:
-            self._sessionCache.Set(record.ExternalID, gcPreResp.cookies)
+        self._sessionCache.Set(record.ExternalID if record else email, gcPreResp.cookies)
+
 
         return gcPreResp.cookies
 
