@@ -318,7 +318,7 @@ class SynchronizationTask:
                 return a.replace(tzinfo=knownTz)
             return a
 
-    def _accumulateActivities(self, conn, svcActivities):
+    def _accumulateActivities(self, conn, svcActivities, no_add=False):
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
         activityStartTZOffsetLeeway = timedelta(seconds=10)
@@ -408,7 +408,8 @@ class SynchronizationTask:
                 existingActivity.UIDs |= act.UIDs  # I think this is merited
                 act.UIDs = existingActivity.UIDs  # stop the circular inclusion, not that it matters
                 continue
-            self._activities.append(act)
+            if not no_add:
+                self._activities.append(act)
 
     def _determineEligibleRecipientServices(self, activity, recipientServices):
         from tapiriik.auth import User
@@ -453,7 +454,7 @@ class SynchronizationTask:
             identifier = str(identifier).replace(".", "_")
             self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow(), "UserException": _packUserException(exclusion.UserException)}
 
-    def _downloadActivityList(self, conn, exhaustive):
+    def _downloadActivityList(self, conn, exhaustive, no_add=False):
         svc = conn.Service
         # Bail out as appropriate for the entire account (_syncErrors contains only blocking errors at this point)
         if [x for x in self._syncErrors[conn._id] if x["Scope"] == ServiceExceptionScope.Account]:
@@ -493,7 +494,7 @@ class SynchronizationTask:
             self._excludeService(conn, UserException(UserExceptionType.ListingError))
             return
         self._accumulateExclusions(conn, svcExclusions)
-        self._accumulateActivities(conn, svcActivities)
+        self._accumulateActivities(conn, svcActivities, no_add=no_add)
 
     def _estimateFallbackTZ(self, activities):
         from collections import Counter
@@ -735,7 +736,10 @@ class SynchronizationTask:
                             for conn in eligibleServices:
                                 if conn._id in self._deferredServices:
                                     logger.info("Doing deferred list from %s" % conn.Service.ID)
-                                    self._downloadActivityList(conn, exhaustive)
+                                    # no_add since...
+                                    #  a) we're iterating over the list it'd be adding to, and who knows what will happen then
+                                    #  b) for the current use of deferred services, we don't care about new activities
+                                    self._downloadActivityList(conn, exhaustive, no_add=True)
                                     self._deferredServices.remove(conn._id)
                                     has_deferred = True
 
