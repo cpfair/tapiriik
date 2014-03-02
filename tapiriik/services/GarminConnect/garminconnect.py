@@ -557,7 +557,7 @@ class GarminConnectService(ServiceBase):
         # GET http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10
 
         # First, accept any pending connections
-        watch_user_key = list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys())[multiple_index]
+        watch_user_key = sorted(list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys()))[multiple_index]
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
         cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
 
