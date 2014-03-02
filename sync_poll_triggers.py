@@ -10,6 +10,7 @@ class _celeryConfig:
 	CELERY_ROUTES = {
 		"sync_poll_triggers.trigger_poll": {"queue": "tapiriik-poll"}
 	}
+	CELERYD_CONCURRENCY = 1 # Otherwise the GC rate limiting breaks since file locking is per-process.
 
 celery_app = Celery('sync_poll_triggers', broker=RABBITMQ_BROKER_URL)
 celery_app.config_from_object(_celeryConfig())
@@ -23,12 +24,14 @@ def trigger_poll(service_id, index):
 
 def schedule_trigger_poll():
 	schedule_data = list(db.trigger_poll_scheduling.find())
+	print("Scheduler run at %s" % datetime.now())
 	for svc in Service.List():
 		if svc.PartialSyncTriggerRequiresPolling:
+			print("Checking %s's %d poll indexes" % (svc.ID, svc.PartialSyncTriggerPollMultiple))
 			for idx in range(svc.PartialSyncTriggerPollMultiple):
 				svc_schedule = [x for x in schedule_data if x["Service"] == svc.ID and x["Index"] == idx]
 				if not svc_schedule:
-					svc_schedule = {"Service": svc.ID, "Index": idx, "LastScheduled": datetime.min,}
+					svc_schedule = {"Service": svc.ID, "Index": idx, "LastScheduled": datetime.min}
 				else:
 					svc_schedule = svc_schedule[0]
 
