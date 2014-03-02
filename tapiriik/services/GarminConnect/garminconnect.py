@@ -522,6 +522,8 @@ class GarminConnectService(ServiceBase):
         except:
             raise APIException("Connection request failed with user watch account %s: %s %s" % (user_name, resp.status_code, resp.text))
 
+        serviceRecord.SetPartialSyncTriggerSubscriptionState(True)
+
     def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
         # GET http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections to get the ID
         #  {"fullName":null,"userConnections":[{"userId":5754439,"displayName":"TapiirikAPITEST","fullName":null,"location":null,"profileImageUrlMedium":null,"profileImageUrlSmall":null,"connectionRequestId":1566024,"userConnectionStatus":2,"userRoles":["ROLE_CONNECTUSER","ROLE_FITNESS_USER"],"userPro":false}]}
@@ -538,6 +540,8 @@ class GarminConnectService(ServiceBase):
                     raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, connection["displayName"], dc_resp.status_code, dc_resp.text))
 
         serviceRecord.SetConfiguration({"WatchUserKey": None})
+
+        serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
 
     def PollPartialSyncTrigger(self, multiple_index):

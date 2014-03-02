@@ -142,7 +142,7 @@ class SynchronizationTask:
             raise SynchronizationConcurrencyException  # failed to get lock
 
     def _unlockUser(self, null_next_sync_on_unlock):
-        update_values = {"$unset": {"SynchronizationWorker": None}}
+        update_values = {"$unset": {"SynchronizationWorker": None, "TriggerPartialSync": None}}
         if null_next_sync_on_unlock:
             # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
             # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
@@ -454,6 +454,10 @@ class SynchronizationTask:
             identifier = str(identifier).replace(".", "_")
             self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow(), "UserException": _packUserException(exclusion.UserException)}
 
+    def _ensurePartialSyncPollingSubscription(self, conn):
+        if conn.Service.PartialSyncTriggerRequiresPolling and not conn.PartialSyncTriggerSubscribed:
+            conn.Service.SubscribeToPartialSyncTrigger(conn)
+
     def _downloadActivityList(self, conn, exhaustive, no_add=False):
         svc = conn.Service
         # Bail out as appropriate for the entire account (_syncErrors contains only blocking errors at this point)
@@ -480,6 +484,9 @@ class SynchronizationTask:
                     return
                 # the connection never gets saved in full again, so we can sub these in here at no risk
                 conn.ExtendedAuthorization = extAuthDetails[0]
+
+        logger.info("Ensuring partial sync poll subscription")
+        self._ensurePartialSyncPollingSubscription(conn)
 
         try:
             logger.info("\tRetrieving list from " + svc.ID)
