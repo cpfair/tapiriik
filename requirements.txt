@@ -6,3 +6,4 @@ dropbox
 python-dateutil
 Django==1.5.1
 pycrypto
+celery

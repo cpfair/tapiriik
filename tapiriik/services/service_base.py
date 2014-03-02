@@ -43,6 +43,10 @@ class ServiceBase:
     # How many times to call the polling method per interval (this is for the multiple_index kwarg)
     PartialSyncTriggerPollMultiple = 1
 
+    @property
+    def PartialSyncTriggerRequiresPolling(self):
+        return self.PartialSyncRequiresTrigger and self.PartialSyncTriggerPollInterval
+
     # Adds the Setup button to the service configuration pane, and not much else
     Configurable = False
     # Defaults for per-service configuration
