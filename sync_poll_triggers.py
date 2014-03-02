@@ -1,9 +1,14 @@
 from tapiriik.database import db
+from tapiriik.requests_lib import patch_requests_source_address
 from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST
+from tapiriik import settings
+
+if isinstance(settings.HTTP_SOURCE_ADDR, list):
+    settings.HTTP_SOURCE_ADDR = settings.HTTP_SOURCE_ADDR[0]
+    patch_requests_source_address((settings.HTTP_SOURCE_ADDR, 0))
+
 from tapiriik.services import Service
 from celery import Celery
-import os
-import socket
 from datetime import datetime
 
 class _celeryConfig:
