@@ -942,6 +942,17 @@ ul.credits li {
 	margin-bottom: 15px;
 }
 
+ul.itemized-clean {
+	margin:0;
+	padding:0;
+	list-style: none;
+}
+
+ul.itemized-clean li {
+	padding:0;
+	margin:5px 0;
+}
+
 .fancyTable {
 	width:100%;
 	border-spacing: 0;

@@ -35,6 +35,8 @@
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
 	{% endif %}
 
+	<p><b>Huh, 'tapiriik sync' is now connected to me on Garmin Connect?!</b> <a href="{% url 'garmin_connect_users' %}">Read all about it here</a>.
+
 	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}

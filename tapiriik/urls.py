@@ -62,6 +62,8 @@ urlpatterns = patterns('',
 
     url(r'^trainingpeaks_premium$', 'tapiriik.web.views.trainingpeaks_premium.trainingpeaks_premium', name='trainingpeaks_premium'),
 
+    url(r'^garmin_connect_users$', TemplateView.as_view(template_name='static/garmin_connect_users.html'), name='garmin_connect_users'),
+
     url(r'^faq$', TemplateView.as_view(template_name='static/faq.html'), name='faq'),
     url(r'^credits$', TemplateView.as_view(template_name='static/credits.html'), name='credits'),
     url(r'^contact$', TemplateView.as_view(template_name='static/contact.html'), name='contact'),
