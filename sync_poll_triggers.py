@@ -15,7 +15,7 @@ class _celeryConfig:
 celery_app = Celery('sync_poll_triggers', broker=RABBITMQ_BROKER_URL)
 celery_app.config_from_object(_celeryConfig())
 
-@celery_app.task(ack_late=True)
+@celery_app.task()
 def trigger_poll(service_id, index):
     svc = Service.FromID(service_id)
     affected_connection_ids = svc.PollPartialSyncTrigger(index)
