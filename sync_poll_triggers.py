@@ -18,7 +18,7 @@ celery_app.config_from_object(_celeryConfig())
 def trigger_poll(service_id, index):
     svc = Service.FromID(service_id)
     affected_connection_ids = svc.PollPartialSyncTrigger(index)
-    print("Triggering %d connections" % len(affected_connection_ids))
+    print("Triggering %d connections via %s-%d" % (len(affected_connection_ids), service_id, index))
     db.connections.update({"_id": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True}}, multi=True)
 
 def schedule_trigger_poll():

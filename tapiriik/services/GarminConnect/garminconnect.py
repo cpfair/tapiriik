@@ -31,6 +31,7 @@ class GarminConnectService(ServiceBase):
     RequiresExtendedAuthorizationDetails = True
     PartialSyncRequiresTrigger = True
     PartialSyncTriggerPollInterval = timedelta(minutes=10)
+    PartialSyncTriggerPollMultiple = len(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys())
 
     ConfigurationDefaults = {
         "WatchUserKey": None,
@@ -559,7 +560,7 @@ class GarminConnectService(ServiceBase):
 
         pending_connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies).json()
         valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
-        logger.info("Accepting %d, denying %d connection requests" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids)))
+        logger.info("Accepting %d, denying %d connection requests for %s" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids), watch_user_key))
         for pending_connect in pending_connections:
             if pending_connect["displayName"] in valid_pending_connections_external_ids:
                 connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
