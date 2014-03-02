@@ -562,7 +562,12 @@ class GarminConnectService(ServiceBase):
         cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
 
         self._rate_limit()
-        pending_connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies).json()
+        pending_connections_resp = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies)
+        try:
+            pending_connections = pending_connections_resp.json()
+        except ValueError:
+            raise Exception("Could not parse pending connection requests: %s %s" % (pending_connections_resp.status_code, pending_connections_resp.text))
+
         valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
         logger.info("Accepting %d, denying %d connection requests for %s" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids), watch_user_key))
         for pending_connect in pending_connections:
@@ -577,7 +582,12 @@ class GarminConnectService(ServiceBase):
 
         # Then, check for users with new activities
         self._rate_limit()
-        watch_activities = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10", cookies=cookies).json()
+        watch_activities_resp = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10", cookies=cookies)
+        try:
+            watch_activities = watch_activities_resp.json()
+        except ValueError:
+            raise Exception("Could not parse new activities list: %s %s" % (watch_activities_resp.status_code, watch_activities_resp.text))
+
         active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
         active_user_pairs.sort(key=lambda x: x[1], reverse=True) # Highest IDs first
         active_users = dict(active_user_pairs)
