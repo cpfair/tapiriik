@@ -516,6 +516,7 @@ class GarminConnectService(ServiceBase):
         # (the poll worker finishes the connection)
         user_name = self._user_watch_user(serviceRecord)["Name"]
         logger.info("Requesting connection to %s from %s" % (user_name, serviceRecord.ExternalID))
+        self._rate_limit()
         resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name, cookies=self._get_cookies(record=serviceRecord))
         try:
             assert resp.status_code == 200
@@ -532,10 +533,12 @@ class GarminConnectService(ServiceBase):
         # Unfortunately there's no way to delete a pending request - the poll worker will do this from the other end
         active_watch_user = self._user_watch_user(serviceRecord)
         cookies = self._get_cookies(email=active_watch_user["Username"], password=active_watch_user["Password"])
+        self._rate_limit()
         connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections", cookies=cookies).json()
 
         for connection in connections["userConnections"]:
             if connection["displayName"] == serviceRecord.ExternalID:
+                self._rate_limit()
                 dc_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % connection["connectionRequestId"], cookies=cookies)
                 if dc_resp.status_code != 200:
                     raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, connection["displayName"], dc_resp.status_code, dc_resp.text))
@@ -558,18 +561,22 @@ class GarminConnectService(ServiceBase):
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
         cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
 
+        self._rate_limit()
         pending_connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies).json()
         valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
         logger.info("Accepting %d, denying %d connection requests for %s" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids), watch_user_key))
         for pending_connect in pending_connections:
             if pending_connect["displayName"] in valid_pending_connections_external_ids:
+                self._rate_limit()
                 connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
                 if connect_resp.status_code != 200:
                     raise APIException("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
             else:
+                self._rate_limit()
                 ignore_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"], cookies=cookies)
 
         # Then, check for users with new activities
+        self._rate_limit()
         watch_activities = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10", cookies=cookies).json()
         active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
         active_user_pairs.sort(key=lambda x: x[1], reverse=True) # Highest IDs first
