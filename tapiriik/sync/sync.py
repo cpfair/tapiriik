@@ -686,10 +686,11 @@ class SynchronizationTask:
                     if len(self._serviceConnections) - len(self._excludedServices) <= 1:
                         raise SynchronizationCompleteException()
 
-                    if not exhaustive and conn.svc.PartialSyncRequiresTrigger and "TriggerPartialSync" not in conn.__dict__:
-                        logger.info("Service %s has not been triggered" % conn.Service.ID)
-                        self._deferredServices.append(conn._id)
-                        continue
+                    # Commented out for deployment
+                    # if not exhaustive and conn.svc.PartialSyncRequiresTrigger and "TriggerPartialSync" not in conn.__dict__:
+                    #     logger.info("Service %s has not been triggered" % conn.Service.ID)
+                    #     self._deferredServices.append(conn._id)
+                    #     continue
 
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.List)
