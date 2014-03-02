@@ -1,0 +1,19 @@
+{% extends "site.html" %}
+{% block title %}Who is 'tapiriik sync' on Garmin Connect{% endblock %}
+{% block content %}
+<h1>Who is 'tapiriik sync'?</h1>
+<h2>(and how did they get added to my Garmin Connect account?)</h2>
+<h3>I'm guessing you're here because you just got an email like this:</h3>
+<p>
+	<img src="{{ STATIC_URL }}img/garminconnect_useradd.png" style="border:4px solid #eee; border-radius:5px; width:400px;"/>
+</p>
+<ul class="itemized-clean" style="font-size:110%">
+	<li>These accounts are <b>automatically managed.</b> You should never have to manually add or remove them as connections.</li>
+	<li><b style="color:maroon;">Never accept a request from these users.</b> If you do receive a connection request <i>(different from the email above)</i>, deny it.</li>
+	<li><b>Your privacy settings are never changed.</b> It's sad that this needs to be in a FAQ.</li>
+	<li><b>You can still stop using tapiriik at any time.</b> The user will be removed from your account shortly afterwards.</li>
+</ul>
+
+<h3>Here's the technical lowdown:</h3>
+<p>tapiriik users are quite an active bunch, but the system still spends most of its time checking accounts that haven't been updated since the last synchronization. Having these special accounts allows me to efficiently monitor which users have new activities to be synchronized, and which do not.</p>
+{% endblock %}

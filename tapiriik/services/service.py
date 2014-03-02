@@ -67,6 +67,9 @@ class Service:
         if serviceRecord is None:
             db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None})
             serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
+            serviceRecord.ExtendedAuthorization = extendedAuthDetails # So SubscribeToPartialSyncTrigger can use it (we don't save the whole record after this point)
+            if service.PartialSyncTriggerRequiresPolling():
+                service.SubscribeToPartialSyncTrigger(serviceRecord) # The subscription is attached more to the remote account than to the local one, so we subscribe/unsubscribe here rather than in User.ConnectService, etc.
         elif serviceRecord.Authorization != authDetails or (hasattr(serviceRecord, "ExtendedAuthorization") and serviceRecord.ExtendedAuthorization != extendedAuthDetails):
             db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None}})
 
@@ -81,6 +84,8 @@ class Service:
     def DeleteServiceRecord(serviceRecord):
         svc = serviceRecord.Service
         svc.DeleteCachedData(serviceRecord)
+        if svc.PartialSyncTriggerRequiresPolling():
+            svc.UnsubscribeFromPartialSyncTrigger(serviceRecord)
         svc.RevokeAuthorization(serviceRecord)
         cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         db.connections.remove({"_id": serviceRecord._id})

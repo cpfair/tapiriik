@@ -22,6 +22,7 @@ class ServiceRecord:
 
     ExcludedActivities = {}
     Config = {}
+    PartialSyncTriggerSubscribed = False
 
     @property
     def Service(self):
@@ -34,6 +35,9 @@ class ServiceRecord:
         if "ExtendedAuthorization" in self.__dict__ and self.ExtendedAuthorization:
             return True
         return cachedb.extendedAuthDetails.find({"ID": self._id}).limit(1).count()
+
+    def SetPartialSyncTriggerSubscriptionState(self, subscribed):
+        db.connections.update({"_id": self._id}, {"$set": {"PartialSyncTriggerSubscribed": subscribed}})
 
     def GetConfiguration(self):
         from tapiriik.services import Service

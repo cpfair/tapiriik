@@ -1,9 +1,11 @@
 import json
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from tapiriik.auth import User
 from tapiriik.sync import Sync
 from tapiriik.database import db
+from tapiriik.services import Service
 from datetime import datetime
 import zlib
 
@@ -69,3 +71,13 @@ def sync_clear_errorgroup(req, service, group):
             return HttpResponse()
 
     return HttpResponse(status=404)
+
+@csrf_exempt
+@require_POST
+def sync_trigger_partial_sync_callback(req, service):
+    svc = Service.FromID(service)
+    affected_connection_ids = svc.ServiceRecordIDsForPartialSyncTrigger(req)
+    db.connections.update({"_id": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True}}, multi=True)
+    db.users.update({"ConnectedServices.ID": {"$in": affected_connection_ids}}, {"$set": {"NextSynchronization": datetime.utcnow()}}, multi=True) # It would be nicer to use the Sync.Schedule... method, but I want to cleanly do this in bulk
+    return HttpResponse(status=204)
+
