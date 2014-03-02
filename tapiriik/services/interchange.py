@@ -256,6 +256,25 @@ class Activity:
         for lap in self.Laps:
             _cleanStatsObj(lap.Stats)
 
+    def CleanWaypoints(self):
+        # Similarly, we sometimes get complete nonsense like negative distance
+        waypoints = self.GetFlatWaypoints()
+        for wp in waypoints:
+            if wp.Distance and wp.Distance < 0:
+                wp.Distance = 0
+            if wp.Speed and wp.Speed < 0:
+                wp.Speed = 0
+            if wp.Cadence and wp.Cadence < 0:
+                wp.Cadence = 0
+            if wp.RunCadence and wp.RunCadence < 0:
+                wp.RunCadence = 0
+            if wp.Power and wp.Power < 0:
+                wp.Power = 0
+            if wp.Calories and wp.Calories < 0:
+                wp.Calories = 0 # Are there any devices that track your caloric intake? Interesting idea...
+            if wp.HR and wp.HR < 0:
+                wp.HR = 0
+
     def __str__(self):
         return "Activity (" + self.Type + ") Start " + str(self.StartTime) + " " + str(self.TZ) + " End " + str(self.EndTime) + " stat " + str(self.Stationary)
     __repr__ = __str__

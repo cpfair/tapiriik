@@ -781,6 +781,7 @@ class SynchronizationTask:
                             raise ActivityShouldNotSynchronizeException()
 
                         full_activity.CleanStats()
+                        full_activity.CleanWaypoints()
 
                         try:
                             full_activity.EnsureTZ()
