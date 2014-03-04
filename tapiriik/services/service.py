@@ -81,6 +81,18 @@ class Service:
                 cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         return serviceRecord
 
+    def PersistExtendedAuthDetails(serviceRecord):
+        if not serviceRecord.HasExtendedAuthorizationDetails():
+            raise ValueError("No extended auth details to persist")
+        if serviceRecord.ExtendedAuthorization:
+            # Already persisted, nothing to do
+            return
+        extAuth = cachedb.extendedAuthDetails.find_one({"ID": serviceRecord._id})
+        if not extAuth:
+            raise ValueError("Service record claims to have extended auth, facts suggest otherwise")
+        db.connections.update({"_id": serviceRecord._id}, {"$set": {"ExtendedAuthorization": extAuth}})
+        cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
+
     def DeleteServiceRecord(serviceRecord):
         svc = serviceRecord.Service
         svc.DeleteCachedData(serviceRecord)

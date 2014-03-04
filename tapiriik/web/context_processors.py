@@ -43,6 +43,7 @@ def js_bridge(req):
                     info["RequiresConfiguration"] = svc.RequiresConfiguration(svcRec)
             info["Config"] = svcRec.GetConfiguration()
             info["HasExtendedAuth"] = svcRec.HasExtendedAuthorizationDetails()
+            info["PersistedExtendedAuth"] = svcRec.HasExtendedAuthorizationDetails(persisted_only=True)
             info["ExternalID"] = svcRec.ExternalID
         info["BlockFlowTo"] = []
         info["Connected"] = svcRec is not None

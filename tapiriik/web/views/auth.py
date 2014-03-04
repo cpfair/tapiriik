@@ -43,6 +43,18 @@ def auth_do(req, service):
         return True
     return False
 
+@require_POST
+def auth_persist_extended_auth_ajax(req, service):
+    svc = Service.FromID(service)
+    svcId = [x["ID"] for x in req.user["ConnectedServices"] if x["Service"] == svc.ID]
+    if len(svcId) == 0:
+        return HttpResponse(status=404)
+    else:
+        svcId = svcId[0]
+    svcRec = Service.GetServiceRecordByID(svcId)
+    if svcRec.HasExtendedAuthorizationDetails():
+        Service.PersistExtendedAuthDetails(svcRec)
+    return HttpResponse()
 
 def auth_disconnect(req, service):
     if not req.user:
@@ -59,6 +71,7 @@ def auth_disconnect_ajax(req, service):
     try:
         status = auth_disconnect_do(req, service)
     except Exception as e:
+        raise
         return HttpResponse(json.dumps({"success": False, "error": str(e)}), mimetype='application/json', status=500)
     return HttpResponse(json.dumps({"success": status}), mimetype='application/json')
 

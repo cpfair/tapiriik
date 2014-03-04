@@ -29,11 +29,13 @@ class ServiceRecord:
         from tapiriik.services import Service
         return Service.FromID(self.__dict__["Service"])
 
-    def HasExtendedAuthorizationDetails(self):
+    def HasExtendedAuthorizationDetails(self, persisted_only=False):
         if not self.Service.RequiresExtendedAuthorizationDetails:
             return False
         if "ExtendedAuthorization" in self.__dict__ and self.ExtendedAuthorization:
             return True
+        if persisted_only:
+            return False
         return cachedb.extendedAuthDetails.find({"ID": self._id}).limit(1).count()
 
     def SetPartialSyncTriggerSubscriptionState(self, subscribed):

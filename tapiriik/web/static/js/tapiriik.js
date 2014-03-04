@@ -59,6 +59,12 @@ tapiriik.Init = function(){
 				tapiriik.ActivateSetupDialog(i);
 				break; // we can nag them again if there's >1
 			}
+			if (tapiriik.User.AutoSyncActive && tapiriik.ServiceInfo[i].Connected && tapiriik.ServiceInfo[i].HasExtendedAuth && !tapiriik.ServiceInfo[i].PersistedExtendedAuth){
+				if (!$.cookie("no-remember-details-nag-" + i)){
+					tapiriik.ActivateRememberDetailsDialog(i);
+					break;
+				}
+			}
 		}
 	}
 
@@ -99,6 +105,9 @@ tapiriik.AddressChanged=function(){
 	tapiriik.PreviousURLComponents = components;
 	if (components[0]=="auth") {
 		tapiriik.OpenAuthDialog(components[1]);
+		return;
+	} else if (components[0]=="remember-details") {
+		tapiriik.OpenRememberDetailsDialog(components[1]);
 		return;
 	} else if (components[0]=="disconnect") {
 		tapiriik.OpenDeauthDialog(components[1]);
@@ -190,6 +199,33 @@ tapiriik.OpenAuthDialog = function(svcId){
 		contents = tapiriik.CreateDirectLoginForm(svcId);
 	}
 	tapiriik.CreateServiceDialog(svcId, contents);
+};
+
+tapiriik.OpenRememberDetailsDialog = function(svcId){
+	var mode = tapiriik.ServiceInfo[svcId].AuthenticationType;
+	var contents;
+
+	contents = $("<form><center><p>If you don't let tapiriik <b>remember your <span class=\"service-name\"></span> credentials</b>,<br/> you'll need to come back and re-enter them every hour.</p><button id=\"remember-nack\" class=\"cancel\">No thanks</button><button id=\"remember-ack\">Remember my login</button><br/><p>(either way, your other accounts will not be affected)</p></center></form>");
+	$(".service-name", contents).text(tapiriik.ServiceInfo[svcId].DisplayName);
+
+	$("#remember-ack", contents).click(function(){
+		$.post("/auth/persist-ajax/" + svcId, function(){
+			tapiriik.ServiceInfo[svcId].PersistedExtendedAuth = true;
+			$.address.value("");
+		});
+		return false;
+	});
+
+	$("#remember-nack", contents).click(function(){
+		$.cookie("no-remember-details-nag-" + svcId, "1", {expires: 1});
+		$.address.value("");
+		return false;
+	});
+	tapiriik.CreateServiceDialog(svcId, contents);
+};
+
+tapiriik.ActivateRememberDetailsDialog = function(svcId){
+	$.address.value("remember-details/" + svcId);
 };
 
 tapiriik.OpenDeauthDialog = function(svcId){
