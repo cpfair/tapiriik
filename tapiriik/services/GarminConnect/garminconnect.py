@@ -272,7 +272,11 @@ class GarminConnectService(ServiceBase):
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
             self._rate_limit()
             res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
-            res = res.json()["results"]
+            try:
+                res = res.json()["results"]
+            except ValueError:
+                res_txt = res.text # So it can capture in the log message
+                raise APIException("Parse failure in GC list resp: %s" % res.status_code)
             if "activities" not in res:
                 break  # No activities on this page - empty account.
             for act in res["activities"]:
