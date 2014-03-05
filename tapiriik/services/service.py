@@ -87,9 +87,11 @@ class Service:
         if serviceRecord.ExtendedAuthorization:
             # Already persisted, nothing to do
             return
-        extAuth = cachedb.extendedAuthDetails.find_one({"ID": serviceRecord._id})
-        if not extAuth:
+        extAuthRecord = cachedb.extendedAuthDetails.find_one({"ID": serviceRecord._id})
+        if not extAuthRecord:
             raise ValueError("Service record claims to have extended auth, facts suggest otherwise")
+        else:
+            extAuth = extAuthRecord["ExtendedAuthorization"]
         db.connections.update({"_id": serviceRecord._id}, {"$set": {"ExtendedAuthorization": extAuth}})
         cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
 
