@@ -458,6 +458,8 @@ class GarminConnectService(ServiceBase):
             raise APIException("Uploaded succeeded, resulting in too many activities")
         actid = res["successes"][0]["internalId"]
 
+        name = activity.Name # Capture in logs
+        notes = activity.Notes
         encoding_headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"} # GC really, really needs this part, otherwise it throws obscure errors like "Invalid signature for signature method HMAC-SHA1"
         warnings = []
         try:
