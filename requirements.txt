@@ -1,4 +1,4 @@
-requests==1.2.3
+requests==2.2.1
 pymongo
 pytz
 lxml
