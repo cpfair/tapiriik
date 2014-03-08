@@ -8,6 +8,7 @@ from tapiriik.services.fit import FITIO
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 import calendar
 import requests
 import os
@@ -63,7 +64,12 @@ class StravaService(ServiceBase):
     SupportedActivities = list(_activityTypeMappings.keys())
 
     def WebInit(self):
-        self.UserAuthorizationURL = "https://www.strava.com/oauth/authorize?scope=write%20view_private&client_id=" + STRAVA_CLIENT_ID + "&response_type=code&redirect_uri=http://tapiriik.com"  + reverse("oauth_return", kwargs={"service": "strava"})
+        params = {'scope':'write view_private',
+                  'client_id':STRAVA_CLIENT_ID,
+                  'response_type':'code',
+                  'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"})}
+        self.UserAuthorizationURL = \
+           "https://www.strava.com/oauth/authorize?" + urlencode(params)
 
     def _logAPICall(self, endpoint, opkey, error):
         cachedb.strava_apicall_stats.insert({"Endpoint": endpoint, "Opkey": opkey, "Error": error, "Timestamp": datetime.utcnow()})
