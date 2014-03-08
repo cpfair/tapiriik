@@ -142,7 +142,7 @@ class SynchronizationTask:
             raise SynchronizationConcurrencyException  # failed to get lock
 
     def _unlockUser(self, null_next_sync_on_unlock):
-        update_values = {"$unset": {"SynchronizationWorker": None, "TriggerPartialSync": None}}
+        update_values = {"$unset": {"SynchronizationWorker": None}}
         if null_next_sync_on_unlock:
             # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
             # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
@@ -196,7 +196,7 @@ class SynchronizationTask:
         blockingSyncErrorsCount = 0
         syncExclusionCount = 0
         for conn in self._serviceConnections:
-            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": self._syncErrors[conn._id], "ExcludedActivities": self._syncExclusions[conn._id]}})
+            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": self._syncErrors[conn._id], "ExcludedActivities": self._syncExclusions[conn._id]}, "$unset":{"TriggerPartialSync": None}})
             nonblockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" not in x or not x["Block"]])
             blockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"]])
             syncExclusionCount += len(self._syncExclusions[conn._id].items())
