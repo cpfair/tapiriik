@@ -423,7 +423,7 @@ class SynchronizationTask:
 
             sources = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
             for src in sources:
-                if src.ID in WITHDRAWN_SERVICES:
+                if src.Service.ID in WITHDRAWN_SERVICES:
                     continue # They can't see this service to change the configuration.
                 if not User.CheckFlowException(self.user, src, destinationSvcRecord):
                     flowException = False
