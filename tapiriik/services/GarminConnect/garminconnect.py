@@ -465,7 +465,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Name and activity.Name.strip():
                 self._rate_limit()
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data={"value": activity.Name.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urllib.parse.urlencode({"value": activity.Name}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
@@ -478,7 +478,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Notes and activity.Notes.strip():
                 self._rate_limit()
-                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data={"value": activity.Notes.encode("UTF-8")}, cookies=cookies, headers=encoding_headers)
+                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urllib.parse.urlencode({"value": activity.Notes}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
