@@ -419,12 +419,12 @@ class SynchronizationTask:
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
                 activity.Record.MarkAsNotPresentOn(destinationSvcRecord, self._getServiceExclusionUserException(destinationSvcRecord))
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
-            flowException = False
+            flowException = True
 
             sources = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]
             for src in sources:
-                if User.CheckFlowException(self.user, src, destinationSvcRecord):
-                    flowException = True
+                if not User.CheckFlowException(self.user, src, destinationSvcRecord):
+                    flowException = False
                     break
 
             if flowException:
