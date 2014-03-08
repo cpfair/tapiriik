@@ -2,6 +2,7 @@ from tapiriik.database import db
 from tapiriik.requests_lib import patch_requests_source_address
 from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST
 from tapiriik import settings
+from datetime import datetime
 
 if isinstance(settings.HTTP_SOURCE_ADDR, list):
     settings.HTTP_SOURCE_ADDR = settings.HTTP_SOURCE_ADDR[0]
@@ -26,6 +27,7 @@ def trigger_poll(service_id, index):
     affected_connection_ids = svc.PollPartialSyncTrigger(index)
     print("Triggering %d connections via %s-%d" % (len(affected_connection_ids), service_id, index))
     db.connections.update({"_id": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True}}, multi=True)
+    db.poll_stats.insert({"Service": service_id, "Index": index, "Timestamp": datetime.utcnow(), "TriggerCount": len(affected_connection_ids)})
 
 def schedule_trigger_poll():
 	schedule_data = list(db.trigger_poll_scheduling.find())
