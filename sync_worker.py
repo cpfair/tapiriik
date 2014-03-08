@@ -10,7 +10,7 @@ import subprocess
 import socket
 
 Run = True
-RecycleInterval = 10 # Number of users processed before the worker is recycled. Meh.
+RecycleInterval = 1 # Time spent rebooting workers < time spent wrangling Python memory management.
 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
