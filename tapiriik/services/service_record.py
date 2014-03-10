@@ -49,9 +49,13 @@ class ServiceRecord:
         config.update(self.Config)
         return config
 
-    def SetConfiguration(self, config, no_save=False):
+    def SetConfiguration(self, config, no_save=False, drop_existing=False):
         from tapiriik.services import Service
-        sparseConfig = copy.deepcopy(config)
+        sparseConfig = {}
+        if not drop_existing:
+            sparseConfig = copy.deepcopy(self.GetConfiguration())
+        sparseConfig.update(config)
+
         svc = self.Service
         svc.ConfigurationUpdating(self, config, self.GetConfiguration())
         for k, v in config.items():
