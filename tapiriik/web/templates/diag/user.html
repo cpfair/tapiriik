@@ -39,7 +39,13 @@
 				<li><b>Ext ID:</b> {% if svc.UserProfileURL %}<a target="_blank" href="{{ svc.UserProfileURL|format:connection.ExternalID }}">{% endif %} <tt>{{ connection.ExternalID }}</tt>{% if svc.UserProfileURL %} &raquo;</a>{% endif %} [{{ connection.ExternalID }}]</li>
 				<li><b>Synced Activity Count:</b> <tt>{{ connection.SynchronizedActivities|length }}</tt></li>
 				<li><b>Auth:</b> <tt> {{ connection.Authorization }}</tt></li>
-				<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
+
+				{% if svc.PartialSyncRequiresTrigger %}
+					<li><b>Partial Sync Trigger:</b> <tt> {% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt></li>
+				{% endif %}
+				{% if svc.RequiresExtendedAuthorizationDetails %}
+					<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
+				{% endif %}
 				<li><b>Controls:</b> <form action="" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				<form action="" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				<form action="" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
