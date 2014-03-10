@@ -611,7 +611,9 @@ class GarminConnectService(ServiceBase):
             this_active_id = active_users[active_user_rec.ExternalID]
             if this_active_id > last_active_id:
                 to_sync_ids.append(active_user_rec._id)
-                active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id})
+                new_config = active_user_rec.GetConfiguration()
+                new_config["WatchUserLastID"] = this_active_id
+                active_user_rec.SetConfiguration(new_config)
 
         return to_sync_ids
 
