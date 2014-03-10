@@ -245,6 +245,7 @@ class GarminConnectService(ServiceBase):
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
         cookies = self._get_cookies(email=email, password=password)
+        # TODO: http://connect.garmin.com/proxy/userprofile-service/socialProfile/ has the proper immutable user ID, not that anyone ever changes this one...
         self._rate_limit()
         username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
         if not len(username):
@@ -596,10 +597,13 @@ class GarminConnectService(ServiceBase):
             raise Exception("Could not parse new activities list: %s %s" % (watch_activities_resp.status_code, watch_activities_resp.text))
 
         active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
-        active_user_pairs.sort(key=lambda x: x[1], reverse=True) # Highest IDs first
+        active_user_pairs.sort(key=lambda x: x[1]) # Highest IDs last (so they make it into the dict, supplanting lower IDs where appropriate)
         active_users = dict(active_user_pairs)
 
-        active_user_recs = [ServiceRecord(x) for x in db.connections.find({"Config.WatchUserKey": watch_user_key, "ExternalID": {"$in": list(active_users.keys())}}, {"Config": 1, "ExternalID": 1, "Service": 1})]
+        active_user_recs = [ServiceRecord(x) for x in db.connections.find({"ExternalID": {"$in": list(active_users.keys())}}, {"Config": 1, "ExternalID": 1, "Service": 1})]
+
+        if len(active_user_recs) != len(active_users.keys()):
+            logger.warning("Mismatch %d records found for %d active users" % (len(active_user_recs), len(active_users.keys())))
 
         to_sync_ids = []
         for active_user_rec in active_user_recs:
