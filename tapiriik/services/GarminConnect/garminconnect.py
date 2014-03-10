@@ -31,7 +31,7 @@ class GarminConnectService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
     PartialSyncRequiresTrigger = True
-    PartialSyncTriggerPollInterval = timedelta(minutes=10)
+    PartialSyncTriggerPollInterval = timedelta(minutes=20)
     PartialSyncTriggerPollMultiple = len(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys())
 
     ConfigurationDefaults = {
@@ -590,7 +590,7 @@ class GarminConnectService(ServiceBase):
 
         # Then, check for users with new activities
         self._rate_limit()
-        watch_activities_resp = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/comments/subscriptionFeed?start=1&limit=10", cookies=cookies)
+        watch_activities_resp = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/subscriptionFeed?limit=1000", cookies=cookies)
         try:
             watch_activities = watch_activities_resp.json()
         except ValueError:
