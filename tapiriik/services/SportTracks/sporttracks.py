@@ -196,7 +196,7 @@ class SportTracksService(ServiceBase):
                 if isinstance(activity.StartTime.tzinfo, tzutc):
                     activity.TZ = pytz.utc # The dateutil tzutc doesn't have an _offset value.
                 else:
-                    activity.TZ = pytz.FixedOffset(activity.StartTime.tzinfo._offset.total_seconds() / 60)  # Convert the dateutil lame timezones into pytz awesome timezones.
+                    activity.TZ = pytz.FixedOffset(activity.StartTime.tzinfo.utcoffset(activity.StartTime).total_seconds() / 60)  # Convert the dateutil lame timezones into pytz awesome timezones.
 
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
