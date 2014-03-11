@@ -569,25 +569,6 @@ class GarminConnectService(ServiceBase):
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
         cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
 
-        self._rate_limit()
-        pending_connections_resp = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies)
-        try:
-            pending_connections = pending_connections_resp.json()
-        except ValueError:
-            raise Exception("Could not parse pending connection requests: %s %s" % (pending_connections_resp.status_code, pending_connections_resp.text))
-
-        valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
-        logger.info("Accepting %d, denying %d connection requests for %s" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids), watch_user_key))
-        for pending_connect in pending_connections:
-            if pending_connect["displayName"] in valid_pending_connections_external_ids:
-                self._rate_limit()
-                connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
-                if connect_resp.status_code != 200:
-                    raise APIException("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
-            else:
-                self._rate_limit()
-                ignore_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"], cookies=cookies)
-
         # Then, check for users with new activities
         self._rate_limit()
         watch_activities_resp = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/subscriptionFeed?limit=1000", cookies=cookies)
@@ -612,6 +593,26 @@ class GarminConnectService(ServiceBase):
             if this_active_id > last_active_id:
                 to_sync_ids.append(active_user_rec._id)
                 active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id})
+
+        self._rate_limit()
+        pending_connections_resp = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies)
+        try:
+            pending_connections = pending_connections_resp.json()
+        except ValueError:
+            logger.error("Could not parse pending connection requests: %s %s" % (pending_connections_resp.status_code, pending_connections_resp.text))
+        else:
+            valid_pending_connections_external_ids = [x["ExternalID"] for x in db.connections.find({"Service": "garminconnect", "ExternalID": {"$in": [x["displayName"] for x in pending_connections]}}, {"ExternalID": 1})]
+            logger.info("Accepting %d, denying %d connection requests for %s" % (len(valid_pending_connections_external_ids), len(pending_connections) - len(valid_pending_connections_external_ids), watch_user_key))
+            for pending_connect in pending_connections:
+                if pending_connect["displayName"] in valid_pending_connections_external_ids:
+                    self._rate_limit()
+                    connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+                    if connect_resp.status_code != 200:
+                        logger.error("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
+                else:
+                    self._rate_limit()
+                    ignore_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+
 
         return to_sync_ids
 
