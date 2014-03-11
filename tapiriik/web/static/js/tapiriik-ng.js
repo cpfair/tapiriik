@@ -32,7 +32,7 @@ function ActivitiesController($scope, $http) {
       "other": "There was an error while synchronizing this activity.",
       "unknown": "Your guess is as good as mine."
     };
-    return explanations[type].replace("%(service)", $scope.DisplayNameByService(presc.Service));
+    return explanations[type].replace(/%\(service\)/g, $scope.DisplayNameByService(presc.Service));
   };
 
   $scope.loading = true; // Will change if I ever add scroll-based pagination...
