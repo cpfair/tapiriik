@@ -18,7 +18,7 @@ class Service:
 
     # These options are used as the back for all service record's configurations
     _globalConfigurationDefaults = {
-        "sync_private": True,
+        "sync_private": False,
         "allow_activity_flow_exception_bypass_via_self": False
     }
 
