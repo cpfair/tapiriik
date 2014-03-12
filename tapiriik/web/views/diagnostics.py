@@ -128,7 +128,7 @@ def diag_user(req, user):
     elif "svc_setauth" in req.POST and len(req.POST["authdetails"]):
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set":{"Authorization": json.loads(req.POST["authdetails"])}})
     elif "svc_setconfig" in req.POST and len(req.POST["config"]):
-        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set":{"Config": json.loads(req.POST["Config"])}})
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set":{"Config": json.loads(req.POST["config"])}})
     elif "svc_unlink" in req.POST:
         from tapiriik.services import Service
         from tapiriik.auth import User
