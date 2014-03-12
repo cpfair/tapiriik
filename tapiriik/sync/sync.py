@@ -196,7 +196,18 @@ class SynchronizationTask:
         blockingSyncErrorsCount = 0
         syncExclusionCount = 0
         for conn in self._serviceConnections:
-            db.connections.update({"_id": conn._id}, {"$set": {"SyncErrors": self._syncErrors[conn._id], "ExcludedActivities": self._syncExclusions[conn._id]}, "$unset":{"TriggerPartialSync": None}})
+            update_values = {
+                "$set": {
+                    "SyncErrors": self._syncErrors[conn._id],
+                    "ExcludedActivities": self._syncExclusions[conn._id]
+                }
+            }
+
+            if not self._isServiceExcluded(conn):
+                # Only reset the trigger if we succesfully got through the entire sync without bailing on this particular connection
+                update_values["$unset"] = {"TriggerPartialSync": None}
+
+            db.connections.update({"_id": conn._id}, update_values)
             nonblockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" not in x or not x["Block"]])
             blockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"]])
             syncExclusionCount += len(self._syncExclusions[conn._id].items())

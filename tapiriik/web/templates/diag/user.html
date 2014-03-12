@@ -41,7 +41,8 @@
 				<li><b>Auth:</b> <tt> {{ connection.Authorization }}</tt></li>
 
 				{% if svc.PartialSyncRequiresTrigger %}
-					<li><b>Partial Sync Trigger:</b> <tt> {% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt></li>
+					<li><b>Partial Sync Trigger:</b> <tt>{% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt></li>
+					<li><b>Partial Sync Trigger Timestamp:</b> {{ connection.TriggerPartialSyncTimestamp }}</li>
 				{% endif %}
 				{% if svc.RequiresExtendedAuthorizationDetails %}
 					<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
