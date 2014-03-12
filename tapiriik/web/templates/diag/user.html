@@ -50,6 +50,7 @@
 				<li><b>Controls:</b> <form action="" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				<form action="" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				<form action="" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Config|json }}" name="config"><input type="submit" name="svc_setconfig" value="Set `Config`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 
 				{% if connection.ExcludedActivities.items|length %}<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>{% endif %}
 				<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_clearacts" value="Clear synced activites and set exhaustive"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
