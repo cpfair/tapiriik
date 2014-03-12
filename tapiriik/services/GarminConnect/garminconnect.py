@@ -293,6 +293,8 @@ class GarminConnectService(ServiceBase):
                 else:
                     activity.Stationary = False
 
+                activity.Private = act["privacy"]["key"] == "private"
+
                 try:
                     activity.TZ = pytz.timezone(act["activityTimeZone"]["key"])
                 except pytz.exceptions.UnknownTimeZoneError:
@@ -480,7 +482,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Notes and activity.Notes.strip():
                 self._rate_limit()
-                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urlencode({"value": activity.Notes}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urlencode({"value": activity.Notes}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
@@ -499,10 +501,20 @@ class GarminConnectService(ServiceBase):
                 else:
                     acttype = acttype[0]
                 self._rate_limit()
-                res = requests.post("https://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
                 res = res.json()
                 if "activityType" not in res or res["activityType"]["key"] != acttype:
                     raise APIWarning("Unable to set activity type")
+        except APIWarning as e:
+            warnings.append(e)
+
+        try:
+            if activity.Private:
+                self._rate_limit()
+                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/privacy/" + str(actid), data={"value": "private"}, cookies=cookies)
+                res = res.json()
+                if "definition" not in res or res["definition"]["key"] != "private":
+                    raise APIWarning("Unable to set activity privacy")
         except APIWarning as e:
             warnings.append(e)
 
