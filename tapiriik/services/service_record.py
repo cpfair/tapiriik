@@ -58,9 +58,12 @@ class ServiceRecord:
 
         svc = self.Service
         svc.ConfigurationUpdating(self, config, self.GetConfiguration())
-        for k, v in config.items():
+        keys_to_delete = []
+        for k, v in sparseConfig.items():
             if (k in svc.ConfigurationDefaults and svc.ConfigurationDefaults[k] == v) or (k in Service._globalConfigurationDefaults and Service._globalConfigurationDefaults[k] == v):
-                del sparseConfig[k]  # it's the default, we can not store it
+                keys_to_delete.append(k)  # it's the default, we can not store it
+        for k in keys_to_delete:
+            del sparseConfig[k]
         self.Config = sparseConfig
         if not no_save:
             db.connections.update({"_id": self._id}, {"$set": {"Config": sparseConfig}})
