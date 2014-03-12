@@ -94,6 +94,12 @@ class ServiceBase:
         else:
             raise InvalidServiceOperationException
 
+    def ShouldForcePartialSyncTrigger(self, serviceRecord):
+        if self.PartialSyncRequiresTrigger:
+            return False
+        else:
+            raise InvalidServiceOperationException
+
     def PollPartialSyncTrigger(self, multiple_index):
         if self.PartialSyncRequiresTrigger and self.PartialSyncTriggerPollInterval:
             raise NotImplementedError

@@ -699,7 +699,7 @@ class SynchronizationTask:
                     if len(self._serviceConnections) - len(self._excludedServices) <= 1:
                         raise SynchronizationCompleteException()
 
-                    if not exhaustive and conn.Service.PartialSyncRequiresTrigger and "TriggerPartialSync" not in conn.__dict__:
+                    if not exhaustive and conn.Service.PartialSyncRequiresTrigger and "TriggerPartialSync" not in conn.__dict__ and not conn.Service.ShouldForcePartialSyncTrigger(conn):
                         logger.info("Service %s has not been triggered" % conn.Service.ID)
                         self._deferredServices.append(conn._id)
                         continue

@@ -567,6 +567,10 @@ class GarminConnectService(ServiceBase):
 
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
+    def ShouldForcePartialSyncTrigger(self, serviceRecord):
+        # The poll worker can't see private activities.
+        return serviceRecord.GetConfiguration()["sync_private"]
+
 
     def PollPartialSyncTrigger(self, multiple_index):
         # TODO: ensure the appropriate users are connected
