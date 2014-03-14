@@ -731,9 +731,18 @@ class SynchronizationTask:
 
                         # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                         if activity.Private:
-                            logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
-                            activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
-                            raise ActivityShouldNotSynchronizeException()
+                            actAvailableFromConnIds = activity.ServiceDataCollection.keys()
+                            actAvailableFromConns = [[x for x in self._serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromConnIds]
+                            override_private = False
+                            for conn in actAvailableFromConns:
+                                if conn.GetConfiguration()["sync_private"]:
+                                    override_private = True
+                                    break
+
+                            if not override_private:
+                                logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
+                                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
+                                raise ActivityShouldNotSynchronizeException()
 
                         recipientServices = None
                         eligibleServices = None
