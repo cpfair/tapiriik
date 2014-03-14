@@ -10,7 +10,7 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-ALLOWED_HOSTS = ["tapiriik.com"]
+ALLOWED_HOSTS = ["tapiriik.com", "localhost"]
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -69,6 +69,36 @@ STATICFILES_FINDERS = (
 #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
+STATICFILES_STORAGE = 'pipeline.storage.PipelineCachedStorage'
+
+PIPELINE_JS = {
+    'tapiriik-js': {
+        'source_filenames': (
+          'js/jquery.address-1.5.min.js',
+          'js/tapiriik.js',
+        ),
+        'output_filename': 'js/tapiriik.min.js',
+    },
+    'tapiriik-user-js': {
+        'source_filenames': (
+          'js/jstz.min.js',
+          'js/tapiriik-ng.js',
+        ),
+        'output_filename': 'js/tapiriik-user.min.js',
+    }
+}
+
+PIPELINE_CSS = {
+    'tapiriik-css': {
+        'source_filenames': (
+          'css/style.css',
+        ),
+        'output_filename': 'css/style.min.css',
+    },
+}
+
+PIPELINE_DISABLE_WRAPPER = True
+
 # Make this unique, and don't share it with anybody.
 # and yes, this is overriden in local_settings.py
 SECRET_KEY = 'vag26gs^t+_y0msoemqo%_5gb*th(i!v$l6##bq9tu2ggcsn13'
@@ -123,6 +153,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tapiriik.web',
+    'pipeline'
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:

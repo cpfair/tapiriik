@@ -1,4 +1,5 @@
 {% load displayutils %}
+{% load compressed %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,18 +7,16 @@
 	<meta name="Description" content="Automatically synchronize your fitness activities between Garmin Connect, Runkeeper, Strava and more.">
 	<meta name="Keywords" content="automatic, synchronize, sync, update, copy, transfer, download, back up, export, fitness, garmin, garmin connect, runkeeper, strava, sporttracks, trainingpeaks, training peaks, dropbox, path, track, heart rate, free, service, gpx, tcx, health, data, service, cycling, running, swimming, walking, what other activities can I put here?, underwater basket weaving, why are you reading the SEO keywords anyways, move along, nothing to see here">
 
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css?syncbtn" />
+	{% compressed_css 'tapiriik-css' %}
     {% if config.in_diagnostics %}
 	<script type="text/javascript">tapiriik = {diagnostics: true};</script>
 	<link rel="stylesheet" href="{{ STATIC_URL }}css/diagnostics.css" />
 	{% endif %}
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
-    <script src="{{ STATIC_URL }}js/jquery.address-1.5.min.js"></script>
-    <script src="{{ STATIC_URL }}js/tapiriik.js?gcprivate"></script>
+    {% compressed_js 'tapiriik-js' %}
     {% if user %}
     <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js"></script>
-    <script src="{{ STATIC_URL }}js/jstz.min.js"></script>
-    <script src="{{ STATIC_URL }}js/tapiriik-ng.js"></script>
+    {% compressed_js 'tapiriik-user-js' %}
     {% endif %}
     <title>{% block site_title %}{% block title %}dashboard{% endblock %} &bull; tapiriik{% endblock %}</title>
 
