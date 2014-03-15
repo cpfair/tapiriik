@@ -379,7 +379,7 @@ tapiriik.OpenDropboxConfigDialog = function(){
 				<option value=\"gpx\">.gpx</option>\
 			</select>\
 			<tt><span id=\"exampleName\">test/asd.tcx</span></tt><br/>\
-			(you can include folders, try <tt>/#YYYY/#MMM/#NAME</tt>)<br/>\
+			(you can include folders, try <tt>/&lt;YYYY&gt;/&lt;MMM&lt;/&lt;NAME&gt;</tt>)<br/>\
 		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/>\
 		<button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
@@ -419,20 +419,22 @@ tapiriik.OpenDropboxConfigDialog = function(){
 tapiriik.ConvertDropboxFilenameToDisplay = function(input){
 	// Meh.
 	var py_map = {
-		"#YYYY": "%Y",
-		"#YY": "%y",
-		"#MMMM": "%B",
-		"#MMM": "%b",
-		"#MM": "%m",
-		"#DD": "%d",
-		"#HH": "%H",
-		"#MIN": "%M",
+		"<YYYY>": "%Y",
+		"<YY>": "%y",
+		"<MMMM>": "%B",
+		"<MMM>": "%b",
+		"<MM>": "%m",
+		"<DD>": "%d",
+		"<HH>": "%H",
+		"<MIN>": "%M",
+		"<NAME>": "#NAME",
+		"<TYPE>": "#TYPE"
 	};
 	for (var key in py_map){
-		input = input.replace(new RegExp(py_map[key], "ig"), key);
+		input = input.replace(new RegExp(py_map[key], "g"), key);
 	}
 	return input;
-}
+};
 
 tapiriik.UpdateDropboxFilenamePreview = function(panel){
 	function pad(n, width, z) {
@@ -450,38 +452,40 @@ tapiriik.UpdateDropboxFilenamePreview = function(panel){
 	var now = new Date();
 	var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 	var map = {
-		"#YYYY": now.getFullYear(),
-		"#YY": ("" + now.getFullYear()).substring(2),
-		"#MMMM": months[now.getMonth()],
-		"#MMM": months[now.getMonth()].substring(0,3), // I think
-		"#MM": pad("" + (now.getMonth() + 1),2),
-		"#DD": pad("" + now.getDate(),2),
-		"#HH": pad("" + now.getHours(),2),
-		"#MIN": pad("" + now.getMinutes(),2),
-		"#NAME": "Jumpingpound Ridge",
-		"#TYPE": "Cycling"
+		"<YYYY>": now.getFullYear(),
+		"<YY>": ("" + now.getFullYear()).substring(2),
+		"<MMMM>": months[now.getMonth()],
+		"<MMM>": months[now.getMonth()].substring(0,3), // I think
+		"<MM>": pad("" + (now.getMonth() + 1),2),
+		"<DD>": pad("" + now.getDate(),2),
+		"<HH>": pad("" + now.getHours(),2),
+		"<MIN>": pad("" + now.getMinutes(),2),
+		"<NAME>": "Jumpingpound Ridge",
+		"<TYPE>": "Cycling"
 	};
 
 	var label_map = {
-		"#YYYY": "year",
-		"#YY": "year",
-		"#MMMM": "month",
-		"#MMM": "month",
-		"#MM": "month",
-		"#DD": "day",
-		"#HH": "hour",
-		"#MIN": "minute",
+		"<YYYY>": "year",
+		"<YY>": "year",
+		"<MMMM>": "month",
+		"<MMM>": "month",
+		"<MM>": "month",
+		"<DD>": "day",
+		"<HH>": "hour",
+		"<MIN>": "minute",
 	};
 
 	var py_map = {
-		"#YYYY": "%Y",
-		"#YY": "%y",
-		"#MMMM": "%B",
-		"#MMM": "%b",
-		"#MM": "%m",
-		"#DD": "%d",
-		"#HH": "%H",
-		"#MIN": "%M",
+		"<YYYY>": "%Y",
+		"<YY>": "%y",
+		"<MMMM>": "%B",
+		"<MMM>": "%b",
+		"<MM>": "%m",
+		"<DD>": "%d",
+		"<HH>": "%H",
+		"<MIN>": "%M",
+		"<NAME>": "#NAME", // I'm feeling lazy and don't want to update the backend or migrate existing settings.
+		"<TYPE>": "#TYPE",
 	};
 
 	var input = $("#filename", panel).val();
