@@ -498,9 +498,6 @@ class SynchronizationTask:
                 # the connection never gets saved in full again, so we can sub these in here at no risk
                 conn.ExtendedAuthorization = extAuthDetails[0]
 
-        logger.info("Ensuring partial sync poll subscription")
-        self._ensurePartialSyncPollingSubscription(conn)
-
         try:
             logger.info("\tRetrieving list from " + svc.ID)
             svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
@@ -698,6 +695,9 @@ class SynchronizationTask:
                     # If we're not going to be doing anything anyways, stop now
                     if len(self._serviceConnections) - len(self._excludedServices) <= 1:
                         raise SynchronizationCompleteException()
+
+                    logger.info("Ensuring partial sync poll subscription")
+                    self._ensurePartialSyncPollingSubscription(conn)
 
                     if not exhaustive and conn.Service.PartialSyncRequiresTrigger and "TriggerPartialSync" not in conn.__dict__ and not conn.Service.ShouldForcePartialSyncTrigger(conn):
                         logger.info("Service %s has not been triggered" % conn.Service.ID)
