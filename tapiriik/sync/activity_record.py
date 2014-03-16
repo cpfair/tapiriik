@@ -5,6 +5,7 @@ from tapiriik.services.api import UserException
 class ActivityRecord:
     def __init__(self, dbRec=None):
         self.StartTime = None
+        self.EndTime = None
         self.Name = None
         self.Notes = None
         self.Type = None
@@ -32,6 +33,7 @@ class ActivityRecord:
 
     def SetActivity(self, activity):
         self.StartTime = activity.StartTime
+        self.StartTime = activity.EndTime
         self.Name = activity.Name
         self.Notes = activity.Notes
         self.Type = activity.Type

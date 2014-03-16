@@ -227,6 +227,7 @@ class SynchronizationTask:
         composed_records = [
             {
                 "StartTime": x.StartTime,
+                "EndTime": x.EndTime,
                 "Type": x.Type,
                 "Name": x.Name,
                 "Notes": x.Notes,
