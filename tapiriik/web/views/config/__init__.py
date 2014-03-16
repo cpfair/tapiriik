@@ -15,6 +15,7 @@ def config_save(req, service):
     if not conn:
         return HttpResponse(status=404)
     conn.SetConfiguration(json.loads(req.POST["config"]))
+    Sync.SetNextSyncIsExhaustive(req.user, True) # e.g. if they opted to sync private activities.
     return HttpResponse()
 
 
