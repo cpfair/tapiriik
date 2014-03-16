@@ -379,7 +379,7 @@ tapiriik.OpenDropboxConfigDialog = function(){
 				<option value=\"gpx\">.gpx</option>\
 			</select>\
 			<tt><span id=\"exampleName\">test/asd.tcx</span></tt><br/>\
-			(you can include folders, try <tt>/&lt;YYYY&gt;/&lt;MMM&lt;/&lt;NAME&gt;</tt>)<br/>\
+			(you can include folders, try <tt>/&lt;YYYY&gt;/&lt;MMM&gt;/&lt;NAME&gt;</tt>)<br/>\
 		<input type=\"checkbox\" id=\"syncAll\"><label for=\"syncAll\" style=\"display:inline-block\">Sync untagged activities</label></input><br/>\
 		<button id=\"OK\">Save</button><button id=\"cancel\" class=\"cancel\">Cancel</button></form>").addClass("dropboxConfig");
 
