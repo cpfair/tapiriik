@@ -20,6 +20,7 @@ def activities_fetch_json(req):
         "Activities.Type",
         "Activities.Name",
         "Activities.StartTime",
+        "Activities.EndTime",
         "Activities.Private",
         "Activities.Stationary"
     ]
