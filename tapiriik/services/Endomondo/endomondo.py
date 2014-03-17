@@ -1,13 +1,17 @@
-from tapiriik.settings import WEB_ROOT, ENDOMONDO_CLIENT_KEY, ENDOMONDO_CLIENT_SECRET
+from tapiriik.settings import WEB_ROOT, ENDOMONDO_CLIENT_KEY, ENDOMONDO_CLIENT_SECRET, SECRET_KEY
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
 
 from django.core.urlresolvers import reverse
-from datetime import timedelta
+from datetime import timedelta, datetime
 import dateutil.parser
 from requests_oauthlib import OAuth1Session
 import logging
+import pytz
+import json
+import os
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,10 @@ class EndomondoService(ServiceBase):
 
     PartialSyncRequiresTrigger = True
     AuthenticationNoFrame = True
+
+    ConfigurationDefaults = {
+        "DeviceRegistered": False,
+    }
 
     # The complete list:
     # running,cycling transportation,cycling sport,mountain biking,skating,roller skiing,skiing cross country,skiing downhill,snowboarding,kayaking,kite surfing,rowing,sailing,windsurfing,fitness walking,golfing,hiking,orienteering,walking,riding,swimming,spinning,other,aerobics,badminton,baseball,basketball,boxing,stair climbing,cricket,cross training,dancing,fencing,american football,rugby,soccer,handball,hockey,pilates,polo,scuba diving,squash,table tennis,tennis,beach volley,volleyball,weight training,yoga,martial arts,gymnastics,step counter,crossfit,treadmill running,skateboarding,surfing,snowshoeing,wheelchair,climbing,treadmill walking
@@ -95,6 +103,12 @@ class EndomondoService(ServiceBase):
     def RevokeAuthorization(self, serviceRecord):
         pass
 
+    def _parseDate(self, date):
+        return datetime.strptime(date, "%Y-%m-%d %H:%M:%S UTC").replace(tzinfo=pytz.utc)
+
+    def _formatDate(self, date):
+        return datetime.strftime(date.astimezone(pytz.utc), "%Y-%m-%d %H:%M:%S UTC")
+
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         oauthSession = self._oauthSession(serviceRecord)
 
@@ -103,15 +117,20 @@ class EndomondoService(ServiceBase):
 
         while True:
             resp = oauthSession.get("https://api.endomondo.com/api/1/workouts", params={"before_id": activities[-1].ServiceData["WorkoutID"] if len(activities) else None})
-            respList = resp.json()["data"]
+            try:
+                respList = resp.json()["data"]
+            except ValueError:
+                raise APIException("Error decoding activity list resp %s %s" % (resp.status_code, resp.text))
             for actInfo in respList:
                 activity = UploadedActivity()
-                activity.StartTime = dateutil.parser.parse(actInfo["start_time"])
+                activity.StartTime = self._parseDate(actInfo["start_time"])
+
+                if "is_tracking" in actInfo and actInfo["is_tracking"]:
+                    exclusions.append(APIExcludeActivity("Not complete", activityId=actInfo["id"], permanent=False, userException=UserException(UserExceptionType.LiveTracking)))
+                    continue
 
                 if "end_time" in actInfo:
-                    activity.EndTime = dateutil.parser.parse(actInfo["end_time"])
-                else:
-                    continue
+                    activity.EndTime = self._parseDate(actInfo["end_time"])
 
                 if actInfo["sport"] in self._activityMappings:
                     activity.Type = self._activityMappings[actInfo["sport"]]
@@ -140,8 +159,12 @@ class EndomondoService(ServiceBase):
                 if "total_descent" in actInfo:
                     activity.Stats.Elevation.Loss = float(actInfo["total_descent"])
 
+                activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour)
                 if "speed_max" in actInfo:
-                    activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, max=float(actInfo["speed_max"]))
+                    activity.Stats.Speed.Max = float(actInfo["speed_max"])
+
+                if "speed_avg" in actInfo:
+                    activity.Stats.Speed.Average = float(actInfo["speed_avg"])
 
                 if "heart_rate_avg" in actInfo:
                     activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(actInfo["heart_rate_avg"]))
@@ -178,14 +201,147 @@ class EndomondoService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
         print(resp.text)
+        resp = resp.json()
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
-        lap.Waypoints = []
 
+        for pt in resp["points"]:
+            wp = Waypoint()
+            wp.Timestamp = self._parseDate(pt["time"])
+
+            if ("lat" in pt and "lng" in pt) or "alt" in pt:
+                wp.Location = Location()
+                if "lat" in pt and "lng" in pt:
+                    wp.Location.Latitude = pt["lat"]
+                    wp.Location.Longitude = pt["lng"]
+                if "alt" in pt:
+                    wp.Location.Altitude = pt["alt"]
+
+            if "hr" in pt:
+                wp.HR = pt["hr"]
+
+            if "cad" in pt:
+                wp.Cadence = pt["cad"]
+
+            lap.Waypoints.append(wp)
+        activity.Stationary = len(lap.Waypoints) == 0
         return activity
 
+    def _deviceId(self, serviceRecord):
+        csp = hashlib.new("md5")
+        csp.update(str(serviceRecord.ExternalID).encode("utf-8"))
+        csp.update(SECRET_KEY.encode("utf-8"))
+        return "tap-" + csp.hexdigest()
+
     def UploadActivity(self, serviceRecord, activity):
-        pass
+        session = self._oauthSession(serviceRecord)
+        device_id = self._deviceId(serviceRecord)
+        if not serviceRecord.GetConfiguration()["DeviceRegistered"]:
+            device_info = {
+                "name": "tapiriik",
+                "vendor": "tapiriik",
+                "model": "tapiriik",
+                "os": "tapiriik",
+                "os_version": "1",
+                "app_variant": "tapiriik",
+                "app_version": "1"
+            }
+            device_add_resp = session.post("https://api.endomondo.com/api/1/device/%s" % device_id, data=json.dumps(device_info))
+            if device_add_resp.status_code != 200:
+                raise APIException("Could not add device %s %s" % (device_add_resp.status_code, device_add_resp.text))
+            serviceRecord.SetConfiguration({"DeviceRegistered": True})
+
+        activity_id = "tap-" + activity.UID + "-" + str(os.getpid())
+
+        upload_data = {
+            "device_id": device_id,
+            "sport": [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0],
+            "start_time": self._formatDate(activity.StartTime),
+            "end_time": self._formatDate(activity.EndTime),
+            "title": activity.Name,
+            "notes": activity.Notes,
+            "points": []
+        }
+
+        if activity.Stats.Distance.Value is not None:
+            upload_data["distance_total"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value
+
+        if activity.Stats.TimerTime.Value is not None:
+            upload_data["duration_total"] = activity.Stats.TimerTime.Value.total_seconds()
+        elif activity.Stats.MovingTime.Value is not None:
+            upload_data["duration_total"] = activity.Stats.MovingTime.Value.total_seconds()
+        else:
+            upload_data["duration_total"] = (activity.EndTime - activity.StartTime).total_seconds()
+
+        if activity.Stats.Energy.Value is not None:
+            upload_data["calories_total"] = activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
+
+        elev_stats = activity.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters)
+        if elev_stats.Max is not None:
+            upload_data["altitude_max"] = elev_stats.Max
+        if elev_stats.Min is not None:
+            upload_data["altitude_min"] = elev_stats.Min
+        if elev_stats.Gain is not None:
+            upload_data["total_ascent"] = elev_stats.Gain
+        if elev_stats.Loss is not None:
+            upload_data["total_descent"] = elev_stats.Loss
+
+        speed_stats = activity.Stats.Speed.asUnits(ActivityStatisticUnit.KilometersPerHour)
+        if speed_stats.Max is not None:
+            upload_data["speed_max"] = speed_stats.Max
+        if speed_stats.Average is not None:
+            upload_data["speed_avg"] = speed_stats.Average
+
+        hr_stats = activity.Stats.HR.asUnits(ActivityStatisticUnit.BeatsPerMinute)
+        if hr_stats.Average is not None:
+            upload_data["heart_rate_avg"] = hr_stats.Average
+        if hr_stats.Max is not None:
+            upload_data["heart_rate_max"] = hr_stats.Max
+
+        if activity.Stats.Cadence.Average is not None:
+            upload_data["cadence_avg"] = activity.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute).Average
+        elif activity.Stats.RunCadence.Average is not None:
+            upload_data["cadence_avg"] = activity.Stats.RunCadence.asUnits(ActivityStatisticUnit.StepsPerMinute).Average
+
+        if activity.Stats.Cadence.Max is not None:
+            upload_data["cadence_max"] = activity.Stats.Cadence.asUnits(ActivityStatisticUnit.RevolutionsPerMinute).Max
+        elif activity.Stats.RunCadence.Max is not None:
+            upload_data["cadence_max"] = activity.Stats.RunCadence.asUnits(ActivityStatisticUnit.StepsPerMinute).Max
+
+        for wp in activity.GetFlatWaypoints():
+            pt = {
+                "time": self._formatDate(wp.Timestamp),
+            }
+            if wp.Location:
+                if wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                    pt["lat"] = wp.Location.Latitude
+                    pt["lng"] = wp.Location.Longitude
+                if wp.Location.Altitude is not None:
+                    pt["alt"] = wp.Location.Altitude
+            if wp.HR is not None:
+                pt["hr"] = round(wp.HR)
+            if wp.Cadence is not None:
+                pt["cad"] = round(wp.Cadence)
+            elif wp.RunCadence is not None:
+                pt["cad"] = round(wp.RunCadence)
+
+            if wp.Type == WaypointType.Pause:
+                pt["inst"] = "pause"
+            elif wp.Type == WaypointType.Resume:
+                pt["inst"] = "resume"
+            upload_data["points"].append(pt)
+
+        if len(upload_data["points"]):
+            upload_data["points"][0]["inst"] = "start"
+            upload_data["points"][-1]["inst"] = "stop"
+
+        # print(upload_data)
+
+        upload_resp = session.post("https://api.endomondo.com/api/1/workouts/%s" % activity_id, data=json.dumps(upload_data))
+        if upload_resp.status_code != 200:
+            raise APIException("Could not upload activity %s %s" % (upload_resp.status_code, upload_resp.text))
+
+        return upload_resp.json()["id"]
 
     def DeleteCachedData(self, serviceRecord):
         pass
