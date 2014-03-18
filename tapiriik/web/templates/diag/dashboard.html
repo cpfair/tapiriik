@@ -47,8 +47,8 @@
 			<form action="" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
 		</li>
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }}</li>
-		<li><b>Users with errors:</b> {{ errorUsers|length }}</li>
-		<li><b>Users with exclusions:</b> {{ exclusionUsers|length }}</li>
+		<li><b>Users with errors:</b> {{ errorUsersCt }}</li>
+		<li><b>Users with exclusions:</b> {{ exclusionUsersCt }}</li>
 		<li><b>Sync errors (automatic):</b>
 			<ul>{% for error in autoSyncErrorSummary %}
 				<li>{{ error.message }} ({{ error.count }}) - {% for affected_user in error.affected_users %}<a href="{% url 'diagnostics_user' user=affected_user.id %}" {% if affected_user.outdated %}style="color:#aaa;"{% elif affected_user.highlight %}style="color:magenta"{% endif %}>{{ affected_user.id }}</a> {% endfor %}</li>

@@ -18,16 +18,9 @@ def diag_requireAuth(view):
 @diag_requireAuth
 def diag_dashboard(req):
     context = {}
-    lockedSyncRecords = db.users.aggregate([
-                                           {"$match": {"SynchronizationWorker": {"$ne": None}}},
-                                           {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                           ])
-    if len(lockedSyncRecords["result"]) > 0:
-        context["lockedSyncRecords"] = lockedSyncRecords["result"][0]["count"]
-        context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
-    else:
-        context["lockedSyncRecords"] = 0
-        context["lockedSyncUsers"] = []
+
+    context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
+    context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
 
     pendingSynchronizations = db.users.aggregate([
                                                  {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
@@ -41,8 +34,8 @@ def diag_dashboard(req):
     context["userCt"] = db.users.count()
     context["autosyncCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
 
-    context["errorUsers"] = list(db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}))
-    context["exclusionUsers"] = list(db.users.find({"SyncExclusionCount": {"$gt": 0}}))
+    context["errorUsersCt"] = db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}).count()
+    context["exclusionUsers"] = db.users.find({"SyncExclusionCount": {"$gt": 0}}).count()
 
     context["allWorkers"] = list(db.sync_workers.find())
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
