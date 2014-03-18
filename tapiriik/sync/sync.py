@@ -470,7 +470,19 @@ class SynchronizationTask:
 
     def _ensurePartialSyncPollingSubscription(self, conn):
         if conn.Service.PartialSyncTriggerRequiresPolling and not conn.PartialSyncTriggerSubscribed:
+            if conn.Service.RequiresExtendedAuthorizationDetails and not conn.ExtendedAuthorization:
+                return # We (probably) can't subscribe unless we have their credentials. May need to change this down the road.
             conn.Service.SubscribeToPartialSyncTrigger(conn)
+
+    def _primeExtendedAuthDetails(self, conn):
+        if conn.Service.RequiresExtendedAuthorizationDetails:
+            if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
+                extAuthDetails = [x["ExtendedAuthorization"] for x in self._extendedAuthDetails if x["ID"] == conn._id]
+                if not len(extAuthDetails):
+                    conn.ExtendedAuthorization = None
+                    return
+                # The connection never gets saved in full again, so we can sub these in here at no risk.
+                conn.ExtendedAuthorization = extAuthDetails[0]
 
     def _downloadActivityList(self, conn, exhaustive, no_add=False):
         svc = conn.Service
@@ -490,14 +502,10 @@ class SynchronizationTask:
             return
 
         if svc.RequiresExtendedAuthorizationDetails:
-            if not hasattr(conn, "ExtendedAuthorization") or not conn.ExtendedAuthorization:
-                extAuthDetails = [x["ExtendedAuthorization"] for x in self._extendedAuthDetails if x["ID"] == conn._id]
-                if not len(extAuthDetails):
-                    logger.info("No extended auth details for " + svc.ID)
-                    self._excludeService(conn, UserException(UserExceptionType.MissingCredentials))
-                    return
-                # the connection never gets saved in full again, so we can sub these in here at no risk
-                conn.ExtendedAuthorization = extAuthDetails[0]
+            if not conn.ExtendedAuthorization:
+                logger.info("No extended auth details for " + svc.ID)
+                self._excludeService(conn, UserException(UserExceptionType.MissingCredentials))
+                return
 
         try:
             logger.info("\tRetrieving list from " + svc.ID)
@@ -696,6 +704,8 @@ class SynchronizationTask:
                     # If we're not going to be doing anything anyways, stop now
                     if len(self._serviceConnections) - len(self._excludedServices) <= 1:
                         raise SynchronizationCompleteException()
+
+                    self._primeExtendedAuthDetails(conn)
 
                     logger.info("Ensuring partial sync poll subscription")
                     self._ensurePartialSyncPollingSubscription(conn)
