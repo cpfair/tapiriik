@@ -40,7 +40,7 @@ class StravaService(ServiceBase):
         ActivityType.Walking: "Walk",
         ActivityType.Snowboarding: "Snowboard",
         ActivityType.Skating: "IceSkate",
-        ActivityType.CrossCountrySkiing: "BackcountrySki",
+        ActivityType.CrossCountrySkiing: "NordicSki",
         ActivityType.DownhillSkiing: "AlpineSki",
         ActivityType.Swimming: "Swim",
         ActivityType.Gym: "Workout"
@@ -54,8 +54,8 @@ class StravaService(ServiceBase):
         "Hike": ActivityType.Hiking,
         "Walk": ActivityType.Walking,
         "AlpineSki": ActivityType.DownhillSkiing,
-        "NordicSki": ActivityType.DownhillSkiing,
-        "BackcountrySki": ActivityType.CrossCountrySkiing,
+        "NordicSki": ActivityType.CrossCountrySkiing,
+        "BackcountrySki": ActivityType.DownhillSkiing,
         "Swim": ActivityType.Swimming,
         "IceSkate": ActivityType.Skating,
         "Workout": ActivityType.Gym
