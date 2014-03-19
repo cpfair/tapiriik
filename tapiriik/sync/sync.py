@@ -119,15 +119,18 @@ class Sync:
                 ("ForcingExhaustiveSyncErrorCount" in user and user["ForcingExhaustiveSyncErrorCount"] > 0):
                 exhaustive = True
 
+            result = None
             try:
-                Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
+                result = Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
             except SynchronizationConcurrencyException:
                 logger.info("SynchronizationConcurrencyException encountered")
                 continue  # another worker picked them - try the next user
             else:
                 nextSync = None
-                if User.HasActivePayment(user):
+                if User.HasActivePayment(user) and not User.GetConfiguration(user)["suppress_auto_sync"]:
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
+                if result.force_next_sync:
+                    nextSync = result.force_next_sync
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
@@ -760,9 +763,15 @@ class SynchronizationTask:
         activity.Record.ResetFailureCount(destinationServiceRec)
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
+        from tapiriik.auth import User
+        from tapiriik.services.interchange import ActivityStatisticUnit
+
         if len(self.user["ConnectedServices"]) <= 1:
             return # Done and done!
-        from tapiriik.services.interchange import ActivityStatisticUnit
+
+        sync_result = SynchronizationTaskResult()
+
+        self._user_config = User.GetConfiguration(self.user)
 
         # Mark this user as in-progress.
         self._lockUser()
@@ -828,6 +837,26 @@ class SynchronizationTask:
 
                         self._updateSynchronizedActivities(activity)
                         self._updateActivityRecordInitialPrescence(activity)
+
+                        # Check if this is too soon to synchronize
+                        if self._user_config["sync_upload_delay"]:
+                            tz = activity.TZ if activity.TZ else activity.FallbackTZ
+                            if tz: # We can't really know for sure otherwise
+                                time_past = (datetime.utcnow().astimezone(tz) - activity.EndTime)
+                                time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
+                                if time_remaining > timedelta(0):
+                                    logger.info("\t\t...is deferred")
+                                    activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Deferred))
+                                    next_sync = datetime.utcnow() + time_remaining
+                                    # Reschedule them so this activity syncs immediately on schedule
+                                    sync_result.force_next_sync = sync_result.force_next_sync if sync_result.force_next_sync and sync_result.force_next_sync < next_sync else next_sync
+                                    raise ActivityShouldNotSynchronizeException()
+
+                        if self._user_config["sync_skip_before"]:
+                            if activity.StartTime.replace(tzinfo=None) < self._user_config["sync_skip_before"]:
+                                logger.info("\t\t...predates configured sync window")
+                                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.PredatesWindow))
+                                raise ActivityShouldNotSynchronizeException()
 
                         # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                         if activity.Private:
@@ -988,6 +1017,13 @@ class SynchronizationTask:
             logger.info("Finished sync for %s" % self.user["_id"])
         finally:
             self._closeUserLogging()
+
+        return sync_result
+
+
+class SynchronizationTaskResult:
+    def __init__(self, force_next_sync=None):
+        self.force_next_sync = force_next_sync
 
 
 class UploadException(Exception):

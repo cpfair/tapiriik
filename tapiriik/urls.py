@@ -23,6 +23,7 @@ urlpatterns = patterns('',
 
     url(r'^account/setemail$', 'tapiriik.web.views.account_setemail', {}, name='account_set_email', ),
     url(r'^account/settz$', 'tapiriik.web.views.account_settimezone', {}, name='account_set_timezone', ),
+    url(r'^account/configure$', 'tapiriik.web.views.account_setconfig', {}, name='account_set_config', ),
 
     url(r'^configure/save/(?P<service>.+)?$', 'tapiriik.web.views.config.config_save', {}, name='config_save', ),
     url(r'^configure/dropbox$', 'tapiriik.web.views.config.dropbox', {}, name='dropbox_config', ),

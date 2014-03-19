@@ -19,6 +19,7 @@ function ActivitiesController($scope, $http) {
       "notrigger": "%(service) is only synchronized when new activities are available.", // I have nooo clue why I made this error, keeping it for posterity.
       // Temporary fix since lots of people are seeing this now, and I might as well assign blame accurately (or be vague)
       "ratelimited": "Some services limit how many actions tapiriik can perform on your behalf per hour - more activities will transfer soon.", // per hour - close enough
+      "deferred": "You've told tapiriik to wait some time before synchronizing activities.", // Should really sub in the actual timespan here.
       "credentials_missing": "You did not opt to remember the credentials for %(service).",
       "config_missing": "%(service) requires configuration.",
       "stationary": "%(service) does not support stationary activity upload.",

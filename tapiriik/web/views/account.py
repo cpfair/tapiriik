@@ -17,3 +17,10 @@ def account_settimezone(req):
         return HttpResponse(status=403)
     User.SetTimezone(req.user, req.POST["timezone"])
     return HttpResponse()
+
+@require_POST
+def account_setconfig(req):
+	if not req.user:
+	    return HttpResponse(status=403)
+	User.SetConfiguration(req.user, req.POST)
+	return HttpResponse()

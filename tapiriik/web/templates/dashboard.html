@@ -29,7 +29,21 @@
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncButtonBlock">
-			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncButtonAttachment right">Attached info 10%</div></div>
+			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncSettingsNubbin"><div class="syncSettingsNubbinIcon"></div></div></div><div class="syncButtonAttachment right">Attached info 10%</div>
+		</div>
+		<br/>
+		<div class="syncSettingsBlock">
+			<div class="internalPopover">
+				<div class="popoverOuterBorder">
+					<div class="popoverArrow"><div class="popoverArrowInner"></div></div>
+					<div class="popoverInner">
+						<div class="syncSettingsCloze">
+							Check for new activities <div class="selectWrap"><select><option>automatically</option><option>manually</option></select></div>. Upload activities <div class="selectWrap"><select><option>as soon as possible</option><option>20 minutes</option><option>1 hour</option></select></div> after they finish, but skip them if they happened before <input type="text" placeholder="16 Nov 1885">.
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>

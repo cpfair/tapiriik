@@ -26,10 +26,14 @@ body {
 }
 
 .contentOuterBorder, .popoverOuterBorder {
-	border-radius:10px;
+	border-radius:13px;
 	padding:1px 0;
 	background-color:rgba(255,255,255,0.35);
 
+}
+
+.internalPopover .popoverOuterBorder {
+	background-color: #8ec1da;
 }
 
 .content, .popoverInner {
@@ -42,6 +46,11 @@ body {
 	font-family:Economica;
 }
 
+.internalPopover .popoverInner {
+	background-color:#a6cfe3;
+	color: white;
+}
+
 .contentOuterBorder {
 	position:relative;
 	margin-left:-480px;
@@ -52,6 +61,11 @@ body {
 .content, .popoverInner {
 	font-size:130%; /* damn font is unreadable */
 	color:#333;
+}
+
+.internalPopover {
+	display: inline-block;
+	position: relative;
 }
 
 .popover {
@@ -75,14 +89,22 @@ body {
 	border-left:20px solid transparent;
 	border-right:20px solid transparent;
 }
+
+.internalPopover .popoverArrow {
+	border-bottom-color: #8ec1da;
+}
+
 .popoverArrowInner {
 	position: absolute;
-	
 	margin-top:15px;
 	left:-20px;
 	border-bottom:20px solid white;
 	border-right:20px solid transparent;
 	border-left:20px solid transparent;
+}
+
+.internalPopover .popoverArrowInner {
+	border-bottom-color: #a6cfe3;
 }
 
 .popover iframe {
@@ -648,6 +670,13 @@ p.infotip .close:hover {
 	opacity: 0;
 }
 
+.syncButtonWrap {
+	position: relative;
+	display: inline-block;
+	width: 100px;
+	height: 100px;
+}
+
 .syncButton {
 	display: inline-block;
 	position:relative;
@@ -656,6 +685,7 @@ p.infotip .close:hover {
 	height:0;
 	width:0;
 	vertical-align: middle;
+	z-index:9999;
 }
 
 .syncButton.active {
@@ -669,6 +699,25 @@ p.infotip .close:hover {
 	top:-40px;
 	width:80px;
 	height:80px;
+}
+
+.syncSettingsNubbin {
+	margin-top:-30px;
+	margin-left:-20px;
+	height:20px;
+	left:50%;
+	position:absolute;
+	border:20px solid #8ec1da;
+	border-radius:20px;
+}
+
+.syncSettingsNubbinIcon {
+	position:absolute;
+	margin-top: 15px;
+	margin-left:-8px;
+	background-image: url("../img/sync-settings.png");
+	width:16px;
+	height:16px;
 }
 
 .syncButtonAttachment {
@@ -1176,6 +1225,42 @@ ul.itemized-clean li {
 .privacyPage .explanation .header span {
 	display:block;
 	font-size:70%;
+}
+
+.syncSettingsCloze {
+	font-size:27px;
+	width:500px;
+}
+
+.syncSettingsCloze .selectWrap {
+	display: inline-block;
+	border-bottom:1px dashed white;
+	/*overflow: hidden;*/
+
+}
+.syncSettingsCloze select {
+   background-color:transparent;
+   border:0;
+   -webkit-appearance:none;
+   -moz-appearance:window;
+   font-family: inherit;
+   color:inherit;
+   font-size:27px;
+   font-weight: bold;
+   cursor:pointer;
+}
+
+.syncSettingsCloze input {
+	background-color: transparent;
+	border:0;
+	border-bottom: 1px dashed white;
+	font-size: inherit;
+	color: inherit;
+	font-weight: bold;
+}
+
+.syncSettingsCloze input[type=text]::-webkit-input-placeholder {
+	color:rgba(255,255,255,0.5);
 }
 
 @media only screen and (max-width: 1065px) { /* Magic # so that there's no jump when resizing. Not that anyone would ever notive... */

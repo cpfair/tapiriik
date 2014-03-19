@@ -9,6 +9,11 @@ from pymongo.read_preferences import ReadPreference
 from bson.objectid import ObjectId
 
 class User:
+    ConfigurationDefaults = {
+        "suppress_auto_sync": False,
+        "sync_upload_delay": None,
+        "sync_skip_before": None
+    }
     def Get(id):
         return db.users.find_one({"_id": ObjectId(id)})
     def Ensure(req):
@@ -108,6 +113,9 @@ class User:
             user["AncestorAccounts"] += existingUser["AncestorAccounts"] if "AncestorAccounts" in existingUser else []
             user["AncestorAccounts"] += [existingUser["_id"]]
             user["Timezone"] = user["Timezone"] if user["Timezone"] else existingUser["Timezone"]
+            existing_config = existingUser["Config"] if "Config" in existingUser else {}
+            existing_config.update(user["Config"] if "Config" in user else {})
+            user["Config"] = existing_config
             delta = True
             db.users.remove({"_id": existingUser["_id"]})
         else:
@@ -172,6 +180,29 @@ class User:
         ''' returns true if there is a flow exception blocking activities moving from source to destination '''
         forwardException = {"Target": {"Service": targetServiceRecord.Service.ID, "ExternalID": targetServiceRecord.ExternalID}, "Source": {"Service": sourceServiceRecord.Service.ID, "ExternalID": sourceServiceRecord.ExternalID}}
         return "FlowExceptions" in user and forwardException in user["FlowExceptions"]
+
+    # You may recognize that these functions are shamelessly copy-pasted from service_base.py
+    def GetConfiguration(user):
+        config = copy.deepcopy(User.ConfigurationDefaults)
+        config.update(user["Config"] if "Config" in user else {})
+        return config
+
+    def SetConfiguration(user, config, no_save=False, drop_existing=False):
+        sparseConfig = {}
+        if not drop_existing:
+            sparseConfig = copy.deepcopy(User.GetConfiguration(user))
+        sparseConfig.update(config)
+
+        keys_to_delete = []
+        for k, v in sparseConfig.items():
+            if (k in User.ConfigurationDefaults and User.ConfigurationDefaults[k] == v):
+                keys_to_delete.append(k)  # it's the default, we can not store it
+        for k in keys_to_delete:
+            del sparseConfig[k]
+        user["Config"] = sparseConfig
+        if not no_save:
+            db.users.update({"_id": user["_id"]}, {"$set": {"Config": sparseConfig}})
+
 
 class DiagnosticsUser:
     def IsAuthenticated(req):

@@ -52,6 +52,8 @@ class UserExceptionType:
     FlowException = "flow"
     Private = "private"
     NotTriggered = "notrigger"
+    Deferred = "deferred" # They've instructed us not to synchronize activities for some time after they complete
+    PredatesWindow = "predates_window" # They've instructed us not to synchronize activities before some date
     RateLimited = "ratelimited"
     MissingCredentials = "credentials_missing" # They forgot to check the "Remember these details" box
     NotConfigured = "config_missing" # Don't think this error is even possible any more.
