@@ -11,6 +11,7 @@ import dateutil.parser
 from dateutil.tz import tzutc
 import requests
 import json
+import re
 
 import logging
 logger = logging.getLogger(__name__)
@@ -192,7 +193,9 @@ class SportTracksService(ServiceBase):
 
                 if len(act["name"].strip()):
                     activity.Name = act["name"]
-                activity.StartTime = dateutil.parser.parse(act["start_time"])
+                    # Longstanding ST.mobi bug causes it to return negative partial-hour timezones as "-2:-30" instead of "-2:30"
+                fixed_start_time = re.sub(r":-(\d\d)", r":\1", act["start_time"])
+                activity.StartTime = dateutil.parser.parse(fixed_start_time)
                 if isinstance(activity.StartTime.tzinfo, tzutc):
                     activity.TZ = pytz.utc # The dateutil tzutc doesn't have an _offset value.
                 else:
