@@ -32,14 +32,20 @@
 			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncSettingsNubbin"><div class="syncSettingsNubbinIcon"></div></div></div><div class="syncButtonAttachment right">Attached info 10%</div>
 		</div>
 		<br/>
-		<div class="syncSettingsBlock">
+		<div class="syncSettingsBlock" ng-controller="SyncSettingsController">
 			<div class="internalPopover">
 				<div class="popoverOuterBorder">
+					{[ config ]}
 					<div class="popoverArrow"><div class="popoverArrowInner"></div></div>
 					<div class="popoverInner">
-						<div class="syncSettingsCloze">
-							Check for new activities <div class="selectWrap"><select><option>automatically</option><option>manually</option></select></div>. Upload activities <div class="selectWrap"><select><option>as soon as possible</option><option>20 minutes</option><option>1 hour</option></select></div> after they finish, but skip them if they happened before <input type="text" placeholder="16 Nov 1885">.
-						</div>
+						<form>
+							<div class="syncSettingsCloze">
+								Check for new activities <div class="selectWrap"><select ng-model="config.suppress_auto_sync"><option ng-value="false">automatically</option><option ng-value="true">manually</option></select></div>. Upload activities <div class="selectWrap" ng-model="config.sync_upload_delay"><select><option>as soon as possible</option><option>20 minutes</option><option>1 hour</option></select></div> after they finish, but skip them if they happened before <input type="text" placeholder="16 Nov 1885" ng-model="config.sync_skip_before_entry">.
+							</div>
+							<div style="text-align:center;">
+								<button class="syncSettingsSaveButton">Save</button>
+							</div>
+						</form>
 					</div>
 				</div>
 			</div>

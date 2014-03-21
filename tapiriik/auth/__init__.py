@@ -223,5 +223,7 @@ class SessionAuth:
             req.user = None
         else:
             req.user = db.users.find_one({"_id": ObjectId(userId)})
+            req.user["Config"] = {}
+            req.user["Config"]["suppress_auto_sync"] = True
             if req.user is not None:
                 req.user["Substitute"] = isSU

@@ -1260,7 +1260,11 @@ ul.itemized-clean li {
 }
 
 .syncSettingsCloze input[type=text]::-webkit-input-placeholder {
-	color:rgba(255,255,255,0.5);
+	color: rgba(255,255,255,0.5);
+}
+
+.syncSettingsSaveButton {
+	font-size:32px;
 }
 
 @media only screen and (max-width: 1065px) { /* Magic # so that there's no jump when resizing. Not that anyone would ever notive... */

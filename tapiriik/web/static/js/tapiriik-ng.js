@@ -76,6 +76,11 @@ function ActivitiesController($scope, $http) {
   loadActivities();
 }
 
+function SyncSettingsController($scope, $http, $window){
+  var tapiriik = $window.tapiriik;
+  $scope.config = tapiriik.User.Config;
+}
+
 angular.module('tapiriik', []).config(function($interpolateProvider) {
   $interpolateProvider.startSymbol('{[').endSymbol(']}');
 });
