@@ -1,7 +1,5 @@
 import os
 
-os.environ["DJANGO_SETTINGS_MODULE"] = "tapiriik.settings"
-
 # Django settings for tapiriik project.
 
 DEBUG = True

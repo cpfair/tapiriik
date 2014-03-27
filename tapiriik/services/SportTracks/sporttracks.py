@@ -164,7 +164,8 @@ class SportTracksService(ServiceBase):
         from tapiriik.services import Service
         #  might consider a real OAuth client
         code = req.GET.get("code")
-        params = {"grant_type": "authorization_code", "code": code, "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"})}
+        # Hardcoded return URI to get around the lack of URL reversing without loading up all the Django stuff
+        params = {"grant_type": "authorization_code", "code": code, "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": "https://tapiriik.com/auth/return/sporttracks"}
 
         response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if response.status_code != 200:
