@@ -202,7 +202,10 @@ class SportTracksService(ServiceBase):
         while True:
             logger.debug("Req against " + pageUri)
             res = requests.get(pageUri, headers=headers)
-            res = res.json()
+            try:
+                res = res.json()
+            except ValueError:
+                raise APIException("Could not decode activity list response %s %s" % (res.status_code, res.text))
             for act in res["items"]:
                 activity = UploadedActivity()
                 activity.ServiceData = {"ActivityURI": act["uri"]}
