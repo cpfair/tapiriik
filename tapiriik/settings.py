@@ -1,4 +1,7 @@
 import os
+
+os.environ["DJANGO_SETTINGS_MODULE"] = "tapiriik.settings"
+
 # Django settings for tapiriik project.
 
 DEBUG = True
@@ -227,7 +230,7 @@ AGGRESSIVE_CACHE = True
 # Diagnostics auth, None = no auth
 DIAG_AUTH_TOTP_SECRET = DIAG_AUTH_PASSWORD = None
 
-SPORTTRACKS_OPENFIT_ENDPOINT = "http://sporttracks.mobi/openfitapi/api"
+SPORTTRACKS_OPENFIT_ENDPOINT = "https://api.sporttracks.mobi/api/v2"
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = './sent_emails'

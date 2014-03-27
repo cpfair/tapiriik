@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT
+from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT, SPORTTRACKS_CLIENT_ID, SPORTTRACKS_CLIENT_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, LapIntensity, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
@@ -12,6 +12,7 @@ from dateutil.tz import tzutc
 import requests
 import json
 import re
+import urllib.parse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -20,8 +21,7 @@ class SportTracksService(ServiceBase):
     ID = "sporttracks"
     DisplayName = "SportTracks"
     DisplayAbbreviation = "ST"
-    AuthenticationType = ServiceAuthenticationType.UsernamePassword
-    RequiresExtendedAuthorizationDetails = True
+    AuthenticationType = ServiceAuthenticationType.OAuth
     OpenFitEndpoint = SPORTTRACKS_OPENFIT_ENDPOINT
     SupportsHR = True
 
@@ -136,45 +136,56 @@ class SportTracksService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.keys())
 
-    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
-
-    def _get_cookies(self, record=None, email=None, password=None):
-        return self._get_cookies_and_uid(record, email, password)[0]
-
-    def _get_cookies_and_uid(self, record=None, email=None, password=None):
-        from tapiriik.auth.credential_storage import CredentialStore
-        if record:
-            cached = self._sessionCache.Get(record.ExternalID)
-            if cached:
-                return cached
-            password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
-            email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
-        params = {"username": email, "password": password}
-        resp = requests.post(self.OpenFitEndpoint + "/user/login", data=json.dumps(params), allow_redirects=False, headers={"Accept": "application/json", "Content-Type": "application/json"})
-        if resp.status_code != 200:
-            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-
-        retval = (resp.cookies, int(resp.json()["user"]["uid"]))
-        if record:
-            self._sessionCache.Set(record.ExternalID, retval)
-        return retval
+    _tokenCache = SessionCache(lifetime=timedelta(minutes=115), freshen_on_get=False)
 
     def WebInit(self):
-        self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
+        self.UserAuthorizationURL = "https://api.sporttracks.mobi/oauth2/authorize?response_type=code&client_id=%s&state=mobi_api" % SPORTTRACKS_CLIENT_ID
 
-    def Authorize(self, email, password):
-        from tapiriik.auth.credential_storage import CredentialStore
-        cookies, uid = self._get_cookies_and_uid(email=email, password=password)
-        return (uid, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
+    def _getAuthHeaders(self, serviceRecord=None):
+        token = self._tokenCache.Get(serviceRecord.ExternalID)
+        if not token:
+            # Use refresh token to get access token
+            params = {"grant_type": "refresh_token", "refresh_token": serviceRecord.Authorization["RefreshToken"], "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"})}
+            response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
+            if response.status_code != 200:
+                if response.status_code >= 400 and response.status_code < 500:
+                    raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text))
+            token = response.json()["access_token"]
+            self._tokenCache.Set(serviceRecord.ExternalID, token)
+
+        return {"Authorization": "Bearer %s" % token}
+
+    def RetrieveAuthorizationToken(self, req, level):
+        from tapiriik.services import Service
+        #  might consider a real OAuth client
+        code = req.GET.get("code")
+        params = {"grant_type": "authorization_code", "code": code, "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"})}
+
+        response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
+        if response.status_code != 200:
+            print(response.text)
+            raise APIException("Invalid code")
+        access_token = response.json()["access_token"]
+        refresh_token = response.json()["refresh_token"]
+
+        existingRecord = Service.GetServiceRecordWithAuthDetails(self, {"Token": access_token})
+        if existingRecord is None:
+            uid_res = requests.post("https://api.sporttracks.mobi/api/v2/system/connect", headers={"Authorization": "Bearer %s" % access_token})
+            uid = uid_res.json()["user"]["uid"]
+        else:
+            uid = existingRecord.ExternalID
+
+        return (uid, {"RefreshToken": refresh_token})
 
     def RevokeAuthorization(self, serviceRecord):
-        pass  # No auth tokens to revoke...
+        pass  # Can't revoke these tokens :(
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.sporttracks_meta_cache.remove({"ExternalID": serviceRecord.ExternalID})
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        cookies = self._get_cookies(record=serviceRecord)
+        headers = self._getAuthHeaders(serviceRecord)
         activities = []
         exclusions = []
         pageUri = self.OpenFitEndpoint + "/fitnessActivities.json"
@@ -185,7 +196,7 @@ class SportTracksService(ServiceBase):
 
         while True:
             logger.debug("Req against " + pageUri)
-            res = requests.get(pageUri, cookies=cookies)
+            res = requests.get(pageUri, headers=headers)
             res = res.json()
             for act in res["items"]:
                 activity = UploadedActivity()
@@ -252,8 +263,8 @@ class SportTracksService(ServiceBase):
 
     def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
         activityURI = activity.ServiceData["ActivityURI"]
-        cookies = self._get_cookies(record=serviceRecord)
-        activityData = requests.get(activityURI, cookies=cookies)
+        headers = self._getAuthHeaders(serviceRecord)
+        activityData = requests.get(activityURI, headers=headers)
         activityData = activityData.json()
 
         if "clock_duration" in activityData:
@@ -534,8 +545,9 @@ class SportTracksService(ServiceBase):
             activityData["location"] = location_stream
             activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
-        cookies = self._get_cookies(record=serviceRecord)
-        upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), cookies=cookies, headers={"Content-Type": "application/json"})
+        headers = self._getAuthHeaders(serviceRecord)
+        headers.update({"Content-Type": "application/json"})
+        upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), headers=headers)
         if upload_resp.status_code != 200:
             if upload_resp.status_code == 401:
                 raise APIException("ST.mobi trial expired", block=True, user_exception=UserException(UserExceptionType.AccountExpired, intervention_required=True))
