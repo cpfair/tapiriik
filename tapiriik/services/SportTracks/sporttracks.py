@@ -144,6 +144,10 @@ class SportTracksService(ServiceBase):
     def _getAuthHeaders(self, serviceRecord=None):
         token = self._tokenCache.Get(serviceRecord.ExternalID)
         if not token:
+            if not serviceRecord.Authorization or "RefreshToken" not in serviceRecord.Authorization:
+                # When I convert the existing users, people who didn't check the remember-credentials box will be stuck in limbo
+                raise APIException("User not upgraded to OAuth", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+
             # Use refresh token to get access token
             params = {"grant_type": "refresh_token", "refresh_token": serviceRecord.Authorization["RefreshToken"], "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"})}
             response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
