@@ -1,0 +1,23 @@
+{% extends "email/template.html" %}
+{% block content %}
+<h1>It's been a good {{ subscription_days }} days!</h1>
+<p>In the past {{ subscription_fuzzy_time }} or so, tapiriik has kept your {{ account_list }} in sync, automatically transferring {% if distance %}over {{ distance }} km of activities{% else %}your fitness activities night and day{% endif %}.</p>
+
+<h2>Want to continue automatic synchronization?</h2>
+
+<p>If you want to keep automatic synchronization for another year, visit <a href="https://tapiriik.com">tapiriik.com</a>, connect to one of your accounts, and click the "Automatic Synchronization" link.</p>
+
+<h2>Don't worry - you won't automatically be billed.</h2>
+<p>(and if you were dissatisfied with your experience, please reply to this email to let me know why!)</p>
+
+{% endblock %}
+{% block plaintextcontent %}
+It's been a good {{ subscription_days }} days!
+
+In the past {{ subscription_fuzzy_time }} or so, tapiriik has kept your {{ account_list }} in sync, automatically monitoring and transferring {% if distance %}over {{ distance }} km of your activities{% else %}your fitness activities night and day{% endif %}.
+
+If you want to keep automatic synchronization for another year, visit https://tapiriik.com then connect to one of your accounts, and click the "Automatic Synchronization" link.
+
+Don't worry - you won't automatically be billed. If you were dissatisfied with your experience, please reply to this email to let me know why!)
+
+{% endblock %}
