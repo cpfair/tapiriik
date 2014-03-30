@@ -26,7 +26,7 @@ def trigger_poll(service_id, index):
     svc = Service.FromID(service_id)
     affected_connection_ids = svc.PollPartialSyncTrigger(index)
     print("Triggering %d connections via %s-%d" % (len(affected_connection_ids), service_id, index))
-    db.connections.update({"_id": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
+    db.connections.update({"Service": service_id, "ExternalID": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
     db.poll_stats.insert({"Service": service_id, "Index": index, "Timestamp": datetime.utcnow(), "TriggerCount": len(affected_connection_ids)})
 
 def schedule_trigger_poll():

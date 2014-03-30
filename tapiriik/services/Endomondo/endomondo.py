@@ -198,6 +198,11 @@ class EndomondoService(ServiceBase):
         resp = self._oauthSession(serviceRecord).delete("https://api.endomondo.com/api/1/subscriptions/workout/%s" % serviceRecord.ExternalID)
         assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
 
+    def ServiceRecordIDsForPartialSyncTrigger(self, req):
+        data = json.loads(req.body)
+        delta_external_ids = [x["id"] for x in data["data"]]
+        return delta_external_ids
+
     def DownloadActivity(self, serviceRecord, activity):
         resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
         print(resp.text)
