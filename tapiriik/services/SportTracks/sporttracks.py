@@ -258,6 +258,8 @@ class SportTracksService(ServiceBase):
 
         activity.Private = "sharing" in activityData and activityData["sharing"] != "public"
 
+        activity.GPS = False # Gets set back if there is GPS data
+
         if "notes" in activityData:
             activity.Notes = activityData["notes"]
 
@@ -384,6 +386,7 @@ class SportTracksService(ServiceBase):
 
             if hasStreamData("location"):
                 waypoint.Location = Location(streamVal("location")[0], streamVal("location")[1], None)
+                activity.GPS = True
                 if returnFirstLocation:
                     return waypoint.Location
 

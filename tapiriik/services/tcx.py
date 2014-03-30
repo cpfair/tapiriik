@@ -24,6 +24,8 @@ class TCXIO:
 
         act = act if act else Activity()
 
+        act.GPS = False
+
         try:
             root = etree.XML(tcxData)
         except:
@@ -168,6 +170,7 @@ class TCXIO:
                     endTime = wp.Timestamp
                 xpos = xtrkpt.find("tcx:Position", namespaces=ns)
                 if xpos is not None:
+                    act.GPS = True
                     wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
                 eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
                 if eleEl is not None:

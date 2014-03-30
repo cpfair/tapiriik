@@ -410,6 +410,13 @@ class SynchronizationTask:
                         existingActivity.Stationary = existingActivity.Stationary and act.Stationary # Let's be optimistic here
                 else:
                     pass # Nothing to do - existElsewhere is either more speicifc or equivalently indeterminate
+                if act.GPS is not None:
+                    if existingActivity.GPS is None:
+                        existingActivity.GPS = act.GPS
+                    else:
+                        existingActivity.GPS = act.GPS or existingActivity.GPS
+                else:
+                    pass # Similarly
                 existingActivity.Stats.coalesceWith(act.Stats)
 
                 serviceDataCollection = dict(act.ServiceDataCollection)
@@ -454,6 +461,13 @@ class SynchronizationTask:
                 logger.info("\t\t" + destSvc.ID + " doesn't receive stationary activities")
                 activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
                 continue # Missing this originally, no wonder...
+            # ReceivesNonGPSActivitiesWithOtherSensorData doesn't matter if the activity is stationary.
+            # (and the service accepts stationary activities - guaranteed immediately above)
+            if not activity.Stationary:
+                if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or activity.GPS):
+                    logger.info("\t\t" + destSvc.ID + " doesn't receive non-GPS activities")
+                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
+                    continue
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
@@ -826,6 +840,11 @@ class SynchronizationTask:
                                 logger.info("\t\t...marked as stationary during download")
                                 activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
                                 continue
+                            if not full_activity.Stationary:
+                                if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or full_activity.GPS):
+                                    logger.info("\t\t...marked as non-GPS during download")
+                                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
+                                    continue
 
                             uploaded_external_id = None
                             logger.info("\t  Uploading to " + destSvc.ID)

@@ -71,8 +71,8 @@ class EndomondoService(ServiceBase):
     }
 
     SupportedActivities = list(_activityMappings.values())
-    SupportsHR = True
-    SupportsCalories = False  # not inside the activity? p.sure it calculates this after the fact anyways
+
+    ReceivesNonGPSActivitiesWithOtherSensorData = False
 
     _oauth_token_secrets = {}
 
@@ -205,6 +205,8 @@ class EndomondoService(ServiceBase):
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
+        activity.GPS = False
+
         for pt in resp["points"]:
             wp = Waypoint()
             wp.Timestamp = self._parseDate(pt["time"])
@@ -214,6 +216,7 @@ class EndomondoService(ServiceBase):
                 if "lat" in pt and "lng" in pt:
                     wp.Location.Latitude = pt["lat"]
                     wp.Location.Longitude = pt["lng"]
+                    activity.GPS = True
                 if "alt" in pt:
                     wp.Location.Altitude = pt["alt"]
 

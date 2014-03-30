@@ -50,7 +50,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
 
 
 class Activity:
-    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None, device=None):
+    def __init__(self, startTime=None, endTime=None, actType=ActivityType.Other, distance=None, name=None, notes=None, tz=None, lapList=None, private=False, fallbackTz=None, stationary=None, gps=None, device=None):
         self.StartTime = startTime
         self.EndTime = endTime
         self.Type = actType
@@ -62,6 +62,7 @@ class Activity:
         self.Notes = notes
         self.Private = private
         self.Stationary = stationary
+        self.GPS = gps
         self.PrerenderedFormats = {}
         self.Device = device
 
@@ -168,6 +169,8 @@ class Activity:
         wptCt = sum([len(x.Waypoints) for x in self.Laps])
         if self.Stationary is None:
             raise ValueError("Activity is undecidedly stationary")
+        if self.GPS is None:
+            raise ValueError("Activity is undecidedly GPS-tracked")
         if not self.Stationary:
             if wptCt == 0:
                 raise ValueError("Exactly 0 waypoints")
