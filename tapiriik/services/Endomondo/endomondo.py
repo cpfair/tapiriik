@@ -81,7 +81,6 @@ class EndomondoService(ServiceBase):
 
     def _oauthSession(self, connection=None, **params):
         if connection:
-            print(connection.Authorization)
             params["resource_owner_key"] = connection.Authorization["Token"]
             params["resource_owner_secret"] = connection.Authorization["Secret"]
         return OAuth1Session(ENDOMONDO_CLIENT_KEY, client_secret=ENDOMONDO_CLIENT_SECRET, **params)
@@ -163,9 +162,6 @@ class EndomondoService(ServiceBase):
                 if "speed_max" in actInfo:
                     activity.Stats.Speed.Max = float(actInfo["speed_max"])
 
-                if "speed_avg" in actInfo:
-                    activity.Stats.Speed.Average = float(actInfo["speed_avg"])
-
                 if "heart_rate_avg" in actInfo:
                     activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(actInfo["heart_rate_avg"]))
 
@@ -205,7 +201,6 @@ class EndomondoService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
-        print(resp.text)
         resp = resp.json()
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
@@ -297,8 +292,6 @@ class EndomondoService(ServiceBase):
         speed_stats = activity.Stats.Speed.asUnits(ActivityStatisticUnit.KilometersPerHour)
         if speed_stats.Max is not None:
             upload_data["speed_max"] = speed_stats.Max
-        if speed_stats.Average is not None:
-            upload_data["speed_avg"] = speed_stats.Average
 
         hr_stats = activity.Stats.HR.asUnits(ActivityStatisticUnit.BeatsPerMinute)
         if hr_stats.Average is not None:
@@ -342,8 +335,6 @@ class EndomondoService(ServiceBase):
         if len(upload_data["points"]):
             upload_data["points"][0]["inst"] = "start"
             upload_data["points"][-1]["inst"] = "stop"
-
-        # print(upload_data)
 
         upload_resp = session.post("https://api.endomondo.com/api/1/workouts/%s" % activity_id, data=json.dumps(upload_data))
         if upload_resp.status_code != 200:
