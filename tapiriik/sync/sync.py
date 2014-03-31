@@ -663,7 +663,7 @@ class SynchronizationTask:
             if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
                 self._excludeService(destinationServiceRec, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
-                activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException)
+                activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError))
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
