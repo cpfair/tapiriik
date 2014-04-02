@@ -472,7 +472,10 @@ class SynchronizationTask:
         if conn.Service.PartialSyncTriggerRequiresPolling and not conn.PartialSyncTriggerSubscribed:
             if conn.Service.RequiresExtendedAuthorizationDetails and not conn.ExtendedAuthorization:
                 return # We (probably) can't subscribe unless we have their credentials. May need to change this down the road.
-            conn.Service.SubscribeToPartialSyncTrigger(conn)
+            try:
+                conn.Service.SubscribeToPartialSyncTrigger(conn)
+            except ServiceException as e:
+                logger.exception("Failure while subscribing to partial sync trigger")
 
     def _primeExtendedAuthDetails(self, conn):
         if conn.Service.RequiresExtendedAuthorizationDetails:
