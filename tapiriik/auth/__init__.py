@@ -66,7 +66,15 @@ class User:
         delta = False
         if existingUser is not None:
             # merge merge merge
-            user["ConnectedServices"] += existingUser["ConnectedServices"]
+
+            # Don't let the user end up with two services of the same type, ever
+            # It's not fully supported, plus it's caused all sorts of trauma in the past.
+            # Note that this will discard the new serviceRecord connection if an existing one exists on the other account
+            # ...which isn't the end of the world, compared to screwing around asking the user which they wanted to keep.
+            for to_merge_service in existingUser["ConnectedServices"]:
+                if len([x for x in user["ConnectedServices"] if x["Service"] == to_merge_service["Service"]]) == 0:
+                    user["ConnectedServices"].append(to_merge_service)
+
             if "Payments" in existingUser:
                 if "Payments" not in user:
                     user["Payments"] = []
