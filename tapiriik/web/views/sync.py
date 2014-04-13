@@ -28,14 +28,20 @@ def sync_status(req):
                 errorCodes.append(err["Code"])
             else:
                 errorCodes.append("SYS-" + err["Step"])
-    return HttpResponse(json.dumps({"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
-                                    "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
-                                    "Synchronizing": "SynchronizationWorker" in req.user,
-                                    "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
-                                    "SynchronizationStep": req.user["SynchronizationStep"] if "SynchronizationStep" in req.user else None,
-                                    "SynchronizationWaitTime": (stats["QueueHeadTime"] - (datetime.utcnow() - req.user["NextSynchronization"]).total_seconds()) if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
-                                    "Errors": errorCodes,
-                                    "Hash": syncHash}), mimetype="application/json")
+
+    sync_status_dict = {"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
+                        "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
+                        "Synchronizing": "SynchronizationWorker" in req.user,
+                        "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
+                        "SynchronizationStep": req.user["SynchronizationStep"] if "SynchronizationStep" in req.user else None,
+                        "SynchronizationWaitTime": None, # I wish.
+                        "Errors": errorCodes,
+                        "Hash": syncHash}
+
+    if stats and "QueueHeadTime" in stats:
+        sync_status_dict["SynchronizationWaitTime"] = (stats["QueueHeadTime"] - (datetime.utcnow() - req.user["NextSynchronization"]).total_seconds()) if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None
+
+    return HttpResponse(json.dumps(sync_status_dict), mimetype="application/json")
 
 @require_POST
 def sync_schedule_immediate(req):
