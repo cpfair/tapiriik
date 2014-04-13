@@ -1,12 +1,17 @@
 from tapiriik.database import db
 from datetime import datetime, timedelta
+
 # total distance synced
-distanceSynced = db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"][0]["total"]
+distanceSyncedAggr = db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+if distanceSyncedAggr:
+    distanceSynced = distanceSyncedAggr[0]["total"]
+else:
+    distanceSynced = 0
 
 # last 24hr, for rate calculation
 lastDayDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
 if lastDayDistanceSyncedAggr:
-    lastDayDistanceSynced=lastDayDistanceSyncedAggr[0]["total"]
+    lastDayDistanceSynced = lastDayDistanceSyncedAggr[0]["total"]
 else:
     lastDayDistanceSynced = 0
 
