@@ -114,8 +114,10 @@ class EndomondoService(ServiceBase):
         activities = []
         exclusions = []
 
+        page_url = "https://api.endomondo.com/api/1/workouts"
+
         while True:
-            resp = oauthSession.get("https://api.endomondo.com/api/1/workouts", params={"before_id": activities[-1].ServiceData["WorkoutID"] if len(activities) else None})
+            resp = oauthSession.get(page_url)
             try:
                 respList = resp.json()["data"]
             except ValueError:
@@ -123,7 +125,7 @@ class EndomondoService(ServiceBase):
             for actInfo in respList:
                 activity = UploadedActivity()
                 activity.StartTime = self._parseDate(actInfo["start_time"])
-
+                print("Activity s/t %s" % activity.StartTime)
                 if "is_tracking" in actInfo and actInfo["is_tracking"]:
                     exclusions.append(APIExcludeActivity("Not complete", activityId=actInfo["id"], permanent=False, userException=UserException(UserExceptionType.LiveTracking)))
                     continue
@@ -179,10 +181,14 @@ class EndomondoService(ServiceBase):
 
                 activity.ServiceData = {"WorkoutID": int(actInfo["id"])}
 
+                activity.CalculateUID()
                 activities.append(activity)
 
-            if not exhaustive or not len(respList):
+            paging = resp.json()["paging"]
+            if "next" not in paging or not paging["next"] or not exhaustive:
                 break
+            else:
+                page_url = paging["next"]
 
         return activities, exclusions
 
@@ -261,10 +267,14 @@ class EndomondoService(ServiceBase):
             "sport": [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0],
             "start_time": self._formatDate(activity.StartTime),
             "end_time": self._formatDate(activity.EndTime),
-            "title": activity.Name,
-            "notes": activity.Notes,
             "points": []
         }
+
+        if activity.Name:
+            upload_data["title"] = activity.Name
+
+        if activity.Notes:
+            upload_data["notes"] = activity.Notes
 
         if activity.Stats.Distance.Value is not None:
             upload_data["distance_total"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value
