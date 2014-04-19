@@ -375,8 +375,8 @@ class GarminConnectService(ServiceBase):
         mapStat("SumEnergy", "Energy", "value")
         mapStat("MaxHeartRate", "HR", "max")
         mapStat("WeightedMeanHeartRate", "HR", "avg")
-        mapStat("MaxRunCadence", "RunCadence", "max")
-        mapStat("WeightedMeanRunCadence", "RunCadence", "avg")
+        mapStat("MaxDoubleCadence", "RunCadence", "max")
+        mapStat("WeightedMeanDoubleCadence", "RunCadence", "avg")
         mapStat("MaxBikeCadence", "Cadence", "max")
         mapStat("WeightedMeanBikeCadence", "Cadence", "avg")
         mapStat("MinPower", "Power", "min")
@@ -473,9 +473,6 @@ class GarminConnectService(ServiceBase):
                 # Write the value (can't use __dict__ because __slots__)
                 setattr(target_obj, attr["key"], value)
 
-            # Fix up units
-            if wp.RunCadence:
-                wp.RunCadence /= 2
             # Bump the active lap if required
             while (active_lap_idx < len(activity.Laps) - 1 and # Not the last lap
                    activity.Laps[active_lap_idx + 1].StartTime <= wp.Timestamp):

@@ -451,7 +451,7 @@ class FITIO:
 		def _resolveRunCadence(bikeCad, runCad):
 			nonlocal use_run_cadence
 			if use_run_cadence:
-				return runCad/2 if runCad is not None else (bikeCad/2 if bikeCad is not None else None)
+				return runCad if runCad is not None else (bikeCad if bikeCad is not None else None)
 			else:
 				return bikeCad
 
