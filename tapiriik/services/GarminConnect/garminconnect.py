@@ -488,7 +488,6 @@ class GarminConnectService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         #/proxy/upload-service-1.1/json/upload/.fit
         fit_file = FITIO.Dump(activity)
-        open("test.fit", "wb").write(fit_file)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         cookies = self._get_cookies(record=serviceRecord)
         self._rate_limit()
