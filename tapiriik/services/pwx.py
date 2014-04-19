@@ -78,9 +78,9 @@ class PWXIO:
             # "duration - durationstopped = moving time. duration stopped may be zero." - Ben
             stoppedEl = xsummary.find("pwx:durationstopped", namespaces=ns)
             if stoppedEl is not None:
-                obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=obj.EndTime - obj.StartTime - timedelta(seconds=float(stoppedEl.text)))
+                obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=(obj.EndTime - obj.StartTime).total_seconds() - float(stoppedEl.text))
             else:
-                obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=obj.EndTime - obj.StartTime)
+                obj.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=(obj.EndTime - obj.StartTime).total_seconds())
 
             hrEl = xsummary.find("pwx:hr", namespaces=ns)
             if hrEl is not None:
@@ -227,9 +227,8 @@ class PWXIO:
             etree.SubElement(xsummary, "beginning").text = str((obj.StartTime - time_ref).total_seconds())
             etree.SubElement(xsummary, "duration").text = str((obj.EndTime - obj.StartTime).total_seconds())
 
-            if obj.Stats.TimerTime.Value:
-                etree.SubElement(xsummary, "durationstopped").text = str(((obj.EndTime - obj.StartTime) - obj.Stats.TimerTime.Value).total_seconds())
-
+            if obj.Stats.TimerTime.Value is not None:
+                etree.SubElement(xsummary, "durationstopped").text = str((obj.EndTime - obj.StartTime).total_seconds() - obj.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 
             altStat = obj.Stats.Elevation.asUnits(ActivityStatisticUnit.Meters)
 

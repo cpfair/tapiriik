@@ -459,8 +459,8 @@ class FITIO:
 			if value is not None:
 				dict[key] = value
 
-		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.Value)
-		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.Value)
+		_mapStat(session_stats, "total_moving_time", act.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
+		_mapStat(session_stats, "total_timer_time", act.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 		_mapStat(session_stats, "total_distance", act.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 		_mapStat(session_stats, "total_calories", act.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 		_mapStat(session_stats, "avg_speed", act.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)
@@ -515,8 +515,8 @@ class FITIO:
 			# But seriously, I'm betting that, some time down the road, a stat will pop up in X but not in Y, so I won't feel so bad about the C&P abuse
 			lap_stats = {}
 			_mapStat(lap_stats, "total_elapsed_time", lap.EndTime - lap.StartTime)
-			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.Value)
-			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.Value)
+			_mapStat(lap_stats, "total_moving_time", lap.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
+			_mapStat(lap_stats, "total_timer_time", lap.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 			_mapStat(lap_stats, "total_distance", lap.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value)
 			_mapStat(lap_stats, "total_calories", lap.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value)
 			_mapStat(lap_stats, "avg_speed", lap.Stats.Speed.asUnits(ActivityStatisticUnit.MetersPerSecond).Average)

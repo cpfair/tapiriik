@@ -324,8 +324,8 @@ class ActivityStatistics:
     _statKeyList = ["Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
     def __init__(self, distance=None, timer_time=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
         self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
-        self.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timer_time)  # timedelta()
-        self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=moving_time)  # timedelta()
+        self.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=timer_time)
+        self.MovingTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=moving_time)
         self.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=kcal)
         self.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=avg_speed, max=max_speed)
         self.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters, max=max_elevation, min=min_elevation, gain=gained_elevation, loss=lost_elevation)
@@ -516,7 +516,8 @@ class ActivityStatistic:
 
 
 class ActivityStatisticUnit:
-    Time = "s"
+    Seconds = "s"
+    Milliseconds = "ms"
     Meters = "m"
     Kilometers = "km"
     Feet = "f"

@@ -140,8 +140,8 @@ class RunKeeperService(ServiceBase):
         activity = UploadedActivity()
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.StartTime = datetime.strptime(rawRecord["start_time"], "%a, %d %b %Y %H:%M:%S")
-        activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(0, float(rawRecord["duration"]))) # P. sure this is moving time
-        activity.EndTime = activity.StartTime + activity.Stats.MovingTime.Value # this is inaccurate with pauses - excluded from hash
+        activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=float(rawRecord["duration"])) # P. sure this is moving time
+        activity.EndTime = activity.StartTime + timedelta(seconds=float(rawRecord["duration"])) # this is inaccurate with pauses - excluded from hash
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["total_distance"])
         # I'm fairly sure this is how the RK calculation works. I remember I removed something exactly like this from ST.mobi, but I trust them more than I trust myself to get the speed right.
         if (activity.EndTime - activity.StartTime).total_seconds() > 0:
@@ -238,7 +238,13 @@ class RunKeeperService(ServiceBase):
 
         record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
-        record["duration"] = activity.Stats.MovingTime.Value.total_seconds() if activity.Stats.MovingTime.Value else (activity.Stats.TimerTime.Value.total_seconds() if activity.Stats.TimerTime.Value else (activity.EndTime - activity.StartTime).total_seconds())
+        if activity.Stats.MovingTime.Value is not None:
+            record["duration"] = activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        elif activity.Stats.TimerTime.Value is not None:
+            record["duration"] = activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        else:
+            record["duration"] = (activity.EndTime - activity.StartTime).total_seconds()
+
         if activity.Stats.HR.Average is not None:
             record["average_heart_rate"] = int(activity.Stats.HR.Average)
         if activity.Stats.Energy.Value is not None:

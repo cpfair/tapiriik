@@ -96,7 +96,8 @@ class GarminConnectService(ServiceBase):
         "stepsPerMinute": ActivityStatisticUnit.DoubledStepsPerMinute,
         "rpm": ActivityStatisticUnit.RevolutionsPerMinute,
         "watt": ActivityStatisticUnit.Watts,
-        "second": ActivityStatisticUnit.Time
+        "second": ActivityStatisticUnit.Seconds,
+        "ms": ActivityStatisticUnit.Milliseconds
     }
 
     def __init__(self):
@@ -359,8 +360,6 @@ class GarminConnectService(ServiceBase):
                     units = self._unitMap[gc_dict[gc_key]["uom"]]
                     if math.isinf(value):
                         continue # GC returns the minimum speed as "-Infinity" instead of 0 some times :S
-                    if units == ActivityStatisticUnit.Time:
-                        value = timedelta(seconds=value)
                     getattr(stats_obj, stat["key"]).update(ActivityStatistic(units, **({stat["attr"]: value})))
 
         mapStat("SumMovingDuration", "MovingTime", "value")

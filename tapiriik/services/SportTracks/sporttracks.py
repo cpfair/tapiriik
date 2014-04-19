@@ -222,7 +222,7 @@ class SportTracksService(ServiceBase):
 
                 activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ)
                 activity.EndTime = activity.StartTime + timedelta(seconds=float(act["duration"]))
-                activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["duration"])))  # OpenFit says this excludes paused times.
+                activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=float(act["duration"]))  # OpenFit says this excludes paused times.
 
                 # Sometimes activities get returned with a UTC timezone even when they are clearly not in UTC.
                 if activity.TZ == pytz.utc:
@@ -308,7 +308,7 @@ class SportTracksService(ServiceBase):
             if "distance" in lapinfo:
                 lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(lapinfo["distance"]))
             if "duration" in lapinfo:
-                lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=lapinfo["duration"]))
+                lap.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=lapinfo["duration"])
             if "calories" in lapinfo:
                 lap.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules, value=lapinfo["calories"])
             if "elevation_gain" in lapinfo:
@@ -467,10 +467,10 @@ class SportTracksService(ServiceBase):
         activityData["type"] = self._reverseActivityMappings[activity.Type]
 
         def _resolveDuration(obj):
-            if obj.Stats.TimerTime.Value:
-                return obj.Stats.TimerTime.Value.total_seconds()
-            if obj.Stats.MovingTime.Value:
-                return obj.Stats.MovingTime.Value.total_seconds()
+            if obj.Stats.TimerTime.Value is not None:
+                return obj.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+            if obj.Stats.MovingTime.Value is not None:
+                return obj.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
             return (obj.EndTime - obj.StartTime).total_seconds()
 
         def _mapStat(dict, key, val, naturalValue=False):
