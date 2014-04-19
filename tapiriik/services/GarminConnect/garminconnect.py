@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR, GARMIN_CONNECT_USER_WATCH_ACCOUNTS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.statistic_calculator import ActivityStatisticCalculator
 from tapiriik.services.tcx import TCXIO
@@ -93,9 +93,10 @@ class GarminConnectService(ServiceBase):
         "yard": ActivityStatisticUnit.Yards,
         "kilocalorie": ActivityStatisticUnit.Kilocalories,
         "bpm": ActivityStatisticUnit.BeatsPerMinute,
-        "stepsPerMinute": ActivityStatisticUnit.StepsPerMinute,
+        "stepsPerMinute": ActivityStatisticUnit.DoubledStepsPerMinute,
         "rpm": ActivityStatisticUnit.RevolutionsPerMinute,
-        "watt": ActivityStatisticUnit.Watts
+        "watt": ActivityStatisticUnit.Watts,
+        "second": ActivityStatisticUnit.Time
     }
 
     def __init__(self):
@@ -306,6 +307,7 @@ class GarminConnectService(ServiceBase):
 
                 if len(act["activityDescription"]["value"].strip()):
                     activity.Notes = act["activityDescription"]["value"]
+
                 # beginTimestamp/endTimestamp is in UTC
                 activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
                 if "sumElapsedDuration" in act:
@@ -316,85 +318,14 @@ class GarminConnectService(ServiceBase):
                     activity.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["endTimestamp"]["millis"])/1000))
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
+
                 # TODO: fix the distance stats to account for the fact that this incorrectly reported km instead of meters for the longest time.
                 activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
-
-                def mapStat(gcKey, statKey, type, useSourceUnits=False):
-                    nonlocal activity, act
-                    if gcKey in act:
-                        value = float(act[gcKey]["value"])
-                        if math.isinf(value):
-                            return # GC returns the minimum speed as "-Infinity" instead of 0 some times :S
-                        activity.Stats.__dict__[statKey].update(ActivityStatistic(self._unitMap[act[gcKey]["uom"]], **({type: value})))
-                        if useSourceUnits:
-                            activity.Stats.__dict__[statKey] = activity.Stats.__dict__[statKey].asUnits(self._unitMap[act[gcKey]["uom"]])
-
-                if "sumMovingDuration" in act:
-                    activity.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(act["sumMovingDuration"]["value"])))
-
-                if "sumDuration" in act:
-                    activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1])))
-
-
-                mapStat("minSpeed", "Speed", "min", useSourceUnits=True) # We need to suppress conversion here, so we can fix the pace-speed issue below
-                mapStat("maxSpeed", "Speed", "max", useSourceUnits=True)
-                mapStat("weightedMeanSpeed", "Speed", "avg", useSourceUnits=True)
-                mapStat("minAirTemperature", "Temperature", "min")
-                mapStat("maxAirTemperature", "Temperature", "max")
-                mapStat("weightedMeanAirTemperature", "Temperature", "avg")
-                mapStat("sumEnergy", "Energy", "value")
-                mapStat("maxHeartRate", "HR", "max")
-                mapStat("weightedMeanHeartRate", "HR", "avg")
-                mapStat("maxRunCadence", "RunCadence", "max")
-                mapStat("weightedMeanRunCadence", "RunCadence", "avg")
-                mapStat("maxBikeCadence", "Cadence", "max")
-                mapStat("weightedMeanBikeCadence", "Cadence", "avg")
-                mapStat("minPower", "Power", "min")
-                mapStat("maxPower", "Power", "max")
-                mapStat("weightedMeanPower", "Power", "avg")
-                mapStat("minElevation", "Elevation", "min")
-                mapStat("maxElevation", "Elevation", "max")
-                mapStat("gainElevation", "Elevation", "gain")
-                mapStat("lossElevation", "Elevation", "loss")
-
-                # In Garmin Land, max can be smaller than min for this field :S
-                if activity.Stats.Power.Max is not None and activity.Stats.Power.Min is not None and activity.Stats.Power.Min > activity.Stats.Power.Max:
-                    activity.Stats.Power.Min = None
-
-                # To get it to match what the user sees in GC.
-                if activity.Stats.RunCadence.Max is not None:
-                    activity.Stats.RunCadence.Max *= 2
-                if activity.Stats.RunCadence.Average is not None:
-                    activity.Stats.RunCadence.Average *= 2
-
-                # GC incorrectly reports pace measurements as kph/mph when they are in fact in min/km or min/mi
-                if "minSpeed" in act:
-                    if ":" in act["minSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Min:
-                        activity.Stats.Speed.Min = 60 / activity.Stats.Speed.Min
-                if "maxSpeed" in act:
-                    if ":" in act["maxSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Max:
-                        activity.Stats.Speed.Max = 60 / activity.Stats.Speed.Max
-                if "weightedMeanSpeed" in act:
-                    if ":" in act["weightedMeanSpeed"]["withUnitAbbr"] and activity.Stats.Speed.Average:
-                        activity.Stats.Speed.Average = 60 / activity.Stats.Speed.Average
-
-                # Similarly, they do weird stuff with HR at times - %-of-max and zones
-                # ...and we can't just fix these, so we have to calculate it after the fact (blegh)
-                recalcHR = False
-                if "maxHeartRate" in act:
-                    if "%" in act["maxHeartRate"]["withUnitAbbr"] or "z" in act["maxHeartRate"]["withUnitAbbr"]:
-                        activity.Stats.HR.Max = None
-                        recalcHR = True
-                if "weightedMeanHeartRate" in act:
-                    if "%" in act["weightedMeanHeartRate"]["withUnitAbbr"] or "z" in act["weightedMeanHeartRate"]["withUnitAbbr"]:
-                        activity.Stats.HR.Average = None
-                        recalcHR = True
-
 
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
-                activity.ServiceData = {"ActivityID": act["activityId"], "RecalcHR": recalcHR}
+                activity.ServiceData = {"ActivityID": act["activityId"]}
 
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
@@ -404,60 +335,171 @@ class GarminConnectService(ServiceBase):
                 page += 1
         return activities, exclusions
 
-    def DownloadActivity(self, serviceRecord, activity):
-        #http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/#####?full=true
+    def _downloadActivitySummary(self, serviceRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
         cookies = self._get_cookies(record=serviceRecord)
         self._rate_limit()
-        res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/tcx/activity/" + str(activityID) + "?full=true", cookies=cookies)
-        try:
-            TCXIO.Parse(res.content, activity)
-        except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
+        res = requests.get("https://connect.garmin.com/proxy/activity-service-1.3/json/activity/" + str(activityID), cookies=cookies)
 
-        if activity.ServiceData["RecalcHR"]:
-            logger.debug("Recalculating HR")
-            avgHR, maxHR = ActivityStatisticCalculator.CalculateAverageMaxHR(activity)
-            activity.Stats.HR.coalesceWith(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, max=maxHR, avg=avgHR))
+        try:
+            raw_data = res.json()
+        except ValueError:
+            raise APIException("Failure downloading activity summary %s:%s" % (res.status_code, res.text))
+        stat_map = {}
+        def mapStat(gcKey, statKey, type):
+            stat_map[gcKey] = {
+                "key": statKey,
+                "attr": type
+            }
+
+        def applyStats(gc_dict, stats_obj):
+            for gc_key, stat in stat_map.items():
+                if gc_key in gc_dict:
+                    value = float(gc_dict[gc_key]["value"])
+                    units = self._unitMap[gc_dict[gc_key]["uom"]]
+                    if math.isinf(value):
+                        continue # GC returns the minimum speed as "-Infinity" instead of 0 some times :S
+                    if units == ActivityStatisticUnit.Time:
+                        value = timedelta(seconds=value)
+                    getattr(stats_obj, stat["key"]).update(ActivityStatistic(units, **({stat["attr"]: value})))
+
+        mapStat("SumMovingDuration", "MovingTime", "value")
+        mapStat("SumDuration", "TimerTime", "value")
+        mapStat("SumDistance", "Distance", "value")
+        mapStat("MinSpeed", "Speed", "min")
+        mapStat("MaxSpeed", "Speed", "max")
+        mapStat("WeightedMeanSpeed", "Speed", "avg")
+        mapStat("MinAirTemperature", "Temperature", "min")
+        mapStat("MaxAirTemperature", "Temperature", "max")
+        mapStat("WeightedMeanAirTemperature", "Temperature", "avg")
+        mapStat("SumEnergy", "Energy", "value")
+        mapStat("MaxHeartRate", "HR", "max")
+        mapStat("WeightedMeanHeartRate", "HR", "avg")
+        mapStat("MaxRunCadence", "RunCadence", "max")
+        mapStat("WeightedMeanRunCadence", "RunCadence", "avg")
+        mapStat("MaxBikeCadence", "Cadence", "max")
+        mapStat("WeightedMeanBikeCadence", "Cadence", "avg")
+        mapStat("MinPower", "Power", "min")
+        mapStat("MaxPower", "Power", "max")
+        mapStat("WeightedMeanPower", "Power", "avg")
+        mapStat("MinElevation", "Elevation", "min")
+        mapStat("MaxElevation", "Elevation", "max")
+        mapStat("GainElevation", "Elevation", "gain")
+        mapStat("LossElevation", "Elevation", "loss")
+
+        applyStats(raw_data["activity"]["activitySummary"], activity.Stats)
+
+        for lap_data in raw_data["activity"]["totalLaps"]["lapSummaryList"]:
+            lap = Lap()
+            lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
+            lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
+            applyStats(lap_data, lap.Stats)
+            activity.Laps.append(lap)
+
+        # In Garmin Land, max can be smaller than min for this field :S
+        if activity.Stats.Power.Max is not None and activity.Stats.Power.Min is not None and activity.Stats.Power.Min > activity.Stats.Power.Max:
+            activity.Stats.Power.Min = None
+
+    def DownloadActivity(self, serviceRecord, activity):
+        # First, download the summary stats and lap stats
+        self._downloadActivitySummary(serviceRecord, activity)
+
+        if activity.Stationary:
+            # Nothing else to download
+            return activity
+
+        # https://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/####
+        activityID = activity.ServiceData["ActivityID"]
+        cookies = self._get_cookies(record=serviceRecord)
+        self._rate_limit()
+        res = requests.get("https://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999", cookies=cookies)
+        try:
+            raw_data = res.json()["com.garmin.activity.details.json.ActivityDetails"]
+        except ValueError:
+            raise APIException("Activity data parse error for %s: %s" % (res.status_code, res.text))
+
+        attrs_map = {}
+        def _map_attr(gc_key, wp_key, units, in_location=False, is_timestamp=False):
+            attrs_map[gc_key] = {
+                "key": wp_key,
+                "to_units": units,
+                "in_location": in_location, # Blegh
+                "is_timestamp": is_timestamp # See above
+            }
+
+        _map_attr("directSpeed", "Speed", ActivityStatisticUnit.MetersPerSecond)
+        _map_attr("sumDistance", "Distance", ActivityStatisticUnit.Meters)
+        _map_attr("directHeartRate", "HR", ActivityStatisticUnit.BeatsPerMinute)
+        _map_attr("directBikeCadence", "Cadence", ActivityStatisticUnit.RevolutionsPerMinute)
+        _map_attr("directDoubleCadence", "RunCadence", ActivityStatisticUnit.StepsPerMinute) # 2*x mystery solved
+        _map_attr("directAirTemperature", "Temp", ActivityStatisticUnit.DegreesCelcius)
+        _map_attr("directPower", "Power", ActivityStatisticUnit.Watts)
+        _map_attr("directElevation", "Altitude", ActivityStatisticUnit.Meters, in_location=True)
+        _map_attr("directLatitude", "Latitude", None, in_location=True)
+        _map_attr("directLongitude", "Longitude", None, in_location=True)
+        _map_attr("directTimestamp", "Timestamp", None, is_timestamp=True)
+
+        # Figure out which metrics we'll be seeing in this activity
+        attrs_indexed = {}
+        attr_count = len(raw_data["measurements"])
+        for measurement in raw_data["measurements"]:
+            key = measurement["key"]
+            if key in attrs_map:
+                if attrs_map[key]["to_units"]:
+                    attrs_map[key]["from_units"] = self._unitMap[measurement["unit"]]
+                    if attrs_map[key]["to_units"] == attrs_map[key]["from_units"]:
+                        attrs_map[key]["to_units"] = attrs_map[key]["from_units"] = None
+                attrs_indexed[measurement["metricsIndex"]] = attrs_map[key]
+
+        # Process the data frames
+        frame_idx = 0
+        active_lap_idx = 0
+        for frame in raw_data["metrics"]:
+            wp = Waypoint()
+            for idx, attr in attrs_indexed.items():
+                value = frame["metrics"][idx]
+                target_obj = wp
+                if attr["in_location"]:
+                    if not wp.Location:
+                        wp.Location = Location()
+                    target_obj = wp.Location
+
+                # Handle units
+                if attr["is_timestamp"]:
+                    value = pytz.utc.localize(datetime.utcfromtimestamp(value / 1000))
+                elif attr["to_units"]:
+                    value = ActivityStatistic.convertValue(value, attr["from_units"], attr["to_units"])
+
+                # Write the value (can't use __dict__ because __slots__)
+                setattr(target_obj, attr["key"], value)
+
+            # Fix up units
+            if wp.RunCadence:
+                wp.RunCadence /= 2
+            # Bump the active lap if required
+            while (active_lap_idx < len(activity.Laps) - 1 and # Not the last lap
+                   activity.Laps[active_lap_idx + 1].StartTime <= wp.Timestamp):
+                active_lap_idx += 1
+            activity.Laps[active_lap_idx].Waypoints.append(wp)
+            frame_idx += 1
 
         if len(activity.Laps) == 1:
-            activity.Laps[0].Stats.update(activity.Stats) # I trust Garmin Connect's stats more than whatever shows up in the TCX
             activity.Stats = activity.Laps[0].Stats # They must be identical to pass the verification
-
-        if activity.Stats.Temperature.Min is not None or activity.Stats.Temperature.Max is not None or activity.Stats.Temperature.Average is not None:
-            logger.debug("Retrieving additional temperature data")
-            # TCX doesn't have temperature, for whatever reason...
-            self._rate_limit()
-            res = requests.get("http://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/" + str(activityID) + "?full=true", cookies=cookies)
-            try:
-                temp_act = GPXIO.Parse(res.content, suppress_validity_errors=True)
-            except ValueError as e:
-                pass
-            else:
-                logger.debug("Merging additional temperature data")
-                full_waypoints = activity.GetFlatWaypoints()
-                temp_waypoints = temp_act.GetFlatWaypoints()
-
-                merge_idx = 0
-
-                for x in range(len(temp_waypoints)):
-                    while full_waypoints[merge_idx].Timestamp < temp_waypoints[x].Timestamp and merge_idx < len(full_waypoints) - 1:
-                        merge_idx += 1
-                    full_waypoints[merge_idx].Temp = temp_waypoints[x].Temp
 
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
         #/proxy/upload-service-1.1/json/upload/.fit
         fit_file = FITIO.Dump(activity)
+        open("test.fit", "wb").write(fit_file)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         cookies = self._get_cookies(record=serviceRecord)
         self._rate_limit()
-        res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.tcx", files=files, cookies=cookies)
+        res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.fit", files=files, cookies=cookies)
         res = res.json()["detailedImportResult"]
 
         if len(res["successes"]) == 0:
-            raise APIException("Unable to upload activity")
+            raise APIException("Unable to upload activity %s" % res)
         if len(res["successes"]) > 1:
             raise APIException("Uploaded succeeded, resulting in too many activities")
         actid = res["successes"][0]["internalId"]

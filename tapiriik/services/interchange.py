@@ -408,7 +408,8 @@ class ActivityStatistic:
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
             (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Yards): 1.09361,
             (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
-            (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184
+            (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184,
+            (ActivityStatisticUnit.StepsPerMinute, ActivityStatisticUnit.DoubledStepsPerMinute): 2
         }
         def recurseFindConversionPath(unit, target, stack):
             assert(unit != target)
@@ -531,6 +532,7 @@ class ActivityStatisticUnit:
     BeatsPerMinute = "BPM"
     RevolutionsPerMinute = "RPM"
     StepsPerMinute = "SPM"
+    DoubledStepsPerMinute = "2SPM" # Garmin Connect is still weird.
     Strides = "strides"
     Kilocalories = "kcal"
     Kilojoules = "kj"
