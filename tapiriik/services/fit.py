@@ -410,6 +410,11 @@ class FITIO:
 			"serial_number": 0,
 			"product": 15706
 		}
+		devInfo = {
+			"manufacturer": FITManufacturer.DEVELOPMENT,
+			"product": 15706,
+			"device_index": 0
+		}
 		if act.Device:
 			# GC can get along with out this, Strava needs it
 			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
@@ -418,10 +423,21 @@ class FITIO:
 					"manufacturer": devId.Manufacturer,
 					"product": devId.Product,
 				}
+				devInfo = {
+					"manufacturer": devId.Manufacturer,
+					"product": devId.Product,
+					"device_index": 0 # Required for GC
+				}
 				if act.Device.Serial:
 					creatorInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
+					devInfo["serial_number"] = int(act.Device.Serial)
+				if act.Device.VersionMajor is not None:
+					assert act.Device.VersionMinor is not None
+					devInfo["software_version"] = act.Device.VersionMajor + act.Device.VersionMinor / 100
 
-		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=datetime.utcnow(), **creatorInfo)
+		fmg.GenerateMessage("file_id", type=FITFileType.Activity, time_created=toUtc(act.StartTime), **creatorInfo)
+		fmg.GenerateMessage("device_info", **devInfo)
+
 		sport = FITIO._sportMap[act.Type] if act.Type in FITIO._sportMap else 0
 		subSport = FITIO._subSportMap[act.Type] if act.Type in FITIO._subSportMap else 0
 
@@ -544,21 +560,6 @@ class FITIO:
 		# These need to be at the end for Strava
 		fmg.GenerateMessage("session", timestamp=toUtc(act.EndTime), start_time=toUtc(act.StartTime), sport=sport, sub_sport=subSport, event=FITEvent.Timer, event_type=FITEventType.Start, **session_stats)
 		fmg.GenerateMessage("activity", timestamp=toUtc(act.EndTime), local_timestamp=act.EndTime.replace(tzinfo=None), num_sessions=1, type=FITActivityType.GENERIC, event=FITEvent.Activity, event_type=FITEventType.Stop)
-
-		if act.Device:
-			devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.FIT, act.Device.Identifier)
-			if devId:
-				devInfo = {
-					"manufacturer": devId.Manufacturer,
-					"product": devId.Product,
-					"device_index": 0 # Required for GC
-				}
-				if act.Device.Serial:
-					devInfo["serial_number"] = int(act.Device.Serial) # I suppose some devices might eventually have alphanumeric serial #s
-				if act.Device.VersionMajor is not None:
-					assert act.Device.VersionMinor is not None
-					devInfo["software_version"] = act.Device.VersionMajor + act.Device.VersionMinor / 100
-				fmg.GenerateMessage("device_info", **devInfo)
 
 		records = fmg.GetResult()
 		header = FITIO._generateHeader(len(records))
