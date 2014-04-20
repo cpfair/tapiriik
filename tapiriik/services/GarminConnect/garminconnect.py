@@ -417,6 +417,10 @@ class GarminConnectService(ServiceBase):
         except ValueError:
             raise APIException("Activity data parse error for %s: %s" % (res.status_code, res.text))
 
+        if "measurements" not in raw_data:
+            activity.Stationary = True # We were wrong, oh well
+            return activity
+
         attrs_map = {}
         def _map_attr(gc_key, wp_key, units, in_location=False, is_timestamp=False):
             attrs_map[gc_key] = {
