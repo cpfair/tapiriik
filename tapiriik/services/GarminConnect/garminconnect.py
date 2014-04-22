@@ -390,8 +390,21 @@ class GarminConnectService(ServiceBase):
 
         for lap_data in raw_data["activity"]["totalLaps"]["lapSummaryList"]:
             lap = Lap()
-            lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
-            lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
+            if "BeginTimestamp" not in lap_data and "EndTimestamp" not in lap_data:
+                # Garmin Connect is weird.
+                raise APIExcludeActivity("Activity lap has no BeginTimestamp or EndTimestamp", userException=UserException(UserExceptionType.Corrupt))
+            else:
+                if "BeginTimestamp" in lap_data:
+                    lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
+                if "EndTimestamp" in lap_data:
+                    lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
+
+                if not lap.EndTime or not lap.StartTime:
+                    # We were only given one, calculate the other.
+                    elapsed_duration = timedelta(seconds=float(lap_data["SumElapsedDuration"]["value"]))
+                    lap.StartTime = lap.StartTime if lap.StartTime else lap.EndTime - elapsed_duration
+                    lap.EndTime = lap.EndTime if lap.EndTime else lap.StartTime + elapsed_duration
+
             applyStats(lap_data, lap.Stats)
             activity.Laps.append(lap)
 
