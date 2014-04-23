@@ -401,7 +401,12 @@ class GarminConnectService(ServiceBase):
 
                 if not lap.EndTime or not lap.StartTime:
                     # We were only given one, calculate the other.
-                    elapsed_duration = timedelta(seconds=float(lap_data["SumElapsedDuration"]["value"]))
+                    if "SumElapsedDuration" in lap_data:
+                        elapsed_duration = timedelta(seconds=float(lap_data["SumElapsedDuration"]["value"]))
+                    elif "SumDuration" in lap_data:
+                        elapsed_duration = timedelta(seconds=float(lap_data["SumDuration"]["value"]))
+                    else:
+                        raise APIException("Activity lap has one timestamp but no duration")
                     lap.StartTime = lap.StartTime if lap.StartTime else lap.EndTime - elapsed_duration
                     lap.EndTime = lap.EndTime if lap.EndTime else lap.StartTime + elapsed_duration
 
