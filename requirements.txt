@@ -2,7 +2,7 @@ requests==2.2.1
 pymongo
 pytz
 lxml
-dropbox
+git+https://github.com/cpfair/dropbox-sdk-python.git
 python-dateutil
 Django==1.5.1
 pycrypto
