@@ -138,10 +138,10 @@ class GarminConnectService(ServiceBase):
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
-    def _get_cookies(self, record=None, email=None, password=None):
+    def _get_cookies(self, record=None, email=None, password=None, skip_cache=False):
         from tapiriik.auth.credential_storage import CredentialStore
         cached = self._sessionCache.Get(record.ExternalID if record else email)
-        if cached:
+        if cached and not skip_cache:
                 return cached
         if record:
             #  longing for C style overloads...
@@ -275,7 +275,16 @@ class GarminConnectService(ServiceBase):
         while True:
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
             self._rate_limit()
-            res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
+
+            retried_auth = False
+            while True:
+                res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
+                # It's 10 PM and I have no clue why it's throwing these errors, maybe we just need to log in again?
+                if res.status_code == 403 and not retried_auth:
+                    retried_auth = True
+                    cookies = self._get_cookies(serviceRecord, skip_cache=True)
+                else:
+                    break
             try:
                 res = res.json()["results"]
             except ValueError:
