@@ -138,7 +138,7 @@ class GarminConnectService(ServiceBase):
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
-    def _get_cookies(self, record=None, email=None, password=None, skip_cache=False):
+    def _get_session(self, record=None, email=None, password=None, skip_cache=False):
         from tapiriik.auth.credential_storage import CredentialStore
         cached = self._sessionCache.Get(record.ExternalID if record else email)
         if cached and not skip_cache:
@@ -148,12 +148,13 @@ class GarminConnectService(ServiceBase):
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
 
+        session = requests.Session()
         self._rate_limit()
-        gcPreResp = requests.get("http://connect.garmin.com/", allow_redirects=False)
+        gcPreResp = session.get("http://connect.garmin.com/", allow_redirects=False)
         # New site gets this redirect, old one does not
         if gcPreResp.status_code == 200:
             self._rate_limit()
-            gcPreResp = requests.get("https://connect.garmin.com/signin", allow_redirects=False)
+            gcPreResp = session.get("https://connect.garmin.com/signin", allow_redirects=False)
             req_count = int(re.search("j_id(\d+)", gcPreResp.text).groups(1)[0])
             params = {"login": "login", "login:loginUsernameField": email, "login:password": password, "login:signInButton": "Sign In"}
             auth_retries = 3 # Did I mention Garmin Connect is silly?
@@ -161,7 +162,7 @@ class GarminConnectService(ServiceBase):
                 params["javax.faces.ViewState"] = "j_id%d" % req_count
                 req_count += 1
                 self._rate_limit()
-                resp = requests.post("https://connect.garmin.com/signin", data=params, allow_redirects=False, cookies=gcPreResp.cookies)
+                resp = session.post("https://connect.garmin.com/signin", data=params, allow_redirects=False)
                 if resp.status_code >= 500 and resp.status_code < 600:
                     raise APIException("Remote API failure")
                 if resp.status_code != 302:  # yep
@@ -207,12 +208,12 @@ class GarminConnectService(ServiceBase):
                 # "locale": "en"
             }
             # I may never understand what motivates people to mangle a perfectly good protocol like HTTP in the ways they do...
-            preResp = requests.get("https://sso.garmin.com/sso/login", params=params)
+            preResp = session.get("https://sso.garmin.com/sso/login", params=params)
             if preResp.status_code != 200:
                 raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
             data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
 
-            ssoResp = requests.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False, cookies=preResp.cookies)
+            ssoResp = session.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False)
             if ssoResp.status_code != 200:
                 raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
@@ -224,32 +225,32 @@ class GarminConnectService(ServiceBase):
             # ...AND WE'RE NOT DONE YET!
 
             self._rate_limit()
-            gcRedeemResp1 = requests.get("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False, cookies=gcPreResp.cookies)
+            gcRedeemResp1 = session.get("http://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False)
             if gcRedeemResp1.status_code != 302:
                 raise APIException("GC redeem 1 error %s %s" % (gcRedeemResp1.status_code, gcRedeemResp1.text))
 
             self._rate_limit()
-            gcRedeemResp2 = requests.get(gcRedeemResp1.headers["location"], cookies=gcPreResp.cookies, allow_redirects=False)
+            gcRedeemResp2 = session.get(gcRedeemResp1.headers["location"], allow_redirects=False)
             if gcRedeemResp2.status_code != 302:
                 raise APIException("GC redeem 2 error %s %s" % (gcRedeemResp2.status_code, gcRedeemResp2.text))
 
         else:
             raise APIException("Unknown GC prestart response %s %s" % (gcPreResp.status_code, gcPreResp.text))
 
-        self._sessionCache.Set(record.ExternalID if record else email, gcPreResp.cookies)
+        self._sessionCache.Set(record.ExternalID if record else email, session)
 
 
-        return gcPreResp.cookies
+        return session
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        cookies = self._get_cookies(email=email, password=password)
+        session = self._get_session(email=email, password=password)
         # TODO: http://connect.garmin.com/proxy/userprofile-service/socialProfile/ has the proper immutable user ID, not that anyone ever changes this one...
         self._rate_limit()
-        username = requests.get("http://connect.garmin.com/user/username", cookies=cookies).json()["username"]
+        username = session.get("http://connect.garmin.com/user/username").json()["username"]
         if not len(username):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
@@ -267,7 +268,7 @@ class GarminConnectService(ServiceBase):
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         #http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities?&start=0&limit=50
-        cookies = self._get_cookies(record=serviceRecord)
+        session = self._get_session(record=serviceRecord)
         page = 1
         pageSz = 100
         activities = []
@@ -278,11 +279,11 @@ class GarminConnectService(ServiceBase):
 
             retried_auth = False
             while True:
-                res = requests.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}, cookies=cookies)
+                res = session.get("http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz})
                 # It's 10 PM and I have no clue why it's throwing these errors, maybe we just need to log in again?
                 if res.status_code == 403 and not retried_auth:
                     retried_auth = True
-                    cookies = self._get_cookies(serviceRecord, skip_cache=True)
+                    session = self._get_session(serviceRecord, skip_cache=True)
                 else:
                     break
             try:
@@ -335,7 +336,8 @@ class GarminConnectService(ServiceBase):
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
-                activity.ServiceData = {"ActivityID": act["activityId"]}
+                
+                activity.ServiceData = {"ActivityID": int(act["activityId"])}
 
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
@@ -347,9 +349,11 @@ class GarminConnectService(ServiceBase):
 
     def _downloadActivitySummary(self, serviceRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
-        cookies = self._get_cookies(record=serviceRecord)
+        session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        res = requests.get("https://connect.garmin.com/proxy/activity-service-1.3/json/activity/" + str(activityID), cookies=cookies)
+        res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activity/" + str(activityID))
+
+
 
         try:
             raw_data = res.json()
@@ -439,9 +443,9 @@ class GarminConnectService(ServiceBase):
 
         # https://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/####
         activityID = activity.ServiceData["ActivityID"]
-        cookies = self._get_cookies(record=serviceRecord)
+        session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        res = requests.get("https://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999", cookies=cookies)
+        res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999")
         try:
             raw_data = res.json()["com.garmin.activity.details.json.ActivityDetails"]
         except ValueError:
@@ -523,9 +527,9 @@ class GarminConnectService(ServiceBase):
         #/proxy/upload-service-1.1/json/upload/.fit
         fit_file = FITIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
-        cookies = self._get_cookies(record=serviceRecord)
+        session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        res = requests.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.fit", files=files, cookies=cookies)
+        res = session.post("http://connect.garmin.com/proxy/upload-service-1.1/json/upload/.fit", files=files)
         res = res.json()["detailedImportResult"]
 
         if len(res["successes"]) == 0:
@@ -541,7 +545,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Name and activity.Name.strip():
                 self._rate_limit()
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urlencode({"value": activity.Name}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
+                res = session.post("http://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urlencode({"value": activity.Name}).encode("UTF-8"), headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
@@ -554,7 +558,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Notes and activity.Notes.strip():
                 self._rate_limit()
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urlencode({"value": activity.Notes}).encode("UTF-8"), cookies=cookies, headers=encoding_headers)
+                res = session.post("http://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urlencode({"value": activity.Notes}).encode("UTF-8"), headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
@@ -573,7 +577,7 @@ class GarminConnectService(ServiceBase):
                 else:
                     acttype = acttype[0]
                 self._rate_limit()
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}, cookies=cookies)
+                res = session.post("http://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype})
                 res = res.json()
                 if "activityType" not in res or res["activityType"]["key"] != acttype:
                     raise APIWarning("Unable to set activity type")
@@ -583,7 +587,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Private:
                 self._rate_limit()
-                res = requests.post("http://connect.garmin.com/proxy/activity-service-1.2/json/privacy/" + str(actid), data={"value": "private"}, cookies=cookies)
+                res = session.post("http://connect.garmin.com/proxy/activity-service-1.2/json/privacy/" + str(actid), data={"value": "private"})
                 res = res.json()
                 if "definition" not in res or res["definition"]["key"] != "private":
                     raise APIWarning("Unable to set activity privacy")
@@ -609,7 +613,7 @@ class GarminConnectService(ServiceBase):
         user_name = self._user_watch_user(serviceRecord)["Name"]
         logger.info("Requesting connection to %s from %s" % (user_name, serviceRecord.ExternalID))
         self._rate_limit()
-        resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name, cookies=self._get_cookies(record=serviceRecord))
+        resp = self._get_session(record=serviceRecord).put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name)
         try:
             assert resp.status_code == 200
             assert resp.json()["requestStatus"] == "Created"
@@ -624,14 +628,14 @@ class GarminConnectService(ServiceBase):
         # PUT http://connect.garmin.com/proxy/userprofile-service/connection/end/1904201
         # Unfortunately there's no way to delete a pending request - the poll worker will do this from the other end
         active_watch_user = self._user_watch_user(serviceRecord)
-        cookies = self._get_cookies(email=active_watch_user["Username"], password=active_watch_user["Password"])
+        session = self._get_session(email=active_watch_user["Username"], password=active_watch_user["Password"])
         self._rate_limit()
-        connections = requests.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections", cookies=cookies).json()
+        connections = session.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections").json()
 
         for connection in connections["userConnections"]:
             if connection["displayName"] == serviceRecord.ExternalID:
                 self._rate_limit()
-                dc_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % connection["connectionRequestId"], cookies=cookies)
+                dc_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % connection["connectionRequestId"])
                 if dc_resp.status_code != 200:
                     raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, connection["displayName"], dc_resp.status_code, dc_resp.text))
 
@@ -655,11 +659,11 @@ class GarminConnectService(ServiceBase):
         # First, accept any pending connections
         watch_user_key = sorted(list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys()))[multiple_index]
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
-        cookies = self._get_cookies(email=watch_user["Username"], password=watch_user["Password"])
+        session = self._get_session(email=watch_user["Username"], password=watch_user["Password"])
 
         # Then, check for users with new activities
         self._rate_limit()
-        watch_activities_resp = requests.get("http://connect.garmin.com/proxy/activitylist-service/activities/subscriptionFeed?limit=1000", cookies=cookies)
+        watch_activities_resp = session.get("http://connect.garmin.com/proxy/activitylist-service/activities/subscriptionFeed?limit=1000")
         try:
             watch_activities = watch_activities_resp.json()
         except ValueError:
@@ -683,7 +687,7 @@ class GarminConnectService(ServiceBase):
                 active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id, "WatchUserKey": watch_user_key})
 
         self._rate_limit()
-        pending_connections_resp = requests.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending", cookies=cookies)
+        pending_connections_resp = session.get("http://connect.garmin.com/proxy/userprofile-service/connection/pending")
         try:
             pending_connections = pending_connections_resp.json()
         except ValueError:
@@ -694,12 +698,12 @@ class GarminConnectService(ServiceBase):
             for pending_connect in pending_connections:
                 if pending_connect["displayName"] in valid_pending_connections_external_ids:
                     self._rate_limit()
-                    connect_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+                    connect_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"])
                     if connect_resp.status_code != 200:
                         logger.error("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
                 else:
                     self._rate_limit()
-                    ignore_resp = requests.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"], cookies=cookies)
+                    ignore_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/decline/%s" % pending_connect["connectionRequestId"])
 
 
         return to_sync_ids
