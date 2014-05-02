@@ -430,6 +430,9 @@ class GarminConnectService(ServiceBase):
         # First, download the summary stats and lap stats
         self._downloadActivitySummary(serviceRecord, activity)
 
+        if len(activity.Laps) == 1:
+            activity.Stats = activity.Laps[0].Stats # They must be identical to pass the verification
+
         if activity.Stationary:
             # Nothing else to download
             return activity
@@ -513,9 +516,6 @@ class GarminConnectService(ServiceBase):
                 active_lap_idx += 1
             activity.Laps[active_lap_idx].Waypoints.append(wp)
             frame_idx += 1
-
-        if len(activity.Laps) == 1:
-            activity.Stats = activity.Laps[0].Stats # They must be identical to pass the verification
 
         return activity
 
