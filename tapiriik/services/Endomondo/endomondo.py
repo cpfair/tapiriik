@@ -181,6 +181,7 @@ class EndomondoService(ServiceBase):
                     activity.Name = actInfo["title"]
 
                 activity.ServiceData = {"WorkoutID": int(actInfo["id"])}
+                activity.ServiceKey = actInfo["id"]
 
                 activity.CalculateUID()
                 activities.append(activity)

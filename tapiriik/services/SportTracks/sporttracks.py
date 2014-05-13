@@ -209,6 +209,7 @@ class SportTracksService(ServiceBase):
             for act in res["items"]:
                 activity = UploadedActivity()
                 activity.ServiceData = {"ActivityURI": act["uri"]}
+                activity.ServiceKey = act["uri"]
 
                 if len(act["name"].strip()):
                     activity.Name = act["name"]

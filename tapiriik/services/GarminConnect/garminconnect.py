@@ -337,6 +337,7 @@ class GarminConnectService(ServiceBase):
                 activity.CalculateUID()
                 
                 activity.ServiceData = {"ActivityID": int(act["activityId"])}
+                activity.ServiceKey = act["activityId"]
 
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
