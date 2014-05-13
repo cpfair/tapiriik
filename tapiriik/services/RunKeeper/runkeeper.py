@@ -132,6 +132,7 @@ class RunKeeperService(ServiceBase):
                 exclusions.append(APIExcludeActivity("0-length", activityId=act["uri"]))
                 continue  # these activites are corrupted
             activity.ServiceData = {"ActivityID": act["uri"]}
+            activity.ServiceKey = act["uri"]
             activities.append(activity)
         return activities, exclusions
 

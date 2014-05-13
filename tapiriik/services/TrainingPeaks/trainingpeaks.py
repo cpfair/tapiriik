@@ -141,6 +141,7 @@ class TrainingPeaksService(ServiceBase):
                     activity.Type = self._workoutTypeMappings[workoutTypeEl.text]
 
                 activity.ServiceData = {"WorkoutID": workoutId}
+                activity.ServiceKey = workoutId
                 activity.CalculateUID()
                 activities.append(activity)
 

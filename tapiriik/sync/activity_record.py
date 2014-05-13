@@ -15,6 +15,7 @@ class ActivityRecord:
         self.UIDs = []
         self.PresentOnServices = {}
         self.NotPresentOnServices = {}
+        self.ServiceKeys = []
 
         # It's practically an ORM!
         if dbRec:
@@ -41,6 +42,7 @@ class ActivityRecord:
         self.Stationary = activity.Stationary
         self.Private = activity.Private
         self.UIDs = activity.UIDs
+        self.ServiceKeys = activity.ServiceKeys
 
     def MarkAsPresentOn(self, serviceRecord):
         if serviceRecord.Service.ID not in self.PresentOnServices:

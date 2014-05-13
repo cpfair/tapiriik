@@ -258,6 +258,7 @@ class DropboxService(ServiceBase):
                     cache["Activities"][hashedRelPath] = {"Rev": rev, "UID": act.UID, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
                 tagRes = self._tagActivity(relPath)
                 act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
+                act.ServiceKey = path
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
 

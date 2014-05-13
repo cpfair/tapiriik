@@ -241,7 +241,8 @@ class SynchronizationTask:
                 "Distance": x.Distance,
                 "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
-                "Abscence": _activityPrescences(x.NotPresentOnServices)
+                "Abscence": _activityPrescences(x.NotPresentOnServices),
+                "ServiceKeys": x.ServiceKeys
             }
             for x in self._activityRecords
         ]
@@ -343,11 +344,18 @@ class SynchronizationTask:
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
             act.UIDs = set([act.UID])
+            # Move ServiceData to collection
             if not hasattr(act, "ServiceDataCollection"):
                 act.ServiceDataCollection = {}
             if hasattr(act, "ServiceData") and act.ServiceData is not None:
                 act.ServiceDataCollection[conn._id] = act.ServiceData
                 del act.ServiceData
+            # Move ServiceKey to collection
+            if not hasattr(act, "ServiceKeys"):
+                act.ServiceKeys = []
+            if hasattr(act, "ServiceKey") and act.ServiceKey is not None:
+                act.ServiceKeys.append({"id" : conn._id, "serviceKey": act.ServiceKey })
+                del act.ServiceKey
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
@@ -429,6 +437,9 @@ class SynchronizationTask:
                 serviceDataCollection = dict(act.ServiceDataCollection)
                 serviceDataCollection.update(existingActivity.ServiceDataCollection)
                 existingActivity.ServiceDataCollection = serviceDataCollection
+
+                serviceKeys = act.ServiceKeys + existingActivity.ServiceKeys
+                existingActivity.ServiceKeys = serviceKeys
 
                 existingActivity.UIDs |= act.UIDs  # I think this is merited
                 act.UIDs = existingActivity.UIDs  # stop the circular inclusion, not that it matters
@@ -758,6 +769,7 @@ class SynchronizationTask:
                 for activity in self._activities:
                     logger.info(str(activity) + " " + str(activity.UID[:3]) + " from " + str([[y.Service.ID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()]))
                     logger.info(" Name: %s Notes: %s Distance: %s%s" % (activity.Name[:15] if activity.Name else "", activity.Notes[:15] if activity.Notes else "", activity.Stats.Distance.Value, activity.Stats.Distance.Units))
+                    logger.info(" ServiceKeys : " + str(activity.ServiceKeys))
                     try:
                         activity.Record = self._findOrCreateActivityRecord(activity) # Make it a member of the activity, to avoid passing it around as a seperate parameter everywhere.
 
@@ -880,6 +892,7 @@ class SynchronizationTask:
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
+                                activity.Record.ServiceKeys.append({"id" : destinationSvcRecord._id, "serviceKey": uploaded_external_id })
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})

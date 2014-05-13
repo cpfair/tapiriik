@@ -133,6 +133,7 @@ class StravaService(ServiceBase):
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
                 activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
+                activity.ServiceKey = ride["id"]
 
                 if ride["type"] not in self._reverseActivityTypeMappings:
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"], userException=UserException(UserExceptionType.Other)))

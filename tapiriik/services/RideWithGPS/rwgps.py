@@ -128,6 +128,7 @@ class RideWithGPSService(ServiceBase):
 
                 activity.CalculateUID()
                 activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+                activity.ServiceKey = act["id"]
                 activities.append(activity)
             logger.debug("Finished page {} of {}".format(page, total_pages))
             if not exhaustive or total_pages == page or total_pages == 0:
