@@ -717,3 +717,9 @@ class GarminConnectService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         # nothing cached...
         pass
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://connect.garmin.com/profile/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://connect.garmin.com/activity/%s" % activityExternalID

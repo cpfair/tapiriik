@@ -179,3 +179,9 @@ class TrainingPeaksService(ServiceBase):
         resp = requests.post("https://www.trainingpeaks.com/TPWebServices/EasyFileUpload.ashx", params=params, data=pwxdata.encode("UTF-8"))
         if resp.text != "OK":
             raise APIException("Unable to upload activity response " + resp.text + " status " + str(resp.status_code))
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return ""
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return ""

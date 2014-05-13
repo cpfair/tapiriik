@@ -566,4 +566,10 @@ class SportTracksService(ServiceBase):
             raise APIException("Unable to upload activity %s" % upload_resp.text)
         return upload_resp.json()["uris"][0]
 
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://www.sporttracks.mobi/users/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://www.sporttracks.mobi/activity/%s" % activityExternalID
+
 

@@ -99,6 +99,11 @@ class RunKeeperService(ServiceBase):
         data = resp.json()
         return data["userID"]
 
+    def _getProfileURL(self, serviceRecord):
+        resp = requests.get("https://api.runkeeper.com/profile/", headers=self._apiHeaders(serviceRecord))
+        data = resp.json()
+        return data["profile"]
+
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         uris = self._getAPIUris(serviceRecord)
 
@@ -305,3 +310,14 @@ class RunKeeperService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.rk_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+        cachedb.runkeeper_cache.remove({"ExternalID": serviceRecord.ExternalID})
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        if not hasattr(self, '_profileURL'):
+            self._profileURL = self._getProfileURL(serviceRecord)
+        return self._profileURL
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        profileURL = self.GenerateUserProfileURL(serviceRecord)
+        activityID = activityExternalID.split("/")[2]
+        return "%s/activity/%s" % (profileURL, activityID)

@@ -83,6 +83,12 @@ class ServiceBase:
     def DeleteCachedData(self, serviceRecord):
         raise NotImplementedError
 
+    def GenerateUserProfileURL(self, serviceRecord):
+        raise NotImplementedError
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        raise NotImplementedError
+
     def SubscribeToPartialSyncTrigger(self, serviceRecord):
         if self.PartialSyncRequiresTrigger:
             raise NotImplementedError

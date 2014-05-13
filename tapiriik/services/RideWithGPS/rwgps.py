@@ -175,3 +175,9 @@ class RideWithGPSService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         # nothing cached...
         pass
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://ridewithgps.com/users/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://ridewithgps.com/trips/%s" % activityExternalID

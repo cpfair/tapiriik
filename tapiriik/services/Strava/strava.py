@@ -331,3 +331,9 @@ class StravaService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
         cachedb.strava_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://www.strava.com/athletes/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://app.strava.com/activities/%s" % activityExternalID
