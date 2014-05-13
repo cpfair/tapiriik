@@ -999,7 +999,6 @@ ul.itemized-clean li {
 
 .activitiesTable .activity td {
 	border-bottom:1px solid #E6F7FF;
-	cursor:pointer;
 }
 
 .activitiesTable .activity.fullySynchronized td {
@@ -1020,6 +1019,7 @@ ul.itemized-clean li {
 	padding-left:10px;
 	height:50px;
 	vertical-align: middle;
+	cursor:pointer;
 }
 
 .activitiesTable .date {
