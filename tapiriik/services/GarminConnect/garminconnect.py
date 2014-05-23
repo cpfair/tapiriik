@@ -403,25 +403,26 @@ class GarminConnectService(ServiceBase):
 
         for lap_data in raw_data["activity"]["totalLaps"]["lapSummaryList"]:
             lap = Lap()
-            if "BeginTimestamp" not in lap_data and "EndTimestamp" not in lap_data:
+            if "BeginTimestamp" in lap_data:
+                lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
+            if "EndTimestamp" in lap_data:
+                lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
+
+            if "SumElapsedDuration" in lap_data:
+                elapsed_duration = timedelta(seconds=round(float(lap_data["SumElapsedDuration"]["value"])))
+            elif "SumDuration" in lap_data:
+                elapsed_duration = timedelta(seconds=round(float(lap_data["SumDuration"]["value"])))
+
+            if lap.StartTime and elapsed_duration:
+                # Always recalculate end time based on duration
+                lap.EndTime = lap.StartTime + elapsed_duration
+            if not lap.StartTime and lap.EndTime and elapsed_duration:
+                # Sometimes calculate start time based on duration
+                lap.StartTime = lap.EndTime - elapsed_duration
+
+            if not lap.StartTime or not lap.EndTime:
                 # Garmin Connect is weird.
                 raise APIExcludeActivity("Activity lap has no BeginTimestamp or EndTimestamp", userException=UserException(UserExceptionType.Corrupt))
-            else:
-                if "BeginTimestamp" in lap_data:
-                    lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
-                if "EndTimestamp" in lap_data:
-                    lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
-
-                if not lap.EndTime or not lap.StartTime:
-                    # We were only given one, calculate the other.
-                    if "SumElapsedDuration" in lap_data:
-                        elapsed_duration = timedelta(seconds=float(lap_data["SumElapsedDuration"]["value"]))
-                    elif "SumDuration" in lap_data:
-                        elapsed_duration = timedelta(seconds=float(lap_data["SumDuration"]["value"]))
-                    else:
-                        raise APIException("Activity lap has one timestamp but no duration")
-                    lap.StartTime = lap.StartTime if lap.StartTime else lap.EndTime - elapsed_duration
-                    lap.EndTime = lap.EndTime if lap.EndTime else lap.StartTime + elapsed_duration
 
             applyStats(lap_data, lap.Stats)
             activity.Laps.append(lap)
