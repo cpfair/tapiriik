@@ -33,7 +33,7 @@ class ActivityRecord:
 
     def SetActivity(self, activity):
         self.StartTime = activity.StartTime
-        self.StartTime = activity.EndTime
+        self.EndTime = activity.EndTime
         self.Name = activity.Name
         self.Notes = activity.Notes
         self.Type = activity.Type
