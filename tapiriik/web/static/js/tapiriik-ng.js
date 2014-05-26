@@ -19,6 +19,7 @@ function ActivitiesController($scope, $http) {
       "credentials_missing": "You did not opt to remember the credentials for %(service).",
       "config_missing": "%(service) requires configuration.",
       "stationary": "%(service) does not support stationary activity upload.",
+      "nongps": "%(service) does not support non-GPS activities with other sensor data.",
       "type_unsupported": "%(service) does not support this type of activity.",
       "download": "An error occured when retrieving the activity data to upload to %(service).",
       "list": "There was a problem indexing your activities on %(service), so no activities will be uploaded to %(service).",

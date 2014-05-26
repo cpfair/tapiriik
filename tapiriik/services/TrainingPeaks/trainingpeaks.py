@@ -162,6 +162,14 @@ class TrainingPeaksService(ServiceBase):
         params.update({"workoutIds": activity.ServiceData["WorkoutID"], "personId": svcRecord.ExternalID})
         resp = requests.get("https://www.trainingpeaks.com/tpwebservices/service.asmx/GetExtendedWorkoutsForAccessibleAthlete", params=params)
         activity = PWXIO.Parse(resp.content, activity)
+
+        activity.GPS = False
+        flat_wps = activity.GetFlatWaypoints()
+        for wp in flat_wps:
+            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                activity.GPS = True
+                break
+
         return activity
 
     def UploadActivity(self, svcRecord, activity):

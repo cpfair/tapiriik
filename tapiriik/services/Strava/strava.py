@@ -160,6 +160,7 @@ class StravaService(ServiceBase):
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
                 activity.Stationary = manual
+                activity.GPS = "start_latlng" in ride and ride["start_latlng"]
                 activity.AdjustTZ()
                 activity.CalculateUID()
                 activities.append(activity)

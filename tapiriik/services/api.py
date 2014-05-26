@@ -51,6 +51,7 @@ class UserExceptionType:
     MissingCredentials = "credentials_missing" # They forgot to check the "Remember these details" box
     NotConfigured = "config_missing" # Don't think this error is even possible any more.
     StationaryUnsupported = "stationary"
+    NonGPSUnsupported = "nongps"
     TypeUnsupported = "type_unsupported"
     DownloadError = "download"
     ListingError = "list" # Cases when a service fails listing, so nothing can be uploaded to it.

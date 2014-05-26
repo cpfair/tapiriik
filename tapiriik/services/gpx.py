@@ -20,6 +20,8 @@ class GPXIO:
         del ns[None]
         act = Activity()
 
+        act.GPS = True # All valid GPX files have GPS data
+
         try:
             root = etree.XML(gpxData)
         except:

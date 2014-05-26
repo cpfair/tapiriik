@@ -1,5 +1,6 @@
 # For whatever reason there's no built-in way to specify a global timeout for requests operations.
 # socket.setdefaulttimeout doesn't work since requests overriddes the default with its own default.
+# There's probably a better way to do this in requests 2.x, but...
 
 def patch_requests_with_default_timeout(timeout):
 	import requests
@@ -28,3 +29,13 @@ def patch_requests_source_address(new_source_address):
 		else:
 			return old_create_connection(address, timeout, source_address)
 	socket.create_connection = new_create_connection
+
+def patch_requests_user_agent(user_agent):
+	import requests
+	old_request = requests.Session.request
+	def new_request(*args, **kwargs):
+		headers = kwargs.get("headers",{})
+		headers["User-Agent"] = user_agent
+		kwargs["headers"] = headers
+		return old_request(*args, **kwargs)
+	requests.Session.request = new_request

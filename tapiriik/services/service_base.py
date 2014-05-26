@@ -33,6 +33,7 @@ class ServiceBase:
 
     # Does it?
     ReceivesStationaryActivities = True
+    ReceivesNonGPSActivitiesWithOtherSensorData = True
 
     # Causes synchronizations to be skipped until...
     #  - One is triggered (via IDs returned by ServiceRecordIDsForPartialSyncTrigger or PollPartialSyncTrigger)
