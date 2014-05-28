@@ -407,13 +407,14 @@ class GarminConnectService(ServiceBase):
             if "EndTimestamp" in lap_data:
                 lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
 
+            elapsed_duration = None
             if "SumElapsedDuration" in lap_data:
                 elapsed_duration = timedelta(seconds=round(float(lap_data["SumElapsedDuration"]["value"])))
             elif "SumDuration" in lap_data:
                 elapsed_duration = timedelta(seconds=round(float(lap_data["SumDuration"]["value"])))
 
             if lap.StartTime and elapsed_duration:
-                # Always recalculate end time based on duration
+                # Always recalculate end time based on duration, if we have the start time
                 lap.EndTime = lap.StartTime + elapsed_duration
             if not lap.StartTime and lap.EndTime and elapsed_duration:
                 # Sometimes calculate start time based on duration
