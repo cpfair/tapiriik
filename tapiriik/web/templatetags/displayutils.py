@@ -1,7 +1,12 @@
 from django import template
+from django.utils.timesince import timesince
+from datetime import datetime
 import json
 register = template.Library()
 
+@register.filter(name="utctimesince")
+def utctimesince(value):
+    return timesince(value, now=datetime.utcnow())
 
 @register.filter(name="format_meters")
 def meters_to_kms(value):
