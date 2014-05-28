@@ -24,10 +24,10 @@ celery_app.config_from_object(_celeryConfig())
 @celery_app.task()
 def trigger_poll(service_id, index):
     svc = Service.FromID(service_id)
-    affected_connection_ids = svc.PollPartialSyncTrigger(index)
-    print("Triggering %d connections via %s-%d" % (len(affected_connection_ids), service_id, index))
-    db.connections.update({"Service": service_id, "ExternalID": {"$in": affected_connection_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
-    db.poll_stats.insert({"Service": service_id, "Index": index, "Timestamp": datetime.utcnow(), "TriggerCount": len(affected_connection_ids)})
+    affected_connection_external_ids = svc.PollPartialSyncTrigger(index)
+    print("Triggering %d connections via %s-%d" % (len(affected_connection_external_ids), service_id, index))
+    db.connections.update({"Service": service_id, "ExternalID": {"$in": affected_connection_external_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
+    db.poll_stats.insert({"Service": service_id, "Index": index, "Timestamp": datetime.utcnow(), "TriggerCount": len(affected_connection_external_ids)})
 
 def schedule_trigger_poll():
 	schedule_data = list(db.trigger_poll_scheduling.find())
