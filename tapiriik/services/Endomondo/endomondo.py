@@ -208,7 +208,11 @@ class EndomondoService(ServiceBase):
 
     def DownloadActivity(self, serviceRecord, activity):
         resp = self._oauthSession(serviceRecord).get("https://api.endomondo.com/api/1/workouts/%d" % activity.ServiceData["WorkoutID"], params={"fields": "points"})
-        resp = resp.json()
+        try:
+            resp = resp.json()
+        except ValueError:
+            res_txt = resp.text
+            raise APIException("Parse failure in Endomondo activity download: %s" % resp.status_code)
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
