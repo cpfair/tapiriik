@@ -2,7 +2,7 @@ from tapiriik.requests_lib import patch_requests_with_default_timeout, patch_req
 from tapiriik import settings
 from tapiriik.database import db
 import time
-import datetime
+from datetime import datetime, timedelta
 import os
 import signal
 import sys
@@ -11,6 +11,7 @@ import socket
 
 Run = True
 RecycleInterval = 1 # Time spent rebooting workers < time spent wrangling Python memory management.
+MinCycleTime = timedelta(seconds=30) # No need to hammer the database given the number of sync workers I have
 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
@@ -24,10 +25,10 @@ signal.signal(signal.SIGINT, sync_interrupt)
 signal.signal(signal.SIGUSR2, sync_interrupt)
 
 def sync_heartbeat(state):
-    db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.datetime.utcnow(), "State": state}})
+    db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.utcnow(), "State": state}})
 
-print("Sync worker starting at " + datetime.datetime.now().ctime() + " \n -> PID " + str(os.getpid()))
-db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"Process": os.getpid(), "Heartbeat": datetime.datetime.utcnow(), "Startup":  datetime.datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname(), "State": "startup"}, upsert=True)
+print("Sync worker starting at " + datetime.now().ctime() + " \n -> PID " + str(os.getpid()))
+db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"Process": os.getpid(), "Heartbeat": datetime.utcnow(), "Startup":  datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname(), "State": "startup"}, upsert=True)
 sys.stdout.flush()
 
 patch_requests_with_default_timeout(timeout=60)
@@ -43,12 +44,15 @@ print(" -> Index %s\n -> Interface %s" % (settings.WORKER_INDEX, settings.HTTP_S
 from tapiriik.sync import Sync
 
 while Run:
-    cycleStart = datetime.datetime.utcnow()
+    cycleStart = datetime.utcnow() # Avoid having synchronization fall down during DST setback
     RecycleInterval -= Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion)
+    # Put this before the recycle shutdown, otherwise it'll quit and get rebooted ASAP
+    remaining_cycle_time = MinCycleTime - (datetime.utcnow() - cycleStart)
+    if remaining_cycle_time > timedelta(0):
+        sync_heartbeat("idle-spin")
+        time.sleep(remaining_cycle_time.total_seconds())
     if RecycleInterval <= 0:
     	break
-    if (datetime.datetime.utcnow() - cycleStart).total_seconds() < 1:
-        time.sleep(1)
     sync_heartbeat("idle")
 
 print("Sync worker shutting down cleanly")
