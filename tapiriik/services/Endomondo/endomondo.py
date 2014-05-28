@@ -139,7 +139,7 @@ class EndomondoService(ServiceBase):
 
                 # "duration" is timer time
                 if "duration_total" in actInfo:
-                    activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Time, value=timedelta(seconds=float(actInfo["duration_total"])))
+                    activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=float(actInfo["duration_total"]))
 
                 if "distance_total" in actInfo:
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(actInfo["distance_total"]))
@@ -281,9 +281,9 @@ class EndomondoService(ServiceBase):
             upload_data["distance_total"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value
 
         if activity.Stats.TimerTime.Value is not None:
-            upload_data["duration_total"] = activity.Stats.TimerTime.Value.total_seconds()
+            upload_data["duration_total"] = activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
         elif activity.Stats.MovingTime.Value is not None:
-            upload_data["duration_total"] = activity.Stats.MovingTime.Value.total_seconds()
+            upload_data["duration_total"] = activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
         else:
             upload_data["duration_total"] = (activity.EndTime - activity.StartTime).total_seconds()
 
