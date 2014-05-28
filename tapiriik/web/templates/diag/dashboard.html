@@ -21,7 +21,8 @@
 				<tr>
 					<th>Worker</th>
 					<th>Host</th>
-					<th>Heartbeat</th>
+					<th>Local Index</th>
+					<th>Last Heartbeat</th>
 					<th>HB State</th>
 					<th>Forget</th>
 				</tr>
@@ -29,8 +30,9 @@
 					<tr>
 						<td>{{ worker.Process }}</td>
 						<td>{{ worker.Host }}</td>
+						<td>{{ worker.Index }}</td>
 						<td>{{ worker.Heartbeat|utctimesince }}</td>
-						<td>{{ worker.State }}</td>
+						<td><tt>{{ worker.State }}</tt></td>
 						<td>
 							<form action="" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
 						</td>
