@@ -58,6 +58,9 @@ class User:
                     return True
         return False
 
+    def IsServiceConnected(user, service_id):
+        return service_id in [x["Service"] for x in user["ConnectedServices"]]
+
     def ConnectService(user, serviceRecord):
         from tapiriik.services import Service, UserExceptionType
         existingUser = db.users.find_one({"_id": {'$ne': ObjectId(user["_id"])}, "ConnectedServices.ID": ObjectId(serviceRecord._id)})
