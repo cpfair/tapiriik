@@ -7,13 +7,13 @@
 	<h4><a href="{% url 'diagnostics_dashboard' %}">&laquo; Back to dashboard</a></h4>
 	<h3>Details</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
-		<li><b>Created:</b> {{ user.Created }} UTC</li>
+		<li><b>Created:</b> {{ user.Created|utctimesince }} ({{ user.Created }} UTC)</li>
 		{% if user.AncestorAccounts %}
 			<li><b>Ancestor accounts:</b> {% for ancestor in user.AncestorAccounts %}<tt>{{ ancestor }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
 		{% endif %}
 		<li><b>Email:</b> {% if user.Email %}<a href="mailto:{{ user.Email }}">{{ user.Email }}</a>{% else %}Not given{% endif %}</li>
 		<li><b>TZ:</b> <tt>{{ user.Timezone }}</tt></li>
-		<li><b>Prev Sync:</b> {{ user.LastSynchronization }} UTC</li>
+		<li><b>Prev Sync:</b> {{ user.LastSynchronization|utctimesince }} ({{ user.LastSynchronization }} UTC)</li>
 		<li><b>Prev Sync Ver:</b> <tt>{{ user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
 		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
