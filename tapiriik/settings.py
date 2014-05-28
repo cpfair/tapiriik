@@ -208,13 +208,13 @@ PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
 
 # Hidden from regular signup
-SOFT_LAUNCH_SERVICES = []
+SOFT_LAUNCH_SERVICES = ["endomondo"]
 
 # Visibly disabled + excluded from synchronization
 DISABLED_SERVICES = []
 
 # Services no longer available - will be removed across the site + excluded from sync.
-WITHDRAWN_SERVICES = ["endomondo"]
+WITHDRAWN_SERVICES = []
 
 # Where to put per-user sync logs
 USER_SYNC_LOGS = "./"
