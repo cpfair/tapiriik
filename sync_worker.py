@@ -11,7 +11,7 @@ import socket
 
 Run = True
 RecycleInterval = 1 # Time spent rebooting workers < time spent wrangling Python memory management.
-MinCycleTime = timedelta(seconds=30) # No need to hammer the database given the number of sync workers I have
+NoQueueMinCycleTime = timedelta(seconds=30) # No need to hammer the database given the number of sync workers I have
 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
@@ -45,12 +45,16 @@ from tapiriik.sync import Sync
 
 while Run:
     cycleStart = datetime.utcnow() # Avoid having synchronization fall down during DST setback
-    RecycleInterval -= Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion)
-    # Put this before the recycle shutdown, otherwise it'll quit and get rebooted ASAP
-    remaining_cycle_time = MinCycleTime - (datetime.utcnow() - cycleStart)
-    if remaining_cycle_time > timedelta(0):
-        sync_heartbeat("idle-spin")
-        time.sleep(remaining_cycle_time.total_seconds())
+    processed_user_count = Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion)
+    RecycleInterval -= processed_user_count
+    # When there's no queue, all the workers sit sending 1000s of the queries to the database server
+    if processed_user_count == 0:
+        # Put this before the recycle shutdown, otherwise it'll quit and get rebooted ASAP
+        remaining_cycle_time = NoQueueMinCycleTime - (datetime.utcnow() - cycleStart)
+        if remaining_cycle_time > timedelta(0):
+            print("Pausing for %ss" % remaining_cycle_time.total_seconds())
+            sync_heartbeat("idle-spin")
+            time.sleep(remaining_cycle_time.total_seconds())
     if RecycleInterval <= 0:
     	break
     sync_heartbeat("idle")
