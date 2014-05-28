@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class EndomondoService(ServiceBase):
     ID = "endomondo"
     DisplayName = "Endomondo"
+    DisplayAbbreviation = "EN"
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = "http://www.endomondo.com/profile/{0}"
     UserActivityURL = "http://www.endomondo.com/workouts/{1}/{0}"
