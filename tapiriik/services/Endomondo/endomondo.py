@@ -204,8 +204,8 @@ class EndomondoService(ServiceBase):
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
     def ServiceRecordIDsForPartialSyncTrigger(self, req):
-        data = json.loads(req.body)
-        delta_external_ids = [x["id"] for x in data["data"]]
+        data = json.loads(req.body.decode("UTF-8"))
+        delta_external_ids = [int(x["id"]) for x in data["data"]]
         return delta_external_ids
 
     def DownloadActivity(self, serviceRecord, activity):
