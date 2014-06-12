@@ -809,7 +809,7 @@ tapiriik.RefreshSyncCountdown = function(){
 				}
 			}
 			if (tapiriik.FastUpdateCountdownTimer === undefined){
-				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 3000);
+				tapiriik.FastUpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 10000);
 			}
 
 		}

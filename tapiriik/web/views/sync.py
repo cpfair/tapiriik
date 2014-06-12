@@ -16,18 +16,7 @@ def sync_status(req):
 
     stats = db.stats.find_one()
     syncHash = 1  # Just used to refresh the dashboard page, until I get on the Angular bandwagon.
-    conns = User.GetConnectionRecordsByUser(req.user)
     errorCodes = []
-    for conn in conns:
-        syncHash = zlib.adler32(bytes(conn.HasExtendedAuthorizationDetails()), syncHash)
-        if not hasattr(conn, "SyncErrors"):
-            continue
-        for err in conn.SyncErrors:
-            syncHash = zlib.adler32(bytes(str(err), "UTF-8"), syncHash)
-            if "Code" in err and err["Code"] is not None and len(err["Code"]) > 0:
-                errorCodes.append(err["Code"])
-            else:
-                errorCodes.append("SYS-" + err["Step"])
 
     sync_status_dict = {"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
                         "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
