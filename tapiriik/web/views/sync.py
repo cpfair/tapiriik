@@ -8,11 +8,12 @@ from tapiriik.database import db
 from tapiriik.services import Service
 from datetime import datetime
 import zlib
+import random
 
 
 def sync_status(req):
     if not req.user:
-        return HttpResponse(status=403)
+        return HttpResponse(json.dumps({"Hash": random.randint(0,9999)}), mimetype="application/json")
 
     stats = db.stats.find_one()
     syncHash = 1  # Just used to refresh the dashboard page, until I get on the Angular bandwagon.
