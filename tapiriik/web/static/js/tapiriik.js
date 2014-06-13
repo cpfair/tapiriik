@@ -756,6 +756,11 @@ tapiriik.UpdateSyncCountdown = function(){
 		tapiriik.SynchronizationStep = data.SynchronizationStep;
 		tapiriik.SynchronizationWaitTime = data.SynchronizationWaitTime;
 		tapiriik.RefreshSyncCountdown();
+	}, error:function(req, opts, error){
+		// I trashed the session store somehow, and everyone got logged out.
+		if (req.status == 403) {
+			window.location.reload();
+		}
 	}});
 };
 tapiriik.FormatTimespan = function(spanMillis){
