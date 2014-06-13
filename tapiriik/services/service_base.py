@@ -36,7 +36,7 @@ class ServiceBase:
     ReceivesNonGPSActivitiesWithOtherSensorData = True
 
     # Causes synchronizations to be skipped until...
-    #  - One is triggered (via IDs returned by ServiceRecordIDsForPartialSyncTrigger or PollPartialSyncTrigger)
+    #  - One is triggered (via IDs returned by ExternalIDsForPartialSyncTrigger or PollPartialSyncTrigger)
     #  - One is necessitated (non-partial sync, possibility of uploading new activities, etc)
     PartialSyncRequiresTrigger = False
     # Timedelta for polling to happen at (or None for no polling)
@@ -107,7 +107,7 @@ class ServiceBase:
         else:
             raise InvalidServiceOperationException
 
-    def ServiceRecordIDsForPartialSyncTrigger(self, req):
+    def ExternalIDsForPartialSyncTrigger(self, req):
         raise NotImplementedError
 
     def ConfigurationUpdating(self, serviceRecord, newConfig, oldConfig):

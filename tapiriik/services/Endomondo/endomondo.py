@@ -203,7 +203,7 @@ class EndomondoService(ServiceBase):
         assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
-    def ServiceRecordIDsForPartialSyncTrigger(self, req):
+    def ExternalIDsForPartialSyncTrigger(self, req):
         data = json.loads(req.body.decode("UTF-8"))
         delta_external_ids = [int(x["id"]) for x in data["data"]]
         return delta_external_ids

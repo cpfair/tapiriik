@@ -83,7 +83,7 @@ def sync_clear_errorgroup(req, service, group):
 @require_POST
 def sync_trigger_partial_sync_callback(req, service):
     svc = Service.FromID(service)
-    affected_connection_external_ids = svc.ServiceRecordIDsForPartialSyncTrigger(req)
+    affected_connection_external_ids = svc.ExternalIDsForPartialSyncTrigger(req)
     db.connections.update({"Service": service, "ExternalID": {"$in": affected_connection_external_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
     # Will turn this on once there's a sync-delay option
     # db.users.update({"ConnectedServices.ID": {"$in": affected_connection_ids}}, {"$set": {"NextSynchronization": datetime.utcnow()}}, multi=True) # It would be nicer to use the Sync.Schedule... method, but I want to cleanly do this in bulk
