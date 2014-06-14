@@ -181,7 +181,7 @@ class TrainingPeaksService(ServiceBase):
             raise APIException("Unable to upload activity response " + resp.text + " status " + str(resp.status_code))
 
     def GenerateUserProfileURL(self, serviceRecord):
-        return ""
+        return None
 
     def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
-        return ""
+        return None

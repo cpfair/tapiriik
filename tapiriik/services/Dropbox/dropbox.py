@@ -353,10 +353,10 @@ class DropboxService(ServiceBase):
 
     def GenerateUserProfileURL(self, serviceRecord):
         if not serviceRecord.Authorization["Full"]:
-            syncRoot = self.DefaultAppFolder.strip("/")
+            userFolder = self.DefaultAppFolder.strip("/")
         else:
-            syncRoot = serviceRecord.Config["SyncRoot"].strip("/")
-        return "https://www.dropbox.com/home/%s" % syncRoot
+            userFolder = serviceRecord.Config["SyncRoot"].strip("/")
+        return "https://www.dropbox.com/home/%s" % userFolder
 
     def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
         if serviceRecord.Authorization["Full"]:
@@ -365,6 +365,5 @@ class DropboxService(ServiceBase):
         else:
             relPath = activityExternalID.replace(self.DefaultAppFolder, "", 1)
         head, tail = os.path.split(relPath)
-        head = "/" + head.strip("/")
         params = {'select' : tail }
-        return self.GenerateUserProfileURL(serviceRecord) + head.rstrip("/") + "?" + urlencode(params)
+        return self.GenerateUserProfileURL(serviceRecord) + head + "?" + urlencode(params)

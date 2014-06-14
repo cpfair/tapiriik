@@ -220,6 +220,7 @@ class SynchronizationTask:
                 {
                     "Processed": presc.ProcessedTimestamp,
                     "Synchronized": presc.SynchronizedTimestamp,
+                    "ServiceKeys": list(presc.ServiceKeys),
                     "Exception": _packUserException(presc.UserException)
                 }) for svcId, presc in prescences.items()])
 
@@ -236,8 +237,7 @@ class SynchronizationTask:
                 "Distance": x.Distance,
                 "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
-                "Abscence": _activityPrescences(x.NotPresentOnServices),
-                "ServiceKeys": x.ServiceKeys
+                "Abscence": _activityPrescences(x.NotPresentOnServices)
             }
             for x in self._activityRecords
         ]
@@ -269,7 +269,8 @@ class SynchronizationTask:
                 for svc, absent in rec.Abscence.items():
                     rec.NotPresentOnServices[svc] = ActivityServicePrescence(absent["Processed"], absent["Synchronized"], _unpackUserException(absent["Exception"]))
                 for svc, present in rec.Prescence.items():
-                    rec.PresentOnServices[svc] = ActivityServicePrescence(present["Processed"], present["Synchronized"], _unpackUserException(present["Exception"]))
+                    serviceKeys = present["serviceKeys"] if "serviceKeys" in present else []
+                    rec.PresentOnServices[svc] = ActivityServicePrescence(present["Processed"], present["Synchronized"], _unpackUserException(present["Exception"]), serviceKeys=serviceKeys)
                 del rec.Prescence
                 del rec.Abscence
                 rec.Touched = False
@@ -349,7 +350,7 @@ class SynchronizationTask:
             if not hasattr(act, "ServiceKeys"):
                 act.ServiceKeys = []
             if hasattr(act, "ServiceKey") and act.ServiceKey is not None:
-                act.ServiceKeys.append({"id" : conn._id, "serviceKey": act.ServiceKey })
+                act.ServiceKeys.append({"Service" : conn.Service.ID, "ServiceKey": act.ServiceKey })
                 del act.ServiceKey
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
@@ -614,10 +615,12 @@ class SynchronizationTask:
     def _updateActivityRecordInitialPrescence(self, activity):
         for connWithExistingActivityId in activity.ServiceDataCollection.keys():
             connWithExistingActivity = [x for x in self._serviceConnections if x._id == connWithExistingActivityId][0]
-            activity.Record.MarkAsPresentOn(connWithExistingActivity)
+            serviceKeys = [x["ServiceKey"] for x in activity.ServiceKeys if x["Service"] == connWithExistingActivity.Service.ID]
+            activity.Record.MarkAsPresentOn(connWithExistingActivity, serviceKeys=serviceKeys)
         for conn in self._serviceConnections:
             if hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
-                activity.Record.MarkAsPresentOn(conn)
+                serviceKeys = [x["ServiceKey"] for x in activity.ServiceKeys if x["Service"] == conn.Service.ID]
+                activity.Record.MarkAsPresentOn(conn, serviceKeys=serviceKeys)
 
     def _downloadActivity(self, activity):
         act = None
@@ -880,13 +883,12 @@ class SynchronizationTask:
                             except UploadException:
                                 continue # At this point it's already been added to the error collection, so we can just bail.
                             logger.info("\t  Uploaded")
-
-                            activity.Record.MarkAsSynchronizedTo(destinationSvcRecord)
+                            serviceKeys = [uploaded_external_id] if uploaded_external_id else []
+                            activity.Record.MarkAsSynchronizedTo(destinationSvcRecord, serviceKeys=serviceKeys)
 
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
                                 db.uploaded_activities.insert({"ExternalID": uploaded_external_id, "Service": destSvc.ID, "UserExternalID": destinationSvcRecord.ExternalID, "Timestamp": datetime.utcnow()})
-                                activity.Record.ServiceKeys.append({"id" : destinationSvcRecord._id, "serviceKey": uploaded_external_id })
                             # flag as successful
                             db.connections.update({"_id": destinationSvcRecord._id},
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
