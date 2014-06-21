@@ -117,8 +117,14 @@ body {
 	font-size:28%;
 }
 .logo a {
+	vertical-align: top;
+	display: inline-block;
 	color:inherit;
 	text-decoration: none;
+}
+.logo a img {
+	vertical-align: top;
+	display: inline-block;
 }
 .logoPad {
 	margin-top:150px;
