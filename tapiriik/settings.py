@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime
 # Django settings for tapiriik project.
 
 DEBUG = True
@@ -149,6 +149,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'tapiriik.web.context_processors.js_bridge',
     'tapiriik.web.context_processors.stats',
     'tapiriik.web.context_processors.providers',
+    'tapiriik.web.context_processors.celebration_mode',
     'django.core.context_processors.static',)
 
 INSTALLED_APPS = (
@@ -208,6 +209,64 @@ PP_RECEIVER_ID = "NR6NTNSRT7NDJ"
 PAYMENT_AMOUNT = 2
 PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
+
+
+# Celebration mode config
+# Because why not, I'm waiting for my account to get to the front of the sync queue.
+# Direct requests contact@tapiriik.com
+
+CELEBRATION_MODES = {
+    (
+        datetime(day=21, month=6, year=datetime.now().year, hour=0, minute=0),
+        datetime(day=21, month=6, year=datetime.now().year, hour=23, minute=59)
+    ): {
+        "Logo": "tapiriik-inuktitut.png",
+        "Subtitle": "National Aboriginal Day",
+        "TitleText": "ᖃᐃᒋᑦ, ᐊᖅᑲᖅᑕ ᐅᖃᐅᓰᑦ ᐃᓚᑦᓯᓪᓗᒋᑦ ᐃᖕᒥᓐᓂᖕᓄᑦ ᑐᑭᓯᓯᓐᓈᔪᖕᓇᖅᑎᓪᓚᒋᑦ (Genesis 11:7)" # Fitting
+    },
+    (
+        datetime(day=28, month=6, year=2014, hour=0, minute=0), # Playing it safe
+        datetime(day=29, month=6, year=2014, hour=23, minute=59)
+    ): {
+        "Logo": "tapiriik-arabic.png", # تبريك
+        "Subtitle": "Ramadan Mubarak! !رمضان مبارك", # I'm trusting you, magic RTL support!
+        "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
+    },
+    (
+        datetime(day=28, month=7, year=2014, hour=0, minute=0),
+        datetime(day=29, month=7, year=2014, hour=23, minute=59)
+    ): {
+        "Logo": "tapiriik-arabic.png",
+        "Subtitle": "Ramadan Kareem! !رمضان كريـم",
+        "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
+    },
+    (
+        datetime(day=23, month=10, year=2014, hour=0, minute=0),
+        datetime(day=23, month=10, year=2014, hour=23, minute=59)
+    ): {
+        "Logo": "tapiriik-hindi.png", # तआपेरीक
+        "Subtitle": "Shubh Deepawali! शुभ दीपावली!",
+        "TitleText": "ॐ शान्ति शान्ति शान्ति"
+    },
+    (
+        datetime(day=6, month=11, year=2014, hour=0, minute=0),
+        datetime(day=6, month=11, year=2014, hour=23, minute=59)
+    ): {
+        "Logo": "tapiriik-punjabi.png", # ਤਾਪਿਰੀਕ
+        "Subtitle": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ!",
+        "TitleText": "ਆਪੁ ਗਇਆ ਸੁਖੁ ਪਾਇਆ ਮਿਲਿ ਸਲਲੈ ਸਲਲ ਸਮਾਇ"
+    },
+    (
+        datetime(day=3, month=10, year=2014, hour=18, minute=0),
+        datetime(day=4, month=10, year=2014, hour=18, minute=0)
+    ): {
+        "Logo": "tapiriik-hebrew.png", # טפּרכּ
+        "Subtitle": "!לְשָׁנָה טוֹבָה",
+        "TitleText": "הָבָה, נֵרְדָה, וְנָבְלָה שָׁם, שְׂפָתָם--אֲשֶׁר לֹא יִשְׁמְעוּ, אִישׁ שְׂפַת רֵעֵהוּ. (Genesis 11:7)"
+    },
+}
+
+
 
 # Hidden from regular signup
 SOFT_LAUNCH_SERVICES = ["endomondo"]
