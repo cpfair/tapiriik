@@ -100,9 +100,11 @@ def aggregateCommonErrors():
             "var errorMatch = new RegExp(/\\n([^\\n]+)\\n\\nLOCALS:/);"
             "if (!this.SyncErrors) return;"
             "var id = this._id;"
+            "var svc = this.Service;"
             "this.SyncErrors.forEach(function(error){"
                 "var message = error.Message.match(errorMatch)[1];"
-                "emit(message.substring(0, 60),{count:1, connections:[id], exemplar:message});"
+                "var key = {service: svc, stem: message.substring(0, 60)};"
+                "emit(key, {count:1, connections:[id], exemplar:message});"
             "});"
         "}"
         )
