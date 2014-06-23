@@ -2,7 +2,7 @@
 
 # Install system requirements
 sudo apt-get update
-sudo apt-get install -y python3-pip libxml2-dev libxslt-dev zlib1g-dev mongodb git
+sudo apt-get install -y python3-pip libxml2-dev libxslt-dev zlib1g-dev mongodb git redis-server
 
 # Fix pip
 pip3 install --upgrade pip

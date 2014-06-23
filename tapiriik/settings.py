@@ -200,6 +200,7 @@ LOGGING = {
 TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
 MONGO_HOST = "localhost"
+REDIS_HOST = "localhost"
 
 WEB_ROOT = 'http://localhost:8000'
 
