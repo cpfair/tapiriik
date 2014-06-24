@@ -76,8 +76,6 @@ class EndomondoService(ServiceBase):
 
     ReceivesNonGPSActivitiesWithOtherSensorData = False
 
-    _oauth_token_secrets = {}
-
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
 
@@ -91,8 +89,7 @@ class EndomondoService(ServiceBase):
         oauthSession = self._oauthSession(callback_uri=WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"}))
         tokens = oauthSession.fetch_request_token("https://api.endomondo.com/oauth/request_token")
         redis_token_key = 'endomondo:oauth:%s' % tokens["oauth_token"]
-        redis.set(redis_token_key, tokens["oauth_token_secret"])
-        redis.expire(redis_token_key, timedelta(hours=24))
+        redis.setex(redis_token_key, tokens["oauth_token_secret"], timedelta(hours=24))
         return oauthSession.authorization_url("https://www.endomondo.com/oauth/authorize")
 
     def RetrieveAuthorizationToken(self, req, level):

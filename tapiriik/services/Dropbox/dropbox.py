@@ -5,14 +5,15 @@ from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.exception_tools import strip_context
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.tcx import TCXIO
-from tapiriik.database import cachedb
+from tapiriik.database import cachedb, redis
 from dropbox import client, rest, session
 from django.core.urlresolvers import reverse
 import re
 import lxml
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import bson
+import pickle
 logger = logging.getLogger(__name__)
 
 class DropboxService(ServiceBase):
@@ -46,9 +47,6 @@ class DropboxService(ServiceBase):
 
     SupportedActivities = ActivityTaggingTable.keys()
 
-    def __init__(self):
-        self.OutstandingReqTokens = {}
-
     def _getClient(self, serviceRec):
         if serviceRec.Authorization["Full"]:
             sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
@@ -72,7 +70,7 @@ class DropboxService(ServiceBase):
             sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
 
         reqToken = sess.obtain_request_token()
-        self.OutstandingReqTokens[reqToken.key] = reqToken
+        redis.setex("dropbox:oauth:%s" % reqToken.key, pickle.dumps(reqToken), timedelta(hours=24))
         return sess.build_authorize_url(reqToken, oauth_callback=WEB_ROOT + reverse("oauth_return", kwargs={"service": "dropbox", "level": "full" if full else "normal"}))
 
     def _getUserId(self, serviceRec):
@@ -82,8 +80,13 @@ class DropboxService(ServiceBase):
     def RetrieveAuthorizationToken(self, req, level):
         from tapiriik.services import Service
         tokenKey = req.GET["oauth_token"]
-        token = self.OutstandingReqTokens[tokenKey]
-        del self.OutstandingReqTokens[tokenKey]
+
+        redis_key = "dropbox:oauth:%s" % tokenKey
+        token = redis.get(redis_key)
+        assert token
+        token = pickle.loads(token)
+        redis.delete(redis_key)
+
         full = level == "full"
         if full:
             sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")

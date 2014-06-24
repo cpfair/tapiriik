@@ -9,4 +9,4 @@ cachedb = _connection["tapiriik_cache"]
 tzdb = _connection["tapiriik_tz"]
 
 # Redis
-redis = redis_client.StrictRedis(host=REDIS_HOST)
+redis = redis_client.Redis(host=REDIS_HOST)
