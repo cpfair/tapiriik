@@ -32,8 +32,13 @@
 		<div class="contentWrap">
 			<div class="mainBlock">
 				<div class="logo">
-					<a href="/">tapiriik</a>
-					<div class="sub">keeps your fitness in sync</div>
+					{% if celebration_mode %}
+						<a href="/"><img src="{{ STATIC_URL}}img/{{ celebration_mode.Logo }}" title="{{ celebration_mode.TitleText }}" alt="{{ celebration_mode.TitleText }}"/></a>
+						<div class="sub">{{ celebration_mode.Subtitle }}</div>
+					{% else %}
+						<a href="/">tapiriik</a>
+						<div class="sub">keeps your fitness in sync</div>
+					{% endif %}
 				</div>
 				<div class="logoPad"></div>
 				<div class="contentOuterBorder">
@@ -53,7 +58,6 @@
 	    <div class="environs">
 	    	<div class="mountains">
 	    		<div id="a" class="mountain"></div><div id="b" class="mountain"></div><div id="c" class="mountain"></div>
-	    		<div class="snow"></div>
 	    	</div>
 	    	<div class="sun"></div>
 	    </div>

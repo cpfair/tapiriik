@@ -2,6 +2,7 @@ from tapiriik.settings import WEB_ROOT, ENDOMONDO_CLIENT_KEY, ENDOMONDO_CLIENT_S
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
+from tapiriik.database import redis
 
 from django.core.urlresolvers import reverse
 from datetime import timedelta, datetime
@@ -75,8 +76,6 @@ class EndomondoService(ServiceBase):
 
     ReceivesNonGPSActivitiesWithOtherSensorData = False
 
-    _oauth_token_secrets = {}
-
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
 
@@ -89,11 +88,16 @@ class EndomondoService(ServiceBase):
     def GenerateUserAuthorizationURL(self, level=None):
         oauthSession = self._oauthSession(callback_uri=WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"}))
         tokens = oauthSession.fetch_request_token("https://api.endomondo.com/oauth/request_token")
-        self._oauth_token_secrets[tokens["oauth_token"]] = tokens["oauth_token_secret"]
+        redis_token_key = 'endomondo:oauth:%s' % tokens["oauth_token"]
+        redis.setex(redis_token_key, tokens["oauth_token_secret"], timedelta(hours=24))
         return oauthSession.authorization_url("https://www.endomondo.com/oauth/authorize")
 
     def RetrieveAuthorizationToken(self, req, level):
-        oauthSession = self._oauthSession(resource_owner_secret=self._oauth_token_secrets[req.GET["oauth_token"]])
+        redis_token_key = "endomondo:oauth:%s" % req.GET["oauth_token"]
+        secret = redis.get(redis_token_key)
+        assert secret
+        redis.delete(redis_token_key)
+        oauthSession = self._oauthSession(resource_owner_secret=secret)
         oauthSession.parse_authorization_response(req.get_full_path())
         tokens = oauthSession.fetch_access_token("https://api.endomondo.com/oauth/access_token")
         userInfo = oauthSession.get("https://api.endomondo.com/api/1/user")
@@ -204,7 +208,7 @@ class EndomondoService(ServiceBase):
         assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
-    def ServiceRecordIDsForPartialSyncTrigger(self, req):
+    def ExternalIDsForPartialSyncTrigger(self, req):
         data = json.loads(req.body.decode("UTF-8"))
         delta_external_ids = [int(x["id"]) for x in data["data"]]
         return delta_external_ids

@@ -1,8 +1,9 @@
 from tapiriik.services import Service
 from tapiriik.auth import User
 from tapiriik.sync import Sync
-from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES, DISABLED_SERVICES, WITHDRAWN_SERVICES
+from tapiriik.settings import SITE_VER, PP_WEBSCR, PP_BUTTON_ID, SOFT_LAUNCH_SERVICES, DISABLED_SERVICES, WITHDRAWN_SERVICES, CELEBRATION_MODES
 from tapiriik.database import db
+from datetime import datetime
 import json
 
 
@@ -63,3 +64,12 @@ def js_bridge(req):
 
 def stats(req):
     return {"stats": db.stats.find_one()}
+
+def celebration_mode(req):
+    active_config = None
+    now = datetime.now()
+    for date_range, config in CELEBRATION_MODES.items():
+        if date_range[0] <= now and date_range[1] >= now:
+            active_config = config
+            break
+    return {"celebration_mode": active_config}
