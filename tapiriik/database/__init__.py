@@ -1,12 +1,18 @@
-from pymongo import MongoClient
-from tapiriik.settings import MONGO_HOST, REDIS_HOST
-import redis as redis_client
+from pymongo import MongoClient, MongoReplicaSetClient
+from tapiriik.settings import MONGO_HOST, MONGO_REPLICA_SET, MONGO_CLIENT_OPTIONS, REDIS_HOST
 
 # MongoDB
-_connection = MongoClient(host=MONGO_HOST)
+
+client_class = MongoClient if not MONGO_REPLICA_SET else MongoReplicaSetClient
+_connection = client_class(host=MONGO_HOST, replicaSet=MONGO_REPLICA_SET, **MONGO_CLIENT_OPTIONS)
 db = _connection["tapiriik"]
 cachedb = _connection["tapiriik_cache"]
 tzdb = _connection["tapiriik_tz"]
 
 # Redis
-redis = redis_client.Redis(host=REDIS_HOST)
+if REDIS_HOST:
+	import redis as redis_client
+	redis = redis_client.Redis(host=REDIS_HOST)
+
+def close_connections():
+	_connection.close()
