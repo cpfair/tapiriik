@@ -13,6 +13,8 @@ tzdb = _connection["tapiriik_tz"]
 if REDIS_HOST:
 	import redis as redis_client
 	redis = redis_client.Redis(host=REDIS_HOST)
+else:
+	redis = None # Must be defined
 
 def close_connections():
 	_connection.close()
