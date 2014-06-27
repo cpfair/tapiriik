@@ -3,6 +3,7 @@ from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, Servic
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from .activity_record import ActivityRecord, ActivityServicePrescence
 from datetime import datetime, timedelta
+from pymongo.read_preferences import ReadPreference
 import sys
 import os
 import socket
@@ -85,6 +86,8 @@ class Sync:
 
     def PerformGlobalSync(heartbeat_callback=None, version=None):
         from tapiriik.auth import User
+        # Read against primary, otherwise workers will probably spin too much failing to acquire these locks
+        # I should probably use a message queue for this, anyways
         users = db.users.find({
                 "NextSynchronization": {"$lte": datetime.utcnow()},
                 "SynchronizationWorker": None,
@@ -92,7 +95,8 @@ class Sync:
                     {"SynchronizationHostRestriction": {"$exists": False}},
                     {"SynchronizationHostRestriction": socket.gethostname()}
                     ]
-            }).sort("NextSynchronization").limit(1)
+            },
+            read_preference=ReadPreference.PRIMARY).sort("NextSynchronization").limit(1)
         userCt = 0
         for user in users:
             userCt += 1
@@ -136,8 +140,9 @@ class SynchronizationTask:
         self.user = user
 
     def _lockUser(self):
+        # Force these operations against the primary so there's never any weirdness
         db.users.update({"_id": self.user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
-        lockCheck = db.users.find_one({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()})
+        lockCheck = db.users.find_one({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, read_preference=ReadPreference.PRIMARY)
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
