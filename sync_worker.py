@@ -1,6 +1,6 @@
 from tapiriik.requests_lib import patch_requests_with_default_timeout, patch_requests_source_address
 from tapiriik import settings
-from tapiriik.database import db
+from tapiriik.database import db, close_connections
 import time
 from datetime import datetime, timedelta
 import os
@@ -61,5 +61,6 @@ while Run:
 
 print("Sync worker shutting down cleanly")
 db.sync_workers.remove({"Process": os.getpid(), "Host": socket.gethostname()})
-
+print("Closing database connections")
+close_connections()
 sys.stdout.flush()
