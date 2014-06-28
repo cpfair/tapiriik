@@ -1,4 +1,4 @@
-from tapiriik.database import db
+from tapiriik.database import db, close_connections
 from tapiriik.requests_lib import patch_requests_source_address
 from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST
 from tapiriik import settings
@@ -49,3 +49,4 @@ def schedule_trigger_poll():
 
 if __name__ == "__main__":
 	schedule_trigger_poll()
+	close_connections()
