@@ -4,7 +4,10 @@ from tapiriik.settings import MONGO_HOST, MONGO_REPLICA_SET, MONGO_CLIENT_OPTION
 # MongoDB
 
 client_class = MongoClient if not MONGO_REPLICA_SET else MongoReplicaSetClient
-_connection = client_class(host=MONGO_HOST, replicaSet=MONGO_REPLICA_SET, **MONGO_CLIENT_OPTIONS)
+if MONGO_REPLICA_SET:
+	MONGO_CLIENT_OPTIONS["replicaSet"] = MONGO_REPLICA_SET
+
+_connection = client_class(host=MONGO_HOST, **MONGO_CLIENT_OPTIONS)
 db = _connection["tapiriik"]
 cachedb = _connection["tapiriik_cache"]
 tzdb = _connection["tapiriik_tz"]
