@@ -17,4 +17,10 @@ else:
 	redis = None # Must be defined
 
 def close_connections():
-	_connection.close()
+	try:
+		_connection.close()
+	except:
+		pass
+
+import atexit
+atexit.register(close_connections)
