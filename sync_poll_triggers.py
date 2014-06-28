@@ -1,4 +1,4 @@
-from tapiriik.database import db
+from tapiriik.database import db, close_connections
 from tapiriik.requests_lib import patch_requests_source_address
 from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST
 from tapiriik import settings
@@ -10,6 +10,7 @@ if isinstance(settings.HTTP_SOURCE_ADDR, list):
 
 from tapiriik.services import Service
 from celery import Celery
+from celery.signals import worker_shutdown
 from datetime import datetime
 
 class _celeryConfig:
@@ -20,6 +21,10 @@ class _celeryConfig:
 
 celery_app = Celery('sync_poll_triggers', broker=RABBITMQ_BROKER_URL)
 celery_app.config_from_object(_celeryConfig())
+
+@worker_shutdown.connect
+def celery_shutdown():
+	close_connections()
 
 @celery_app.task()
 def trigger_poll(service_id, index):
@@ -49,3 +54,4 @@ def schedule_trigger_poll():
 
 if __name__ == "__main__":
 	schedule_trigger_poll()
+	close_connections()

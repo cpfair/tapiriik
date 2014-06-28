@@ -18,6 +18,3 @@ else:
 
 def close_connections():
 	_connection.close()
-
-import atexit
-atexit.register(close_connections)

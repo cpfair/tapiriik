@@ -1,4 +1,4 @@
-from tapiriik.database import db
+from tapiriik.database import db, close_connections
 from datetime import datetime, timedelta
 
 # total distance synced
@@ -124,3 +124,6 @@ def aggregateCommonErrors():
     # We don't need to do anything with the result right now, just leave it there to appear in the dashboard
 
 aggregateCommonErrors()
+
+close_connections()
+
