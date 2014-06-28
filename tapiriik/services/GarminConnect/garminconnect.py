@@ -451,7 +451,7 @@ class GarminConnectService(ServiceBase):
         activityID = activity.ServiceData["ActivityID"]
         session = self._get_session(record=serviceRecord)
         self._rate_limit()
-    res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999")
+        res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999")
         try:
             raw_data = res.json()["com.garmin.activity.details.json.ActivityDetails"]
         except ValueError:
