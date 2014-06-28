@@ -1,4 +1,4 @@
-from tapiriik.database import db
+from tapiriik.database import db, close_connections
 from tapiriik.sync import SyncStep
 import os
 import signal
@@ -36,3 +36,5 @@ for worker in db.sync_workers.find({"Host": host}):
         for user in db.users.find({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}):
             print("\t Unlocking %s" % user["_id"])
         db.users.update({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}, {"$unset":{"SynchronizationWorker": True}}, multi=True)
+
+close_connections()
