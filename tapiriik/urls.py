@@ -55,6 +55,7 @@ urlpatterns = patterns('',
     url(r'^payments/claim-wait-ajax$', 'tapiriik.web.views.payments_claim_wait_ajax', {}, name='payments_claim_wait_ajax'),
     url(r'^payments/claim/(?P<code>[a-f0-9]+)$', 'tapiriik.web.views.payments_claim_return', {}, name='payments_claim_return'),
     url(r'^payments/return$', 'tapiriik.web.views.payments_return', {}, name='payments_return'),
+    url(r'^payments/confirmed$', 'tapiriik.web.views.payments_confirmed', {}, name='payments_confirmed'),
     url(r'^payments/ipn$', 'tapiriik.web.views.payments_ipn', {}, name='payments_ipn'),
 
     url(r'^ab/begin/(?P<key>[^/]+)$', 'tapiriik.web.views.ab_web_experiment_begin', {}, name='ab_web_experiment_begin'),

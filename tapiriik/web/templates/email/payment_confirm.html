@@ -1,0 +1,11 @@
+{% extends "email/template.html" %}
+{% block content %}
+<h1>You're good to go</h1>
+<p>Your payment has been processed and your tapiriik account is now set up for automatic synchronization. Of course, you can still visit <a href="{{ url|safe }}">tapiriik.com</a> at any time to trigger an immediate synchronization.</p>
+{% endblock %}
+{% block plaintextcontent %}
+Your payment has been processed and your tapiriik account is now set up for automatic synchronization.
+
+Of course, you can still visit {{ url|safe }} at any time to trigger an immediate synchronization.
+
+{% endblock %}
