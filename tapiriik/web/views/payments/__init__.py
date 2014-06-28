@@ -36,13 +36,30 @@ def payments_ipn(req):
         ab_experiment_complete("autosync", user["_id"], float(req.POST["mc_gross"]))
     except:
         logger.error("AB experiment did not complete - no experiment running?")
+
+    payments_send_confirmation(req, req.POST["payer_email"])
     return HttpResponse()
 
 
+def payments_send_confirmation(request, email):
+    dashboard_url = request.build_absolute_uri(reverse("dashboard"))
+    from tapiriik.web.email import generate_message_from_template, send_email
+    message, plaintext_message = generate_message_from_template("email/payment_confirm.html", {"url": dashboard_url})
+    send_email(email, "Thanks!", message, plaintext_message=plaintext_message)
+
 def payments_return(req):
-    if req.user is None or User.HasActivePayment(req.user):
+    if req.user is None:
         return redirect("/")
+
+    if User.HasActivePayment(req.user):
+        return redirect("payments_confirmed")
+
     return render(req, "payments/return.html")
+
+def payments_confirmed(req):
+    if req.user is None or not User.HasActivePayment(req.user):
+        return redirect("/")
+    return render(req, "payments/confirmed.html")
 
 ab_register_experiment("autosync", [2,5])
 
