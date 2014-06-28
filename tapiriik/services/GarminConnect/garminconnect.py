@@ -100,10 +100,14 @@ class GarminConnectService(ServiceBase):
         "ms": ActivityStatisticUnit.Milliseconds
     }
 
+    _obligatory_headers = {
+        "Referer": "https://sync.tapiriik.com"
+    }
+
     def __init__(self):
         cachedHierarchy = cachedb.gc_type_hierarchy.find_one()
         if not cachedHierarchy:
-            rawHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types").text
+            rawHierarchy = requests.get("http://connect.garmin.com/proxy/activity-service-1.2/json/activity_types", headers=self._obligatory_headers).text
             self._activityHierarchy = json.loads(rawHierarchy)["dictionary"]
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
@@ -239,6 +243,7 @@ class GarminConnectService(ServiceBase):
 
         self._sessionCache.Set(record.ExternalID if record else email, session)
 
+        session.headers.update(self._obligatory_headers)
 
         return session
 
@@ -446,7 +451,7 @@ class GarminConnectService(ServiceBase):
         activityID = activity.ServiceData["ActivityID"]
         session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999")
+    res = session.get("http://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999")
         try:
             raw_data = res.json()["com.garmin.activity.details.json.ActivityDetails"]
         except ValueError:
