@@ -48,6 +48,7 @@ def schedule_trigger_poll():
 					svc_schedule = svc_schedule[0]
 
 				if datetime.utcnow() - svc_schedule["LastScheduled"] > svc.PartialSyncTriggerPollInterval:
+					print("Scheduling %s-%d" % (svc.ID, idx))
 					svc_schedule["LastScheduled"] = datetime.utcnow()
 					trigger_poll.apply_async(args=[svc.ID, idx], expires=svc.PartialSyncTriggerPollInterval.total_seconds(), time_limit=svc.PartialSyncTriggerPollInterval.total_seconds())
 					db.trigger_poll_scheduling.update({"Service": svc.ID, "Index": idx}, svc_schedule, upsert=True)
