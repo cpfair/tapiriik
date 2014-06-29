@@ -18,6 +18,7 @@ class _celeryConfig:
 		"sync_poll_triggers.trigger_poll": {"queue": "tapiriik-poll"}
 	}
 	CELERYD_CONCURRENCY = 1 # Otherwise the GC rate limiting breaks since file locking is per-process.
+	CELERYD_PREFETCH_MULTIPLIER = 1 # The message queue could use some exercise.
 
 celery_app = Celery('sync_poll_triggers', broker=RABBITMQ_BROKER_URL)
 celery_app.config_from_object(_celeryConfig())
