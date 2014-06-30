@@ -18,6 +18,7 @@ def diag_requireAuth(view):
 @diag_requireAuth
 def diag_dashboard(req):
     context = {}
+    stats = db.stats.find_one()
 
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
@@ -38,6 +39,10 @@ def diag_dashboard(req):
     context["exclusionUsers"] = db.users.find({"SyncExclusionCount": {"$gt": 0}}).count()
 
     context["allWorkers"] = list(db.sync_workers.find())
+
+    # Each worker can be engaged for <= 60*60 seconds in an hour
+    context["loadFactor"] = stats["TotalSyncTimeUsed"] / (len(context["allWorkers"]) * 60 * 60)
+
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
     context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(seconds=30)]
 

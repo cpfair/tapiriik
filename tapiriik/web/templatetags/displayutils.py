@@ -8,6 +8,13 @@ register = template.Library()
 def utctimesince(value):
     return timesince(value, now=datetime.utcnow())
 
+@register.filter(name="format_fractional_percentage")
+def fractional_percentage(value):
+    try:
+        return "%d%%" % round(value * 100)
+    except:
+        return "NaN"
+
 @register.filter(name="format_meters")
 def meters_to_kms(value):
     try:
