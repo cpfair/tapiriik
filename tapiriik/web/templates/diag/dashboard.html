@@ -15,6 +15,7 @@
 		<li><b>Avg time/sync (1hr):</b> {{ stats.AverageSyncDuration|format_seconds_minutes }} min</li>
 		<li><b>Stats update:</b> {{ stats.Updated|utctimesince }} ({{ stats.Updated }} UTC)</li>
 		<li><b>Active Workers:</b> {% for worker in activeWorkers %}<tt{% if worker.Version != config.siteVer %} style="color:#aaa"{% endif %}>{{ worker.Process }}@{{ worker.Host }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+		<li><b>Spinning Workers:</b> {{ spinningWorkers|length }}</li>
 		<li>
 			<b>Stalled Workers:</b>
 			<table>
