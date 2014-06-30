@@ -10,7 +10,7 @@
 		<li><b>Sync distance rate (24hr):</b> {{ stats.LastDayDistanceSynced|format_daily_meters_hourly_rate }} km/h</li>
 		<li><b>Sync distance rate (1hr):</b> {{ stats.LastHourDistanceSynced|format_meters }} km/h</li>
 		<li><b>Sync queue head wait:</b> {{ stats.QueueHeadTime|format_seconds_minutes }} min</li>
-		<li><b>Sync time used:</b> {{ stats.TotalSyncTimeUsed|format_seconds_minutes }} min</li>
+		<li><b>Sync time used:</b> {{ stats.TotalSyncTimeUsed|format_seconds_minutes }} min ({{ loadFactor|format_fractional_percentage }} load)</li>
 		<li><b>Sync ops:</b> {{ stats.LastHourSynchronizationCount }}</li>
 		<li><b>Avg time/sync (1hr):</b> {{ stats.AverageSyncDuration|format_seconds_minutes }} min</li>
 		<li><b>Stats update:</b> {{ stats.Updated|utctimesince }} ({{ stats.Updated }} UTC)</li>
