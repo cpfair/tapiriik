@@ -41,7 +41,10 @@ def diag_dashboard(req):
     context["allWorkers"] = list(db.sync_workers.find())
 
     # Each worker can be engaged for <= 60*60 seconds in an hour
-    context["loadFactor"] = stats["TotalSyncTimeUsed"] / (len(context["allWorkers"]) * 60 * 60)
+    if len(context["allWorkers"]) > 0:
+        context["loadFactor"] = stats["TotalSyncTimeUsed"] / (len(context["allWorkers"]) * 60 * 60)
+    else:
+        context["loadFactor"] = 0
 
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
     context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(seconds=30)]
