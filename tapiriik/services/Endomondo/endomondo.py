@@ -70,7 +70,7 @@ class EndomondoService(ServiceBase):
         "swimming": ActivityType.Swimming,
         "other": ActivityType.Other,
         "wheelchair": ActivityType.Wheelchair,
-        "climbing" : Activititype.Climbing
+        "climbing" : ActivityType.Climbing
     }
 
     SupportedActivities = list(_activityMappings.values())
