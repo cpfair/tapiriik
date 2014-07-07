@@ -54,6 +54,7 @@ class GarminConnectService(ServiceBase):
                                 "rowing": ActivityType.Rowing,
                                 "elliptical": ActivityType.Elliptical,
                                 "fitness_equipment": ActivityType.Gym,
+                                "mountaineering": ActivityTYpe.Climbing,
                                 "all": ActivityType.Other  # everything will eventually resolve to this
     }
 
@@ -70,6 +71,7 @@ class GarminConnectService(ServiceBase):
                                 "rowing": ActivityType.Rowing,
                                 "elliptical": ActivityType.Elliptical,
                                 "fitness_equipment": ActivityType.Gym,
+                                "mountaineering": ActivityType.Climbing,
                                 "other": ActivityType.Other  # I guess? (vs. "all" that is)
     }
 
