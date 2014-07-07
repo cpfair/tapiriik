@@ -68,7 +68,6 @@ class EndomondoService(ServiceBase):
         "walking": ActivityType.Walking,
         "swimming": ActivityType.Swimming,
         "other": ActivityType.Other,
-        "snowshoeing": ActivityType.Walking,
         "wheelchair": ActivityType.Wheelchair,
     }
 
