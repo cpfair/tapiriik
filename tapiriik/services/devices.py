@@ -1,6 +1,9 @@
+import re
+
 class DeviceIdentifierType:
 	FIT = "fit"
 	TCX = "tcx"
+	GC = "gc"
 
 class FITDeviceIdentifier:
 	def __init__(self, manufacturer, product=None):
@@ -13,6 +16,14 @@ class TCXDeviceIdentifier:
 		self.Type = DeviceIdentifierType.TCX
 		self.Name = name
 		self.ProductID = productId
+
+class GCDeviceIdentifier:
+	def __init__(self, name):
+		# Edge 810 -> edge810
+		# They're quite stubborn with giving the whole list of these device keys.
+		# So this is really a guess.
+		self.Key = re.sub("[^a-z0-9]", "", name.lower())
+		self.Type = DeviceIdentifierType.GC
 
 class DeviceIdentifier:
 	_identifierGroups = []
@@ -55,7 +66,7 @@ class Device:
 #  - Forerunner 620 is 1623
 
 def _garminIdentifier(name, *fitIds):
-	return [TCXDeviceIdentifier("Garmin %s" % name, fitIds[0])] + [FITDeviceIdentifier(1, fitId) for fitId in fitIds]
+	return [TCXDeviceIdentifier("Garmin %s" % name, fitIds[0]), GCDeviceIdentifier(name)] + [FITDeviceIdentifier(1, fitId) for fitId in fitIds]
 
 # This list is REGEXed from the FIT SDK - I have no clue what some of the entries are...
 # Some products have international variants with different FIT IDs - the first ID given is used for TCX
