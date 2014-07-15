@@ -302,9 +302,6 @@ class GarminConnectService(ServiceBase):
                 break  # No activities on this page - empty account.
             for act in res["activities"]:
                 act = act["activity"]
-                if "sumDistance" not in act:
-                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
-                    continue
                 activity = UploadedActivity()
 
                 # Don't really know why sumSampleCountTimestamp doesn't appear in swim activities - they're definitely timestamped...
@@ -336,8 +333,8 @@ class GarminConnectService(ServiceBase):
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
 
-                # TODO: fix the distance stats to account for the fact that this incorrectly reported km instead of meters for the longest time.
-                activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
+                if "sumDistance" in act and float(act["sumDistance"]["value"]) != 0:
+                    activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
 
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
