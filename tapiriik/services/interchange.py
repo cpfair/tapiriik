@@ -24,7 +24,12 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     Other = "Other"
 
     def List():
-        return [ActivityType.Running, ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.Walking, ActivityType.Hiking, ActivityType.DownhillSkiing, ActivityType.CrossCountrySkiing, ActivityType.Snowboarding, ActivityType.Skating, ActivityType.Swimming, ActivityType.Wheelchair, ActivityType.Rowing, ActivityType.Elliptical, ActivityType.Other]
+        # I'd argue that this is marginally better than the 200+ char hardcoded list it's replacing
+        type_list = []
+        for key, value in ActivityType.__dict__.items():
+            if type(value) is str and "__" not in key:
+                type_list.append(value)
+        return type_list
 
     # The right-most element is the "most specific."
     _hierarchy = [
