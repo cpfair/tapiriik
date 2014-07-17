@@ -50,6 +50,7 @@ class GarminConnectService(ServiceBase):
                                 "skate_skiing": ActivityType.CrossCountrySkiing, # Well, it ain't downhill?
                                 "backcountry_skiing_snowboarding": ActivityType.CrossCountrySkiing,  # ish
                                 "skating": ActivityType.Skating,
+                                "inline_skating": ActivityType.InlineSkating,
                                 "swimming": ActivityType.Swimming,
                                 "rowing": ActivityType.Rowing,
                                 "elliptical": ActivityType.Elliptical,
@@ -67,6 +68,7 @@ class GarminConnectService(ServiceBase):
                                 "resort_skiing_snowboarding": ActivityType.DownhillSkiing,
                                 "cross_country_skiing": ActivityType.CrossCountrySkiing,
                                 "skating": ActivityType.Skating,
+                                "inline_skating": ActivityType.InlineSkating,
                                 "swimming": ActivityType.Swimming,
                                 "rowing": ActivityType.Rowing,
                                 "elliptical": ActivityType.Elliptical,

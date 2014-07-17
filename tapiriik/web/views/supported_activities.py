@@ -14,6 +14,7 @@ def supported_activities(req):
     activities["Cross-country skiing"] = ["xcskiing", "xc-skiing", "xc-ski", "crosscountry-skiing", ELLIPSES]
     activities["Snowboarding"] = ["snowboarding", "snowboard"]
     activities["Skating"] = ["skate", "skating"]
+    activities["InlineSkating"] = ["inline skating", "inline skate", "inlineskating", "inlineskate", "rollerblading", "rollerblade"]
     activities["Swimming"] = ["swim", "swimming"]
     activities["Wheelchair"] = ["wheelchair"]
     activities["Rowing"] = ["rowing", "row"]

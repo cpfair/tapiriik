@@ -127,6 +127,7 @@ class SportTracksService(ServiceBase):
         ActivityType.DownhillSkiing: "skiing",
         ActivityType.Snowboarding: "skiing: snowboarding",
         ActivityType.Skating: "skating",
+        ActivityType.InlineSkating: "skating: inline",
         ActivityType.Swimming: "swimming",
         ActivityType.Rowing: "rowing",
         ActivityType.Elliptical: "gym: elliptical",

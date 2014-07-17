@@ -22,21 +22,42 @@ class RunKeeperService(ServiceBase):
     UserProfileURL = "http://runkeeper.com/user/{0}/profile"
     AuthenticationNoFrame = True  # Chrome update broke this
 
-    _activityMappings = {"Running": ActivityType.Running,
-                         "Cycling": ActivityType.Cycling,
-                         "Mountain Biking": ActivityType.MountainBiking,
-                         "Walking": ActivityType.Walking,
-                         "Hiking": ActivityType.Hiking,
-                         "Downhill Skiing": ActivityType.DownhillSkiing,
-                         "Cross-Country Skiing": ActivityType.CrossCountrySkiing,
-                         "Snowboarding": ActivityType.Snowboarding,
-                         "Skating": ActivityType.Skating,
-                         "Swimming": ActivityType.Swimming,
-                         "Wheelchair": ActivityType.Wheelchair,
-                         "Rowing": ActivityType.Rowing,
-                         "Elliptical": ActivityType.Elliptical,
-                         "Other": ActivityType.Other}
-    SupportedActivities = list(_activityMappings.values())
+    _activityTypeMappings = {
+        ActivityType.Running: "Running",
+        ActivityType.Cycling: "Cycling",
+        ActivityType.MountainBiking: "Mountain Biking",
+        ActivityType.Walking: "Walking",
+        ActivityType.Hiking: "Hiking",
+        ActivityType.DownhillSkiing: "Downhill Skiing",
+        ActivityType.CrossCountrySkiing: "Cross-Country Skiing",
+        ActivityType.Snowboarding: "Snowboarding",
+        ActivityType.Skating: "Skating",
+        ActivityType.InlineSkating: "Skating",
+        ActivityType.Swimming: "Swimming",
+        ActivityType.Wheelchair: "Wheelchair",
+        ActivityType.Rowing: "Rowing",
+        ActivityType.Elliptical: "Elliptical",
+        ActivityType.Other: "Other",
+    }
+
+    _reverseActivityTypeMappings = {
+        "Running": ActivityType.Running,
+        "Cycling": ActivityType.Cycling,
+        "Mountain Biking": ActivityType.MountainBiking,
+        "Walking": ActivityType.Walking,
+        "Hiking": ActivityType.Hiking,
+        "Downhill Skiing": ActivityType.DownhillSkiing,
+        "Cross-Country Skiing": ActivityType.CrossCountrySkiing,
+        "Snowboarding": ActivityType.Snowboarding,
+        "Skating": ActivityType.Skating,
+        "Swimming": ActivityType.Swimming,
+        "Wheelchair": ActivityType.Wheelchair,
+        "Rowing": ActivityType.Rowing,
+        "Elliptical": ActivityType.Elliptical,
+        "Other": ActivityType.Other,
+    }
+
+    SupportedActivities = list(_activityTypeMappings.keys())
 
     SupportsHR = True
     SupportsCalories = True
@@ -147,8 +168,8 @@ class RunKeeperService(ServiceBase):
         if (activity.EndTime - activity.StartTime).total_seconds() > 0:
             activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerHour, avg=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value / ((activity.EndTime - activity.StartTime).total_seconds() / 60 / 60))
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
-        if rawRecord["type"] in self._activityMappings:
-            activity.Type = self._activityMappings[rawRecord["type"]]
+        if rawRecord["type"] in self._reverseActivityTypeMappings:
+            activity.Type = self._reverseActivityTypeMappings[rawRecord["type"]]
         activity.GPS = rawRecord["has_path"]
         activity.CalculateUID()
         return activity
@@ -237,7 +258,7 @@ class RunKeeperService(ServiceBase):
         ''' create data dict for posting to RK API '''
         record = {}
 
-        record["type"] = [key for key in self._activityMappings if self._activityMappings[key] == activity.Type][0]
+        record["type"] = self._activityTypeMappings[activity.Type]
         record["start_time"] = activity.StartTime.strftime("%a, %d %b %Y %H:%M:%S")
         if activity.Stats.MovingTime.Value is not None:
             record["duration"] = activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value

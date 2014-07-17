@@ -15,6 +15,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     CrossCountrySkiing = "XCSkiing"
     Snowboarding = "Snowboarding"
     Skating = "Skating"
+    InlineSkating = "InlineSkating"
     Swimming = "Swimming"
     Wheelchair = "Wheelchair"
     Rowing = "Rowing"
@@ -24,12 +25,13 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     Other = "Other"
 
     def List():
-        return [ActivityType.Running, ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.Walking, ActivityType.Hiking, ActivityType.DownhillSkiing, ActivityType.CrossCountrySkiing, ActivityType.Snowboarding, ActivityType.Skating, ActivityType.Swimming, ActivityType.Wheelchair, ActivityType.Rowing, ActivityType.Elliptical, ActivityType.Other]
+        return [ActivityType.Running, ActivityType.Cycling, ActivityType.MountainBiking, ActivityType.Walking, ActivityType.Hiking, ActivityType.DownhillSkiing, ActivityType.CrossCountrySkiing, ActivityType.Snowboarding, ActivityType.Skating, ActivityType.InlineSkating, ActivityType.Swimming, ActivityType.Wheelchair, ActivityType.Rowing, ActivityType.Elliptical, ActivityType.Other]
 
     # The right-most element is the "most specific."
     _hierarchy = [
         [Cycling, MountainBiking],
-        [Running, Walking, Hiking]
+        [Running, Walking, Hiking],
+        [Skating, InlineSkating],
     ]
     def PickMostSpecific(types):
         types = [x for x in types if x and x is not ActivityType.Other]
