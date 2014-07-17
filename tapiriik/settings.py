@@ -217,7 +217,7 @@ PAYMENT_CURRENCY = "USD"
 
 # Celebration mode config
 # Because why not, I'm waiting for my account to get to the front of the sync queue.
-# Direct requests contact@tapiriik.com
+# Direct requests to contact@tapiriik.com
 
 CELEBRATION_MODES = {
     (
@@ -237,11 +237,11 @@ CELEBRATION_MODES = {
         "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
     },
     (
-        datetime(day=28, month=7, year=2014, hour=0, minute=0),
-        datetime(day=29, month=7, year=2014, hour=23, minute=59)
+        datetime(day=29, month=7, year=2014, hour=0, minute=0),
+        datetime(day=30, month=7, year=2014, hour=23, minute=59)
     ): {
         "Logo": "tapiriik-arabic.png",
-        "Subtitle": "Ramadan Kareem! !رمضان كريـم",
+        "Subtitle": "Eid Mubarak! !عيد مبارك‎",
         "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
     },
     (
