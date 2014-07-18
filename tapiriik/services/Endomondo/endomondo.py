@@ -227,6 +227,11 @@ class EndomondoService(ServiceBase):
 
         for pt in resp["points"]:
             wp = Waypoint()
+            if "time" not in pt:
+                # Manually-entered activities with a course attached to them have date-less waypoints
+                # It'd be nice to transfer those courses, but it's a concept few other sites support AFAIK
+                # So, ignore the points entirely
+                continue
             wp.Timestamp = self._parseDate(pt["time"])
 
             if ("lat" in pt and "lng" in pt) or "alt" in pt:
