@@ -60,7 +60,7 @@
 	{% endfor %}
 
 {% else %}
-<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, RunKeeper, Strava, TrainingPeaks, SportTracks.mobi and Dropbox<br/>
+<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, RunKeeper, Strava, TrainingPeaks, SportTracks.mobi, Endomondo and Dropbox<br/>
 (your heart rate, cadence, power, and temperature data syncs too)</p>
 	{% for provider in service_providers %}
 		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
