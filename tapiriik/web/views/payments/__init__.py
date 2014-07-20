@@ -32,10 +32,6 @@ def payments_ipn(req):
     payment = Payments.LogPayment(req.POST["txn_id"], amount=req.POST["mc_gross"], initialAssociatedAccount=req.POST["custom"], email=req.POST["payer_email"])
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
-    try:
-        ab_experiment_complete("autosync", user["_id"], float(req.POST["mc_gross"]))
-    except:
-        logger.error("AB experiment did not complete - no experiment running?")
 
     payments_send_confirmation(req, req.POST["payer_email"])
     return HttpResponse()

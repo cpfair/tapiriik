@@ -48,7 +48,6 @@ tapiriik.Init = function(){
 	$(".paymentButton").click(function(){
 		$(".paymentButton").slideUp();
 		$(".paymentForm").slideDown();
-		tapiriik.AB_Begin("autosync");
 		return false;
 	});
 	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
