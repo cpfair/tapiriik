@@ -273,7 +273,7 @@ CELEBRATION_MODES = {
 
 
 # Hidden from regular signup
-SOFT_LAUNCH_SERVICES = ["endomondo"]
+SOFT_LAUNCH_SERVICES = []
 
 # Visibly disabled + excluded from synchronization
 DISABLED_SERVICES = []
