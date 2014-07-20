@@ -52,6 +52,7 @@ tapiriik.Init = function(){
 		return false;
 	});
 	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
+	$(".promoButton").click(tapiriik.PaymentPromoDialogLinkClicked);
 
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
@@ -117,6 +118,9 @@ tapiriik.AddressChanged=function(){
 		return;
 	} else if (components[0]=="payments" && components[1]=="claimed"){
 		tapiriik.OpenPaymentReclaimCompletedDialog();
+		return;
+	} else if (components[0]=="payments" && components[1]=="promo"){
+		tapiriik.OpenPaymentPromoDialog();
 		return;
 	} else if (components[0]=="configure") {
 		if (components[1]=="dropbox" && components[2]=="setup"){
@@ -600,6 +604,11 @@ tapiriik.PaymentReclaimDialogLinkClicked = function(){
 	return false;
 };
 
+tapiriik.PaymentPromoDialogLinkClicked = function(){
+	$.address.value("/payments/promo");
+	return false;
+};
+
 tapiriik.OpenPaymentReclaimDialog = function(){
 	var form = $("<form><center><div class=\"error\">Unknown email address</div><label for=\"email\" style=\"margin-bottom:7px\">Your PayPal email address</label><input type=\"text\" autofocus style=\"width:300px;text-align:center;\" placeholder=\"remycarrier@gmail.com\" id=\"email\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>Your payment will be reassociated with the accounts you<br/>are currently connected to, and any you connect in the future.</p></center></form>");
 	var pending = false;
@@ -643,6 +652,38 @@ tapiriik.OpenPaymentReclaimCompletedDialog = function(){
 	var form = $("<center><h1>You're good to go!</h1>Your payment has been reclaimed &amp; associated with the services you are currently connected to, and any you connect in the future.<br/><button id=\"acknowledge\">Great</button></center>");
 	$("#acknowledge", form).click(function(){
 		$.address.value("");
+	});
+	tapiriik.CreateServiceDialog("tapiriik",form);
+};
+
+tapiriik.OpenPaymentPromoDialog = function(){
+	var form = $("<form><center><div class=\"error\">Invalid promo code</div><label for=\"code\" style=\"margin-bottom:7px\">Your promo code</label><input type=\"text\" autofocus style=\"width:300px;text-align:center;\" placeholder=\"PTARMIGANS-4-LIFE\" id=\"code\"><br/><button type=\"submit\" id=\"claim\">Claim</button><p>This promo code will be associated with the accounts you are <br/> currently connected to. It <b>can</b> be transferred between accounts.</p></center></form>");
+	var pending = false;
+	form.bind("submit", function(){
+		if (pending) return false;
+		pending = true;
+		$("button", form).addClass("disabled");
+		$.ajax({url:"/payments/promo-claim-ajax",
+				type:"POST",
+				data:{code: $("#code",form).val()},
+				success: function(){
+					tapiriik.OpenPaymentPromoClaimCompletedDialog();
+				},
+				error: function(data){
+					$(".error",form).show();
+				$("button",form).removeClass("disabled");
+				pending = false;
+				}});
+		return false;
+	});
+	tapiriik.CreateServiceDialog("tapiriik", form);
+};
+
+tapiriik.OpenPaymentPromoClaimCompletedDialog = function(){
+	var form = $("<center><h1>You're good to go!</h1>Your account has been set up for automatic synchronization! You can always transfer the promo code to another account at any time.<br/><button id=\"acknowledge\">Great</button></center>");
+	$("#acknowledge", form).click(function(){
+		$.address.value("");
+		window.location.reload();
 	});
 	tapiriik.CreateServiceDialog("tapiriik",form);
 };

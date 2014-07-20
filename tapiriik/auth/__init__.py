@@ -46,12 +46,19 @@ class User:
         db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
         Sync.ScheduleImmediateSync(user)
 
+    def AssociatePromo(user, promo):
+        db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Promos": {"_id": promo["_id"] if "_id" in promo else None}}}, multi=True)  # Same deal
+        db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Promos": promo}})
+        Sync.ScheduleImmediateSync(user)
+
     def HasActivePayment(user):
-        if "Payments" not in user:
-            return False
-        for payment in user["Payments"]:
+        # Payments and Promos share the essential data field - Expiry
+        # We don't really care if the payment has yet to take place yet - why would it be in the system then?
+        # (Timestamp too, but the fact we rely on it here is only for backwards compatability with some old payment records)
+        payment_like_objects = (user["Payments"] if "Payments" in user else []) + (user["Promos"] if "Promos" in user else [])
+        for payment in payment_like_objects:
             if "Expiry" in payment:
-                if payment["Expiry"] > datetime.utcnow():
+                if payment["Expiry"] == None or payment["Expiry"] > datetime.utcnow():
                     return True
             else:
                 if payment["Timestamp"] > (datetime.utcnow() - timedelta(days=365.25)):
@@ -82,6 +89,10 @@ class User:
                 if "Payments" not in user:
                     user["Payments"] = []
                 user["Payments"] += existingUser["Payments"]
+            if "Promos" in existingUser:
+                if "Promos" not in user:
+                    user["Promos"] = []
+                user["Promos"] += existingUser["Promos"]
             if "FlowExceptions" in existingUser:
                 if "FlowExceptions" not in user:
                     user["FlowExceptions"] = []

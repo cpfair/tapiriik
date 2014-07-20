@@ -46,7 +46,7 @@ $(function(){
 	<input type="hidden" name="page_style" value="tapiriik">
 	<input type="hidden" name="custom" value="{{ user|dict_get:'_id' }}">
 	<button type="submit" name="submit">On to PayPal!</button>
-	<p><a href="{% url 'payments_claim' %}" class="reclaimButton">I already paid / I want to transfer my payment</a></p>
+	<p><a href="{% url 'payments_claim' %}" class="reclaimButton">I already paid / I want to transfer my payment</a> or <a href="#" class="promoButton">I have a promo code</a></p>
 	<p><b>No auto-renewal</b>, I'll just send you an email once the year is up. Your payment will apply to <b>all your accounts</b>, present and future, and <b>may be transferred at any time</b>.</p>
 </form>
 <noscript><style type="text/css">.paymentForm {display:block !important;}</style></noscript>

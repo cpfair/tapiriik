@@ -43,3 +43,21 @@ class Payments:
         db.payments_claim.remove(claim)
         return (db.users.find_one({"_id": claim["User"]}), db.payments.find_one({"Txn": claim["Txn"]}))
 
+    def GetAndActivatePromo(code):
+        promo = db.promo_codes.find_one({"Code": code})
+        if not promo:
+            return None
+
+        if "FirstClaimedTimestamp" not in promo:
+            promo["FirstClaimedTimestamp"] = datetime.utcnow()
+
+        # In seconds!
+        if "Duration" in promo:
+            promo["Expiry"] = promo["FirstClaimedTimestamp"] + timedelta(seconds=promo["Duration"])
+        else:
+            promo["Expiry"] = None
+
+        # Write back, as we may have just activated it
+        db.promo_codes.save(promo)
+
+        return promo

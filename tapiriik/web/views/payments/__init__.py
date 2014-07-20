@@ -79,6 +79,18 @@ def payments_claim_ajax(req):
         return HttpResponse(status=404)
     return HttpResponse()
 
+def payments_promo_claim_ajax(req):
+    if req.user is None or not payments_promo_claim(req.user, req.POST["code"]):
+        return HttpResponse(status=404)
+    return HttpResponse()
+
+def payments_promo_claim(user, code):
+    promo = Payments.GetAndActivatePromo(code)
+    if not promo:
+        return False
+    User.AssociatePromo(user, promo)
+    return True
+
 def payments_claim_initiate(request, user, email):
     payment = Payments.GetPayment(email=email)
     if payment is None:
@@ -96,7 +108,7 @@ def payments_claim_wait_ajax(request):
     return HttpResponse(json.dumps({"claimed": not Payments.HasOutstandingClaimCode(request.user)}), content_type="application/json")
 
 def payments_claim_return(request, code):
-    user, payment = Payments.ConsumeClaimCode(code)
+    user, payment = Payments.ConsumeClaimCode(code.upper())
     if not payment:
         return render(request, "payments/claim_return_fail.html")
     User.AssociatePayment(user, payment)
