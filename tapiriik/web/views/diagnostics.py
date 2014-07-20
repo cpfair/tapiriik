@@ -40,6 +40,8 @@ def diag_dashboard(req):
 
     context["allWorkers"] = list(db.sync_workers.find())
 
+    context["hostWorkerCount"] = {host:len([1 for x in context["allWorkers"] if x["Host"] == host]) for host in set([x["Host"] for x in context["allWorkers"]])}
+
     # Each worker can be engaged for <= 60*60 seconds in an hour
     if len(context["allWorkers"]) > 0 and stats:
         context["loadFactor"] = stats["TotalSyncTimeUsed"] / (len(context["allWorkers"]) * 60 * 60)
