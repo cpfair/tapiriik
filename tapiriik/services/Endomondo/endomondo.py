@@ -80,6 +80,10 @@ class EndomondoService(ServiceBase):
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
 
+    def _rateLimitBailout(self, response):
+        if response.status_code == 503 and "user_refused" in response.text:
+            raise APIException("Endomondo user token rate limit reached", user_exception=UserException(UserExceptionType.RateLimited))
+
     def _oauthSession(self, connection=None, **params):
         if connection:
             params["resource_owner_key"] = connection.Authorization["Token"]
@@ -127,6 +131,7 @@ class EndomondoService(ServiceBase):
             try:
                 respList = resp.json()["data"]
             except ValueError:
+                self._rateLimitBailout(resp)
                 raise APIException("Error decoding activity list resp %s %s" % (resp.status_code, resp.text))
             for actInfo in respList:
                 activity = UploadedActivity()
@@ -219,6 +224,7 @@ class EndomondoService(ServiceBase):
         try:
             resp = resp.json()
         except ValueError:
+            self._rateLimitBailout(resp)
             res_txt = resp.text
             raise APIException("Parse failure in Endomondo activity download: %s" % resp.status_code)
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
@@ -275,6 +281,7 @@ class EndomondoService(ServiceBase):
             }
             device_add_resp = session.post("https://api.endomondo.com/api/1/device/%s" % device_id, data=json.dumps(device_info))
             if device_add_resp.status_code != 200:
+                self._rateLimitBailout(device_add_resp)
                 raise APIException("Could not add device %s %s" % (device_add_resp.status_code, device_add_resp.text))
             serviceRecord.SetConfiguration({"DeviceRegistered": True})
 
@@ -366,6 +373,7 @@ class EndomondoService(ServiceBase):
 
         upload_resp = session.post("https://api.endomondo.com/api/1/workouts/%s" % activity_id, data=json.dumps(upload_data))
         if upload_resp.status_code != 200:
+            self._rateLimitBailout(upload_resp)
             raise APIException("Could not upload activity %s %s" % (upload_resp.status_code, upload_resp.text))
 
         return upload_resp.json()["id"]
