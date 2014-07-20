@@ -15,7 +15,8 @@ function ActivitiesController($scope, $http) {
       "unpaid": "You must have a paid account with %(service) in order to synchronize activities.",
       "flow": "You've excluded this activity from synchronizing to %(service).",
       "private": "This activity is private and will not synchronize to %(service).",
-      "notrigger": "%(service) is only synchronized when new activities are available", // I have nooo clue why I made this error, keeping it for posterity.
+      "notrigger": "%(service) is only synchronized when new activities are available.", // I have nooo clue why I made this error, keeping it for posterity.
+      "ratelimited": "%(service) only allows tapiriik to perform so many actions on your behalf per hour - more activities will transfer soon.", // per hour - close enough
       "credentials_missing": "You did not opt to remember the credentials for %(service).",
       "config_missing": "%(service) requires configuration.",
       "stationary": "%(service) does not support stationary activity upload.",
