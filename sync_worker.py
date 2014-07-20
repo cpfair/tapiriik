@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
+import os
+print("Sync worker %s booting at %s" % (os.getpid(), datetime.now()))
+
 from tapiriik.requests_lib import patch_requests_with_default_timeout, patch_requests_source_address
 from tapiriik import settings
 from tapiriik.database import db, close_connections
 import time
-from datetime import datetime, timedelta
-import os
 import signal
 import sys
 import subprocess
@@ -27,7 +29,7 @@ signal.signal(signal.SIGUSR2, sync_interrupt)
 def sync_heartbeat(state):
     db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.utcnow(), "State": state}})
 
-print("Sync worker starting at " + datetime.now().ctime() + " \n -> PID " + str(os.getpid()))
+print("Sync worker " + str(os.getpid()) + " initialized at " + datetime.now().ctime())
 db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"Process": os.getpid(), "Heartbeat": datetime.utcnow(), "Startup":  datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname(), "Index": settings.WORKER_INDEX, "State": "startup"}, upsert=True)
 sys.stdout.flush()
 
