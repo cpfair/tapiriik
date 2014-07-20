@@ -12,7 +12,7 @@ import subprocess
 import socket
 
 Run = True
-RecycleInterval = 1 # Time spent rebooting workers < time spent wrangling Python memory management.
+RecycleInterval = 2 # Time spent rebooting workers < time spent wrangling Python memory management.
 NoQueueMinCycleTime = timedelta(seconds=30) # No need to hammer the database given the number of sync workers I have
 
 oldCwd = os.getcwd()
