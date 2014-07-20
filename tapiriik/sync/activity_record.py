@@ -42,7 +42,7 @@ class ActivityRecord:
         self.Private = activity.Private
         self.UIDs = activity.UIDs
 
-    def MarkAsPresentOn(self, serviceRecord, serviceKeys=set()):
+    def MarkAsPresentOn(self, serviceRecord, serviceKeys=frozenset()):
         if serviceRecord.Service.ID not in self.PresentOnServices:
             self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), serviceKeys=serviceKeys)
         else:
@@ -51,7 +51,7 @@ class ActivityRecord:
         if serviceRecord.Service.ID in self.NotPresentOnServices:
             del self.NotPresentOnServices[serviceRecord.Service.ID]
 
-    def MarkAsSynchronizedTo(self, serviceRecord, serviceKeys=set()):
+    def MarkAsSynchronizedTo(self, serviceRecord, serviceKeys=frozenset()):
         if serviceRecord.Service.ID not in self.PresentOnServices:
             self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(syncTimestamp=datetime.utcnow(), serviceKeys=serviceKeys)
         else:
@@ -74,7 +74,7 @@ class ActivityRecord:
 
 
 class ActivityServicePrescence:
-    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None, serviceKeys=set()):
+    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None, serviceKeys=frozenset()):
         self.ProcessedTimestamp = listTimestamp
         self.SynchronizedTimestamp = syncTimestamp
         self.ServiceKeys = set(serviceKeys)

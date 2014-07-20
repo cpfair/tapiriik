@@ -14,6 +14,9 @@ class ServiceRecord:
     def __eq__(self, other):
         return self._id == other._id
 
+    def __hash__(self):
+        return hash(self._id)
+
     def __ne__(self, other):
         return not self.__eq__(other)
 

@@ -7,6 +7,7 @@ from tapiriik.services.interchange import UploadedActivity, ActivityType, Activi
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
+from functools import lru_cache
 import requests
 import urllib.parse
 import json
@@ -310,12 +311,10 @@ class RunKeeperService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.rk_activity_cache.remove({"Owner": serviceRecord.ExternalID})
-        cachedb.runkeeper_cache.remove({"ExternalID": serviceRecord.ExternalID})
 
+    @lru_cache(maxsize=256)
     def GenerateUserProfileURL(self, serviceRecord):
-        if not hasattr(self, '_profileURL'):
-            self._profileURL = self._getProfileURL(serviceRecord)
-        return self._profileURL
+        return self._getProfileURL(serviceRecord)
 
     def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
         profileURL = self.GenerateUserProfileURL(serviceRecord)
