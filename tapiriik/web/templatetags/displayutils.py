@@ -6,6 +6,8 @@ register = template.Library()
 
 @register.filter(name="utctimesince")
 def utctimesince(value):
+    if not value:
+        return ""
     return timesince(value, now=datetime.utcnow())
 
 @register.filter(name="format_fractional_percentage")
