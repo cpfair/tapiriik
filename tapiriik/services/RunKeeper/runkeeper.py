@@ -100,6 +100,11 @@ class RunKeeperService(ServiceBase):
         data = resp.json()
         return data["userID"]
 
+    def _getProfileURL(self, serviceRecord):
+        resp = requests.get("https://api.runkeeper.com/profile/", headers=self._apiHeaders(serviceRecord))
+        data = resp.json()
+        return data["profile"]
+
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         uris = self._getAPIUris(serviceRecord)
 

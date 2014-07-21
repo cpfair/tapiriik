@@ -381,3 +381,9 @@ class EndomondoService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         pass
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://www.endomondo.com/profile/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://www.endomondo.com/workouts/%s/%s" % (serviceRecord.ExternalID, activityExternalID)

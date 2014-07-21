@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
+from tapiriik.settings import WEB_ROOT, DROPBOX_APP_FOLDER_NAME, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, ServiceExceptionScope, UserException, UserExceptionType, APIExcludeActivity, ServiceException
 from tapiriik.services.interchange import ActivityType, UploadedActivity
@@ -11,7 +11,9 @@ from django.core.urlresolvers import reverse
 import re
 import lxml
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 import logging
+import os.path
 import bson
 import pickle
 logger = logging.getLogger(__name__)
@@ -46,6 +48,9 @@ class DropboxService(ServiceBase):
     SupportsHR = SupportsCadence = True
 
     SupportedActivities = ActivityTaggingTable.keys()
+
+    def __init__(self):
+        self.DefaultAppFolder = "/Apps/%s/" % DROPBOX_APP_FOLDER_NAME
 
     def _getClient(self, serviceRec):
         if serviceRec.Authorization["Full"]:
@@ -202,7 +207,7 @@ class DropboxService(ServiceBase):
                 if svcRec.Authorization["Full"]:
                     relPath = path.replace(syncRoot, "", 1)
                 else:
-                    relPath = path.replace("/Apps/tapiriik/", "", 1)  # dropbox api is meh api
+                    relPath = path.replace(self.DefaultAppFolder, "", 1)  # dropbox api is meh api
 
                 hashedRelPath = self._hash_path(relPath)
                 if hashedRelPath in cache["Activities"]:
@@ -350,3 +355,20 @@ class DropboxService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.dropbox_cache.remove({"ExternalID": serviceRecord.ExternalID})
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        if not serviceRecord.Authorization["Full"]:
+            userFolder = self.DefaultAppFolder.strip("/")
+        else:
+            userFolder = serviceRecord.Config["SyncRoot"].strip("/")
+        return "https://www.dropbox.com/home/%s" % userFolder
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        if serviceRecord.Authorization["Full"]:
+            syncRoot = serviceRecord.Config["SyncRoot"]
+            relPath = activityExternalID.replace(syncRoot, "", 1)
+        else:
+            relPath = activityExternalID.replace(self.DefaultAppFolder, "", 1)
+        head, tail = os.path.split(relPath)
+        params = {'select' : tail }
+        return self.GenerateUserProfileURL(serviceRecord) + head + "?" + urlencode(params)
