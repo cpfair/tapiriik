@@ -1195,3 +1195,64 @@ ul.itemized-clean li {
 		width:100%;
 	}
 }
+
+body.night {
+	background-color: #110F1F;
+}
+
+body.starfield {
+	background-image:url('../img/starfield.svg');
+	background-size: 100% auto;
+}
+
+body.night .mountains #a, body.night .mountains #b, body.night .mountains #c {
+	border-bottom-color: #010001;
+}
+
+body.night .content, body.night .popoverInner {
+	background-color:#fafafa;
+}
+
+body.night .footers {
+	color:#bbb;
+}
+
+body.full_moon .sun {
+	border-width:60px;
+	border-radius:60px;
+	right:20px;
+	top:20px;
+}
+
+
+body.waxing_moon .sun {
+	right: 20px;
+	top: 20px;
+}
+
+body.waxing_moon .sun::after {
+	content:'';
+	position:absolute;
+	right:-46px;
+	top:-140px;
+	width:0;
+	height:0;
+	border-radius:140px;
+	border:140px solid #110F1F;
+}
+
+body.crescent_moon .sun {
+	right: 20px;
+	top: 20px;
+}
+
+body.crescent_moon .sun::after {
+	content:'';
+	position:absolute;
+	right:-96px;
+	top:-103px;
+	width:0;
+	height:0;
+	border-radius:100px;
+	border:100px solid #110F1F;
+}

@@ -25,7 +25,7 @@
     <link rel="icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png">
 </head>
 
-<body>
+<body {% if celebration_mode %}class="{{ celebration_mode.BodyCSSClasses }}"{% endif %}>
 
 	<!-- I blame centre-aligning -->
 	<div class="contentOuter">

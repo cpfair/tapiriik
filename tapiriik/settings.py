@@ -234,15 +234,17 @@ CELEBRATION_MODES = {
     ): {
         "Logo": "tapiriik-arabic.png", # تبريك
         "Subtitle": "Ramadan Mubarak! !رمضان مبارك", # I'm trusting you, magic RTL support!
-        "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
+        "TitleText": "(42:43) وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ",
+        "BodyCSSClasses": "night crescent_moon starfield"
     },
     (
-        datetime(day=29, month=7, year=2014, hour=0, minute=0),
-        datetime(day=30, month=7, year=2014, hour=23, minute=59)
+        datetime(day=28, month=7, year=2014, hour=0, minute=0),
+        datetime(day=29, month=7, year=2014, hour=23, minute=59)
     ): {
         "Logo": "tapiriik-arabic.png",
         "Subtitle": "Eid Mubarak! !عيد مبارك‎",
-        "TitleText": "وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ (42:43)"
+        "TitleText": "(42:43) وَلَمَن صَبَرَ وَغَفَرَ إِنَّ ذَٰلِكَ لَمِنْ عَزْمِ الْأُمُورِ",
+        "BodyCSSClasses": "night crescent_moon starfield"
     },
     (
         datetime(day=23, month=10, year=2014, hour=0, minute=0),
@@ -250,7 +252,8 @@ CELEBRATION_MODES = {
     ): {
         "Logo": "tapiriik-hindi.png", # तआपेरीक
         "Subtitle": "Shubh Deepawali! शुभ दीपावली!",
-        "TitleText": "ॐ शान्ति शान्ति शान्ति"
+        "TitleText": "ॐ शान्ति शान्ति शान्ति",
+        "BodyCSSClasses": "night full_moon starfield"
     },
     (
         datetime(day=6, month=11, year=2014, hour=0, minute=0),
@@ -266,7 +269,8 @@ CELEBRATION_MODES = {
     ): {
         "Logo": "tapiriik-hebrew.png", # טפּרכּ
         "Subtitle": "!לְשָׁנָה טוֹבָה",
-        "TitleText": "הָבָה, נֵרְדָה, וְנָבְלָה שָׁם, שְׂפָתָם--אֲשֶׁר לֹא יִשְׁמְעוּ, אִישׁ שְׂפַת רֵעֵהוּ. (Genesis 11:7)"
+        "TitleText": "הָבָה, נֵרְדָה, וְנָבְלָה שָׁם, שְׂפָתָם--אֲשֶׁר לֹא יִשְׁמְעוּ, אִישׁ שְׂפַת רֵעֵהוּ. (Genesis 11:7)",
+        "BodyCSSClasses": "night waxing_moon starfield"
     },
 }
 
