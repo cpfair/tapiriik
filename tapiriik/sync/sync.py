@@ -409,6 +409,7 @@ class SynchronizationTask:
                 existingActivity.Laps = existingActivity.Laps if len(existingActivity.Laps) > len(act.Laps) else act.Laps
                 existingActivity.Type = ActivityType.PickMostSpecific([existingActivity.Type, act.Type])
                 existingActivity.Private = existingActivity.Private or act.Private
+                existingActivity.Device = existingActivity.Device or act.Device
                 if act.Stationary is not None:
                     if existingActivity.Stationary is None:
                         existingActivity.Stationary = act.Stationary

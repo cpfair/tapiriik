@@ -8,6 +8,7 @@ from tapiriik.services.tcx import TCXIO
 from tapiriik.services.gpx import GPXIO
 from tapiriik.services.fit import FITIO
 from tapiriik.services.sessioncache import SessionCache
+from tapiriik.services.devices import DeviceIdentifier, DeviceIdentifierType, Device
 from tapiriik.database import cachedb, db
 
 from django.core.urlresolvers import reverse
@@ -336,10 +337,21 @@ class GarminConnectService(ServiceBase):
                 if "sumDistance" in act and float(act["sumDistance"]["value"]) != 0:
                     activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
 
+                if "device" in act and act["device"]["key"] != "unknown":
+                    devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.GC, {"Key": act["device"]["key"]})
+                    ver_split = act["device"]["key"].split(".")
+                    ver_maj = None
+                    ver_min = None
+                    if len(ver_split) == 4:
+                        # 2.90.0.0
+                        ver_maj = int(ver_split[0])
+                        ver_min = int(ver_split[1])
+                    activity.Device = Device(devId, verMaj=ver_maj, verMin=ver_min)
+
                 activity.Type = self._resolveActivityType(act["activityType"]["key"])
 
                 activity.CalculateUID()
-                
+
                 activity.ServiceData = {"ActivityID": int(act["activityId"])}
 
                 activities.append(activity)
