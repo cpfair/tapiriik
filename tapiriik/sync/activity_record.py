@@ -15,6 +15,7 @@ class ActivityRecord:
         self.UIDs = []
         self.PresentOnServices = {}
         self.NotPresentOnServices = {}
+        self.FailureCounts = {}
 
         # It's practically an ORM!
         if dbRec:
@@ -70,6 +71,28 @@ class ActivityRecord:
             record.ProcessedTimestamp = datetime.utcnow()
             record.UserException = userException
             record.Step = step
+
+    # Only unexpected, "active" failures increment this count
+    #
+    # Exceptions in the sync core (activity type unsupported, etc) cost nothing => don't count towards this, to keep things simple
+    # Trapped errors inside Services use...
+    #  - Activity exclusions, which either...
+    #    a) permanently blacklist that activity => don't count towards this, to avoid duplication
+    #    b) temporarily exclude it, where there's a finite horizon for success (activiteies being live-tracked, generally) => don't count toward this
+    #  - APIExceptions, Exceptions => DO increment this
+    #
+    # These are stored seperately from the prescences, since the efficiency gained with how MarkAsNotPresentOtherwise
+    # would prevent keeping track of activity download failures (couldn't determine which service to blame after the fact)
+
+    def GetFailureCount(self, serviceRecord):
+        return self.FailureCounts[serviceRecord.Service.ID] if serviceRecord.Service.ID in self.FailureCounts else 0
+
+    def IncrementFailureCount(self, serviceRecord):
+        self.FailureCounts[serviceRecord.Service.ID] = self.GetFailureCount(serviceRecord) + 1
+
+    def ResetFailureCount(self, serviceRecord):
+        del self.FailureCounts[serviceRecord.Service.ID]
+
 
 
 class ActivityServicePrescence:

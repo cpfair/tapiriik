@@ -242,7 +242,8 @@ class SynchronizationTask:
                 "Distance": x.Distance,
                 "UIDs": list(x.UIDs),
                 "Prescence": _activityPrescences(x.PresentOnServices),
-                "Abscence": _activityPrescences(x.NotPresentOnServices)
+                "Abscence": _activityPrescences(x.NotPresentOnServices),
+                "FailureCounts": x.FailureCounts
             }
             for x in self._activityRecords
         ]
@@ -650,6 +651,7 @@ class SynchronizationTask:
                     self._excludeService(dlSvcRecord, e.UserException)
                 if not issubclass(e.__class__, ServiceWarning):
                     activity.Record.MarkAsNotPresentOtherwise(e.UserException, SyncStep.Download)
+                    activity.Record.IncrementFailureCount(dlSvcRecord)
                     continue
             except APIExcludeActivity as e:
                 logger.info("\t\texcluded by service: %s" % e.Message)
@@ -660,7 +662,10 @@ class SynchronizationTask:
             except Exception as e:
                 self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
                 activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError), SyncStep.Download)
+                activity.Record.IncrementFailureCount(dlSvcRecord)
                 continue
+
+            activity.Record.ResetFailureCount(dlSvcRecord)
 
             if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                 logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
@@ -690,11 +695,15 @@ class SynchronizationTask:
                 self._excludeService(destinationServiceRec, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
                 activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError), SyncStep.Upload)
+                activity.Record.IncrementFailureCount(destinationServiceRec)
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
             activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError), SyncStep.Upload)
+            activity.Record.IncrementFailureCount(destinationServiceRec)
             raise UploadException()
+
+        activity.Record.ResetFailureCount(destinationServiceRec)
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
         if len(self.user["ConnectedServices"]) <= 1:
