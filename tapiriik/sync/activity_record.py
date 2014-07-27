@@ -95,7 +95,8 @@ class ActivityRecord:
         self.FailureCounts[serviceRecord.Service.ID] = self.GetFailureCount(serviceRecord) + 1
 
     def ResetFailureCount(self, serviceRecord):
-        del self.FailureCounts[serviceRecord.Service.ID]
+        if serviceRecord.Service.ID in self.FailureCounts:
+            del self.FailureCounts[serviceRecord.Service.ID]
 
 
 
