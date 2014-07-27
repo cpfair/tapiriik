@@ -58,23 +58,25 @@ class ActivityRecord:
         if serviceRecord.Service.ID in self.NotPresentOnServices:
             del self.NotPresentOnServices[serviceRecord.Service.ID]
 
-    def MarkAsNotPresentOtherwise(self, userException):
-        self.MarkAsNotPresentOn(None, userException)
+    def MarkAsNotPresentOtherwise(self, userException, step):
+        self.MarkAsNotPresentOn(None, userException, step)
 
-    def MarkAsNotPresentOn(self, serviceRecord, userException):
+    def MarkAsNotPresentOn(self, serviceRecord, userException, step):
         rec_id = serviceRecord.Service.ID if serviceRecord else None
         if rec_id not in self.NotPresentOnServices:
-            self.NotPresentOnServices[rec_id] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), userException=userException)
+            self.NotPresentOnServices[rec_id] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), userException=userException, step=step)
         else:
             record = self.NotPresentOnServices[rec_id]
             record.ProcessedTimestamp = datetime.utcnow()
             record.UserException = userException
+            record.Step = step
 
 
 class ActivityServicePrescence:
-    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None):
+    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None, step=None):
         self.ProcessedTimestamp = listTimestamp
         self.SynchronizedTimestamp = syncTimestamp
+        self.Step = step
         # If these is a UserException then this object is actually indicating the abscence of an activity from a service.
         if userException is not None and not isinstance(userException, UserException):
             raise ValueError("Provided UserException %s is not a UserException" % userException)

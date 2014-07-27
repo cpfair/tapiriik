@@ -225,7 +225,8 @@ class SynchronizationTask:
                 {
                     "Processed": presc.ProcessedTimestamp,
                     "Synchronized": presc.SynchronizedTimestamp,
-                    "Exception": _packUserException(presc.UserException)
+                    "Exception": _packUserException(presc.UserException),
+                    "Step": presc.Step
                 }) for svcId, presc in prescences.items()])
 
         self._activityRecords.sort(key=lambda x: x.StartTime.replace(tzinfo=None), reverse=True)
@@ -270,8 +271,9 @@ class SynchronizationTask:
                 rec = ActivityRecord(raw_record)
                 rec.UIDs = set(rec.UIDs)
                 # Did I mention I should really start using an ORM-type deal any day now?
+                # Update: there's a big PR against this area, will fix later (hah)
                 for svc, absent in rec.Abscence.items():
-                    rec.NotPresentOnServices[svc] = ActivityServicePrescence(absent["Processed"], absent["Synchronized"], _unpackUserException(absent["Exception"]))
+                    rec.NotPresentOnServices[svc] = ActivityServicePrescence(absent["Processed"], absent["Synchronized"], _unpackUserException(absent["Exception"]), absent["Step"] if "Step" in absent else None)
                 for svc, present in rec.Prescence.items():
                     rec.PresentOnServices[svc] = ActivityServicePrescence(present["Processed"], present["Synchronized"], _unpackUserException(present["Exception"]))
                 del rec.Prescence
@@ -311,7 +313,7 @@ class SynchronizationTask:
                 pass
             elif activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
-                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
+                activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported), SyncStep.Listing)
             else:
                 recipientServices.append(conn)
         return recipientServices
@@ -442,7 +444,7 @@ class SynchronizationTask:
         for destinationSvcRecord in recipientServices:
             if self._isServiceExcluded(destinationSvcRecord):
                 logger.info("\t\tExcluded " + destinationSvcRecord.Service.ID)
-                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, self._getServiceExclusionUserException(destinationSvcRecord))
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, self._getServiceExclusionUserException(destinationSvcRecord), SyncStep.Upload)
                 continue  # we don't know for sure if it needs to be uploaded, hold off for now
             flowException = True
 
@@ -456,24 +458,24 @@ class SynchronizationTask:
 
             if flowException:
                 logger.info("\t\tFlow exception for " + destinationSvcRecord.Service.ID)
-                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.FlowException))
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.FlowException), SyncStep.Upload)
                 continue
 
             destSvc = destinationSvcRecord.Service
             if destSvc.RequiresConfiguration(destinationSvcRecord):
                 logger.info("\t\t" + destSvc.ID + " not configured")
-                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NotConfigured))
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NotConfigured), SyncStep.Upload)
                 continue  # not configured, so we won't even try
             if not destSvc.ReceivesStationaryActivities and activity.Stationary:
                 logger.info("\t\t" + destSvc.ID + " doesn't receive stationary activities")
-                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
+                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported), SyncStep.Upload)
                 continue # Missing this originally, no wonder...
             # ReceivesNonGPSActivitiesWithOtherSensorData doesn't matter if the activity is stationary.
             # (and the service accepts stationary activities - guaranteed immediately above)
             if not activity.Stationary:
                 if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or activity.GPS):
                     logger.info("\t\t" + destSvc.ID + " doesn't receive non-GPS activities")
-                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
+                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported), SyncStep.Upload)
                     continue
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
@@ -629,11 +631,11 @@ class SynchronizationTask:
             dlSvc = dlSvcRecord.Service
             logger.info("\tfrom " + dlSvc.ID)
             if activity.UID in self._syncExclusions[dlSvcRecord._id]:
-                activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id][activity.UID]))
+                activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id][activity.UID]), SyncStep.Download)
                 logger.info("\t\t...has activity exclusion logged")
                 continue
             if self._isServiceExcluded(dlSvcRecord):
-                activity.Record.MarkAsNotPresentOtherwise(self._getServiceExclusionUserException(dlSvcRecord))
+                activity.Record.MarkAsNotPresentOtherwise(self._getServiceExclusionUserException(dlSvcRecord), SyncStep.Download)
                 logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
                 continue
 
@@ -647,29 +649,29 @@ class SynchronizationTask:
                 if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
                     self._excludeService(dlSvcRecord, e.UserException)
                 if not issubclass(e.__class__, ServiceWarning):
-                    activity.Record.MarkAsNotPresentOtherwise(e.UserException)
+                    activity.Record.MarkAsNotPresentOtherwise(e.UserException, SyncStep.Download)
                     continue
             except APIExcludeActivity as e:
                 logger.info("\t\texcluded by service: %s" % e.Message)
                 e.Activity = workingCopy
                 self._accumulateExclusions(dlSvcRecord, e)
-                activity.Record.MarkAsNotPresentOtherwise(e.UserException)
+                activity.Record.MarkAsNotPresentOtherwise(e.UserException, SyncStep.Download)
                 continue
             except Exception as e:
                 self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
-                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError))
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError), SyncStep.Download)
                 continue
 
             if workingCopy.Private and not dlSvcRecord.GetConfiguration()["sync_private"]:
                 logger.info("\t\t...is private and restricted from sync")  # Sync exclusion instead?
-                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private), SyncStep.Download)
                 continue
             try:
                 workingCopy.CheckSanity()
             except:
                 logger.info("\t\t...failed sanity check")
                 self._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy))
-                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError))
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError), SyncStep.Download)
                 continue
             else:
                 act = workingCopy
@@ -687,11 +689,11 @@ class SynchronizationTask:
             if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
                 self._excludeService(destinationServiceRec, e.UserException)
             if not issubclass(e.__class__, ServiceWarning):
-                activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError))
+                activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError), SyncStep.Upload)
                 raise UploadException()
         except Exception as e:
             self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
-            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError))
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError), SyncStep.Upload)
             raise UploadException()
 
     def Run(self, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
@@ -776,7 +778,7 @@ class SynchronizationTask:
 
                             if not override_private:
                                 logger.info("\t\t...is private and restricted from sync (pre-download)")  # Sync exclusion instead?
-                                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private))
+                                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Private), SyncStep.Listing)
                                 raise ActivityShouldNotSynchronizeException()
 
                         recipientServices = None
@@ -844,7 +846,7 @@ class SynchronizationTask:
                         except:
                             logger.error("\tCould not determine TZ")
                             self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
-                            activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ))
+                            activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ), SyncStep.Download)
                             raise ActivityShouldNotSynchronizeException()
                         else:
                             logger.debug("\tDetermined TZ %s" % full_activity.TZ)
@@ -859,12 +861,12 @@ class SynchronizationTask:
                             destSvc = destinationSvcRecord.Service
                             if not destSvc.ReceivesStationaryActivities and full_activity.Stationary:
                                 logger.info("\t\t...marked as stationary during download")
-                                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported))
+                                activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.StationaryUnsupported), SyncStep.Download)
                                 continue
                             if not full_activity.Stationary:
                                 if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or full_activity.GPS):
                                     logger.info("\t\t...marked as non-GPS during download")
-                                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
+                                    activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported), SyncStep.Download)
                                     continue
 
                             uploaded_external_id = None
