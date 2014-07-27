@@ -22,6 +22,7 @@ import time
 import json
 import re
 import random
+import tempfile
 from urllib.parse import urlencode
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class GarminConnectService(ServiceBase):
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
             self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])["dictionary"]
-        rate_lock_path = "/tmp/gc_rate.%s.lock" % HTTP_SOURCE_ADDR
+        rate_lock_path = tempfile.gettempdir() + "/gc_rate.%s.lock" % HTTP_SOURCE_ADDR
         # Ensure the rate lock file exists (...the easy way)
         open(rate_lock_path, "a").close()
         self._rate_lock = open(rate_lock_path, "r+")
