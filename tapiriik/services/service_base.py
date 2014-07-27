@@ -44,6 +44,11 @@ class ServiceBase:
     # How many times to call the polling method per interval (this is for the multiple_index kwarg)
     PartialSyncTriggerPollMultiple = 1
 
+    # How many times should we try each operation on an activity before giving up?
+    # (only ever tries once per sync run - so ~1 hour interval on average)
+    UploadRetryCount = 10
+    DownloadRetryCount = 10
+
     @property
     def PartialSyncTriggerRequiresPolling(self):
         return self.PartialSyncRequiresTrigger and self.PartialSyncTriggerPollInterval

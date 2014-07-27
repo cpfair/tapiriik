@@ -639,6 +639,12 @@ class SynchronizationTask:
                 activity.Record.MarkAsNotPresentOtherwise(self._getServiceExclusionUserException(dlSvcRecord), SyncStep.Download)
                 logger.info("\t\t...service became excluded after listing") # Because otherwise we'd never have been trying to download from it in the first place.
                 continue
+            if activity.Record.GetFailureCount(dlSvcRecord) >= dlSvc.DownloadRetryCount:
+                # We don't re-call MarkAsNotPresentOtherwise here
+                # ...since its existing value will be the more illuminating as to the error
+                # (and we can just check the failure count if we want to know if it's being ignored)
+                logger.info("\t\t...download retry count exceeded")
+                continue
 
             workingCopy = copy.copy(activity)  # we can hope
             # Load in the service data in the same place they left it.
@@ -687,6 +693,11 @@ class SynchronizationTask:
 
     def _uploadActivity(self, activity, destinationServiceRec):
         destSvc = destinationServiceRec.Service
+
+        if activity.Record.GetFailureCount(destinationServiceRec) >= destSvc.UploadRetryCount:
+            logger.info("\t\t...upload retry count exceeded")
+            raise UploadException()
+
         try:
             return destSvc.UploadActivity(destinationServiceRec, activity)
         except (ServiceException, ServiceWarning) as e:

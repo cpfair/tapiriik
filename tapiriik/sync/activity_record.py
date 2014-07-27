@@ -81,8 +81,13 @@ class ActivityRecord:
     #    b) temporarily exclude it, where there's a finite horizon for success (activiteies being live-tracked, generally) => don't count toward this
     #  - APIExceptions, Exceptions => DO increment this
     #
-    # These are stored seperately from the prescences, since the efficiency gained with how MarkAsNotPresentOtherwise
+    # These are stored seperately from the prescences, since the efficiency gained with how MarkAsNotPresentOtherwise works
     # would prevent keeping track of activity download failures (couldn't determine which service to blame after the fact)
+    #
+    # We don't store the error that originated the failure - that's already being stored in the service record
+    # When it comes time to reset these counts once a widespread issue is solved, one can determine the appropriate users from that
+    #
+    # Also, we don't track the Step here - I can probably reverse-engineer it from the prescence (famous last words) if reqd
 
     def GetFailureCount(self, serviceRecord):
         return self.FailureCounts[serviceRecord.Service.ID] if serviceRecord.Service.ID in self.FailureCounts else 0
