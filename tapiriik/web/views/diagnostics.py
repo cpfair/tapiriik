@@ -60,6 +60,23 @@ def diag_dashboard(req):
     context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(seconds=30)]
     context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
+    delta = False
+    if "deleteStalledWorker" in req.POST:
+        db.sync_workers.remove({"Process": int(req.POST["pid"])})
+        delta = True
+    if "unlockOrphaned" in req.POST:
+        orphanedUserIDs = [x["_id"] for x in context["lockedSyncUsers"] if x["SynchronizationWorker"] not in context["allWorkerPIDs"]]
+        db.users.update({"_id":{"$in":orphanedUserIDs}}, {"$unset": {"SynchronizationWorker": None}}, multi=True)
+        delta = True
+
+    if delta:
+        return redirect("diagnostics_dashboard")
+
+    return render(req, "diag/dashboard.html", context)
+
+@diag_requireAuth
+def diag_errors(req):
+    context = {}
     syncErrorListing = list(db.common_sync_errors.find().sort("value", -1))
     syncErrorsAffectingServices = [service for error in syncErrorListing for service in error["value"]["connections"]]
     syncErrorsAffectingUsers = list(db.users.find({"ConnectedServices.ID": {"$in": syncErrorsAffectingServices}}))
@@ -77,20 +94,7 @@ def diag_dashboard(req):
     context["autoSyncErrorSummary"] = autoSyncErrorSummary
     context["syncErrorSummary"] = syncErrorSummary
 
-    delta = False
-    if "deleteStalledWorker" in req.POST:
-        db.sync_workers.remove({"Process": int(req.POST["pid"])})
-        delta = True
-    if "unlockOrphaned" in req.POST:
-        orphanedUserIDs = [x["_id"] for x in context["lockedSyncUsers"] if x["SynchronizationWorker"] not in context["allWorkerPIDs"]]
-        db.users.update({"_id":{"$in":orphanedUserIDs}}, {"$unset": {"SynchronizationWorker": None}}, multi=True)
-        delta = True
-
-    if delta:
-        return redirect("diagnostics_dashboard")
-
-    return render(req, "diag/dashboard.html", context)
-
+    return render(req, "diag/errors.html", context)
 
 @diag_requireAuth
 def diag_user(req, user):
