@@ -239,7 +239,7 @@ CELEBRATION_MODES = {
     },
     (
         datetime(day=28, month=7, year=2014, hour=0, minute=0),
-        datetime(day=29, month=7, year=2014, hour=23, minute=59)
+        datetime(day=28, month=7, year=2014, hour=23, minute=59)
     ): {
         "Logo": "tapiriik-arabic.png",
         "Subtitle": "Eid Mubarak! !عيد مبارك‎",
