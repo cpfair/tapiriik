@@ -891,8 +891,8 @@ class SynchronizationTask:
 
                         try:
                             full_activity.EnsureTZ()
-                        except:
-                            logger.error("\tCould not determine TZ")
+                        except Exception as e:
+                            logger.error("\tCould not determine TZ %s" % e)
                             self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Could not determine TZ", activity=full_activity, permanent=False))
                             activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.UnknownTZ))
                             raise ActivityShouldNotSynchronizeException()
