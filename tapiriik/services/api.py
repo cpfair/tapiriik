@@ -1,6 +1,9 @@
 class ServiceExceptionScope:
     Account = "account"
     Service = "service"
+    # Unlike Account and Service-level blocking exceptions, these are implemented via ActivityRecord.FailureCounts
+    # Eventually, all errors might be stored in ActivityRecords
+    Activity = "activity"
 
 class ServiceException(Exception):
     def __init__(self, message, scope=ServiceExceptionScope.Service, block=False, user_exception=None):

@@ -45,6 +45,9 @@ def _formatExc():
     finally:
         del exc_traceback, exc_value, exc_type
 
+def _isWarning(exc):
+    return issubclass(exc.__class__, ServiceWarning)
+
 # It's practically an ORM!
 
 def _packServiceException(step, e):
@@ -538,7 +541,7 @@ class SynchronizationTask:
         except (ServiceException, ServiceWarning) as e:
             self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
-            if not issubclass(e.__class__, ServiceWarning):
+            if not _isWarning(e):
                 return
         except Exception as e:
             self._syncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
@@ -650,12 +653,20 @@ class SynchronizationTask:
             try:
                 workingCopy = dlSvc.DownloadActivity(dlSvcRecord, workingCopy)
             except (ServiceException, ServiceWarning) as e:
+                if not _isWarning(e):
+                    # Persist the exception if we just exceeded the failure count
+                    # (but not if a more useful blocking exception was provided)
+                    activity.Record.IncrementFailureCount(dlSvcRecord)
+                    if activity.Record.GetFailureCount(dlSvcRecord) >= dlSvc.DownloadRetryCount and not e.Block:
+                        e.Block = True
+                        e.Scope = ServiceExceptionScope.Activity
+
                 self._syncErrors[dlSvcRecord._id].append(_packServiceException(SyncStep.Download, e))
+
                 if e.Block and e.Scope == ServiceExceptionScope.Service: # I can't imagine why the same would happen at the account level, so there's no behaviour to immediately abort the sync in that case.
                     self._excludeService(dlSvcRecord, e.UserException)
-                if not issubclass(e.__class__, ServiceWarning):
+                if not _isWarning(e):
                     activity.Record.MarkAsNotPresentOtherwise(e.UserException)
-                    activity.Record.IncrementFailureCount(dlSvcRecord)
                     continue
             except APIExcludeActivity as e:
                 logger.info("\t\texcluded by service: %s" % e.Message)
@@ -664,9 +675,16 @@ class SynchronizationTask:
                 activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                 continue
             except Exception as e:
-                self._syncErrors[dlSvcRecord._id].append({"Step": SyncStep.Download, "Message": _formatExc()})
-                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError))
+                packed_exc = {"Step": SyncStep.Download, "Message": _formatExc()}
+
                 activity.Record.IncrementFailureCount(dlSvcRecord)
+                if activity.Record.GetFailureCount(dlSvcRecord) >= dlSvc.DownloadRetryCount:
+                    # Blegh, should just make packServiceException work with this
+                    packed_exc["Block"] = True
+                    packed_exc["Scope"] = ServiceExceptionScope.Activity
+
+                self._syncErrors[dlSvcRecord._id].append(packed_exc)
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.DownloadError))
                 continue
 
             activity.Record.ResetFailureCount(dlSvcRecord)
@@ -699,17 +717,29 @@ class SynchronizationTask:
         try:
             return destSvc.UploadActivity(destinationServiceRec, activity)
         except (ServiceException, ServiceWarning) as e:
+            if not _isWarning(e):
+                activity.Record.IncrementFailureCount(destinationServiceRec)
+                if activity.Record.GetFailureCount(destinationServiceRec) >= destSvc.UploadRetryCount and not e.Block:
+                    e.Block = True
+                    e.Scope = ServiceExceptionScope.Activity
+
             self._syncErrors[destinationServiceRec._id].append(_packServiceException(SyncStep.Upload, e))
+
             if e.Block and e.Scope == ServiceExceptionScope.Service: # Similarly, no behaviour to immediately abort the sync if an account-level exception is raised
                 self._excludeService(destinationServiceRec, e.UserException)
-            if not issubclass(e.__class__, ServiceWarning):
+            if not _isWarning(e):
                 activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError))
-                activity.Record.IncrementFailureCount(destinationServiceRec)
                 raise UploadException()
         except Exception as e:
-            self._syncErrors[destinationServiceRec._id].append({"Step": SyncStep.Upload, "Message": _formatExc()})
-            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError))
+            packed_exc = {"Step": SyncStep.Upload, "Message": _formatExc()}
+
             activity.Record.IncrementFailureCount(destinationServiceRec)
+            if activity.Record.GetFailureCount(destinationServiceRec) >= destSvc.UploadRetryCount:
+                packed_exc["Block"] = True
+                packed_exc["Scope"] = ServiceExceptionScope.Activity
+
+            self._syncErrors[destinationServiceRec._id].append(packed_exc)
+            activity.Record.MarkAsNotPresentOn(destinationServiceRec, UserException(UserExceptionType.UploadError))
             raise UploadException()
 
         activity.Record.ResetFailureCount(destinationServiceRec)
