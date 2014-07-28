@@ -7,6 +7,7 @@ function ActivitiesController($scope, $http) {
   $scope.DisplayNameByService = function(svcId){ return tapiriik.ServiceInfo[svcId].DisplayName; };
 
   $scope.ExceptionExplanation = function(presc){
+    if (presc.Exception === null) return "JS mishap :(";
     var type = presc.Exception.Type;
     var explanations = {
       "auth": "The credentials you entered for %(service) are no longer functional - visit the dashboard to re-authorize tapiriik.",
@@ -58,8 +59,9 @@ function ActivitiesController($scope, $http) {
               activity.Prescence[svcidx] = {"Exception":{"Type":"other"}};
             }
           }
-          if (activity.Prescence[svcidx].Exception) fully_synchronized = false;
-          activity.Prescence[svcidx].Present = activity.Prescence[svcidx].Exception === undefined;
+
+          activity.Prescence[svcidx].Present = activity.Prescence[svcidx].Exception === undefined || activity.Prescence[svcidx].Exception === null;
+          fully_synchronized = fully_synchronized && activity.Prescence[svcidx].Present;
           activity.Prescence[svcidx].Service = svcidx;
           sorted_prescences.push(activity.Prescence[svcidx]);
         }
