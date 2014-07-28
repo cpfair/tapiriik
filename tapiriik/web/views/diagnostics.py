@@ -20,6 +20,8 @@ def diag_dashboard(req):
     context = {}
     stats = db.stats.find_one()
 
+    stall_timeout = timedelta(minutes=1)
+
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
 
@@ -49,7 +51,7 @@ def diag_dashboard(req):
         context["loadFactor"] = 0
 
     context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
-    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - timedelta(seconds=30)]
+    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - stall_timeout]
 
     context["workerStates"]= {}
     workerStates = set(x["State"] for x in context["allWorkers"])
@@ -57,7 +59,7 @@ def diag_dashboard(req):
         context["workerStates"][state] = len([x for x in context["allWorkers"] if x["State"] == state])
 
 
-    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - timedelta(seconds=30)]
+    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - stall_timeout]
     context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
 
     delta = False
