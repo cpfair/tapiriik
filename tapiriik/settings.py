@@ -264,8 +264,8 @@ CELEBRATION_MODES = {
         "TitleText": "ਆਪੁ ਗਇਆ ਸੁਖੁ ਪਾਇਆ ਮਿਲਿ ਸਲਲੈ ਸਲਲ ਸਮਾਇ"
     },
     (
-        datetime(day=3, month=10, year=2014, hour=18, minute=0),
-        datetime(day=4, month=10, year=2014, hour=18, minute=0)
+        datetime(day=24, month=9, year=2014, hour=18, minute=0),
+        datetime(day=26, month=9, year=2014, hour=18, minute=0)
     ): {
         "Logo": "tapiriik-hebrew.png", # טפּרכּ
         "Subtitle": "!לְשָׁנָה טוֹבָה",
