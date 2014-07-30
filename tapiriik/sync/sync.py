@@ -99,7 +99,7 @@ class Sync:
                     {"SynchronizationHostRestriction": socket.gethostname()}
                     ]
             },
-            read_preference=ReadPreference.PRIMARY).sort("NextSynchronization").limit(1)
+            read_preference=ReadPreference.PRIMARY).sort("NextSynchronization")
         userCt = 0
         for user in users:
             userCt += 1
@@ -121,7 +121,8 @@ class Sync:
             try:
                 Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
             except SynchronizationConcurrencyException:
-                pass  # another worker picked them
+                logger.info("SynchronizationConcurrencyException encountered")
+                continue  # another worker picked them - try the next user
             else:
                 nextSync = None
                 if User.HasActivePayment(user):
@@ -129,6 +130,8 @@ class Sync:
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
+                break # Sync 1 user at a time - cheap hack until I use a real MQ...
+        logger.info("Exiting PerformGlobalSync having processed %d users" % userCt)
         return userCt
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
