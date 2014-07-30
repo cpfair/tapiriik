@@ -43,19 +43,21 @@ class ActivityRecord:
         self.Private = activity.Private
         self.UIDs = activity.UIDs
 
-    def MarkAsPresentOn(self, serviceRecord):
+    def MarkAsPresentOn(self, serviceRecord, serviceKeys=frozenset()):
         if serviceRecord.Service.ID not in self.PresentOnServices:
-            self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(listTimestamp=datetime.utcnow())
+            self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), serviceKeys=serviceKeys)
         else:
             self.PresentOnServices[serviceRecord.Service.ID].ProcessedTimestamp = datetime.utcnow()
+            self.PresentOnServices[serviceRecord.Service.ID].ServiceKeys.update(serviceKeys)
         if serviceRecord.Service.ID in self.NotPresentOnServices:
             del self.NotPresentOnServices[serviceRecord.Service.ID]
 
-    def MarkAsSynchronizedTo(self, serviceRecord):
+    def MarkAsSynchronizedTo(self, serviceRecord, serviceKeys=frozenset()):
         if serviceRecord.Service.ID not in self.PresentOnServices:
-            self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(syncTimestamp=datetime.utcnow())
+            self.PresentOnServices[serviceRecord.Service.ID] = ActivityServicePrescence(syncTimestamp=datetime.utcnow(), serviceKeys=serviceKeys)
         else:
             self.PresentOnServices[serviceRecord.Service.ID].SynchronizedTimestamp = datetime.utcnow()
+            self.PresentOnServices[serviceRecord.Service.ID].ServiceKeys.update(serviceKeys)
         if serviceRecord.Service.ID in self.NotPresentOnServices:
             del self.NotPresentOnServices[serviceRecord.Service.ID]
 
@@ -101,9 +103,10 @@ class ActivityRecord:
 
 
 class ActivityServicePrescence:
-    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None):
+    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None, serviceKeys=frozenset()):
         self.ProcessedTimestamp = listTimestamp
         self.SynchronizedTimestamp = syncTimestamp
+        self.ServiceKeys = set(serviceKeys)
         # If these is a UserException then this object is actually indicating the abscence of an activity from a service.
         if userException is not None and not isinstance(userException, UserException):
             raise ValueError("Provided UserException %s is not a UserException" % userException)

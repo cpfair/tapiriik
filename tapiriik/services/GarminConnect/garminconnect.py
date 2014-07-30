@@ -354,6 +354,7 @@ class GarminConnectService(ServiceBase):
                 activity.CalculateUID()
 
                 activity.ServiceData = {"ActivityID": int(act["activityId"])}
+                activity.ServiceKey = act["activityId"]
 
                 activities.append(activity)
             logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
@@ -733,3 +734,9 @@ class GarminConnectService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         # nothing cached...
         pass
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://connect.garmin.com/profile/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://connect.garmin.com/activity/%s" % activityExternalID

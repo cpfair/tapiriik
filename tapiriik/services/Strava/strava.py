@@ -133,6 +133,7 @@ class StravaService(ServiceBase):
 
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
                 activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
+                activity.ServiceKey = ride["id"]
 
                 if ride["type"] not in self._reverseActivityTypeMappings:
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"], userException=UserException(UserExceptionType.Other)))
@@ -330,3 +331,9 @@ class StravaService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
         cachedb.strava_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+
+    def GenerateUserProfileURL(self, serviceRecord):
+        return "http://www.strava.com/athletes/%s" % serviceRecord.ExternalID
+
+    def GenerateUserActivityURL(self, serviceRecord, activityExternalID):
+        return "http://app.strava.com/activities/%s" % activityExternalID

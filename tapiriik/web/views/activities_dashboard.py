@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from tapiriik.auth import User
 from tapiriik.database import db
 from tapiriik.settings import WITHDRAWN_SERVICES
 import json
@@ -26,13 +27,29 @@ def activities_fetch_json(req):
         "Activities.FailureCounts"
     ]
     activityRecords = db.activity_records.find_one({"UserID": req.user["_id"]}, dict([(x, 1) for x in retrieve_fields]))
+    conns = User.GetConnectionRecordsByUser(req.user)
+    connectedServiceIds = [x.Service.ID for x in conns]
+
     if not activityRecords:
         return HttpResponse("[]", content_type="application/json")
     cleanedRecords = []
     for activity in activityRecords["Activities"]:
         # Strip down the record since most of this info isn't displayed
-        for presence in activity["Prescence"]:
-            del activity["Prescence"][presence]["Exception"]
+        for serviceId in activity["Prescence"]:
+            del activity["Prescence"][serviceId]["Exception"]
+            # Add service urls
+            if ("ServiceKeys" in activity["Prescence"][serviceId] and
+                activity["Prescence"][serviceId]["ServiceKeys"]):
+                # show only first link
+                serviceKey = activity["Prescence"][serviceId]["ServiceKeys"][0]
+                if serviceId not in connectedServiceIds:
+                    # Maybe they unlinked their account...
+                    continue
+                sourceSvcRecord = [x for x in conns if x.Service.ID == serviceId][0]
+                svc = sourceSvcRecord.Service
+                activity["Prescence"][serviceId]["url"] = svc.GenerateUserActivityURL(sourceSvcRecord, serviceKey)
+
+
         for abscence in activity["Abscence"]:
             if activity["Abscence"][abscence]["Exception"]:
                 del activity["Abscence"][abscence]["Exception"]["InterventionRequired"]
