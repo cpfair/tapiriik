@@ -98,6 +98,17 @@ def diag_errors(req):
 
     return render(req, "diag/errors.html", context)
 
+
+@diag_requireAuth
+def diag_graphs(req):
+    context = {}
+    stats_series = list(db.sync_status_stats.find().sort("$natural", -1).limit(24 * 10)) # Last 24 hours (assuming 10 min intervals, monotonic timestamps)
+    for item in stats_series:
+        item["Timestamp"] = item["Timestamp"].strftime("%H:%M")
+        del item["_id"]
+    context["dataSeriesJSON"] = json.dumps(stats_series)
+    return render(req, "diag/graphs.html", context)
+
 @diag_requireAuth
 def diag_user(req, user):
     try:

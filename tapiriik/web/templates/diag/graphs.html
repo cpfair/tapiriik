@@ -1,0 +1,42 @@
+{% extends "site.html" %}
+{% load displayutils %}
+{% block title %}graphs{% endblock %}
+{% block content %}
+<div style="text-align:left" class="chart-area">
+</div>
+
+<script type="text/javascript">
+
+var master_series = {{ dataSeriesJSON|safe }};
+
+var timeSeriesLineChart = function(title, series_name, scale, series_data_proc) {
+	$("<h2>").text(title).appendTo($(".chart-area"));
+	var chart = new Chart($("<canvas>").attr("width", $(".chart-area").width() + "px").attr("height", "400px").appendTo($(".chart-area")).get(0).getContext("2d"));
+	var data = {
+		labels: [],
+		datasets: [{
+			label: title,
+			data:[]
+		}]
+	};
+
+	for (var i = master_series.length - 1; i >= 0; i--) {
+		if (i % 6 == 0) {
+			data.labels.push(master_series[i].Timestamp);
+		} else {
+			data.labels.push("");
+		}
+		data.datasets[0].data.push(series_data_proc(master_series[i][series_name]));
+	};
+	chart.Line(data, {pointDot: false, showTooltips:false, bezierCurve:false, animation:false});
+}
+
+timeSeriesLineChart("Queue Time (min)", "SyncQueueHeadTime", "Minutes", function(val){ return val/60; });
+timeSeriesLineChart("Queue Len (users)", "Pending", "Users", function(val){ return val; });
+timeSeriesLineChart("Worker Engaged Time (hours)", "SyncTimeUsed", "Hours", function(val){ return val/60/60; });
+timeSeriesLineChart("Errors (users)", "ErrorUsers", "Users", function(val){ return val; });
+timeSeriesLineChart("Locked (users)", "Locked", "Users", function(val){ return val; });
+
+
+</script>
+{% endblock %}
