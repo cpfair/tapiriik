@@ -9,8 +9,9 @@ from django.core.urlresolvers import reverse
 from tapiriik.settings import WEB_ROOT, RWGPS_APIKEY
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
+from tapiriik.services.fit import FITIO
 from tapiriik.services.tcx import TCXIO
 from tapiriik.services.sessioncache import SessionCache
 
@@ -34,7 +35,7 @@ class RideWithGPSService(ServiceBase):
                                 "all": ActivityType.Other  # everything will eventually resolve to this
     }
 
-    SupportedActivities = list(_activityMappings.values())
+    SupportedActivities = [ActivityType.Cycling, ActivityType.MountainBiking]
 
     SupportsHR = SupportsCadence = True
 
@@ -87,6 +88,16 @@ class RideWithGPSService(ServiceBase):
         return total_seconds
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
+
+        def mapStatTriple(act, stats_obj, key, units):
+            if act["%s_max" % key]:
+                stats_obj.update(ActivityStatistic(units, max=float(act["%s_max" % key])))
+            if act["%s_min" % key]:
+                stats_obj.update(ActivityStatistic(units, min=float(act["%s_min" % key])))
+            if act["%s_avg" % key]:
+                stats_obj.update(ActivityStatistic(units, avg=float(act["%s_avg" % key])))
+
+
         # http://ridewithgps.com/users/1/trips.json?limit=200&order_by=created_at&order_dir=asc
         # offset also supported
         page = 1
@@ -117,12 +128,33 @@ class RideWithGPSService(ServiceBase):
                 if len(act["name"].strip()):
                     activity.Name = act["name"]
 
+                if len(act["description"].strip()):
+                    activity.Notes = act["description"]
+
+                activity.GPS = act["is_gps"]
+                activity.Stationary = not activity.GPS # I think
+
+                # 0 = public, 1 = private, 2 = friends
+                activity.Private = act["visibility"] == 1
+
                 activity.StartTime = pytz.utc.localize(datetime.strptime(act["departed_at"], "%Y-%m-%dT%H:%M:%SZ"))
                 activity.EndTime = activity.StartTime + timedelta(seconds=self._duration_to_seconds(act["duration"]))
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
                 activity.AdjustTZ()
 
-                activity.Distance = float(act["distance"])  # This value is already in meters...
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(act["distance"]))
+
+                mapStatTriple(act, activity.Stats.Power, "watts", ActivityStatisticUnit.Watts)
+                mapStatTriple(act, activity.Stats.Speed, "speed", ActivityStatisticUnit.KilometersPerHour)
+                mapStatTriple(act, activity.Stats.Cadence, "cad", ActivityStatisticUnit.RevolutionsPerMinute)
+                mapStatTriple(act, activity.Stats.HR, "hr", ActivityStatisticUnit.BeatsPerMinute)
+
+                if act["elevation_gain"]:
+                    activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(act["elevation_gain"])))
+
+                if act["elevation_loss"]:
+                    activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, loss=float(act["elevation_loss"])))
+
                 # Activity type is not implemented yet in RWGPS results; we will assume cycling, though perhaps "OTHER" wouuld be correct
                 activity.Type = ActivityType.Cycling
 
@@ -137,6 +169,8 @@ class RideWithGPSService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
+        if activity.Manual:
+            return activity # Nothing more to download - it doesn't serve these files for manually entered activites
         # https://ridewithgps.com/trips/??????.gpx
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
         res = requests.get("https://ridewithgps.com/trips/{}.tcx".format(activityID),
@@ -151,10 +185,11 @@ class RideWithGPSService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         # https://ridewithgps.com/trips.json
 
-        tcx_file = TCXIO.Dump(activity)
-        files = {"data_file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_file)}
+        fit_file = FITIO.Dump(activity)
+        files = {"data_file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
         params = {}
         params['trip[name]'] = activity.Name
+        params['trip[description]'] = activity.Notes
         params['trip[visibility]'] = 1 if activity.Private else 0 # Yes, this logic seems backwards but it's how it works
 
         res = requests.post("https://ridewithgps.com/trips.json", files=files,
