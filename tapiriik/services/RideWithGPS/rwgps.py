@@ -192,7 +192,8 @@ class RideWithGPSService(ServiceBase):
         params = {}
         params['trip[name]'] = activity.Name
         params['trip[description]'] = activity.Notes
-        params['trip[visibility]'] = 1 if activity.Private else 0 # Yes, this logic seems backwards but it's how it works
+        if activity.Private:
+            params['trip[visibility]'] = 1 # Yes, this logic seems backwards but it's how it works
 
         res = requests.post("https://ridewithgps.com/trips.json", files=files,
                             params=self._add_auth_params(params, record=serviceRecord))
