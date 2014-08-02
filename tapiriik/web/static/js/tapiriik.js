@@ -32,7 +32,7 @@ tapiriik.Init = function(){
 	if (tapiriik.User !== undefined){
 		if (tapiriik.User.ConnectedServicesCount > 1){
 			tapiriik.UpdateCountdownTimer = setInterval(tapiriik.UpdateSyncCountdown, 60000);
-			tapiriik.RefreshCountdownTimer = setInterval(tapiriik.RefreshSyncCountdown, 1000);
+			tapiriik.RefreshCountdownTimer = setInterval(tapiriik.RefreshSyncCountdown, 500);
 			tapiriik.UpdateSyncCountdown();
 		}
 	}
@@ -810,7 +810,7 @@ tapiriik.FormatTimespan = function(spanMillis){
 	else if (Math.abs(spanMillis/1000) > 60){
 		return Math.round(spanMillis/1000/60)+" minute"+(Math.round(spanMillis/1000/60)!=1?"s":"");
 	} else {
-		return Math.ceil(spanMillis/1000)+" second"+(Math.round(spanMillis/1000)!=1?"s":"");
+		return Math.ceil(spanMillis/1000)+" second"+(Math.ceil(spanMillis/1000)!=1?"s":"");
 	}
 };
 tapiriik.RefreshSyncCountdown = function(){
