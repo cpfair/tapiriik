@@ -1,6 +1,6 @@
 import os
-import math
 from datetime import datetime, timedelta
+import dateutil.parser
 
 import pytz
 import requests
@@ -90,90 +90,77 @@ class RideWithGPSService(ServiceBase):
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
 
         def mapStatTriple(act, stats_obj, key, units):
-            if act["%s_max" % key]:
+            if "%s_max" % key in act and act["%s_max" % key]:
                 stats_obj.update(ActivityStatistic(units, max=float(act["%s_max" % key])))
-            if act["%s_min" % key]:
+            if "%s_min" % key in act and act["%s_min" % key]:
                 stats_obj.update(ActivityStatistic(units, min=float(act["%s_min" % key])))
-            if act["%s_avg" % key]:
+            if "%s_avg" % key in act and act["%s_avg" % key]:
                 stats_obj.update(ActivityStatistic(units, avg=float(act["%s_avg" % key])))
 
 
         # http://ridewithgps.com/users/1/trips.json?limit=200&order_by=created_at&order_dir=asc
         # offset also supported
-        page = 1
-        pageSz = 50
         activities = []
         exclusions = []
-        while True:
-            logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
-            # TODO: take advantage of their nice ETag support
-            params = {"offset": (page - 1) * pageSz, "limit": pageSz}
-            params = self._add_auth_params(params, record=serviceRecord)
+        # They don't actually support paging right now, for whatever reason
+        params = self._add_auth_params({}, record=serviceRecord)
 
-            res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
-            res = res.json()
-            if res == []:
-                break # No activities
-            total_pages = math.ceil(int(res["results_count"]) / pageSz)
-            for act in res["results"]:
-                if "first_lat" not in act or "last_lat" not in act:
-                    exclusions.append(APIExcludeActivity("No points", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
-                    continue
-                if "distance" not in act:
-                    exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
-                    continue
-                activity = UploadedActivity()
+        res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
+        res = res.json()
+        if res == []:
+            return [], [] # No activities
+        for act in res:
+            if "distance" not in act:
+                exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
+                continue
+            activity = UploadedActivity()
 
-                activity.TZ = pytz.timezone(act["time_zone"])
+            activity.TZ = pytz.timezone(act["time_zone"])
 
-                logger.debug("Name " + act["name"] + ":")
-                if len(act["name"].strip()):
-                    activity.Name = act["name"]
+            logger.debug("Name " + act["name"] + ":")
+            if len(act["name"].strip()):
+                activity.Name = act["name"]
 
-                if len(act["description"].strip()):
-                    activity.Notes = act["description"]
+            if len(act["description"].strip()):
+                activity.Notes = act["description"]
 
-                activity.GPS = act["is_gps"]
-                activity.Stationary = not activity.GPS # I think
+            activity.GPS = act["is_gps"]
+            activity.Stationary = not activity.GPS # I think
 
-                # 0 = public, 1 = private, 2 = friends
-                activity.Private = act["visibility"] == 1
+            # 0 = public, 1 = private, 2 = friends
+            activity.Private = act["visibility"] == 1
 
-                activity.StartTime = pytz.utc.localize(datetime.strptime(act["departed_at"], "%Y-%m-%dT%H:%M:%SZ"))
-                activity.EndTime = activity.StartTime + timedelta(seconds=self._duration_to_seconds(act["duration"]))
-                logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
-                activity.AdjustTZ()
+            activity.StartTime = dateutil.parser.parse(act["departed_at"])
+            activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ) # Overwrite dateutil's sillyness
+            activity.EndTime = activity.StartTime + timedelta(seconds=self._duration_to_seconds(act["duration"]))
+            logger.debug("Activity s/t " + str(activity.StartTime))
+            activity.AdjustTZ()
 
-                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(act["distance"]))
+            activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, float(act["distance"]))
 
-                mapStatTriple(act, activity.Stats.Power, "watts", ActivityStatisticUnit.Watts)
-                mapStatTriple(act, activity.Stats.Speed, "speed", ActivityStatisticUnit.KilometersPerHour)
-                mapStatTriple(act, activity.Stats.Cadence, "cad", ActivityStatisticUnit.RevolutionsPerMinute)
-                mapStatTriple(act, activity.Stats.HR, "hr", ActivityStatisticUnit.BeatsPerMinute)
+            mapStatTriple(act, activity.Stats.Power, "watts", ActivityStatisticUnit.Watts)
+            mapStatTriple(act, activity.Stats.Speed, "speed", ActivityStatisticUnit.KilometersPerHour)
+            mapStatTriple(act, activity.Stats.Cadence, "cad", ActivityStatisticUnit.RevolutionsPerMinute)
+            mapStatTriple(act, activity.Stats.HR, "hr", ActivityStatisticUnit.BeatsPerMinute)
 
-                if act["elevation_gain"]:
-                    activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(act["elevation_gain"])))
+            if "elevation_gain" in act and act["elevation_gain"]:
+                activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, gain=float(act["elevation_gain"])))
 
-                if act["elevation_loss"]:
-                    activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, loss=float(act["elevation_loss"])))
+            if "elevation_loss" in act and act["elevation_loss"]:
+                activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters, loss=float(act["elevation_loss"])))
 
-                # Activity type is not implemented yet in RWGPS results; we will assume cycling, though perhaps "OTHER" wouuld be correct
-                activity.Type = ActivityType.Cycling
+            # Activity type is not implemented yet in RWGPS results; we will assume cycling, though perhaps "OTHER" wouuld be correct
+            activity.Type = ActivityType.Cycling
 
-                activity.CalculateUID()
-                activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
-                activities.append(activity)
-            logger.debug("Finished page {} of {}".format(page, total_pages))
-            if not exhaustive or total_pages == page or total_pages == 0:
-                break
-            else:
-                page += 1
+            activity.CalculateUID()
+            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+            activities.append(activity)
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
         if activity.Manual:
             return activity # Nothing more to download - it doesn't serve these files for manually entered activites
-        # https://ridewithgps.com/trips/??????.gpx
+        # https://ridewithgps.com/trips/??????.tcx
         activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
         res = requests.get("https://ridewithgps.com/trips/{}.tcx".format(activityID),
                            params=self._add_auth_params({'sub_format': 'history'}, record=serviceRecord))
