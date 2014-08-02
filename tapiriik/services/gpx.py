@@ -27,6 +27,10 @@ class GPXIO:
         except:
             root = etree.fromstring(gpxData)
 
+        # GPSBabel produces files with the GPX/1/0 schema - I have no clue what's new in /1
+        # So, blindly accept whatever we're given!
+        ns["gpx"] = root.nsmap[None]
+
         xmeta = root.find("gpx:metadata", namespaces=ns)
         if xmeta is not None:
             xname = xmeta.find("gpx:name", namespaces=ns)
