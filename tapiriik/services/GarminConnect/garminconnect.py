@@ -532,6 +532,9 @@ class GarminConnectService(ServiceBase):
             if wp.Location and wp.Location.Latitude == 0 and wp.Location.Longitude == 0:
                 wp.Location.Latitude = None
                 wp.Location.Longitude = None
+            # Please visit a physician before complaining about this
+            if wp.HR == 0:
+                wp.HR = None
             # Bump the active lap if required
             while (active_lap_idx < len(activity.Laps) - 1 and # Not the last lap
                    activity.Laps[active_lap_idx + 1].StartTime <= wp.Timestamp):
