@@ -67,6 +67,8 @@ class RideWithGPSService(ServiceBase):
         from tapiriik.auth.credential_storage import CredentialStore
         res = requests.get("https://ridewithgps.com/users/current.json",
                            params={'email': email, 'password': password, 'apikey': RWGPS_APIKEY})
+        if res.status_code == 401:
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         res.raise_for_status()
         res = res.json()
         if res["user"] is None:
