@@ -112,6 +112,8 @@ class RideWithGPSService(ServiceBase):
 
             res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
             res = res.json()
+            if res == []:
+                break # No activities
             total_pages = math.ceil(int(res["results_count"]) / pageSz)
             for act in res["results"]:
                 if "first_lat" not in act or "last_lat" not in act:
