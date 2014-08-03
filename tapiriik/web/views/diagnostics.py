@@ -102,7 +102,7 @@ def diag_errors(req):
 @diag_requireAuth
 def diag_graphs(req):
     context = {}
-    stats_series = list(db.sync_status_stats.find().sort("$natural", -1).limit(24 * 10)) # Last 24 hours (assuming 10 min intervals, monotonic timestamps)
+    stats_series = list(db.sync_status_stats.find().sort("$natural", -1).limit(24 * 6)) # Last 24 hours (assuming 10 min intervals, monotonic timestamps)
     for item in stats_series:
         item["Timestamp"] = item["Timestamp"].strftime("%H:%M")
         del item["_id"]
