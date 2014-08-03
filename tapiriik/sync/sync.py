@@ -187,12 +187,14 @@ class SynchronizationTask:
 
     def _initializePersistedSyncErrorsAndExclusions(self):
         self._syncErrors = {}
+        self._hasTransientSyncErrors = {}
         self._syncExclusions = {}
 
         for conn in self._serviceConnections:
             if hasattr(conn, "SyncErrors"):
                 # Remove non-blocking errors
                 self._syncErrors[conn._id] = [x for x in conn.SyncErrors if "Block" in x and x["Block"]]
+                self._hasTransientSyncErrors[conn._id] = len(self._syncErrors[conn._id]) != len(conn.SyncErrors)
                 del conn.SyncErrors
             else:
                 self._syncErrors[conn._id] = []
@@ -549,8 +551,9 @@ class SynchronizationTask:
             # Otherwise, things will melt down when the limit is reached
             # (lots of users will hit this error, then be marked for full synchronization later)
             # (but that's not really required)
+            # Though we don't want to play with things if this exception needs to take the place of an earlier, more significant one
             if e.UserException and e.UserException.Type == UserExceptionType.RateLimited:
-                e.TriggerExhaustive = False
+                e.TriggerExhaustive = self._hasTransientSyncErrors[conn._id]
             self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
             if not _isWarning(e):
