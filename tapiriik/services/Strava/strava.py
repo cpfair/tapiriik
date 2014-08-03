@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID
+from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID, STRAVA_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.database import cachedb
@@ -63,6 +63,8 @@ class StravaService(ServiceBase):
 
     SupportedActivities = list(_activityTypeMappings.keys())
 
+    GlobalRateLimits = STRAVA_RATE_LIMITS
+
     def WebInit(self):
         params = {'scope':'write view_private',
                   'client_id':STRAVA_CLIENT_ID,
@@ -81,6 +83,7 @@ class StravaService(ServiceBase):
         code = req.GET.get("code")
         params = {"grant_type": "authorization_code", "code": code, "client_id": STRAVA_CLIENT_ID, "client_secret": STRAVA_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"})}
 
+        self._globalRateLimit()
         response = requests.post("https://www.strava.com/oauth/token", data=params)
         self._logAPICall("auth-token", None, response.status_code != 200)
         if response.status_code != 200:
@@ -89,6 +92,7 @@ class StravaService(ServiceBase):
 
         authorizationData = {"OAuthToken": data["access_token"]}
         # Retrieve the user ID, meh.
+        self._globalRateLimit()
         id_resp = requests.get("https://www.strava.com/api/v3/athlete", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
         self._logAPICall("auth-extid", None, None)
         return (id_resp.json()["id"], authorizationData)
@@ -106,6 +110,7 @@ class StravaService(ServiceBase):
             if before is not None and before < 0:
                 break # Caused by activities that "happened" before the epoch. We generally don't care about those activities...
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
+            self._globalRateLimit()
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             self._logAPICall("list", (svcRecord.ExternalID, str(earliestDate)), resp.status_code == 401)
             if resp.status_code == 401:
@@ -177,6 +182,7 @@ class StravaService(ServiceBase):
             return activity
         activityID = activity.ServiceData["ActivityID"]
 
+        self._globalRateLimit()
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
             self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "auth")
@@ -281,6 +287,7 @@ class StravaService(ServiceBase):
                 fitData = FITIO.Dump(activity)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
+            self._globalRateLimit()
             response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 201:
                 if response.status_code == 401:
@@ -294,6 +301,7 @@ class StravaService(ServiceBase):
             upload_id = response.json()["id"]
             while not response.json()["activity_id"]:
                 time.sleep(5)
+                self._globalRateLimit()
                 response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
                 logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
                 if response.json()["error"]:
@@ -316,6 +324,7 @@ class StravaService(ServiceBase):
                     "elapsed_time": round((activity.EndTime - activity.StartTime).total_seconds())
                 }
             headers = self._apiHeaders(serviceRecord)
+            self._globalRateLimit()
             response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers)
             # FFR this method returns the same dict as the activity listing, as REST services are wont to do.
             if response.status_code != 201:
