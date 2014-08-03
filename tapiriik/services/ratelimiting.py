@@ -1,4 +1,5 @@
 from tapiriik.database import ratelimit as rl_db
+from pymongo.read_preferences import ReadPreference
 from datetime import datetime, timedelta
 import math
 
@@ -24,7 +25,7 @@ class RateLimit:
 		time_since_midnight = (datetime.utcnow() - midnight)
 
 		rl_db.limits.remove({"Key": key, "Expires": {"$lt": datetime.utcnow()}})
-		current_limits = list(rl_db.limits.find({"Key": key}, {"Duration": 1}))
+		current_limits = list(rl_db.limits.find({"Key": key}, {"Duration": 1}, read_preference=ReadPreference.PRIMARY))
 		missing_limits = [x for x in limits if x[0].total_seconds() not in [limit["Duration"] for limit in current_limits]]
 		for limit in missing_limits:
 			window_start = midnight + timedelta(seconds=math.floor(time_since_midnight.total_seconds()/limit[0].total_seconds()) * limit[0].total_seconds())
