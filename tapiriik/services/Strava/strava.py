@@ -299,8 +299,9 @@ class StravaService(ServiceBase):
                 raise APIException("Unable to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code))
 
             upload_id = response.json()["id"]
+            upload_poll_wait = 1
             while not response.json()["activity_id"]:
-                time.sleep(5)
+                time.sleep(upload_poll_wait)
                 self._globalRateLimit()
                 response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
                 logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
@@ -311,6 +312,7 @@ class StravaService(ServiceBase):
                         logger.debug("Duplicate")
                         return # I guess we're done here?
                     raise APIException("Strava failed while processing activity - last status %s" % response.text)
+                upload_poll_wait = min(30, upload_poll_wait * 2)
             upload_id = response.json()["activity_id"]
         else:
             localUploadTS = activity.StartTime.strftime("%Y-%m-%d %H:%M:%S")
