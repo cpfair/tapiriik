@@ -1,3 +1,6 @@
+from tapiriik.services.ratelimiting import RateLimit, RateLimitExceededException
+from tapiriik.services.api import ServiceException, UserExceptionType, UserException
+
 class ServiceAuthenticationType:
     OAuth = "oauth"
     UsernamePassword = "direct"
@@ -48,6 +51,10 @@ class ServiceBase:
     # (only ever tries once per sync run - so ~1 hour interval on average)
     UploadRetryCount = 5
     DownloadRetryCount = 5
+
+    # Global rate limiting options
+    # For when there's a limit on the API key itself
+    GlobalRateLimits = []
 
     @property
     def PartialSyncTriggerRequiresPolling(self):
@@ -117,3 +124,10 @@ class ServiceBase:
 
     def ConfigurationUpdating(self, serviceRecord, newConfig, oldConfig):
         pass
+
+    def _globalRateLimit(self):
+        try:
+            RateLimit.Limit(self.ID)
+        except RateLimitExceededException:
+            raise ServiceException("Global rate limit reached", user_exception=UserException(UserExceptionType.RateLimited))
+
