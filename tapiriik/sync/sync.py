@@ -542,7 +542,12 @@ class SynchronizationTask:
             logger.info("\tRetrieving list from " + svc.ID)
             svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
         except (ServiceException, ServiceWarning) as e:
-            self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
+            # Special-case rate limiting errors thrown during listing
+            # Otherwise, things will melt down when the limit is reached
+            # Un/f this will hide the error from the user too
+            # But I have about three minutes to get this out before the the above occurs
+            if not e.UserException or e.UserException.Type != UserExceptionType.RateLimited:
+                self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
             if not _isWarning(e):
                 return
