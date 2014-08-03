@@ -6,12 +6,13 @@ class ServiceExceptionScope:
     Activity = "activity"
 
 class ServiceException(Exception):
-    def __init__(self, message, scope=ServiceExceptionScope.Service, block=False, user_exception=None):
+    def __init__(self, message, scope=ServiceExceptionScope.Service, block=False, user_exception=None, trigger_exhaustive=True):
         Exception.__init__(self, message)
         self.Message = message
         self.UserException = user_exception
         self.Block = block
         self.Scope = scope
+        self.TriggerExhaustive = trigger_exhaustive
 
     def __str__(self):
         return self.Message + " (user " + str(self.UserException) + " )"

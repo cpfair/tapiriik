@@ -51,7 +51,7 @@ def _isWarning(exc):
 # It's practically an ORM!
 
 def _packServiceException(step, e):
-    res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope}
+    res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope, "TriggerExhaustive": e.TriggerExhaustive}
     if e.UserException:
         res["UserException"] = _packUserException(e.UserException)
     return res
@@ -115,7 +115,8 @@ class Sync:
             #   And, when the block is cleared, NextSyncIsExhaustive is set.
 
             exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
-            if "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0:
+            if  ("ForcingExhaustiveSyncErrorCount" not in user and "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0) or \
+                ("ForcingExhaustiveSyncErrorCount" in user and user["ForcingExhaustiveSyncErrorCount"] > 0):
                 exhaustive = True
 
             try:
@@ -204,6 +205,7 @@ class SynchronizationTask:
 
     def _writeBackSyncErrorsAndExclusions(self):
         nonblockingSyncErrorsCount = 0
+        forcingExhaustiveSyncErrorsCount = 0
         blockingSyncErrorsCount = 0
         syncExclusionCount = 0
         for conn in self._serviceConnections:
@@ -221,9 +223,10 @@ class SynchronizationTask:
             db.connections.update({"_id": conn._id}, update_values)
             nonblockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" not in x or not x["Block"]])
             blockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"]])
+            forcingExhaustiveSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"] and "TriggerExhaustive" in x and x["TriggerExhaustive"]])
             syncExclusionCount += len(self._syncExclusions[conn._id].items())
 
-        db.users.update({"_id": self.user["_id"]}, {"$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}})
+        db.users.update({"_id": self.user["_id"]}, {"$set": {"NonblockingSyncErrorCount": nonblockingSyncErrorsCount, "BlockingSyncErrorCount": blockingSyncErrorsCount, "ForcingExhaustiveSyncErrorCount": forcingExhaustiveSyncErrorsCount, "SyncExclusionCount": syncExclusionCount}})
 
     def _writeBackActivityRecords(self):
         def _activityPrescences(prescences):
@@ -544,10 +547,11 @@ class SynchronizationTask:
         except (ServiceException, ServiceWarning) as e:
             # Special-case rate limiting errors thrown during listing
             # Otherwise, things will melt down when the limit is reached
-            # Un/f this will hide the error from the user too
-            # But I have about three minutes to get this out before the the above occurs
-            if not e.UserException or e.UserException.Type != UserExceptionType.RateLimited:
-                self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
+            # (lots of users will hit this error, then be marked for full synchronization later)
+            # (but that's not really required)
+            if e.UserException and e.UserException.Type == UserExceptionType.RateLimited:
+                e.TriggerExhaustive = False
+            self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
             if not _isWarning(e):
                 return
