@@ -5,6 +5,7 @@ from tapiriik.sync import Sync
 from tapiriik.services import ServiceRecord
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from datetime import datetime, timedelta
+from pymongo.read_preferences import ReadPreference
 from bson.objectid import ObjectId
 
 class User:
@@ -26,7 +27,7 @@ class User:
 
     def Create():
         uid = db.users.insert({"Created": datetime.utcnow()})  # will mongodb insert an almost empty doc, i.e. _id?
-        return db.users.find_one({"_id": uid})
+        return db.users.find_one({"_id": uid}, read_preference=ReadPreference.PRIMARY)
 
     def GetConnectionRecordsByUser(user):
         return [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})]
