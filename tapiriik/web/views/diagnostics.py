@@ -177,6 +177,15 @@ def diag_user(req, user):
     elif "svc_clearacts" in req.POST:
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"SynchronizedActivities": 1}})
         Sync.SetNextSyncIsExhaustive(userRec, True)
+    elif "svc_tryagain" in req.POST:
+        from tapiriik.services import Service
+        svcRec = Service.GetServiceRecordByID(req.POST["id"])
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$pull": {"SyncErrors": {"Scope": "activity"}}})
+        act_recs = db.activity_records.find_one({"UserID": ObjectId(user)})
+        for act in act_recs["Activities"]:
+            if "FailureCounts" in act and svcRec.Service.ID in act["FailureCounts"]:
+                del act["FailureCounts"][svcRec.Service.ID]
+        db.activity_records.save(act_recs)
     else:
         delta = False
 
