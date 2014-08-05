@@ -114,10 +114,10 @@ class RideWithGPSService(ServiceBase):
             return [], [] # No activities
         for act in res:
             if "distance" not in act:
-                exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
+                exclusions.append(APIExcludeActivity("No distance", activityId=act["id"], userException=UserException(UserExceptionType.Corrupt)))
                 continue
             if "duration" not in act or not act["duration"]:
-                exclusions.append(APIExcludeActivity("No duration", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
+                exclusions.append(APIExcludeActivity("No duration", activityId=act["id"], userException=UserException(UserExceptionType.Corrupt)))
                 continue
             activity = UploadedActivity()
 
