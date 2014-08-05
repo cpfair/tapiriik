@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import dateutil.parser
 
 import pytz
+from dateutil.tz import tzutc
 import requests
 from django.core.urlresolvers import reverse
 
@@ -115,9 +116,10 @@ class RideWithGPSService(ServiceBase):
             if "distance" not in act:
                 exclusions.append(APIExcludeActivity("No distance", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
                 continue
+            if "duration" not in act or not act["duration"]:
+                exclusions.append(APIExcludeActivity("No duration", activityId=act["activityId"], userException=UserException(UserExceptionType.Corrupt)))
+                continue
             activity = UploadedActivity()
-
-            activity.TZ = pytz.timezone(act["time_zone"])
 
             logger.debug("Name " + act["name"] + ":")
             if len(act["name"].strip()):
@@ -133,7 +135,19 @@ class RideWithGPSService(ServiceBase):
             activity.Private = act["visibility"] == 1
 
             activity.StartTime = dateutil.parser.parse(act["departed_at"])
+
+            try:
+                activity.TZ = pytz.timezone(act["time_zone"])
+            except pytz.exceptions.UnknownTimeZoneError:
+                # Sometimes the time_zone returned isn't quite what we'd like it
+                # So, just pull the offset from the datetime
+                if isinstance(activity.StartTime.tzinfo, tzutc):
+                    activity.TZ = pytz.utc # The dateutil tzutc doesn't have an _offset value.
+                else:
+                    activity.TZ = pytz.FixedOffset(activity.StartTime.tzinfo.utcoffset(activity.StartTime).total_seconds() / 60)
+
             activity.StartTime = activity.StartTime.replace(tzinfo=activity.TZ) # Overwrite dateutil's sillyness
+
             activity.EndTime = activity.StartTime + timedelta(seconds=self._duration_to_seconds(act["duration"]))
             logger.debug("Activity s/t " + str(activity.StartTime))
             activity.AdjustTZ()
