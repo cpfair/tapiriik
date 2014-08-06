@@ -680,7 +680,7 @@ class GarminConnectService(ServiceBase):
         # First, accept any pending connections
         watch_user_key = sorted(list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys()))[multiple_index]
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
-        session = self._get_session(email=watch_user["Username"], password=watch_user["Password"])
+        session = self._get_session(email=watch_user["Username"], password=watch_user["Password"], skip_cache=True)
 
         # Then, check for users with new activities
         self._rate_limit()
