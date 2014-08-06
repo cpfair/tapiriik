@@ -707,6 +707,29 @@ from {transform: rotate(0deg);}
 to {transform: rotate(359deg);}
 }
 
+.syncButton.queuing .syncButtonIcon {
+	/* There's the tiniest amount of wobble if you look super closely */
+	/* I blame chrome */
+	background-image: url('../img/sync-spin.png');
+	left:-29px;
+	top:-29px;
+	width:57px;
+	height:57px;
+
+	-webkit-animation: rotation-rev 5s infinite linear;
+	animation: rotation-rev 5s infinite linear;
+}
+
+@-webkit-keyframes rotation-rev {
+from {-webkit-transform: rotate(359deg);}
+to {-webkit-transform: rotate(0deg);}
+}
+
+@keyframes rotation-rev {
+from {transform: rotate(359deg);}
+to {transform: rotate(0deg);}
+}
+
 .paymentButton, .reclaimButton {
 	color:#aaa;
 }

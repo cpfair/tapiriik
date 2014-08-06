@@ -816,6 +816,7 @@ tapiriik.FormatTimespan = function(spanMillis){
 tapiriik.RefreshSyncCountdown = function(){
 	var sync_button_active = false;
 	var sync_button_engaged = false;
+	var sync_button_queuing = false;
 	var sync_state_text = "";
 	var sync_post_text = "";
 	if (tapiriik.SyncHash !== undefined){
@@ -837,15 +838,15 @@ tapiriik.RefreshSyncCountdown = function(){
 			}
 		} else {
 			sync_button_active = false;
-			sync_button_engaged = true;
-
 			if (!tapiriik.Synchronizing){
 				var waitTimeMessage = "";
 				if (tapiriik.SynchronizationWaitTime > 60) { // Otherwise you'd expect a countdown, which this is generally not.
 					waitTimeMessage = " (approx. " + tapiriik.FormatTimespan(tapiriik.SynchronizationWaitTime * 1000) + ")";
 				}
 				sync_state_text = "Queuing" + waitTimeMessage;
+				sync_button_queuing = true;
 			} else {
+				sync_button_engaged = true;
 				var progress = "";
 				if (tapiriik.SynchronizationStep == "list") {
 					sync_state_text = "Checking " + tapiriik.ServiceInfo[tapiriik.SynchronizationProgress].DisplayName;
@@ -868,6 +869,7 @@ tapiriik.RefreshSyncCountdown = function(){
 			temp.remove();
 			return width;
 		};
+		$(".syncButton").toggleClass("queuing", sync_button_queuing);
 		$(".syncButton").toggleClass("engaged", sync_button_engaged);
 		$(".syncButton").toggleClass("active", sync_button_active).attr("title", sync_button_active ? "Synchronize now" : (sync_button_engaged ? "Synchronizing now..." : "You just synchronized!"));
 		// I don't like this, so I'm only doing it for the left-hand stuff. Note to future self several years down the road: still in use, I know, right?
