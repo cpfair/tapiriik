@@ -24,6 +24,7 @@ class SportTracksService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.OAuth
     OpenFitEndpoint = SPORTTRACKS_OPENFIT_ENDPOINT
     SupportsHR = True
+    AuthenticationNoFrame = True
 
     """ Other   Basketball
         Other   Boxing
