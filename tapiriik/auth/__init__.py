@@ -13,8 +13,7 @@ class User:
     ConfigurationDefaults = {
         "suppress_auto_sync": False,
         "sync_upload_delay": 0,
-        "sync_skip_before": None,
-        "sync_unnamed_activities": True
+        "sync_skip_before": None
     }
     def Get(id):
         return db.users.find_one({"_id": ObjectId(id)})
