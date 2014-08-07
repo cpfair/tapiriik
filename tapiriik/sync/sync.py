@@ -222,7 +222,7 @@ class SynchronizationTask:
                 }
             }
 
-            if not self._isServiceExcluded(conn):
+            if not self._isServiceExcluded(conn) and not self._shouldPersistServiceTrigger(conn):
                 # Only reset the trigger if we succesfully got through the entire sync without bailing on this particular connection
                 update_values["$unset"] = {"TriggerPartialSync": None}
 
@@ -307,6 +307,12 @@ class SynchronizationTask:
 
     def _dropUntouchedActivityRecords(self):
         self._activityRecords[:] = [x for x in self._activityRecords if x.Touched]
+
+    def _persistServiceTrigger(self, serviceRecord):
+        self._persistTriggerServices[serviceRecord._id] = True
+
+    def _shouldPersistServiceTrigger(self, serviceRecord):
+        return serviceRecord._id in self._persistTriggerServices
 
     def _excludeService(self, serviceRecord, userException):
         self._excludedServices[serviceRecord._id] = userException if userException else None
@@ -792,6 +798,7 @@ class SynchronizationTask:
         self._activities = []
         self._excludedServices = {}
         self._deferredServices = []
+        self._persistTriggerServices = {}
 
         self._initializePersistedSyncErrorsAndExclusions()
 
@@ -839,6 +846,9 @@ class SynchronizationTask:
                         self._updateSynchronizedActivities(activity)
                         self._updateActivityRecordInitialPrescence(activity)
 
+                        actAvailableFromConnIds = activity.ServiceDataCollection.keys()
+                        actAvailableFromConns = [[x for x in self._serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromConnIds]
+
                         # Check if this is too soon to synchronize
                         if self._user_config["sync_upload_delay"]:
                             endtime = activity.EndTime
@@ -849,16 +859,19 @@ class SynchronizationTask:
 
                             if tz: # We can't really know for sure otherwise
                                 time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
+                                time_past += tz.dst(endtime) # For some reason DST wasn't being taken into account - maybe just GC?
                                 time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
-                                time_remaining -= tz.dst(endtime) # For some reason DST wasn't being taken into account - maybe just GC?
-                                logger.debug(" %s since upload" % time_remaining)
+                                logger.debug(" %s since upload" % time_past)
                                 if time_remaining > timedelta(0):
                                     activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Deferred))
                                     next_sync = datetime.utcnow() + time_remaining
                                     # Reschedule them so this activity syncs immediately on schedule
                                     sync_result.ForceScheduleNextSyncOnOrBefore(next_sync)
 
-                                    logger.info("\t\t...is deferred for %s (out of %s)" % (time_remaining, timedelta(seconds=self._user_config["sync_upload_delay"])))
+                                    logger.info("\t\t...is delayed for %s (out of %s)" % (time_remaining, timedelta(seconds=self._user_config["sync_upload_delay"])))
+                                    # We need to ensure we check these again when the sync re-runs
+                                    for conn in actAvailableFromConns:
+                                        self._persistServiceTrigger(conn)
                                     raise ActivityShouldNotSynchronizeException()
 
                         if self._user_config["sync_skip_before"]:
@@ -869,8 +882,6 @@ class SynchronizationTask:
 
                         # We don't always know if the activity is private before it's downloaded, but we can check anyways since it saves a lot of time.
                         if activity.Private:
-                            actAvailableFromConnIds = activity.ServiceDataCollection.keys()
-                            actAvailableFromConns = [[x for x in self._serviceConnections if x._id == dlSvcRecId][0] for dlSvcRecId in actAvailableFromConnIds]
                             override_private = False
                             for conn in actAvailableFromConns:
                                 if conn.GetConfiguration()["sync_private"]:
