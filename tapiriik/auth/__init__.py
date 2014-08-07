@@ -72,6 +72,15 @@ class User:
                     return True
         return False
 
+    def PaidUserMongoQuery():
+        # Don't need the no-expiry case here, those payments have all expired by now
+        return {
+            "$or": [
+                {"Payments.Expiry": {"$gt": datetime.utcnow()}},
+                {"Promos.Expiry": {"$gt": datetime.utcnow()}}
+            ]
+        }
+
     def IsServiceConnected(user, service_id):
         return service_id in [x["Service"] for x in user["ConnectedServices"]]
 
