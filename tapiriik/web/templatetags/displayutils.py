@@ -1,6 +1,6 @@
 from django import template
 from django.utils.timesince import timesince
-from datetime import datetime
+from datetime import datetime, date
 import json
 register = template.Library()
 
@@ -40,7 +40,8 @@ def meters_to_kms(value):
 
 @register.filter(name='json')
 def jsonit(obj):
-    return json.dumps(obj)
+    dthandler = lambda obj: obj.isoformat() if isinstance(obj, datetime)  or isinstance(obj, date) else None
+    return json.dumps(obj, default=dthandler)
 
 @register.filter(name='dict_get')
 def dict_get(tdict, key):

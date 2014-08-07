@@ -77,12 +77,30 @@ function ActivitiesController($scope, $http) {
 }
 
 function SyncSettingsController($scope, $http, $window){
+  $scope.$watch("tapiriik.User.Config.sync_skip_before", function(){
+    if ($scope.tapiriik.User.Config.sync_skip_before) {
+      var date = new Date($scope.tapiriik.User.Config.sync_skip_before);
+      var month_abbrs = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      $scope.sync_skip_before_entry = date.getDate() + " " + month_abbrs[date.getMonth()] + " " + date.getFullYear();
+    }
+  });
   $scope.sync_suppress_options = [{k: true, v: "manually"}, {k: false, v: "automatically"}];
   $scope.sync_delay_options = [{k: 0, v: "as soon as possible"}, {k: 20*60, v: "20 minutes"}, {k: 60*60, v: "1 hour"}];
+  $scope.save = function(){
+    if (isNaN(Date.parse($scope.sync_skip_before_entry)) && $scope.sync_skip_before_entry) {
+      alert("Double-check that date");
+      return;
+    }
+    $scope.tapiriik.User.Config.sync_skip_before = new Date($scope.sync_skip_before_entry);
+    $http.post("/account/configure", $scope.tapiriik.User.Config).then(function(res){
+      // Close the window?
+    });
+  };
 }
 
 angular.module('tapiriik', []).config(function($interpolateProvider) {
   $interpolateProvider.startSymbol('{[').endSymbol(']}');
-}).run(function($rootScope) {
+}).run(function($rootScope, $http) {
   $rootScope.tapiriik = window.tapiriik;
+  $http.defaults.headers.post["X-CSRFToken"] = $.cookie('csrftoken'); // ALERT ALERT JQUERY ALERT ALERT
 });

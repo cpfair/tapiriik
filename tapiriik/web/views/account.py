@@ -2,6 +2,8 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from tapiriik.auth import User
+import json
+import dateutil.parser
 
 
 @require_POST
@@ -20,7 +22,10 @@ def account_settimezone(req):
 
 @require_POST
 def account_setconfig(req):
-	if not req.user:
-	    return HttpResponse(status=403)
-	User.SetConfiguration(req.user, req.POST)
-	return HttpResponse()
+    if not req.user:
+        return HttpResponse(status=403)
+    data = json.loads(req.body.decode("utf-8"))
+    if data["sync_skip_before"] and len(data["sync_skip_before"]):
+        data["sync_skip_before"] = dateutil.parser.parse(data["sync_skip_before"])
+    User.SetConfiguration(req.user, data)
+    return HttpResponse()

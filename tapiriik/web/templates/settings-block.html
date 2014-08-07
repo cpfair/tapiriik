@@ -5,7 +5,7 @@
 			<div class="popoverInner">
 				<form>
 					<div class="syncSettingsCloze">
-						<span ng-show="tapiriik.User.HasAutoSync">
+						<span ng-show="tapiriik.User.AutoSyncActive">
 							Check for new activities
 							<div class="selectWrap">
 								<select ng-model="tapiriik.User.Config.suppress_auto_sync" ng-options="opt.k as opt.v for opt in sync_suppress_options">
@@ -18,10 +18,10 @@
 							</select>
 						</div>
 						after they finish, but skip them if they happened before
-						<input type="text" placeholder="16 Nov 1885" ng-model="tapiriik.User.Config.sync_skip_before_entry">.
+						<input type="text" placeholder="16 Nov 1885" ng-model="sync_skip_before_entry">.
 					</div>
 					<div style="text-align:center;">
-						<button class="syncSettingsSaveButton">Save</button>
+						<button class="syncSettingsSaveButton" ng-click="save()">Save</button>
 					</div>
 				</form>
 			</div>
