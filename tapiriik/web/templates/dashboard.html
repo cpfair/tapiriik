@@ -29,12 +29,10 @@
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncButtonBlock">
-			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncSettingsNubbin" ng-show="tapiriik.User.AutoSyncActive"><div class="syncSettingsNubbinIcon"></div></div></div><div class="syncButtonAttachment right">Attached info 10%</div>
+			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncSettingsNubbin" ><div class="syncSettingsNubbinIcon"></div></div></div><div class="syncButtonAttachment right">Attached info 10%</div>
 		</div>
 		<br/>
-		{% if user|has_active_payment %}
-			{% include "settings-block.html" %}
-		{% endif %}
+		{% include "settings-block.html" %}
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>

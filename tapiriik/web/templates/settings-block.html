@@ -5,11 +5,13 @@
 			<div class="popoverInner">
 				<form>
 					<div class="syncSettingsCloze">
-						Check for new activities
-						<div class="selectWrap">
-							<select ng-model="tapiriik.User.Config.suppress_auto_sync" ng-options="opt.k as opt.v for opt in sync_suppress_options">
-							</select>
-						</div>.
+						<span ng-show="tapiriik.User.HasAutoSync">
+							Check for new activities
+							<div class="selectWrap">
+								<select ng-model="tapiriik.User.Config.suppress_auto_sync" ng-options="opt.k as opt.v for opt in sync_suppress_options">
+								</select>
+							</div>.
+						</span>
 						Upload activities
 						<div class="selectWrap">
 							<select ng-model="tapiriik.User.Config.sync_upload_delay" ng-options="opt.k as opt.v for opt in sync_delay_options">
