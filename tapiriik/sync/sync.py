@@ -127,8 +127,11 @@ class Sync:
                 continue  # another worker picked them - try the next user
             else:
                 nextSync = None
-                if User.HasActivePayment(user) and not User.GetConfiguration(user)["suppress_auto_sync"]:
-                    nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
+                if User.HasActivePayment(user):
+                    if User.GetConfiguration(user)["suppress_auto_sync"]:
+                        logger.info("Not scheduling auto sync for paid user")
+                    else:
+                        nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
                 if result.ForceNextSync:
                     logger.info("Forcing next sync at %s" % result.ForceNextSync)
                     nextSync = result.ForceNextSync

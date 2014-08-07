@@ -20,6 +20,7 @@ function ActivitiesController($scope, $http) {
       // Temporary fix since lots of people are seeing this now, and I might as well assign blame accurately (or be vague)
       "ratelimited": "Some services limit how many actions tapiriik can perform on your behalf per hour - more activities will transfer soon.", // per hour - close enough
       "deferred": "You've told tapiriik to wait some time before synchronizing activities.", // Should really sub in the actual timespan here.
+      "predates_window": "This activity falls before the first date you specified for sync.", // Should really sub in the actual timespan here.
       "credentials_missing": "You did not opt to remember the credentials for %(service).",
       "config_missing": "%(service) requires configuration.",
       "stationary": "%(service) does not support stationary activity upload.",

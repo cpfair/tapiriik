@@ -33,6 +33,7 @@
 		</div>
 		<br/>
 		{% include "settings-block.html" %}
+		<br/>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
