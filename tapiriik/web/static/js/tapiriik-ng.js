@@ -93,7 +93,7 @@ function SyncSettingsController($scope, $http, $window){
     }
     $scope.tapiriik.User.Config.sync_skip_before = new Date($scope.sync_skip_before_entry);
     $http.post("/account/configure", $scope.tapiriik.User.Config).then(function(res){
-      // Close the window?
+      window.tapiriik.ToggleSyncSettingsDialog(); // Back to jquery land
     });
   };
 }

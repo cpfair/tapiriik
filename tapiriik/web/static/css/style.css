@@ -709,6 +709,7 @@ p.infotip .close:hover {
 	position:absolute;
 	border:20px solid #8ec1da;
 	border-radius:20px;
+	cursor: pointer;
 }
 
 .syncSettingsNubbinIcon {

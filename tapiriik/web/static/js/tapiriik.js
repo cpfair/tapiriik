@@ -52,6 +52,7 @@ tapiriik.Init = function(){
 	});
 	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
 	$(".promoButton").click(tapiriik.PaymentPromoDialogLinkClicked);
+	$(".syncSettingsNubbin").click(tapiriik.ToggleSyncSettingsDialog);
 
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
@@ -686,6 +687,10 @@ tapiriik.OpenPaymentPromoClaimCompletedDialog = function(){
 	});
 	tapiriik.CreateServiceDialog("tapiriik",form);
 };
+
+tapiriik.ToggleSyncSettingsDialog = function(){
+	$(".syncSettingsBlock").slideToggle(250);
+}
 
 tapiriik.CreateConfigPanel = function(serviceID, contents){
 	var configTray = $("<div>").addClass("config").append($("<div>").addClass("arrow")).append(contents).appendTo($(".service#"+serviceID));
