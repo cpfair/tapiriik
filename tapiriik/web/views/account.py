@@ -28,4 +28,5 @@ def account_setconfig(req):
     if data["sync_skip_before"] and len(data["sync_skip_before"]):
         data["sync_skip_before"] = dateutil.parser.parse(data["sync_skip_before"])
     User.SetConfiguration(req.user, data)
+    Sync.SetNextSyncIsExhaustive(req.user, True)
     return HttpResponse()
