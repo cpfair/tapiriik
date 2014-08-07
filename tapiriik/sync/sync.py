@@ -130,6 +130,7 @@ class Sync:
                 if User.HasActivePayment(user) and not User.GetConfiguration(user)["suppress_auto_sync"]:
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
                 if result.ForceNextSync:
+                    logger.info("Forcing next sync at %s" % result.ForceNextSync)
                     nextSync = result.ForceNextSync
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
@@ -139,7 +140,7 @@ class Sync:
         return userCt
 
     def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
-        SynchronizationTask(user).Run(exhaustive=exhaustive, null_next_sync_on_unlock=null_next_sync_on_unlock, heartbeat_callback=heartbeat_callback)
+        return SynchronizationTask(user).Run(exhaustive=exhaustive, null_next_sync_on_unlock=null_next_sync_on_unlock, heartbeat_callback=heartbeat_callback)
 
 
 class SynchronizationTask:
@@ -840,16 +841,24 @@ class SynchronizationTask:
 
                         # Check if this is too soon to synchronize
                         if self._user_config["sync_upload_delay"]:
-                            tz = activity.TZ if activity.TZ else activity.FallbackTZ
+                            endtime = activity.EndTime
+                            tz = endtime.tzinfo
+                            if not tz and activity.FallbackTZ:
+                                tz = activity.FallbackTZ
+                                endtime = tz.localize(endtime)
+
                             if tz: # We can't really know for sure otherwise
-                                time_past = (datetime.utcnow().astimezone(tz) - activity.EndTime)
+                                time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
                                 time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
+                                time_remaining -= tz.dst(endtime) # For some reason DST wasn't being taken into account - maybe just GC?
+                                logger.debug(" %s since upload" % time_remaining)
                                 if time_remaining > timedelta(0):
-                                    logger.info("\t\t...is deferred")
                                     activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Deferred))
                                     next_sync = datetime.utcnow() + time_remaining
                                     # Reschedule them so this activity syncs immediately on schedule
                                     sync_result.ForceScheduleNextSyncOnOrBefore(next_sync)
+
+                                    logger.info("\t\t...is deferred for %s (out of %s)" % (time_remaining, timedelta(seconds=self._user_config["sync_upload_delay"])))
                                     raise ActivityShouldNotSynchronizeException()
 
                         if self._user_config["sync_skip_before"]:
