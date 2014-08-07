@@ -7,12 +7,14 @@ from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from datetime import datetime, timedelta
 from pymongo.read_preferences import ReadPreference
 from bson.objectid import ObjectId
+import copy
 
 class User:
     ConfigurationDefaults = {
         "suppress_auto_sync": False,
-        "sync_upload_delay": None,
-        "sync_skip_before": None
+        "sync_upload_delay": 0,
+        "sync_skip_before": None,
+        "sync_unnamed_activities": True
     }
     def Get(id):
         return db.users.find_one({"_id": ObjectId(id)})
@@ -223,7 +225,6 @@ class SessionAuth:
             req.user = None
         else:
             req.user = db.users.find_one({"_id": ObjectId(userId)})
-            req.user["Config"] = {}
-            req.user["Config"]["suppress_auto_sync"] = True
+            req.user["Config"] = User.GetConfiguration(req.user) # Populate defaults
             if req.user is not None:
                 req.user["Substitute"] = isSU

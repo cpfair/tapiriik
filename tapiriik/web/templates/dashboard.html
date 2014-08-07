@@ -35,12 +35,28 @@
 		<div class="syncSettingsBlock" ng-controller="SyncSettingsController">
 			<div class="internalPopover">
 				<div class="popoverOuterBorder">
-					{[ config ]}
-					<div class="popoverArrow"><div class="popoverArrowInner"></div></div>
+					<!-- {[ config ]} -->
+<!-- 					<div class="popoverArrow"><div class="popoverArrowInner"></div></div> until I figure out a nice way to keep this aligned with the settings button  -->
 					<div class="popoverInner">
 						<form>
 							<div class="syncSettingsCloze">
-								Check for new activities <div class="selectWrap"><select ng-model="config.suppress_auto_sync"><option ng-value="false">automatically</option><option ng-value="true">manually</option></select></div>. Upload activities <div class="selectWrap" ng-model="config.sync_upload_delay"><select><option>as soon as possible</option><option>20 minutes</option><option>1 hour</option></select></div> after they finish, but skip them if they happened before <input type="text" placeholder="16 Nov 1885" ng-model="config.sync_skip_before_entry">.
+								Check for new activities
+								<div class="selectWrap">
+									<select ng-model="config.suppress_auto_sync" ng-options="opt.k as opt.v for opt in sync_suppress_options">
+									</select>
+								</div>.
+								Upload activities
+								<div class="selectWrap">
+									<select ng-model="config.sync_upload_delay" ng-options="opt.k as opt.v for opt in sync_delay_options">
+									</select>
+								</div>
+								after they finish, but skip them if they happened before
+								<input type="text" placeholder="16 Nov 1885" ng-model="config.sync_skip_before_entry">.
+								If I haven't named an activity yet,
+								<div class="selectWrap">
+									<select ng-model="config.sync_unnamed_activities" ng-options="opt.k as opt.v for opt in sync_unnamed_options">
+									</select>
+								</div>.
 							</div>
 							<div style="text-align:center;">
 								<button class="syncSettingsSaveButton">Save</button>
