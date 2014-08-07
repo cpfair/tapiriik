@@ -132,9 +132,10 @@ class Sync:
                         logger.info("Not scheduling auto sync for paid user")
                     else:
                         nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-                if result.ForceNextSync:
-                    logger.info("Forcing next sync at %s" % result.ForceNextSync)
-                    nextSync = result.ForceNextSync
+                if result:
+                    if result.ForceNextSync:
+                        logger.info("Forcing next sync at %s" % result.ForceNextSync)
+                        nextSync = result.ForceNextSync
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
