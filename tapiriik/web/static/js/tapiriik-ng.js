@@ -94,9 +94,11 @@ function SyncSettingsController($scope, $http, $window){
     }
     if ($scope.sync_skip_before_entry) {
       $scope.tapiriik.User.Config.sync_skip_before = new Date($scope.sync_skip_before_entry);
+    } else {
+      $scope.tapiriik.User.Config.sync_skip_before = null;
     }
     $http.post("/account/configure", $scope.tapiriik.User.Config).success(function(){
-      window.tapiriik.ToggleSyncSettingsDialog(); // Back to jquery land
+      $.address.value(""); // Back to jquery land
     }).error(function(data, status){
       alert("Error saving settings - " + status + ": " + data);
     });

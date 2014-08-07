@@ -52,7 +52,7 @@ tapiriik.Init = function(){
 	});
 	$(".reclaimButton").click(tapiriik.PaymentReclaimDialogLinkClicked);
 	$(".promoButton").click(tapiriik.PaymentPromoDialogLinkClicked);
-	$(".syncSettingsNubbin").click(tapiriik.ToggleSyncSettingsDialog);
+	$(".syncSettingsNubbin").click(tapiriik.SyncSettingsLinkClicked);
 
 	if (tapiriik.User !== undefined) {
 		for (var i in tapiriik.ServiceInfo) {
@@ -146,6 +146,10 @@ tapiriik.AddressChanged=function(){
 			tapiriik.OpenDropboxInfoDialog();
 			return;
 		}
+	} else if (components[0] == "settings") {
+		tapiriik.OpenSyncSettingsDialog();
+	} else {
+		tapiriik.CloseSyncSettingsDialog();
 	}
 	tapiriik.DoDismissServiceDialog();
 	tapiriik.DoDismissConfigPanel();
@@ -688,9 +692,23 @@ tapiriik.OpenPaymentPromoClaimCompletedDialog = function(){
 	tapiriik.CreateServiceDialog("tapiriik",form);
 };
 
-tapiriik.ToggleSyncSettingsDialog = function(){
-	$(".syncSettingsBlock").slideToggle(250);
-}
+tapiriik.SyncSettingsLinkClicked = function() {
+	// This is getting absurd, if I haven't said that already
+	// But hey, easier to add a few more lines than change the entire thing to Angular :(
+	if ($(".syncSettingsBlock").is(":visible")) {
+		$.address.value("");
+	} else {
+		$.address.value("settings");
+	}
+};
+
+tapiriik.OpenSyncSettingsDialog = function(){
+	$(".syncSettingsBlock").slideDown(250);
+};
+
+tapiriik.CloseSyncSettingsDialog = function(){
+	$(".syncSettingsBlock").slideUp(250);
+};
 
 tapiriik.CreateConfigPanel = function(serviceID, contents){
 	var configTray = $("<div>").addClass("config").append($("<div>").addClass("arrow")).append(contents).appendTo($(".service#"+serviceID));
