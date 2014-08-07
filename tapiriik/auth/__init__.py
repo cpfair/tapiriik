@@ -77,7 +77,8 @@ class User:
         return {
             "$or": [
                 {"Payments.Expiry": {"$gt": datetime.utcnow()}},
-                {"Promos.Expiry": {"$gt": datetime.utcnow()}}
+                {"Promos.Expiry": {"$gt": datetime.utcnow()}},
+                {"Promos.Expiry": None}
             ]
         }
 
