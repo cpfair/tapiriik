@@ -78,7 +78,7 @@ function ActivitiesController($scope, $http) {
 
 function SyncSettingsController($scope, $http, $window){
   var tapiriik = $window.tapiriik;
-  $scope.sync_suppress_options = [{k: true, v: "manually"}, {k: false, v:"automatically"}];
+  $scope.sync_suppress_options = [{k: true, v: "manually"}, {k: false, v: "automatically"}];
   $scope.sync_delay_options = [{k: 0, v: "as soon as possible"}, {k: 20*60, v: "20 minutes"}, {k: 60*60, v: "1 hour"}];
   $scope.config = tapiriik.User.Config;
 }

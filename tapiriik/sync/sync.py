@@ -129,8 +129,8 @@ class Sync:
                 nextSync = None
                 if User.HasActivePayment(user) and not User.GetConfiguration(user)["suppress_auto_sync"]:
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-                if result.force_next_sync:
-                    nextSync = result.force_next_sync
+                if result.ForceNextSync:
+                    nextSync = result.ForceNextSync
                 db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
                 syncTime = (datetime.utcnow() - syncStart).total_seconds()
                 db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
@@ -849,7 +849,7 @@ class SynchronizationTask:
                                     activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Deferred))
                                     next_sync = datetime.utcnow() + time_remaining
                                     # Reschedule them so this activity syncs immediately on schedule
-                                    sync_result.force_next_sync = sync_result.force_next_sync if sync_result.force_next_sync and sync_result.force_next_sync < next_sync else next_sync
+                                    sync_result.ForceScheduleNextSyncOnOrBefore(next_sync)
                                     raise ActivityShouldNotSynchronizeException()
 
                         if self._user_config["sync_skip_before"]:
@@ -1023,7 +1023,10 @@ class SynchronizationTask:
 
 class SynchronizationTaskResult:
     def __init__(self, force_next_sync=None):
-        self.force_next_sync = force_next_sync
+        self.ForceNextSync = force_next_sync
+
+    def ForceScheduleNextSyncOnOrBefore(self, next_sync):
+        self.ForceNextSync = self.ForceNextSync if self.ForceNextSync and self.ForceNextSync < next_sync else next_sync
 
 
 class UploadException(Exception):
