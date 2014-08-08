@@ -5,25 +5,36 @@ class DeviceIdentifierType:
 	TCX = "tcx"
 	GC = "gc"
 
-class FITDeviceIdentifier:
+class DeviceIdentifier:
+	def Match(self, query):
+		compareDict = dict(self.__dict__)
+		compareDict.update(query)
+		return compareDict == self.__dict__ # At the time it felt like a better idea than iterating through keys?
+
+class FITDeviceIdentifier(DeviceIdentifier):
 	def __init__(self, manufacturer, product=None):
 		self.Type = DeviceIdentifierType.FIT
 		self.Manufacturer = manufacturer
 		self.Product = product
 
-class TCXDeviceIdentifier:
+class TCXDeviceIdentifier(DeviceIdentifier):
 	def __init__(self, name, productId=None):
 		self.Type = DeviceIdentifierType.TCX
 		self.Name = name
 		self.ProductID = productId
 
-class GCDeviceIdentifier:
+class GCDeviceIdentifier(DeviceIdentifier):
 	def __init__(self, name):
 		# Edge 810 -> edge810
 		# They're quite stubborn with giving the whole list of these device keys.
 		# So this is really a guess.
 		self.Key = re.sub("[^a-z0-9]", "", name.lower())
 		self.Type = DeviceIdentifierType.GC
+
+	def Match(self, query):
+		# Add some fuzziness becaise I can't be bothered figuring out what the pattern is
+		return query["Key"] == self.Key or query["Key"] == ("garmin%s" % self.Key)
+
 
 class DeviceIdentifier:
 	_identifierGroups = []
@@ -36,9 +47,7 @@ class DeviceIdentifier:
 			for identifier in group:
 				if identifier.Type != type:
 					continue
-				compareDict = dict(identifier.__dict__)
-				compareDict.update(query)
-				if compareDict == identifier.__dict__: # At the time it felt like a better idea than iterating through keys?
+				if identifier.Match(query):
 					return identifier
 
 	def FindEquivalentIdentifierOfType(type, identifier):
@@ -96,6 +105,7 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("AMX", 1461))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 10", 1482, 1688))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Swim", 1499))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix", 1551))
+DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 2", 1967))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 510", 1561, 1742, 1821))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 810", 1567, 1721, 1822, 1823))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Tempe", 1570))
