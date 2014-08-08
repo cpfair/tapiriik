@@ -43,7 +43,8 @@ class StravaService(ServiceBase):
         ActivityType.CrossCountrySkiing: "NordicSki",
         ActivityType.DownhillSkiing: "AlpineSki",
         ActivityType.Swimming: "Swim",
-        ActivityType.Gym: "Workout"
+        ActivityType.Gym: "Workout",
+        ActivityType.Rowing: "Rowing"
     }
 
     # For mapping Strava->common
@@ -58,7 +59,8 @@ class StravaService(ServiceBase):
         "BackcountrySki": ActivityType.DownhillSkiing,
         "Swim": ActivityType.Swimming,
         "IceSkate": ActivityType.Skating,
-        "Workout": ActivityType.Gym
+        "Workout": ActivityType.Gym,
+        "Rowing": ActivityType.Rowing
     }
 
     SupportedActivities = list(_activityTypeMappings.keys())
