@@ -25,6 +25,10 @@ def payments_ipn(req):
     if req.POST["receiver_id"] != PP_RECEIVER_ID or req.POST["mc_currency"] != PAYMENT_CURRENCY:
         logger.error("IPN request %s has incorrect details" % req.POST )
         return HttpResponse(status=400)
+    if req.POST["payment_status"] == "Refunded":
+        Payments.ReversePayment(req.POST["txn_id"])
+        logger.info("IPN refund %s OK" % str(req.POST))
+        return HttpResponse()
     if req.POST["payment_status"] != "Completed":
         logger.error("IPN request %s not complete" % req.POST)
         return HttpResponse()

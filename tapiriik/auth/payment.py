@@ -21,11 +21,16 @@ class Payments:
             db.payments.insert(existingRecord)
         return existingRecord
 
+    def ReversePayment(id):
+        # Mark the transaction, and pull it from any users who have it.
+        db.payments.update({"Txn": id}, {"$set": {"Reversed": True}})
+        db.users.update({"Payments.Txn": id}, {"$pull": {"Payments": {"Txn": id}}}, multi=True)
+
     def GetPayment(id=None, email=None):
         if id:
-            return db.payments.find_one({"Txn": id})
+            return db.payments.find_one({"Txn": id, "Reversed": {"$ne": True}})
         elif email:
-            res = db.payments.find({"Email": email, "Expiry":{"$gt": datetime.utcnow()}}, limit=1)
+            res = db.payments.find({"Email": email, "Expiry":{"$gt": datetime.utcnow()}, "Reversed": {"$ne": True}}, limit=1)
             for payment in res:
                 return payment
 
