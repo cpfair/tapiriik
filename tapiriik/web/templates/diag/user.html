@@ -18,10 +18,10 @@
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
 		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
 		<li><b>Lock Host:</b> {{ user.SynchronizationHost }}</li>
-		<li><b>Sync Control:</b> <form action="" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
+		<li><b>Sync Control:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
 		<input type="text" name="host" value="{{ user.SynchronizationHostRestriction }}"/><input type="submit" name="hostrestrict" value="Host restrict"/>
 		</form></li>
-		<li><b>Substitution:</b> <form action="" method="POST">{% csrf_token %}<input type="submit" name="substitute" value="session su"/></form> <a href="{% url 'dashboard' %}?su={{ user|dict_get:'_id'}}" target="_new">dashboard &raquo;</a> <a href="{% url 'activities_dashboard' %}?su={{ user|dict_get:'_id' }}" target="_new">activities &raquo;</a> <a href="{% url 'settings_panel' %}?su={{ user|dict_get:'_id' }}" target="_new">settings &raquo;</a></li>
+		<li><b>Substitution:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="substitute" value="session su"/></form> <a href="{% url 'dashboard' %}?su={{ user|dict_get:'_id'}}" target="_new">dashboard &raquo;</a> <a href="{% url 'activities_dashboard' %}?su={{ user|dict_get:'_id' }}" target="_new">activities &raquo;</a> <a href="{% url 'settings_panel' %}?su={{ user|dict_get:'_id' }}" target="_new">settings &raquo;</a></li>
 	</ul>
 	{% if user.Payments|length > 0 %}
 		<h3>Payments</h3>
@@ -56,14 +56,14 @@
 				{% if svc.RequiresExtendedAuthorizationDetails %}
 					<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
 				{% endif %}
-				<li><b>Controls:</b> <form action="" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid" style="width:700px;"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails" style="width:700px;"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Config|json }}" name="config" style="width:700px;"><input type="submit" name="svc_setconfig" value="Set `Config`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<li><b>Controls:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid" style="width:700px;"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails" style="width:700px;"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Config|json }}" name="config" style="width:700px;"><input type="submit" name="svc_setconfig" value="Set `Config`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 
-				{% if connection.ExcludedActivities.items|length %}<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>{% endif %}
-				<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_clearacts" value="Clear synced activites and set exhaustive"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="" method="POST">{% csrf_token %}<input type="submit" name="svc_tryagain" value="Reset retry failures"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				{% if connection.ExcludedActivities.items|length %}<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>{% endif %}
+				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearacts" value="Clear synced activites and set exhaustive"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_tryagain" value="Reset retry failures"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				</li>
 				{% if connection.SyncErrors|length > 0 %}
 				<li><b>Sync Errors:</b>

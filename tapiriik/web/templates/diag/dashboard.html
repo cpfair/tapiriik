@@ -36,7 +36,7 @@
 						<td>{{ worker.Heartbeat|utctimesince }}</td>
 						<td><tt>{{ worker.State }}</tt></td>
 						<td>
-							<form action="" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
+							<form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
 						</td>
 					</tr>
 				{% endfor %}
@@ -72,7 +72,7 @@
 				{% endfor %}
 			</table>
 			{% endif %}
-			<form action="" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
+			<form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
 		</li>
 	</ul>
 </div>

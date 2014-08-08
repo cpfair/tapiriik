@@ -7,7 +7,7 @@
 {% block content %}
 <div style="text-align:left">
 <h1>Advanced settings</h1>
-<form method="POST" action="">
+<form method="POST" action="{% url 'settings_panel' %}">
 	{% csrf_token %}
 	<table class="settingsTable">
 	<tr><th></th>
