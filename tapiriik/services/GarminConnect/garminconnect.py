@@ -634,7 +634,7 @@ class GarminConnectService(ServiceBase):
         user_name = self._user_watch_user(serviceRecord)["Name"]
         logger.info("Requesting connection to %s from %s" % (user_name, serviceRecord.ExternalID))
         self._rate_limit()
-        resp = self._get_session(record=serviceRecord).put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name)
+        resp = self._get_session(record=serviceRecord, skip_cache=True).put("http://connect.garmin.com/proxy/userprofile-service/connection/request/%s" % user_name)
         try:
             assert resp.status_code == 200
             assert resp.json()["requestStatus"] == "Created"
@@ -649,7 +649,7 @@ class GarminConnectService(ServiceBase):
         # PUT http://connect.garmin.com/proxy/userprofile-service/connection/end/1904201
         # Unfortunately there's no way to delete a pending request - the poll worker will do this from the other end
         active_watch_user = self._user_watch_user(serviceRecord)
-        session = self._get_session(email=active_watch_user["Username"], password=active_watch_user["Password"])
+        session = self._get_session(email=active_watch_user["Username"], password=active_watch_user["Password"], skip_cache=True)
         self._rate_limit()
         connections = session.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections").json()
 
