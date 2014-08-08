@@ -26,7 +26,7 @@ def payments_ipn(req):
         logger.error("IPN request %s has incorrect details" % req.POST )
         return HttpResponse(status=400)
     if req.POST["payment_status"] == "Refunded":
-        Payments.ReversePayment(req.POST["txn_id"])
+        Payments.ReversePayment(req.POST["parent_txn_id"])
         logger.info("IPN refund %s OK" % str(req.POST))
         return HttpResponse()
     if req.POST["payment_status"] != "Completed":
