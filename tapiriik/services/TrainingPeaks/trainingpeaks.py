@@ -57,9 +57,9 @@ class TrainingPeaksService(ServiceBase):
             raise APIException("Invalid login")
         sess_guid = etree.XML(resp.content).text
         cookies = {"mySession_Production": sess_guid}
-        resp = requests.get("https://www.trainingpeaks.com/m/Shared/PersonInfo.js", cookies=cookies)
-        accountIsPremium = re.search("currentAthlete\.IsBasicUser\s*=\s*(true|false);", resp.text).group(1) == "false"
-        personId = re.search("currentAthlete\.PersonId\s*=\s*(\d+);", resp.text).group(1)
+        resp = requests.get("https://tpapi.trainingpeaks.com/users/v1/user", cookies=cookies)
+        accountIsPremium = resp.json()["userType"] != 6
+        personId = resp.json()["personId"]
         # Yes, I have it on good authority that this is checked further on on the remote end.
         if not accountIsPremium:
             raise APIException("Account not premium", block=True, user_exception=UserException(UserExceptionType.AccountUnpaid, intervention_required=True, extra=personId))
