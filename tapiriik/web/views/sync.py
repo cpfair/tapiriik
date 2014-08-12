@@ -88,6 +88,7 @@ def sync_trigger_partial_sync_callback(req, service):
     affected_connection_ids = [x["_id"] for x in affected_connection_ids]
     trigger_users_query = User.PaidUserMongoQuery()
     trigger_users_query.update({"ConnectedServices.ID": {"$in": affected_connection_ids}})
+    trigger_users_query.update({"Config.suppress_auto_sync": {"$ne": True}})
     db.users.update(trigger_users_query, {"$set": {"NextSynchronization": datetime.utcnow()}}, multi=True) # It would be nicer to use the Sync.Schedule... method, but I want to cleanly do this in bulk
     return HttpResponse(status=204)
 
