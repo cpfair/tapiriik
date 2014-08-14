@@ -108,6 +108,7 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix", 1551))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 2", 1967))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 510", 1561, 1742, 1821))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 810", 1567, 1721, 1822, 1823))
+DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 1000", 1836))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Tempe", 1570))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("VIRB Elite", 1735)) # Where's the VIRB Proletariat?
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge Touring", 1736))
