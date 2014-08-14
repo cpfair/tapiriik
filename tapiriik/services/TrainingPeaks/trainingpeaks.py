@@ -41,6 +41,11 @@ class TrainingPeaksService(ServiceBase):
     }
     SupportedActivities = ActivityType.List() # All.
 
+    _tp_ns = {
+        "tpw": "http://www.trainingpeaks.com/TPWebServices/",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance"
+    }
+
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
 
@@ -52,16 +57,26 @@ class TrainingPeaksService(ServiceBase):
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/AuthenticateAccount", data={"username":email, "password": password})
+
+        soap_auth_data = {"username":email, "password": password}
+
+        resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/AuthenticateAccount", data=soap_auth_data)
         if resp.status_code != 200:
             raise APIException("Invalid login")
-        sess_guid = etree.XML(resp.content).text
-        cookies = {"mySession_Production": sess_guid}
-        resp = requests.get("https://tpapi.trainingpeaks.com/users/v1/user", cookies=cookies)
-        accountIsPremium = resp.json()["userType"] != 6
-        personId = resp.json()["personId"]
+
+        soap_auth_data.update({"types": "CoachedPremium,SelfCoachedPremium,SharedCoachedPremium,CoachedFree,SharedFree,Plan"})
+        users_resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/GetAccessibleAthletes", data=soap_auth_data)
+        users_resp = etree.XML(users_resp.content)
+
+        personId = None
+        for xperson in users_resp:
+            xpersonid = xperson.find("tpw:PersonId", namespaces=self._tp_ns)
+            if xpersonid is not None and xpersonid.text:
+                personId = int(xpersonid.text)
+                break
+
         # Yes, I have it on good authority that this is checked further on on the remote end.
-        if not accountIsPremium:
+        if not personId:
             raise APIException("Account not premium", block=True, user_exception=UserException(UserExceptionType.AccountUnpaid, intervention_required=True, extra=personId))
         return (personId, {}, {"Username": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
@@ -72,10 +87,7 @@ class TrainingPeaksService(ServiceBase):
         pass  # No cached data...
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
-        ns = {
-            "tpw": "http://www.trainingpeaks.com/TPWebServices/",
-            "xsi": "http://www.w3.org/2001/XMLSchema-instance"
-            }
+        ns = self._tp_ns
         activities = []
         exclusions = []
 
