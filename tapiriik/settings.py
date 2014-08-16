@@ -202,6 +202,7 @@ TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 MONGO_HOST = "localhost"
 MONGO_REPLICA_SET = None
 MONGO_CLIENT_OPTIONS = {}
+MONGO_FULL_WRITE_CONCERN = 1
 
 REDIS_HOST = "localhost"
 

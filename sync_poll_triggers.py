@@ -1,6 +1,6 @@
 from tapiriik.database import db, close_connections
 from tapiriik.requests_lib import patch_requests_source_address
-from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST
+from tapiriik.settings import RABBITMQ_BROKER_URL, MONGO_HOST, MONGO_FULL_WRITE_CONCERN
 from tapiriik import settings
 from datetime import datetime
 
@@ -33,7 +33,10 @@ def trigger_poll(service_id, index):
     svc = Service.FromID(service_id)
     affected_connection_external_ids = svc.PollPartialSyncTrigger(index)
     print("Triggering %d connections via %s-%d" % (len(affected_connection_external_ids), service_id, index))
-    db.connections.update({"Service": service_id, "ExternalID": {"$in": affected_connection_external_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True)
+
+    # MONGO_FULL_WRITE_CONCERN because there was a race where users would get picked for synchronization before their service record was updated on the correct secondary
+    # So it'd think the service wasn't triggered
+    db.connections.update({"Service": service_id, "ExternalID": {"$in": affected_connection_external_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True, w=MONGO_FULL_WRITE_CONCERN)
 
     affected_connection_ids = db.connections.find({"Service": svc.ID, "ExternalID": {"$in": affected_connection_external_ids}}, {"_id": 1})
     affected_connection_ids = [x["_id"] for x in affected_connection_ids]
