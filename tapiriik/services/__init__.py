@@ -16,5 +16,12 @@ from tapiriik.services.RideWithGPS import RideWithGPSService
 RideWithGPS = RideWithGPSService()
 from tapiriik.services.TrainingPeaks import TrainingPeaksService
 TrainingPeaks = TrainingPeaksService()
+
+PRIVATE_SERVICES = []
+try:
+    from private.tapiriik.services import *
+except ImportError:
+    pass
+
 from .service import *
 from .service_record import *

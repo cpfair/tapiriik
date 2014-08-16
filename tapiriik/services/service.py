@@ -5,16 +5,6 @@ from bson.objectid import ObjectId
 
 # Really don't know why I didn't make most of this part of the ServiceBase.
 class Service:
-    _serviceMappings = {
-                        "runkeeper": RunKeeper,
-                        "strava": Strava,
-                        "endomondo": Endomondo,
-                        "dropbox": Dropbox,
-                        "garminconnect": GarminConnect,
-                        "sporttracks": SportTracks,
-                        "rwgps": RideWithGPS,
-                        "trainingpeaks": TrainingPeaks
-                        }
 
     # These options are used as the back for all service record's configurations
     _globalConfigurationDefaults = {
@@ -22,13 +12,16 @@ class Service:
         "allow_activity_flow_exception_bypass_via_self": False
     }
 
+    def Init():
+        Service._serviceMappings = {x.ID: x for x in Service.List()}
+
     def FromID(id):
         if id in Service._serviceMappings:
             return Service._serviceMappings[id]
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo]
+        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
@@ -43,7 +36,7 @@ class Service:
             Strava, # No laps
             Endomondo, # No laps, no cadence
             RunKeeper, # No laps, no cadence, no power
-        ]
+        ] + PRIVATE_SERVICES
 
     def WebInit():
         from tapiriik.settings import WEB_ROOT
@@ -103,3 +96,5 @@ class Service:
         svc.RevokeAuthorization(serviceRecord)
         cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         db.connections.remove({"_id": serviceRecord._id})
+
+Service.Init()
