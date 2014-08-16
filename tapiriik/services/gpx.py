@@ -14,11 +14,11 @@ class GPXIO:
         "gpxext": "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
     }
 
-    def Parse(gpxData, suppress_validity_errors=False):
+    def Parse(gpxData, suppress_validity_errors=False, activity=None):
         ns = copy.deepcopy(GPXIO.Namespaces)
         ns["gpx"] = ns[None]
         del ns[None]
-        act = Activity()
+        act = Activity() if not activity else activity
 
         act.GPS = True # All valid GPX files have GPS data
 
