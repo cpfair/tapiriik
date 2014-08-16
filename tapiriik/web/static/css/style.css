@@ -561,39 +561,12 @@ p.infotip .close:hover {
 }
 
 .service .flowConfig td, .service .flowConfig th {
-	text-align: center;
+	text-align: left;
 }
 
 .service .flowConfig td:first-child, .service .flowConfig td:last-child,
 .service .flowConfig th:first-child, .service .flowConfig th:last-child {
-	width:40px;
-}
-
-.service .flowConfig td input[type=checkbox] {
-	vertical-align: middle;
-	-webkit-appearance: none;
-	width:16px;
-	height:16px;
-    background: url('../img/sync-arrow.png');
-    display: inline-block;
-    position: relative;
-    cursor: pointer;
-}
-
-.service .flowConfig td input[type=checkbox]:before {
-	content:"/";
-	color:white;
-	position: absolute;
-	top:-6px;
-	left:4px;
-}
-
-.service .flowConfig td input[type=checkbox]:checked:before {
-	content:"";
-	color:white;
-	position: absolute;
-	top:-6px;
-	left:3px;
+	width:25px;
 }
 
 .service .flowConfig button {

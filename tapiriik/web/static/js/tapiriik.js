@@ -304,11 +304,11 @@ tapiriik.ActivateSetupDialog = function(svcId){
 tapiriik.OpenServiceConfigPanel = function(svcId){
 	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
 	tapiriik.DoDismissConfigPanel();
-	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>sync...</h2><table class=\"serviceTable\"><tr><th>to</th><th></th><th>from</th></tr></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">X</button></form>");
+	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>send activities to...</h2><table class=\"serviceTable\"></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">X</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
-		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\"/></td><td>" + tapiriik.ServiceInfo[i].DisplayName + "</td><td><input type=\"checkbox\" class=\"from\"/></td></tr>");
+		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\" id=\"flow-to-" + i +"\"/></td><td><label for=\"flow-to-" + i + "\">" + tapiriik.ServiceInfo[i].DisplayName + "</label></td><td style=\"display: none\"><input type=\"checkbox\" class=\"from\"/></td></tr>");
 		if (destSvc.BlockFlowTo.indexOf(svcId) < 0) {
 			$("input.from", destRow).attr("checked","checked");
 		}
