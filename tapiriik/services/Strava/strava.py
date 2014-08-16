@@ -75,9 +75,6 @@ class StravaService(ServiceBase):
         self.UserAuthorizationURL = \
            "https://www.strava.com/oauth/authorize?" + urlencode(params)
 
-    def _logAPICall(self, endpoint, opkey, error):
-        cachedb.strava_apicall_stats.insert({"Endpoint": endpoint, "Opkey": opkey, "Error": error, "Timestamp": datetime.utcnow()})
-
     def _apiHeaders(self, serviceRecord):
         return {"Authorization": "access_token " + serviceRecord.Authorization["OAuthToken"]}
 
@@ -87,7 +84,6 @@ class StravaService(ServiceBase):
 
         self._globalRateLimit()
         response = requests.post("https://www.strava.com/oauth/token", data=params)
-        self._logAPICall("auth-token", None, response.status_code != 200)
         if response.status_code != 200:
             raise APIException("Invalid code")
         data = response.json()
@@ -96,7 +92,6 @@ class StravaService(ServiceBase):
         # Retrieve the user ID, meh.
         self._globalRateLimit()
         id_resp = requests.get("https://www.strava.com/api/v3/athlete", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
-        self._logAPICall("auth-extid", None, None)
         return (id_resp.json()["id"], authorizationData)
 
     def RevokeAuthorization(self, serviceRecord):
@@ -114,7 +109,6 @@ class StravaService(ServiceBase):
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
             self._globalRateLimit()
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
-            self._logAPICall("list", (svcRecord.ExternalID, str(earliestDate)), resp.status_code == 401)
             if resp.status_code == 401:
                 raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
@@ -187,7 +181,6 @@ class StravaService(ServiceBase):
         self._globalRateLimit()
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
-            self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "auth")
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
         try:
@@ -196,7 +189,6 @@ class StravaService(ServiceBase):
             raise APIException("Stream data returned is not JSON")
 
         if "message" in streamdata and streamdata["message"] == "Record Not Found":
-            self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "missing")
             raise APIException("Could not find activity")
 
         ridedata = {}
@@ -216,7 +208,6 @@ class StravaService(ServiceBase):
         moving = True
 
         if "error" in ridedata:
-            self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "data")
             raise APIException("Strava error " + ridedata["error"])
 
         hasLocation = False
@@ -256,9 +247,7 @@ class StravaService(ServiceBase):
                 waypoint.Power = ridedata["watts"][idx]
             lap.Waypoints.append(waypoint)
         if not hasLocation:
-            self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), "faulty")
             raise APIExcludeActivity("No waypoints with location", activityId=activityID, userException=UserException(UserExceptionType.Corrupt))
-        self._logAPICall("download", (svcRecord.ExternalID, str(activity.StartTime)), None)
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
