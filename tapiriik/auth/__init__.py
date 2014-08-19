@@ -234,6 +234,6 @@ class SessionAuth:
             req.user = None
         else:
             req.user = db.users.find_one({"_id": ObjectId(userId)})
-            req.user["Config"] = User.GetConfiguration(req.user) # Populate defaults
             if req.user is not None:
+                req.user["Config"] = User.GetConfiguration(req.user) # Populate defaults
                 req.user["Substitute"] = isSU
