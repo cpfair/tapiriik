@@ -57,7 +57,12 @@ class TCXIO:
         if xcreator is not None and xcreator.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] == "Device_t":
             devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.TCX, {"ProductID": int(xcreator.find("tcx:ProductID", namespaces=ns).text)}) # Who knows if this is unique in the TCX ecosystem? We'll find out!
             xver = xcreator.find("tcx:Version", namespaces=ns)
-            act.Device = Device(devId, int(xcreator.find("tcx:UnitId", namespaces=ns).text), verMaj=int(xver.find("tcx:VersionMajor", namespaces=ns).text), verMin=int(xver.find("tcx:VersionMinor", namespaces=ns).text)) # ID vs Id: ???
+            verMaj = None
+            verMin = None
+            if xver is not None:
+                verMaj = int(xver.find("tcx:VersionMajor", namespaces=ns).text)
+                verMin = int(xver.find("tcx:VersionMinor", namespaces=ns).text)
+            act.Device = Device(devId, int(xcreator.find("tcx:UnitId", namespaces=ns).text), verMaj=verMaj, verMin=verMin) # ID vs Id: ???
 
         xlaps = xact.findall("tcx:Lap", namespaces=ns)
         startTime = None
