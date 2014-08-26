@@ -33,11 +33,14 @@
 		<div class="contentWrap">
 			<div class="mainBlock">
 				<div class="logo">
-					{% if celebration_mode %}
+					{% if celebration_mode.Logo %}
 						<a href="/"><img src="{{ STATIC_URL}}img/{{ celebration_mode.Logo }}" title="{{ celebration_mode.TitleText }}" alt="{{ celebration_mode.TitleText }}"/></a>
-						<div class="sub">{{ celebration_mode.Subtitle }}</div>
 					{% else %}
 						<a href="/">tapiriik</a>
+					{% endif %}
+					{% if celebration_mode.Subtitle %}
+						<div class="sub">{{ celebration_mode.Subtitle }}</div>
+					{% else %}
 						<div class="sub">keeps your fitness in sync</div>
 					{% endif %}
 				</div>

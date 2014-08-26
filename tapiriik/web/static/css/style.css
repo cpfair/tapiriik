@@ -1346,3 +1346,17 @@ body.crescent_moon .sun::after {
 	border-radius:100px;
 	border:100px solid #110F1F;
 }
+
+body.staging .sub::before {
+	font-family: sans-serif;
+	position: fixed;
+	left:0;
+	top:0;
+	right:0;
+	text-align: center;
+	content:'STAGING';
+	white-space: nowrap;
+	background-color:rgba(255,255,255,0.5);
+	color: black;
+	font-size:48px;
+}
