@@ -1,29 +1,16 @@
 from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR, MOTIVATO_USER_WATCH_ACCOUNTS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
-from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
-from tapiriik.services.statistic_calculator import ActivityStatisticCalculator
-from tapiriik.services.tcx import TCXIO
-from tapiriik.services.gpx import GPXIO
-from tapiriik.services.fit import FITIO
+from tapiriik.services.api import APIException, APIWarning, UserException, UserExceptionType
 from tapiriik.services.sessioncache import SessionCache
-from tapiriik.services.devices import DeviceIdentifier, DeviceIdentifierType, Device
-from tapiriik.database import cachedb, db
 
 from django.core.urlresolvers import reverse
-import pytz
 from datetime import datetime, timedelta
 import requests
-import os
-import math
 import logging
 import time
 import json
-import re
-import random
 import tempfile
-from urllib.parse import urlencode
 logger = logging.getLogger(__name__)
 
 class MotivatoService(ServiceBase):
