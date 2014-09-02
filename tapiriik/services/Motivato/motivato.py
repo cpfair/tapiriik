@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR, MOTIVATO_USER_WATCH_ACCOUNTS
+from tapiriik.settings import WEB_ROOT, HTTP_SOURCE_ADDR
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
 from tapiriik.services.api import APIException, APIWarning, UserException, UserExceptionType
@@ -19,9 +19,6 @@ class MotivatoService(ServiceBase):
     DisplayAbbreviation = "M"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
-    PartialSyncRequiresTrigger = len(MOTIVATO_USER_WATCH_ACCOUNTS) > 0
-    PartialSyncTriggerPollInterval = timedelta(minutes=20)
-    PartialSyncTriggerPollMultiple = len(MOTIVATO_USER_WATCH_ACCOUNTS.keys())
 
     _activityMappings={
         ActivityType.Running: 1,

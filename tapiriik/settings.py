@@ -313,6 +313,4 @@ RABBITMQ_BROKER_URL = "amqp://guest@localhost//"
 
 GARMIN_CONNECT_USER_WATCH_ACCOUNTS = {}
 
-MOTIVATO_USER_WATCH_ACCOUNTS = {}
-
 from .local_settings import *
