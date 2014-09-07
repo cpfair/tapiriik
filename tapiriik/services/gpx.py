@@ -3,7 +3,7 @@ from pytz import UTC
 import copy
 import dateutil.parser
 from datetime import datetime
-from .interchange import WaypointType, Activity, Waypoint, Location, Lap
+from .interchange import WaypointType, Activity, Waypoint, Location, Lap, ActivityStatistic, ActivityStatisticUnit
 from .statistic_calculator import ActivityStatisticCalculator
 
 class GPXIO:
@@ -94,7 +94,7 @@ class GPXIO:
         if act.CountTotalWaypoints():
             act.GetFlatWaypoints()[0].Type = WaypointType.Start
             act.GetFlatWaypoints()[-1].Type = WaypointType.End
-            act.Stats.Distance.Value = ActivityStatisticCalculator.CalculateDistance(act)
+            act.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=ActivityStatisticCalculator.CalculateDistance(act))
 
             if len(act.Laps) == 1:
                 # GPX encodes no real per-lap/segment statistics, so this is the only case where we can fill this in.
