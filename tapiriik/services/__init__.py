@@ -16,6 +16,8 @@ from tapiriik.services.RideWithGPS import RideWithGPSService
 RideWithGPS = RideWithGPSService()
 from tapiriik.services.TrainingPeaks import TrainingPeaksService
 TrainingPeaks = TrainingPeaksService()
+from tapiriik.services.Motivato import MotivatoService
+Motivato = MotivatoService()
 
 PRIVATE_SERVICES = []
 try:
