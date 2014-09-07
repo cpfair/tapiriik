@@ -79,7 +79,7 @@ def diag_dashboard(req):
 @diag_requireAuth
 def diag_errors(req):
     context = {}
-    syncErrorListing = list(db.common_sync_errors.find().sort("value", -1))
+    syncErrorListing = list(db.common_sync_errors.find().sort("value.count", -1))
     syncErrorsAffectingServices = [service for error in syncErrorListing for service in error["value"]["connections"]]
     syncErrorsAffectingUsers = list(db.users.find({"ConnectedServices.ID": {"$in": syncErrorsAffectingServices}}))
     syncErrorSummary = []
