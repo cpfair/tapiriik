@@ -130,12 +130,8 @@ class StravaService(ServiceBase):
                     earliestDate = activity.StartTime
                     before = calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple())
 
-                manual = False  # Determines if we bother to "download" the activity afterwards
-                if ride["start_latlng"] is None or ride["end_latlng"] is None:
-                    manual = True
-
                 activity.EndTime = activity.StartTime + timedelta(0, ride["elapsed_time"])
-                activity.ServiceData = {"ActivityID": ride["id"], "Manual": manual}
+                activity.ServiceData = {"ActivityID": ride["id"], "Manual": ride["manual"]}
 
                 if ride["type"] not in self._reverseActivityTypeMappings:
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"], userException=UserException(UserExceptionType.Other)))
@@ -162,8 +158,8 @@ class StravaService(ServiceBase):
                     activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=ride["calories"])
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
-                activity.Stationary = manual
-                activity.GPS = "start_latlng" in ride and ride["start_latlng"]
+                activity.Stationary = ride["manual"]
+                activity.GPS = ("start_latlng" in ride) and (ride["start_latlng"] is not None)
                 activity.AdjustTZ()
                 activity.CalculateUID()
                 activities.append(activity)
@@ -212,19 +208,17 @@ class StravaService(ServiceBase):
         if "error" in ridedata:
             raise APIException("Strava error " + ridedata["error"])
 
-        hasLocation = False
         waypointCt = len(ridedata["time"])
         for idx in range(0, waypointCt - 1):
-            latlng = ridedata["latlng"][idx]
 
             waypoint = Waypoint(activity.StartTime + timedelta(0, ridedata["time"][idx]))
-            latlng = ridedata["latlng"][idx]
-            waypoint.Location = Location(latlng[0], latlng[1], None)
-            if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
-                waypoint.Location.Longitude = None
-                waypoint.Location.Latitude = None
-            else:  # strava only returns 0 as invalid coords, so no need to check for null (update: ??)
-                hasLocation = True
+            if "latlng" in ridedata:
+                latlng = ridedata["latlng"][idx]
+                waypoint.Location = Location(latlng[0], latlng[1], None)
+                if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
+                    waypoint.Location.Longitude = None
+                    waypoint.Location.Latitude = None
+
             if hasAltitude:
                 waypoint.Location.Altitude = float(ridedata["altitude"][idx])
 
@@ -248,8 +242,7 @@ class StravaService(ServiceBase):
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx]
             lap.Waypoints.append(waypoint)
-        if not hasLocation:
-            raise APIExcludeActivity("No waypoints with location", activityId=activityID, userException=UserException(UserExceptionType.Corrupt))
+
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
