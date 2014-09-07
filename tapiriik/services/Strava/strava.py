@@ -220,6 +220,8 @@ class StravaService(ServiceBase):
                     waypoint.Location.Latitude = None
 
             if hasAltitude:
+                if not waypoint.Location:
+                    waypoint.Location = Location(None, None, None)
                 waypoint.Location.Altitude = float(ridedata["altitude"][idx])
 
             if idx == 0:
