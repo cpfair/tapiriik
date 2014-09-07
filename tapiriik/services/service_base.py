@@ -11,6 +11,8 @@ class InvalidServiceOperationException(Exception):
 class ServiceBase:
     # Short ID used everywhere in logging and DB storage
     ID = None
+    # Alias ID in case somebody (not naming names) typoed a service name and needs to keep the old ID functional
+    IDAliases = None
     # Full display name given to users
     DisplayName = None
     # 2-3 letter abbreviated name
