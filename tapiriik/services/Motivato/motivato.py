@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class MotivatoService(ServiceBase):
     ID = "motivato"
     DisplayName = "Motivato"
-    DisplayAbbreviation = "M"
+    DisplayAbbreviation = "MOT"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
 
