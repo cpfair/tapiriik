@@ -51,11 +51,6 @@ class MotivatoService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.values())
 
-    ConfigurationDefaults = {
-        "WatchUserKey": None,
-        "WatchUserLastID": 0
-    }
-
     _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
     _obligatory_headers = {
         "Referer": "https://sync.tapiriik.com"
@@ -315,7 +310,7 @@ class MotivatoService(ServiceBase):
         return session
 
     def _rate_limit(self):
-        import fcntl, struct, time
+        import fcntl, time
         min_period = 1
         print("Waiting for lock")
         fcntl.flock(self._rate_lock,fcntl.LOCK_EX)
