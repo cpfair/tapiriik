@@ -719,7 +719,10 @@ class GarminConnectService(ServiceBase):
             for pending_connect in pending_connections:
                 if pending_connect["displayName"] in valid_pending_connections_external_ids:
                     self._rate_limit()
-                    connect_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"])
+                    connect_resp = session.post("http://connect.garmin.com/modern/proxy/userprofile-service/connection/accept/%s" % pending_connect["connectionRequestId"],
+                                                data=json.dumps({"connectionRequestId": pending_connect["connectionRequestId"]}),
+                                                headers={"X-HTTP-Method-Override": "PUT"}
+                                                )
                     if connect_resp.status_code != 200:
                         logger.error("Error accepting request on watch account %s: %s %s" % (watch_user["Name"], connect_resp.status_code, connect_resp.text))
                 else:
