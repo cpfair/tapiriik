@@ -30,6 +30,7 @@ def celery_shutdown():
 @celery_app.task()
 def trigger_poll(service_id, index):
     from tapiriik.auth import User
+    print("Polling %s-%d" % (service_id, index))
     svc = Service.FromID(service_id)
     affected_connection_external_ids = svc.PollPartialSyncTrigger(index)
     print("Triggering %d connections via %s-%d" % (len(affected_connection_external_ids), service_id, index))
