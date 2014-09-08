@@ -694,7 +694,7 @@ class GarminConnectService(ServiceBase):
         active_user_pairs.sort(key=lambda x: x[1]) # Highest IDs last (so they make it into the dict, supplanting lower IDs where appropriate)
         active_users = dict(active_user_pairs)
 
-        active_user_recs = [ServiceRecord(x) for x in db.connections.find({"ExternalID": {"$in": list(active_users.keys())}}, {"Config": 1, "ExternalID": 1, "Service": 1})]
+        active_user_recs = [ServiceRecord(x) for x in db.connections.find({"ExternalID": {"$in": list(active_users.keys())}, "Service": "garminconnect"}, {"Config": 1, "ExternalID": 1, "Service": 1})]
 
         if len(active_user_recs) != len(active_users.keys()):
             logger.warning("Mismatch %d records found for %d active users" % (len(active_user_recs), len(active_users.keys())))
