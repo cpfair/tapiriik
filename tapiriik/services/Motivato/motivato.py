@@ -285,7 +285,7 @@ class MotivatoService(ServiceBase):
                 success = ["success"]
 
             if "error" in preResp:
-                error = preResp.json()["error"]
+                error = preResp["error"]
 
             if not success:
                 logger.debug("Login error %s" % (error))
