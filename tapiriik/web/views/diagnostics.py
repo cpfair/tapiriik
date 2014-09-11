@@ -180,7 +180,7 @@ def diag_user(req, user):
     elif "svc_toggle_poll_sub" in req.POST:
         from tapiriik.services import Service
         svcRec = Service.GetServiceRecordByID(req.POST["id"])
-        svcRec.SetPartialSyncTriggerSubscribed(!svcRec.PartialSyncTriggerSubscribed)
+        svcRec.SetPartialSyncTriggerSubscribed(not svcRec.PartialSyncTriggerSubscribed)
     elif "svc_tryagain" in req.POST:
         from tapiriik.services import Service
         svcRec = Service.GetServiceRecordByID(req.POST["id"])
