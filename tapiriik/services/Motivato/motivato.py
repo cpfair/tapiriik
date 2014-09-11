@@ -56,7 +56,7 @@ class MotivatoService(ServiceBase):
         "Referer": "https://sync.tapiriik.com"
     }
 
-    _urlRoot = "http://dev.motivato.pl"
+    _urlRoot = "http://motivato.pl"
 
     def __init__(self):
         rate_lock_path = tempfile.gettempdir() + "/m_rate.%s.lock" % HTTP_SOURCE_ADDR
