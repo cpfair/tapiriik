@@ -56,7 +56,7 @@ class MotivatoService(ServiceBase):
         "Referer": "https://sync.tapiriik.com"
     }
 
-    _urlRoot = "http://motivato.pl"
+    _urlRoot = "http://dev.motivato.pl"
 
     def __init__(self):
         rate_lock_path = tempfile.gettempdir() + "/m_rate.%s.lock" % HTTP_SOURCE_ADDR
@@ -154,7 +154,15 @@ class MotivatoService(ServiceBase):
         return datetime.strptime(date, "%Y-%m-%d")
 
     def _parseDateTime(self, date):
-        return datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        try:
+            return datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return datetime.strptime(date, "%Y-%m-%d %H:%M")
+
+    def _durationToSeconds(self, dur):
+        # in order to fight broken metas
+        parts = dur.split(":")
+        return int(parts[0])*3600 + int(parts[1])*60 + int(parts[2])
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         logger.debug("Motivato DownloadActivityList")
@@ -180,8 +188,10 @@ class MotivatoService(ServiceBase):
             raise APIException("Parse failure in Motivato list resp: %s" % res.status_code)
 
         for actInfo in respList:
-            x = time.strptime(actInfo["duration"],'%H:%M:%S')
-            duration = float(timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds())
+            if "duration" in actInfo:
+                duration = self._durationToSeconds(actInfo["duration"])
+            else:
+                continue
 
             activity = UploadedActivity()
             if "time_start" in actInfo["metas"]:
@@ -189,11 +199,14 @@ class MotivatoService(ServiceBase):
             else:
                 startTimeStr = actInfo["training_at"] + " 00:00:00"
 
+            logger.debug(actInfo)
+
             activity.StartTime = self._parseDateTime(startTimeStr)
             activity.EndTime = self._parseDateTime(startTimeStr) + timedelta(seconds=duration)
             activity.Type = self._reverseActivityMappings[actInfo["discipline_id"]]
             activity.Stats.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=duration)
-            activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(actInfo["distance"]))
+            if "distance" in actInfo:
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(actInfo["distance"]))
             #activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.KilometersPerSecond, value=1.0/float(actInfo["metas"]["pace"]))
 
             activity.ServiceData={"WorkoutID": int(actInfo["id"])}
