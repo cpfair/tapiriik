@@ -56,7 +56,7 @@ class MotivatoService(ServiceBase):
         "Referer": "https://sync.tapiriik.com"
     }
 
-    _urlRoot = "http://dev.motivato.pl"
+    _urlRoot = "http://motivato.pl"
 
     def __init__(self):
         rate_lock_path = tempfile.gettempdir() + "/m_rate.%s.lock" % HTTP_SOURCE_ADDR
@@ -198,8 +198,6 @@ class MotivatoService(ServiceBase):
                 startTimeStr = actInfo["training_at"] + " " + actInfo["metas"]["time_start"]
             else:
                 startTimeStr = actInfo["training_at"] + " 00:00:00"
-
-            logger.debug(actInfo)
 
             activity.StartTime = self._parseDateTime(startTimeStr)
             activity.EndTime = self._parseDateTime(startTimeStr) + timedelta(seconds=duration)
