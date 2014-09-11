@@ -177,6 +177,10 @@ def diag_user(req, user):
     elif "svc_clearacts" in req.POST:
         db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$unset": {"SynchronizedActivities": 1}})
         Sync.SetNextSyncIsExhaustive(userRec, True)
+    elif "svc_toggle_poll_sub" in req.POST:
+        from tapiriik.services import Service
+        svcRec = Service.GetServiceRecordByID(req.POST["id"])
+        svcRec.SetPartialSyncTriggerSubscribed(!svcRec.PartialSyncTriggerSubscribed)
     elif "svc_tryagain" in req.POST:
         from tapiriik.services import Service
         svcRec = Service.GetServiceRecordByID(req.POST["id"])
