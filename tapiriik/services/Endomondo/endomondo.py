@@ -137,7 +137,7 @@ class EndomondoService(ServiceBase):
             for actInfo in respList:
                 activity = UploadedActivity()
                 activity.StartTime = self._parseDate(actInfo["start_time"])
-                print("Activity s/t %s" % activity.StartTime)
+                logger.debug("Activity s/t %s" % activity.StartTime)
                 if "is_tracking" in actInfo and actInfo["is_tracking"]:
                     exclusions.append(APIExcludeActivity("Not complete", activityId=actInfo["id"], permanent=False, userException=UserException(UserExceptionType.LiveTracking)))
                     continue
