@@ -167,7 +167,8 @@ class SynchronizationTask:
             # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
             # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
             update_values["$unset"]["NextSynchronization"] = None
-        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+        unlock_result = db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+        logger.debug("User unlock returned %s" % unlock_result)
 
     def _loadServiceData(self):
         self._connectedServiceIds = [x["ID"] for x in self.user["ConnectedServices"]]
