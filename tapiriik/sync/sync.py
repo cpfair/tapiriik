@@ -1039,7 +1039,7 @@ class SynchronizationTask:
             logger.exception("Core sync exception")
             raise
         else:
-            logger.info("Finished sync for %s" % self.user["_id"])
+            logger.info("Finished sync for %s (worker %d)" % (self.user["_id"], os.getpid()))
         finally:
             self._closeUserLogging()
 
