@@ -1029,6 +1029,8 @@ class SynchronizationTask:
             logger.info("Finalizing")
             # Clear non-persisted extended auth details.
             self._destroyExtendedAuthData()
+
+            logger.info("Unlocking user")
             # Unlock the user.
             self._unlockUser(null_next_sync_on_unlock)
 
