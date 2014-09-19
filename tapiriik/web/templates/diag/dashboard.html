@@ -5,7 +5,7 @@
 <div style="text-align:left">
 	<h3>Stats</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
-		<li><b>Users:</b> {{ userCt }} ({{ autosyncCt }} automatically synchronizing)</li>
+		<li><b>Users:</b> {{ userCt }} ({{ autosyncCt }} automatically synchronizing, {{ scheduledCt }} scheduled)</li>
 		<li><b>Aggregated distance:</b> {{ stats.TotalDistanceSynced|format_meters }} km</li>
 		<li><b>Sync distance rate (24hr):</b> {{ stats.LastDayDistanceSynced|format_daily_meters_hourly_rate }} km/h</li>
 		<li><b>Sync distance rate (1hr):</b> {{ stats.LastHourDistanceSynced|format_meters }} km/h</li>
