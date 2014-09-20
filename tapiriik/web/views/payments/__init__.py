@@ -1,5 +1,6 @@
 from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_CURRENCY
-from tapiriik.auth import Payments, User
+from tapiriik.auth import User
+from tapiriik.payments import Payments
 from tapiriik.web.views.ab import ab_experiment_complete, ab_register_experiment
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
