@@ -1,4 +1,4 @@
-from .payment import *
+from tapiriik.payments import *
 from .totp import *
 from tapiriik.database import db
 from tapiriik.sync import Sync
