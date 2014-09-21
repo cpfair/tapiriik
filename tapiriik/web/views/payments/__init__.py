@@ -1,8 +1,9 @@
 from tapiriik.settings import PP_WEBSCR, PP_RECEIVER_ID, PAYMENT_CURRENCY
 from tapiriik.auth import User
-from tapiriik.payments import Payments
+from tapiriik.payments import Payments, ExternalPaymentProvider
 from tapiriik.web.views.ab import ab_experiment_complete, ab_register_experiment
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.core.urlresolvers import reverse
@@ -115,3 +116,10 @@ def payments_claim_return(request, code):
     User.AssociatePayment(user, payment)
     User.Login(user, request)  # In case they somehow managed to log out - they've proved their identity.
     return redirect("/#/payments/claimed")
+
+@require_POST
+@csrf_exempt
+def payments_external_refresh(request, provider):
+    req_data = json.loads(request.body.decode("UTF-8"))
+    ExternalPaymentProvider.FromID(provider).RefreshPaymentStateForExternalIDs(req_data["external_ids"])
+    return HttpResponse()

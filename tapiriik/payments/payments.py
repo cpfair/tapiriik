@@ -48,6 +48,48 @@ class Payments:
         db.payments_claim.remove(claim)
         return (db.users.find_one({"_id": claim["User"]}), db.payments.find_one({"Txn": claim["Txn"]}))
 
+    def EnsureExternalPayment(provider, externalID, duration=None):
+        existingRecord = db.external_payments.find_one({
+            "Provider": provider,
+            "ExternalID": externalID,
+            "$or": [
+                    {"Expiry": {"$exists": False}},
+                    {"Expiry": None},
+                    {"Expiry": {"$gte": datetime.utcnow()}}
+                ]
+            })
+        if existingRecord is None:
+            existingRecord = {
+                "Provider": provider,
+                "ExternalID": externalID,
+                "Timestamp": datetime.utcnow(),
+                "Expiry": datetime.utcnow() + duration if duration else None
+            }
+            db.external_payments.insert(existingRecord)
+        return existingRecord
+
+    def ExpireExternalPayment(provider, externalID):
+        now = datetime.utcnow()
+        db.external_payments.update(
+            {
+                "Provider": provider,
+                "ExternalID": externalID,
+                "$or": [
+                    {"Expiry": {"$exists": False}},
+                    {"Expiry": None},
+                ]
+            }, {
+                "$set": {"Expiry": now}
+            })
+
+        # Wrangle the user copies - man, should have used an RDBMS
+        expired_payment = db.external_payments.find_one({"Provider": provider, "ExternalID": externalID, "Expiry": now})
+        # Could be already expired, no need to rerun the update
+        if expired_payment:
+            affected_user_ids = [x["_id"] for x in db.users.find({"ExternalPayments._id": expired_payment["_id"]}, {"_id": True})]
+            db.users.update({"_id": {"$in": affected_user_ids}}, {"$pull": {"ExternalPayments": {"_id": expired_payment["_id"]}}}, multi=True)
+            db.users.update({"_id": {"$in": affected_user_ids}}, {"$addToSet": {"ExternalPayments": expired_payment}}, multi=True)
+
     def GetAndActivatePromo(code):
         promo = db.promo_codes.find_one({"Code": code})
         if not promo:

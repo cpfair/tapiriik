@@ -39,6 +39,14 @@
 		{% endfor %}
 		</ul>
 	{% endif %}
+	{% if user.ExternalPayments|length > 0 %}
+		<h3>External Payments</h3>
+		<ul style="list-style:none;margin:0;padding:0;">
+		{% for externalPayment in user.ExternalPayments %}
+			<li><b>Provider:</b> <tt>{{ externalPayment.Provider }}</tt> (ext ID <tt>{{ externalPayment.ExternalID }}</tt>) spanning {{ externalPayment.Timestamp }} UTC ~ {{ externalPayment.Expiry }} UTC</li>
+		{% endfor %}
+		</ul>
+	{% endif %}
 	{% for connection in user.ConnectedServices|svc_populate_conns %}
 		{% with svc=connection.Service %}
 			<h3>{{ connection.Service }}</h3>
