@@ -71,7 +71,7 @@ class MotivatoService(ServiceBase):
         from tapiriik.auth.credential_storage import CredentialStore
         session = self._get_session(email=email, password=password)
         self._rate_limit()
-        id = session.get(self._urlRoot + "/api/user").json()["id"]
+        id = session.get(self._urlRoot + "/api/tapiriikProfile").json()["id"]
         if not len(id):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (id, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
@@ -268,7 +268,7 @@ class MotivatoService(ServiceBase):
 
         session = requests.Session()
         self._rate_limit()
-        mPreResp = session.get(self._urlRoot + "/api/user", allow_redirects=False)
+        mPreResp = session.get(self._urlRoot + "/api/tapiriikProfile", allow_redirects=False)
         # New site gets this redirect, old one does not
         if mPreResp.status_code == 403:
             data = {
