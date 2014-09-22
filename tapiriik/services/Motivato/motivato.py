@@ -306,7 +306,7 @@ class MotivatoService(ServiceBase):
 
 
             self._rate_limit()
-            mRedeemResp1 = session.get(self._urlRoot + "/api/user", allow_redirects=False)
+            mRedeemResp1 = session.get(self._urlRoot + "/api/tapiriikProfile", allow_redirects=False)
             if mRedeemResp1.status_code != 200:
                 raise APIException("Motivato redeem error %s %s" % (mRedeemResp1.status_code, mRedeemResp1.text))
 
