@@ -95,7 +95,7 @@ class MotivatoService(ServiceBase):
         dic = dict(
             training_at=activity.StartTime.strftime("%Y-%m-%d"),
             distance=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value,
-            duration=str(timedelta(seconds=activity.Stats.MovingTime.Value)),
+            duration="",
             user_comment=activity.Notes,
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             created_at=activity.StartTime.strftime("%Y-%m-%d %H:%M:%S"),
@@ -103,14 +103,25 @@ class MotivatoService(ServiceBase):
             source_id=8,
             metas=dict(
                 distance=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value,
-                duration=str(timedelta(seconds=activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)),
+                duration="",
 
                 time_start=activity.StartTime.strftime("%H:%M:%S")
             ),
             track={}
         )
 
-        pace=str(timedelta(seconds=activity.Stats.MovingTime.Value/activity.Stats.Distance.Value))
+        if activity.Stats.TimerTime.Value is not None:
+            secs = activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        elif activity.Stats.MovingTime.Value is not None:
+            secs = activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        else:
+            secs = (activity.EndTime - activity.StartTime).total_seconds()
+
+
+        dic["metas"]["duration"] = str(timedelta(seconds=secs))
+        dic["duration"] = str(timedelta(seconds=secs))
+
+        pace=str(timedelta(seconds=secs/activity.Stats.Distance.Value))
         meta_hr_avg=activity.Stats.HR.Average
         meta_hr_max=activity.Stats.HR.Max
 
@@ -126,7 +137,7 @@ class MotivatoService(ServiceBase):
         if len(activity.Laps) > 0:
             dic["track"] = dict(
                 name=activity.Name,
-                mtime=activity.Stats.MovingTime.Value,
+                mtime=secs,
                 points=[]
             )
 
