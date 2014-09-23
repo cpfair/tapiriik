@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD, SITE_VER
 from tapiriik.database import db
 from tapiriik.sync import Sync
-from tapiriik.auth import TOTP, DiagnosticsUser
+from tapiriik.auth import TOTP, DiagnosticsUser, User
 from bson.objectid import ObjectId
 import hashlib
 import json
@@ -35,7 +35,8 @@ def diag_dashboard(req):
         context["pendingSynchronizations"] = 0
 
     context["userCt"] = db.users.count()
-    context["autosyncCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
+    context["scheduledCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
+    context["autosyncCt"] = db.users.find(User.PaidUserMongoQuery()).count()
 
     context["errorUsersCt"] = db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}).count()
     context["exclusionUsers"] = db.users.find({"SyncExclusionCount": {"$gt": 0}}).count()

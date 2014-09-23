@@ -61,6 +61,7 @@ urlpatterns = patterns('',
     url(r'^payments/return$', 'tapiriik.web.views.payments_return', {}, name='payments_return'),
     url(r'^payments/confirmed$', 'tapiriik.web.views.payments_confirmed', {}, name='payments_confirmed'),
     url(r'^payments/ipn$', 'tapiriik.web.views.payments_ipn', {}, name='payments_ipn'),
+    url(r'^payments/external/(?P<provider>[^/]+)/refresh$', 'tapiriik.web.views.payments_external_refresh', {}, name='payments_external_refresh'),
 
     url(r'^ab/begin/(?P<key>[^/]+)$', 'tapiriik.web.views.ab_web_experiment_begin', {}, name='ab_web_experiment_begin'),
 

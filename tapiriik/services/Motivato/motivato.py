@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
 from tapiriik.services.api import APIException, APIWarning, UserException, UserExceptionType
 from tapiriik.services.sessioncache import SessionCache
+from tapiriik.payments import ExternalPaymentProvider
 
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
@@ -66,6 +67,17 @@ class MotivatoService(ServiceBase):
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
+
+    def _getPaymentState(self, serviceRecord):
+        # This method is also used by MotivatoExternalPaymentProvider to fetch user state
+        session = self._get_session(record=serviceRecord)
+        self._rate_limit()
+        return session.get(self._urlRoot + "/api/user").json()["isPremium"]
+
+    def _applyPaymentState(self, serviceRecord):
+        from tapiriik.auth import User
+        state = self._getPaymentState(serviceRecord)
+        ExternalPaymentProvider.FromID("motivato").ApplyPaymentState(User.GetByConnection(serviceRecord), state, serviceRecord.ExternalID, duration=None)
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
@@ -165,6 +177,9 @@ class MotivatoService(ServiceBase):
         return int(parts[0])*3600 + int(parts[1])*60 + int(parts[2])
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
+        logger.debug("Checking motivato premium state")
+        self._applyPaymentState(serviceRecord)
+
         logger.debug("Motivato DownloadActivityList")
         session = self._get_session(record=serviceRecord)
         activities = []

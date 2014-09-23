@@ -1,6 +1,5 @@
 from django import template
-from tapiriik.auth import User, Payments
-from tapiriik.database import db
+from tapiriik.auth import User
 register = template.Library()
 
 

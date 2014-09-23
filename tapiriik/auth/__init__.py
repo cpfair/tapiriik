@@ -1,4 +1,4 @@
-from .payment import *
+from tapiriik.payments import *
 from .totp import *
 from tapiriik.database import db
 from tapiriik.sync import Sync
@@ -17,6 +17,10 @@ class User:
     }
     def Get(id):
         return db.users.find_one({"_id": ObjectId(id)})
+
+    def GetByConnection(svcRec):
+        return db.users.find_one({"ConnectedServices.ID": svcRec["_id"]})
+
     def Ensure(req):
         if req.user == None:
             req.user = User.Create()
@@ -48,15 +52,23 @@ class User:
     def SetTimezone(user, tz):
         db.users.update({"_id": ObjectId(user["_id"])}, {"$set": {"Timezone": tz}})
 
-    def AssociatePayment(user, payment):
-        db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Payments": {"_id": payment["_id"] if "_id" in payment else None}}}, multi=True)  # deassociate payment ids from other accounts that may be using them
-        db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Payments": payment}})
-        Sync.ScheduleImmediateSync(user)
+    def _assocPaymentLikeObject(user, collection, payment_like_object, schedule_now):
+        # Since I seem to have taken this duck-typing quite far
+        # First, deassociate payment ids from other accounts that may be using them
+        db.users.update({}, {"$pull": {collection: {"_id": payment_like_object["_id"] if "_id" in payment_like_object else None}}}, multi=True)
+        # Then, attach to us
+        db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {collection: payment_like_object}})
+        if schedule_now:
+            Sync.ScheduleImmediateSync(user)
 
-    def AssociatePromo(user, promo):
-        db.users.update({"_id": {'$ne': ObjectId(user["_id"])}}, {"$pull": {"Promos": {"_id": promo["_id"] if "_id" in promo else None}}}, multi=True)  # Same deal
-        db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {"Promos": promo}})
-        Sync.ScheduleImmediateSync(user)
+    def AssociatePayment(user, payment, schedule_now=True):
+        User._assocPaymentLikeObject(user, "Payments", payment, schedule_now)
+
+    def AssociateExternalPayment(user, external_payment, schedule_now=True):
+        User._assocPaymentLikeObject(user, "ExternalPayments", external_payment, schedule_now)
+
+    def AssociatePromo(user, promo, schedule_now=True):
+        User._assocPaymentLikeObject(user, "Promos", promo, schedule_now)
 
     def HasActivePayment(user):
         # Payments and Promos share the essential data field - Expiry
@@ -102,6 +114,7 @@ class User:
                 if len([x for x in user["ConnectedServices"] if x["Service"] == to_merge_service["Service"]]) == 0:
                     user["ConnectedServices"].append(to_merge_service)
 
+            # There's got to be some 1-liner to do this merge
             if "Payments" in existingUser:
                 if "Payments" not in user:
                     user["Payments"] = []
@@ -110,6 +123,10 @@ class User:
                 if "Promos" not in user:
                     user["Promos"] = []
                 user["Promos"] += existingUser["Promos"]
+            if "ExternalPayments" in existingUser:
+                if "ExternalPayments" not in user:
+                    user["ExternalPayments"] = []
+                user["ExternalPayments"] += existingUser["ExternalPayments"]
             if "FlowExceptions" in existingUser:
                 if "FlowExceptions" not in user:
                     user["FlowExceptions"] = []

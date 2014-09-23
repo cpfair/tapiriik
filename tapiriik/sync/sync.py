@@ -167,7 +167,8 @@ class SynchronizationTask:
             # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
             # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
             update_values["$unset"]["NextSynchronization"] = None
-        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+        unlock_result = db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+        logger.debug("User unlock returned %s" % unlock_result)
 
     def _loadServiceData(self):
         self._connectedServiceIds = [x["ID"] for x in self.user["ConnectedServices"]]
@@ -1028,6 +1029,8 @@ class SynchronizationTask:
             logger.info("Finalizing")
             # Clear non-persisted extended auth details.
             self._destroyExtendedAuthData()
+
+            logger.info("Unlocking user")
             # Unlock the user.
             self._unlockUser(null_next_sync_on_unlock)
 
@@ -1038,7 +1041,7 @@ class SynchronizationTask:
             logger.exception("Core sync exception")
             raise
         else:
-            logger.info("Finished sync for %s" % self.user["_id"])
+            logger.info("Finished sync for %s (worker %d)" % (self.user["_id"], os.getpid()))
         finally:
             self._closeUserLogging()
 
