@@ -19,7 +19,7 @@ class User:
         return db.users.find_one({"_id": ObjectId(id)})
 
     def GetByConnection(svcRec):
-        return db.users.find_one({"ConnectedServices.ID": svcRec["_id"]})
+        return db.users.find_one({"ConnectedServices.ID": svcRec._id})
 
     def Ensure(req):
         if req.user == None:
