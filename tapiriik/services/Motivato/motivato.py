@@ -72,7 +72,7 @@ class MotivatoService(ServiceBase):
         # This method is also used by MotivatoExternalPaymentProvider to fetch user state
         session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        return session.get(self._urlRoot + "/api/user").json()["isPremium"]
+        return session.get(self._urlRoot + "/api/tapiriikProfile").json()["isPremium"]
 
     def _applyPaymentState(self, serviceRecord):
         from tapiriik.auth import User
@@ -83,7 +83,7 @@ class MotivatoService(ServiceBase):
         from tapiriik.auth.credential_storage import CredentialStore
         session = self._get_session(email=email, password=password)
         self._rate_limit()
-        id = session.get(self._urlRoot + "/api/user").json()["id"]
+        id = session.get(self._urlRoot + "/api/tapiriikProfile").json()["id"]
         if not len(id):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (id, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
@@ -95,7 +95,7 @@ class MotivatoService(ServiceBase):
         dic = dict(
             training_at=activity.StartTime.strftime("%Y-%m-%d"),
             distance=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value,
-            duration=str(timedelta(seconds=activity.Stats.MovingTime.Value)),
+            duration="",
             user_comment=activity.Notes,
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             created_at=activity.StartTime.strftime("%Y-%m-%d %H:%M:%S"),
@@ -103,14 +103,25 @@ class MotivatoService(ServiceBase):
             source_id=8,
             metas=dict(
                 distance=activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value,
-                duration=str(timedelta(seconds=activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)),
+                duration="",
 
                 time_start=activity.StartTime.strftime("%H:%M:%S")
             ),
             track={}
         )
 
-        pace=str(timedelta(seconds=activity.Stats.MovingTime.Value/activity.Stats.Distance.Value))
+        if activity.Stats.TimerTime.Value is not None:
+            secs = activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        elif activity.Stats.MovingTime.Value is not None:
+            secs = activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        else:
+            secs = (activity.EndTime - activity.StartTime).total_seconds()
+
+
+        dic["metas"]["duration"] = str(timedelta(seconds=secs))
+        dic["duration"] = str(timedelta(seconds=secs))
+
+        pace=str(timedelta(seconds=secs/activity.Stats.Distance.Value))
         meta_hr_avg=activity.Stats.HR.Average
         meta_hr_max=activity.Stats.HR.Max
 
@@ -126,7 +137,7 @@ class MotivatoService(ServiceBase):
         if len(activity.Laps) > 0:
             dic["track"] = dict(
                 name=activity.Name,
-                mtime=activity.Stats.MovingTime.Value,
+                mtime=secs,
                 points=[]
             )
 
@@ -283,7 +294,7 @@ class MotivatoService(ServiceBase):
 
         session = requests.Session()
         self._rate_limit()
-        mPreResp = session.get(self._urlRoot + "/api/user", allow_redirects=False)
+        mPreResp = session.get(self._urlRoot + "/api/tapiriikProfile", allow_redirects=False)
         # New site gets this redirect, old one does not
         if mPreResp.status_code == 403:
             data = {
@@ -321,7 +332,7 @@ class MotivatoService(ServiceBase):
 
 
             self._rate_limit()
-            mRedeemResp1 = session.get(self._urlRoot + "/api/user", allow_redirects=False)
+            mRedeemResp1 = session.get(self._urlRoot + "/api/tapiriikProfile", allow_redirects=False)
             if mRedeemResp1.status_code != 200:
                 raise APIException("Motivato redeem error %s %s" % (mRedeemResp1.status_code, mRedeemResp1.text))
 
