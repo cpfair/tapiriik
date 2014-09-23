@@ -72,7 +72,7 @@ class MotivatoService(ServiceBase):
         # This method is also used by MotivatoExternalPaymentProvider to fetch user state
         session = self._get_session(record=serviceRecord)
         self._rate_limit()
-        return session.get(self._urlRoot + "/api/user").json()["isPremium"]
+        return session.get(self._urlRoot + "/api/tapiriikProfile").json()["isPremium"]
 
     def _applyPaymentState(self, serviceRecord):
         from tapiriik.auth import User
