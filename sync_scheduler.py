@@ -1,13 +1,13 @@
 from tapiriik.database import db
 from tapiriik.messagequeue import mq
+from tapiriik.sync import Sync
 import kombu
 from datetime import datetime
 import time
 
-channel = mq.channel()
-exchange = kombu.Exchange("tapiriik-users", type="direct")(channel)
-exchange.declare()
-producer = kombu.Producer(channel, exchange)
+Sync.InitializeWorkerBindings()
+
+producer = kombu.Producer(Sync._channel, Sync._exchange)
 
 while True:
 	queueing_at = datetime.utcnow()
