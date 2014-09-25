@@ -24,7 +24,7 @@ while True:
 			)
 	scheduled_ids = set()
 	for user in users:
-		producer.publish(str(user["_id"]), routing_key=user["SynchronizationHostRestriction"] if "SynchronizationHostRestriction" in user and user["SynchronizationHostRestriction"] else "")
+		producer.publish({"user_id": str(user["_id"]), "queued_at": queueing_at}, routing_key=user["SynchronizationHostRestriction"] if "SynchronizationHostRestriction" in user and user["SynchronizationHostRestriction"] else "")
 		scheduled_ids.add(user["_id"])
 	print("Scheduled %d users at %s" % (len(scheduled_ids), datetime.utcnow()))
 	db.users.update({"_id": {"$in": list(scheduled_ids)}}, {"$set": {"QueuedAt": queueing_at}, "$unset": {"NextSynchronization": True}}, multi=True)
