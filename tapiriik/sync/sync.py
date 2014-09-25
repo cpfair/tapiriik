@@ -92,6 +92,7 @@ class Sync:
     def InitializeWorkerBindings():
         Sync._channel = mq.channel()
         Sync._exchange = kombu.Exchange("tapiriik-users", type="direct")(Sync._channel)
+        Sync._exchange.declare()
         Sync._global_queue = kombu.Queue("tapiriik-users")(Sync._channel)
         Sync._host_queue = kombu.Queue("tapiriik-users-%s" % socket.gethostname())(Sync._channel)
         Sync._global_queue.declare()
