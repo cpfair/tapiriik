@@ -19,7 +19,7 @@ while True:
 					"_id": True,
 					"SynchronizationHostRestriction": True
 				}
-			).sort("NextSynchronization")
+			)
 	scheduled_ids = set()
 	for user in users:
 		producer.publish(str(user["_id"]), routing_key=user["SynchronizationHostRestriction"] if "SynchronizationHostRestriction" in user and user["SynchronizationHostRestriction"] else "")
