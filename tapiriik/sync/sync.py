@@ -171,18 +171,12 @@ class SynchronizationTask:
         self.user = user
 
     def _lockUser(self):
-        # Force these operations against the primary so there's never any weirdness
-        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
-        lockCheck = db.users.find_one({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, read_preference=ReadPreference.PRIMARY)
-        if lockCheck is None:
-            raise SynchronizationConcurrencyException  # failed to get lock
+        db.users.update({"_id": self.user["_id"]}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
 
     def _unlockUser(self):
         unlock_result = db.users.update(
             {
-                "_id": self.user["_id"],
-                "SynchronizationWorker": os.getpid(),
-                "SynchronizationHost": socket.gethostname()
+                "_id": self.user["_id"]
             }, {
                 "$unset": {
                     "SynchronizationWorker": None,
