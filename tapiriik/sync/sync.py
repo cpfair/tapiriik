@@ -135,14 +135,20 @@ class Sync:
             message_fresh_date = body["queued_at"]
             
         user = User.Get(user_id)
-        if message_fresh_date and message_fresh_date != user["QueuedAt"].isoformat():
-            # They've since rescheduled themselves
-            message.ack()
-            return
         if user is None:
             logger.warning("Could not find user %s - bailing")
             message.ack() # Otherwise the entire thing grinds to a halt
             return
+        if "QueuedAt" not in user:
+            logger.warning("User in queue but has no QueuedAt entry - bailing")
+            message.ack()
+            return
+        if message_fresh_date and message_fresh_date != user["QueuedAt"].isoformat():
+            logger.warning("User QueuedAt is different than MQ QueuedAt - bailing")
+            # They've since rescheduled themselves
+            message.ack()
+            return
+                
         syncStart = datetime.utcnow()
 
         # Always to an exhaustive sync if there were errors
