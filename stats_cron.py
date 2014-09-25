@@ -1,4 +1,4 @@
-    from tapiriik.database import db, close_connections
+from tapiriik.database import db, close_connections
 from datetime import datetime, timedelta
 
 # total distance synced
