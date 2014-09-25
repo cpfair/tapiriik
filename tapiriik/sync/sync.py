@@ -884,7 +884,7 @@ class SynchronizationTask:
                                 endtime = tz.localize(endtime)
 
                             if endtime.tzinfo and endtime.tzinfo != tz:
-                                endtime = EndTime.astimezone(tz)
+                                endtime = endtime.astimezone(tz)
 
                             if tz and endtime: # We can't really know for sure otherwise
                                 time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
