@@ -11,6 +11,9 @@ class ExternalPaymentProvider:
     def RefreshPaymentStateForExternalIDs(self, external_ids):
         raise NotImplemented
 
+    def RefreshPaymentState(self):
+        raise NotImplemented
+
     def ApplyPaymentState(self, user, state, externalID, duration=None):
         from tapiriik.payments import Payments
         from tapiriik.auth import User

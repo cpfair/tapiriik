@@ -117,9 +117,13 @@ def payments_claim_return(request, code):
     User.Login(user, request)  # In case they somehow managed to log out - they've proved their identity.
     return redirect("/#/payments/claimed")
 
-@require_POST
 @csrf_exempt
 def payments_external_refresh(request, provider):
-    req_data = json.loads(request.body.decode("UTF-8"))
-    ExternalPaymentProvider.FromID(provider).RefreshPaymentStateForExternalIDs(req_data["external_ids"])
+    if request.method == "POST":
+        req_data = json.loads(request.body.decode("UTF-8"))
+        ExternalPaymentProvider.FromID(provider).RefreshPaymentStateForExternalIDs(req_data["external_ids"])
+    elif request.method == "GET":
+        ExternalPaymentProvider.FromID(provider).RefreshPaymentState()
+    else:
+        return HttpResponse(status=405)
     return HttpResponse()
