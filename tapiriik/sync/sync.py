@@ -1047,7 +1047,7 @@ class SynchronizationTask:
 
             logger.info("Unlocking user")
             # Unlock the user.
-            self._unlockUser(null_next_sync_on_unlock)
+            self._unlockUser()
 
         except SynchronizationConcurrencyException:
             raise # Don't spit out the "Core sync exception" error
