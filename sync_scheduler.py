@@ -9,18 +9,11 @@ exchange = kombu.Exchange("tapiriik-users", type="direct")(channel)
 exchange.declare()
 producer = kombu.Producer(channel, exchange)
 
-scheduler_up_to_date = datetime.min
-
 while True:
 	queueing_at = datetime.utcnow()
 	users = db.users.find(
 				{
-					"NextSynchronization": {"$lte": datetime.utcnow()},
-					"NextSynchronization": {"$gte": scheduler_up_to_date},
-					"$or": [
-						{"QueuedAt": {"$lt": queueing_at}},
-						{"QueuedAt": {"$exists": False}}
-					]
+					"NextSynchronization": {"$lte": datetime.utcnow()}
 				},
 				{
 					"_id": True,
@@ -32,6 +25,5 @@ while True:
 		producer.publish(str(user["_id"]), routing_key=user["SynchronizationHostRestriction"] if "SynchronizationHostRestriction" in user and user["SynchronizationHostRestriction"] else "")
 		scheduled_ids.add(user["_id"])
 	print("Scheduled %d users at %s" % (len(scheduled_ids), datetime.utcnow()))
-	db.users.update({"_id": {"$in": list(scheduled_ids)}}, {"$set": {"SchedulerGeneration": scheduler_generation}}, multi=True)
-	scheduler_generation += 1
+	db.users.update({"_id": {"$in": list(scheduled_ids)}}, {"$set": {"QueuedAt": queueing_at}, "$unset": {"NextSynchronization": True}}, multi=True)
 	time.sleep(1)

@@ -130,7 +130,7 @@ class Sync:
 
         result = None
         try:
-            result = Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
+            result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
         finally:
             nextSync = None
             if User.HasActivePayment(user):
@@ -148,8 +148,8 @@ class Sync:
 
         message.ack()
 
-    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
-        return SynchronizationTask(user).Run(exhaustive=exhaustive, null_next_sync_on_unlock=null_next_sync_on_unlock, heartbeat_callback=heartbeat_callback)
+    def PerformUserSync(user, exhaustive=False, heartbeat_callback=None):
+        return SynchronizationTask(user).Run(exhaustive=exhaustive, heartbeat_callback=heartbeat_callback)
 
 
 class SynchronizationTask:
@@ -166,13 +166,18 @@ class SynchronizationTask:
         if lockCheck is None:
             raise SynchronizationConcurrencyException  # failed to get lock
 
-    def _unlockUser(self, null_next_sync_on_unlock):
-        update_values = {"$unset": {"SynchronizationWorker": None}}
-        if null_next_sync_on_unlock:
-            # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
-            # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
-            update_values["$unset"]["NextSynchronization"] = None
-        unlock_result = db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+    def _unlockUser(self):
+        unlock_result = db.users.update(
+            {
+                "_id": self.user["_id"],
+                "SynchronizationWorker": os.getpid(),
+                "SynchronizationHost": socket.gethostname()
+            }, {
+                "$unset": {
+                    "SynchronizationWorker": None,
+                    "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
+                }
+            })
         logger.debug("User unlock returned %s" % unlock_result)
 
     def _loadServiceData(self):
