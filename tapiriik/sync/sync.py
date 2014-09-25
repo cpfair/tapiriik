@@ -124,7 +124,20 @@ class Sync:
 
     def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
-        user = User.Get(body)
+        no_sync = False
+        message_fresh_date = None
+        if isinstance(body, str):
+            user_id = body
+            no_sync = True # definitely temporary, need to clear the queue nicely
+        else:
+            user_id = body["user_id"]
+            message_fresh_date = body["queued_at"]
+            
+        user = User.Get(user_id)
+        if message_fresh_date and message_fresh_date != user["QueuedAt"].isoformat():
+            # They've since rescheduled themselves
+            message.ack()
+            return
         if user is None:
             logger.warning("Could not find user %s - bailing")
             message.ack() # Otherwise the entire thing grinds to a halt
@@ -147,7 +160,8 @@ class Sync:
 
         result = None
         try:
-            result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
+            if not no_sync:
+                result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
         finally:
             nextSync = None
             if User.HasActivePayment(user):
