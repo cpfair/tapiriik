@@ -25,6 +25,7 @@ def diag_dashboard(req):
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
 
+    # I have no clue why this is the way it is, considering I just run plain counts later on
     pendingSynchronizations = db.users.aggregate([
                                                  {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
                                                  {"$group": {"_id": None, "count": {"$sum": 1}}}
@@ -44,7 +45,7 @@ def diag_dashboard(req):
         context["queuedSynchronizations"] = 0
 
     context["userCt"] = db.users.count()
-    context["scheduledCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
+    context["scheduledCt"] = db.users.find({"$or":[{"NextSynchronization": {"$ne": None, "$exists": True}}, {"QueuedAt": {"$ne": None, "$exists": True}}]}).count()
     context["autosyncCt"] = db.users.find(User.PaidUserMongoQuery()).count()
 
     context["errorUsersCt"] = db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}).count()
