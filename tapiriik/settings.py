@@ -271,7 +271,7 @@ CELEBRATION_MODES = {
         "Logo": "tapiriik-hebrew.png", # טפּרכּ
         "Subtitle": "!לְשָׁנָה טוֹבָה",
         "TitleText": "הָבָה, נֵרְדָה, וְנָבְלָה שָׁם, שְׂפָתָם--אֲשֶׁר לֹא יִשְׁמְעוּ, אִישׁ שְׂפַת רֵעֵהוּ. (Genesis 11:7)",
-        "BodyCSSClasses": "night waxing_moon starfield"
+        "BodyCSSClasses": "night crescent_moon starfield"
     },
 }
 
