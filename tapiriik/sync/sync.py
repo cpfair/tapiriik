@@ -101,15 +101,26 @@ class Sync:
         Sync._host_queue.bind_to(exchange="tapiriik-users", routing_key=socket.gethostname())
 
     def PerformGlobalSync(heartbeat_callback=None, version=None):
-        Sync._consumer = kombu.Consumer(channel=Sync._channel, queues=[Sync._host_queue, Sync._global_queue], callbacks=Sync._consumeSyncTask)
+        def _callback(body, message):
+            Sync._consumeSyncTask(body, message, heartbeat_callback, version)
+
+        Sync._consumer = kombu.Consumer(
+            channel=Sync._channel,
+            queues=[Sync._host_queue, Sync._global_queue],
+            callbacks=[_callback],
+            auto_declare=False
+        )
+
+        Sync._consumer.consume()
+
         try:
-            mq.drain_events(timeout=30)
+            mq.drain_events(timeout=30) # Only do one user so control returns to sync_worker quickly
         except socket.timeout:
             return 0
         else:
             return 1
 
-    def _consumeSyncTask(body, message):
+    def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
         user = User.Get(body)
         syncStart = datetime.utcnow()
