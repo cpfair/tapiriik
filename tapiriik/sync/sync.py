@@ -124,6 +124,7 @@ class Sync:
 
     def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
+        logger.debug("Consuming task for %s" % body)
         user = User.Get(body)
         syncStart = datetime.utcnow()
 
