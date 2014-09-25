@@ -34,6 +34,15 @@ def diag_dashboard(req):
     else:
         context["pendingSynchronizations"] = 0
 
+    queuedSynchronizations = db.users.aggregate([
+                                                 {"$match": {"QueuedAt": {"$lt": datetime.utcnow()}}},
+                                                 {"$group": {"_id": None, "count": {"$sum": 1}}}
+                                                 ])
+    if len(queuedSynchronizations["result"]) > 0:
+        context["queuedSynchronizations"] = queuedSynchronizations["result"][0]["count"]
+    else:
+        context["queuedSynchronizations"] = 0
+
     context["userCt"] = db.users.count()
     context["scheduledCt"] = db.users.find({"NextSynchronization": {"$ne": None}}).count()
     context["autosyncCt"] = db.users.find(User.PaidUserMongoQuery()).count()
