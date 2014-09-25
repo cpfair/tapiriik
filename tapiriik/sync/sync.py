@@ -128,24 +128,16 @@ class Sync:
         no_sync = False
         message_fresh_date = None
         logger.debug("Got MQ payload %s" % body)
-        if isinstance(body, str):
-            user_id = body
-            no_sync = True # definitely temporary, need to clear the queue nicely
-        else:
-            user_id = body["user_id"]
-            message_fresh_date = body["queued_at"]
+
+        user_id = body["user_id"]
             
         user = User.Get(user_id)
         if user is None:
             logger.warning("Could not find user %s - bailing")
             message.ack() # Otherwise the entire thing grinds to a halt
             return
-        if "QueuedAt" not in user:
-            logger.warning("User in queue but has no QueuedAt entry - bailing")
-            message.ack()
-            return
-        if message_fresh_date and message_fresh_date != user["QueuedAt"].isoformat():
-            logger.warning("User QueuedAt is different than MQ QueuedAt - bailing")
+        if body["Generation"] != user["QueuedGeneration"]:
+            logger.warning("Queue generation mismatch - bailing")
             # They've since rescheduled themselves
             message.ack()
             return
