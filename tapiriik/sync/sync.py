@@ -883,6 +883,9 @@ class SynchronizationTask:
                                 tz = activity.FallbackTZ
                                 endtime = tz.localize(endtime)
 
+                            if endtime.tzinfo and endtime.tzinfo != tz:
+                                endtime = EndTime.astimezone(tz)
+
                             if tz and endtime: # We can't really know for sure otherwise
                                 time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
                                 time_past += tz.dst(endtime) if tz.dst(endtime) else timedelta(0) # For some reason DST wasn't being taken into account - maybe just GC?
