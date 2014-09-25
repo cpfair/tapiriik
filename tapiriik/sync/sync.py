@@ -124,8 +124,11 @@ class Sync:
 
     def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
-        logger.debug("Consuming task for %s" % body)
         user = User.Get(body)
+        if user is None:
+            logger.warning("Could not find user %s - bailing")
+            message.ack() # Otherwise the entire thing grinds to a halt
+            return
         syncStart = datetime.utcnow()
 
         # Always to an exhaustive sync if there were errors
