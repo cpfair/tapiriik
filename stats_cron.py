@@ -1,4 +1,4 @@
-from tapiriik.database import db, close_connections
+    from tapiriik.database import db, close_connections
 from datetime import datetime, timedelta
 
 # total distance synced
@@ -22,11 +22,11 @@ if lastHourDistanceSyncedAggr:
 else:
     lastHourDistanceSynced = 0
 # sync wait time, to save making 1 query/sec-user-browser
-queueHead = list(db.users.find({"NextSynchronization": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"NextSynchronization": 1}).sort("NextSynchronization").limit(10))
+queueHead = list(db.users.find({"QueuedAt": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"QueuedAt": 1}).sort("QueuedAt").limit(10))
 queueHeadTime = timedelta(0)
 if len(queueHead):
     for queuedUser in queueHead:
-        queueHeadTime += datetime.utcnow() - queuedUser["NextSynchronization"]
+        queueHeadTime += datetime.utcnow() - queuedUser["QueuedAt"]
     queueHeadTime /= len(queueHead)
 
 # sync time utilization
