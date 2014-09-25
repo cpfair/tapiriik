@@ -13,7 +13,7 @@ producer = kombu.Producer(Sync._channel, Sync._exchange)
 
 while True:
 	queueing_at = datetime.utcnow()
-	users = db.users.find(
+	users = list(db.users.find(
 				{
 					"NextSynchronization": {"$lte": datetime.utcnow()}
 				},
@@ -22,7 +22,7 @@ while True:
 					"SynchronizationHostRestriction": True
 				},
 				read_preference=ReadPreference.PRIMARY
-			)
+			))
 	scheduled_ids = [x["_id"] for x in users]
 	db.users.update({"_id": {"$in": scheduled_ids}}, {"$set": {"QueuedAt": queueing_at}, "$unset": {"NextSynchronization": True}}, multi=True, w=MONGO_FULL_WRITE_CONCERN)
 	for user in users:
