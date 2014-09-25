@@ -13,7 +13,7 @@ Sync.InitializeWorkerBindings()
 producer = kombu.Producer(Sync._channel, Sync._exchange)
 
 while True:
-	generation = uuid.uuid4()
+	generation = str(uuid.uuid4())
 	queueing_at = datetime.utcnow()
 	users = list(db.users.find(
 				{
