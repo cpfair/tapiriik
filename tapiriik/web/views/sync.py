@@ -30,7 +30,12 @@ def sync_status(req):
             else:
                 errorCodes.append("SYS-" + err["Step"])
 
-    sync_status_dict = {"NextSync": (req.user["NextSynchronization"].ctime() + " UTC") if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None,
+    # Flatten NextSynchronization with QueuedAt
+    pendingSyncTime = req.user["NextSynchronization"] if "NextSynchronization" in req.user else None
+    if "QueuedAt" in req.user and req.user["QueuedAt"]:
+        pendingSyncTime = req.user["QueuedAt"]
+
+    sync_status_dict = {"NextSync": (pendingSyncTime.ctime() + " UTC") if pendingSyncTime else None,
                         "LastSync": (req.user["LastSynchronization"].ctime() + " UTC") if "LastSynchronization" in req.user and req.user["LastSynchronization"] is not None else None,
                         "Synchronizing": "SynchronizationWorker" in req.user,
                         "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
