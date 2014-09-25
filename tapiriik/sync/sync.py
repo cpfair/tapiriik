@@ -126,6 +126,7 @@ class Sync:
         from tapiriik.auth import User
         no_sync = False
         message_fresh_date = None
+        logger.debug("Got MQ payload %s" % body)
         if isinstance(body, str):
             user_id = body
             no_sync = True # definitely temporary, need to clear the queue nicely
