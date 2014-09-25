@@ -136,7 +136,7 @@ class Sync:
             logger.warning("Could not find user %s - bailing")
             message.ack() # Otherwise the entire thing grinds to a halt
             return
-        if body["ggeneration"] != user["QueuedGeneration"]:
+        if body["generation"] != user["QueuedGeneration"]:
             logger.warning("Queue generation mismatch - bailing")
             # They've since rescheduled themselves
             message.ack()
