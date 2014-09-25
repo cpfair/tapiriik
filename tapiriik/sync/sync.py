@@ -111,7 +111,7 @@ class Sync:
             auto_declare=False
         )
 
-        Sync._consumer.qos(prefetch_count=1)
+        Sync._consumer.qos(prefetch_count=1, apply_global=True)
 
         Sync._consumer.consume()
 
