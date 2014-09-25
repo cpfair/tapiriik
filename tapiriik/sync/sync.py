@@ -589,7 +589,7 @@ class SynchronizationTask:
             # (but that's not really required)
             # Though we don't want to play with things if this exception needs to take the place of an earlier, more significant one
             if e.UserException and e.UserException.Type == UserExceptionType.RateLimited:
-                e.TriggerExhaustive = self._hasTransientSyncErrors[conn._id]
+                e.TriggerExhaustive = conn._id in self._hasTransientSyncErrors and self._hasTransientSyncErrors[conn._id]
             self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
             if not _isWarning(e):
