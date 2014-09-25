@@ -32,9 +32,5 @@ for worker in db.sync_workers.find({"Host": host}):
     # Clear it from the database if it's not alive.
     if not alive:
         db.sync_workers.remove({"_id": worker["_id"]})
-        # Unlock users attached to it.
-        for user in db.users.find({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}):
-            print("\t Unlocking %s" % user["_id"])
-        db.users.update({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}, {"$unset":{"SynchronizationWorker": True}}, multi=True)
 
 close_connections()
