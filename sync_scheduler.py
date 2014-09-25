@@ -17,7 +17,8 @@ while True:
 	queueing_at = datetime.utcnow()
 	users = list(db.users.find(
 				{
-					"NextSynchronization": {"$lte": datetime.utcnow()}
+					"NextSynchronization": {"$lte": datetime.utcnow()},
+					"QueuedAt": {"$exists": False}
 				},
 				{
 					"_id": True,
