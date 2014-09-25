@@ -1,8 +1,9 @@
 from tapiriik.database import db
 from tapiriik.messagequeue import mq
 from tapiriik.sync import Sync
-import kombu
 from datetime import datetime
+from pymongo.read_preferences import ReadPreference
+import kombu
 import time
 
 Sync.InitializeWorkerBindings()
@@ -18,7 +19,8 @@ while True:
 				{
 					"_id": True,
 					"SynchronizationHostRestriction": True
-				}
+				},
+				read_preference=ReadPreference.PRIMARY
 			)
 	scheduled_ids = set()
 	for user in users:
