@@ -1,4 +1,5 @@
 from tapiriik.database import db, cachedb
+from tapiriik.messagequeue import mq
 from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning, UserException, UserExceptionType
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from .activity_record import ActivityRecord, ActivityServicePrescence
@@ -14,6 +15,7 @@ import random
 import logging
 import logging.handlers
 import pytz
+import kombu
 
 # Set this up seperate from the logger used in this scope, so services logging messages are caught and logged into user's files.
 _global_logger = logging.getLogger("tapiriik")
@@ -87,64 +89,78 @@ class Sync:
     def SetNextSyncIsExhaustive(user, exhaustive=False):
         db.users.update({"_id": user["_id"]}, {"$set": {"NextSyncIsExhaustive": exhaustive}})
 
+    def InitializeWorkerBindings():
+        Sync._channel = mq.channel()
+        Sync._exchange = kombu.Exchange("tapiriik-users", type="direct")(Sync._channel)
+        Sync._global_queue = kombu.Queue("tapiriik-users")(Sync._channel)
+        Sync._host_queue = kombu.Queue("tapiriik-users-%s" % socket.gethostname())(Sync._channel)
+        Sync._global_queue.declare()
+        Sync._host_queue.declare()
+        # Bind to worker-specific and general routing keys
+        Sync._global_queue.bind_to(exchange="tapiriik-users", routing_key="")
+        Sync._host_queue.bind_to(exchange="tapiriik-users", routing_key=socket.gethostname())
+
     def PerformGlobalSync(heartbeat_callback=None, version=None):
+        def _callback(body, message):
+            Sync._consumeSyncTask(body, message, heartbeat_callback, version)
+
+        Sync._consumer = kombu.Consumer(
+            channel=Sync._channel,
+            queues=[Sync._host_queue, Sync._global_queue],
+            callbacks=[_callback],
+            auto_declare=False
+        )
+
+        Sync._consumer.consume()
+
+        try:
+            mq.drain_events(timeout=30) # Only do one user so control returns to sync_worker quickly
+        except socket.timeout:
+            return 0
+        else:
+            return 1
+
+    def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
-        # Read against primary, otherwise workers will probably spin too much failing to acquire these locks
-        # I should probably use a message queue for this, anyways
-        users = db.users.find({
-                "NextSynchronization": {"$lte": datetime.utcnow()},
-                "SynchronizationWorker": None,
-                "$or": [
-                    {"SynchronizationHostRestriction": {"$exists": False}},
-                    {"SynchronizationHostRestriction": socket.gethostname()}
-                    ]
-            },
-            read_preference=ReadPreference.PRIMARY).sort("NextSynchronization")
-        userCt = 0
-        for user in users:
-            userCt += 1
-            syncStart = datetime.utcnow()
+        user = User.Get(body)
+        syncStart = datetime.utcnow()
 
-            # Always to an exhaustive sync if there were errors
-            #   Sometimes services report that uploads failed even when they succeeded.
-            #   If a partial sync was done, we'd be assuming that the accounts were consistent past the first page
-            #       e.g. If an activity failed to upload far in the past, it would never be attempted again.
-            #   So we need to verify the full state of the accounts.
-            # But, we can still do a partial sync if there are *only* blocking errors
-            #   In these cases, the block will protect that service from being improperly manipulated (though tbqh I can't come up with a situation where this would happen, it's more of a performance thing).
-            #   And, when the block is cleared, NextSyncIsExhaustive is set.
+        # Always to an exhaustive sync if there were errors
+        #   Sometimes services report that uploads failed even when they succeeded.
+        #   If a partial sync was done, we'd be assuming that the accounts were consistent past the first page
+        #       e.g. If an activity failed to upload far in the past, it would never be attempted again.
+        #   So we need to verify the full state of the accounts.
+        # But, we can still do a partial sync if there are *only* blocking errors
+        #   In these cases, the block will protect that service from being improperly manipulated (though tbqh I can't come up with a situation where this would happen, it's more of a performance thing).
+        #   And, when the block is cleared, NextSyncIsExhaustive is set.
 
-            exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
-            if  ("ForcingExhaustiveSyncErrorCount" not in user and "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0) or \
-                ("ForcingExhaustiveSyncErrorCount" in user and user["ForcingExhaustiveSyncErrorCount"] > 0):
-                exhaustive = True
+        exhaustive = "NextSyncIsExhaustive" in user and user["NextSyncIsExhaustive"] is True
+        if  ("ForcingExhaustiveSyncErrorCount" not in user and "NonblockingSyncErrorCount" in user and user["NonblockingSyncErrorCount"] > 0) or \
+            ("ForcingExhaustiveSyncErrorCount" in user and user["ForcingExhaustiveSyncErrorCount"] > 0):
+            exhaustive = True
 
-            result = None
-            try:
-                result = Sync.PerformUserSync(user, exhaustive, null_next_sync_on_unlock=True, heartbeat_callback=heartbeat_callback)
-            except SynchronizationConcurrencyException:
-                logger.info("SynchronizationConcurrencyException encountered")
-                continue  # another worker picked them - try the next user
-            else:
-                nextSync = None
-                if User.HasActivePayment(user):
-                    if User.GetConfiguration(user)["suppress_auto_sync"]:
-                        logger.info("Not scheduling auto sync for paid user")
-                    else:
-                        nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-                if result:
-                    if result.ForceNextSync:
-                        logger.info("Forcing next sync at %s" % result.ForceNextSync)
-                        nextSync = result.ForceNextSync
-                db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
-                syncTime = (datetime.utcnow() - syncStart).total_seconds()
-                db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
-                break # Sync 1 user at a time - cheap hack until I use a real MQ...
-        logger.info("Exiting PerformGlobalSync having processed %d users" % userCt)
-        return userCt
+        result = None
+        try:
+            result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
+        finally:
+            nextSync = None
+            if User.HasActivePayment(user):
+                if User.GetConfiguration(user)["suppress_auto_sync"]:
+                    logger.info("Not scheduling auto sync for paid user")
+                else:
+                    nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
+            if result:
+                if result.ForceNextSync:
+                    logger.info("Forcing next sync at %s" % result.ForceNextSync)
+                    nextSync = result.ForceNextSync
+            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
+            syncTime = (datetime.utcnow() - syncStart).total_seconds()
+            db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
 
-    def PerformUserSync(user, exhaustive=False, null_next_sync_on_unlock=False, heartbeat_callback=None):
-        return SynchronizationTask(user).Run(exhaustive=exhaustive, null_next_sync_on_unlock=null_next_sync_on_unlock, heartbeat_callback=heartbeat_callback)
+        message.ack()
+
+    def PerformUserSync(user, exhaustive=False, heartbeat_callback=None):
+        return SynchronizationTask(user).Run(exhaustive=exhaustive, heartbeat_callback=heartbeat_callback)
 
 
 class SynchronizationTask:
@@ -155,19 +171,18 @@ class SynchronizationTask:
         self.user = user
 
     def _lockUser(self):
-        # Force these operations against the primary so there's never any weirdness
-        db.users.update({"_id": self.user["_id"], "SynchronizationWorker": None}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
-        lockCheck = db.users.find_one({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, read_preference=ReadPreference.PRIMARY)
-        if lockCheck is None:
-            raise SynchronizationConcurrencyException  # failed to get lock
+        db.users.update({"_id": self.user["_id"]}, {"$set": {"SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname(), "SynchronizationStartTime": datetime.utcnow()}})
 
-    def _unlockUser(self, null_next_sync_on_unlock):
-        update_values = {"$unset": {"SynchronizationWorker": None}}
-        if null_next_sync_on_unlock:
-            # Sometimes another worker would pick this record in the timespan between this update and the one in PerformGlobalSync that sets the true next sync time.
-            # Hence, an option to unset the NextSynchronization in the same operation that releases the lock on the row.
-            update_values["$unset"]["NextSynchronization"] = None
-        unlock_result = db.users.update({"_id": self.user["_id"], "SynchronizationWorker": os.getpid(), "SynchronizationHost": socket.gethostname()}, update_values)
+    def _unlockUser(self):
+        unlock_result = db.users.update(
+            {
+                "_id": self.user["_id"]
+            }, {
+                "$unset": {
+                    "SynchronizationWorker": None,
+                    "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
+                }
+            })
         logger.debug("User unlock returned %s" % unlock_result)
 
     def _loadServiceData(self):

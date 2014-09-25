@@ -45,6 +45,8 @@ print(" -> Index %s\n -> Interface %s" % (settings.WORKER_INDEX, settings.HTTP_S
 # The better way would be to defer initializing services until they're requested, but it's 10:30 and this will work just as well.
 from tapiriik.sync import Sync
 
+Sync.InitializeWorkerBindings()
+
 while Run:
     cycleStart = datetime.utcnow() # Avoid having synchronization fall down during DST setback
     processed_user_count = Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion)
