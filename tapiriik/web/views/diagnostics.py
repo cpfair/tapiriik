@@ -25,24 +25,10 @@ def diag_dashboard(req):
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
 
-    # I have no clue why this is the way it is, considering I just run plain counts later on
-    pendingSynchronizations = db.users.aggregate([
-                                                 {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
-                                                 {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                                 ])
-    if len(pendingSynchronizations["result"]) > 0:
-        context["pendingSynchronizations"] = pendingSynchronizations["result"][0]["count"]
-    else:
-        context["pendingSynchronizations"] = 0
-
-    queuedSynchronizations = db.users.aggregate([
-                                                 {"$match": {"QueuedAt": {"$lt": datetime.utcnow()}}},
-                                                 {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                                 ])
-    if len(queuedSynchronizations["result"]) > 0:
-        context["queuedSynchronizations"] = queuedSynchronizations["result"][0]["count"]
-    else:
-        context["queuedSynchronizations"] = 0
+    context["pendingSynchronizations"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}}).count()
+    context["pendingSynchronizationsLocked"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}, "SynchronizationWorker": {"$ne": None}}).count()
+    context["queuedSynchronizations"] = db.users.find({"QueuedAt": {"$lt": datetime.utcnow()}}).count()
+    context["queuedSynchronizationsLocked"] = db.users.find({"QueuedAt": {"$lt": datetime.utcnow()}, "SynchronizationWorker": {"$ne": None}}).count()
 
     context["userCt"] = db.users.count()
     context["scheduledCt"] = db.users.find({"$or":[{"NextSynchronization": {"$ne": None, "$exists": True}}, {"QueuedAt": {"$ne": None, "$exists": True}}]}).count()
