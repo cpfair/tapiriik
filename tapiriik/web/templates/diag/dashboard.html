@@ -45,7 +45,7 @@
 	</ul>
 	<h3>Sync</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
-		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }} ({{ pendingSynchronizationsLocked }} locked)</li>
+		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }} ({{ pendingSynchronizationsLocked }} locked, {{ pendingSynchronizationsQueued }} double-scheduled, {{ pendingSynchronizationsLockedQueued }} double-scheduled and locked)</li>
 		<li><b>Queued synchronizations:</b> {{ queuedSynchronizations }} ({{ queuedSynchronizationsLocked }} locked)</li>
 		<li><b>Users with errors:</b> <a href="{% url 'diagnostics_errors' %}">{{ errorUsersCt }} &raquo;</a></li>
 		<li><b>Locked records:</b> {{ lockedSyncRecords }}
