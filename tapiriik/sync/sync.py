@@ -125,12 +125,8 @@ class Sync:
 
     def _consumeSyncTask(body, message, heartbeat_callback, version):
         from tapiriik.auth import User
-        no_sync = False
-        message_fresh_date = None
-        logger.debug("Got MQ payload %s" % body)
 
         user_id = body["user_id"]
-            
         user = User.Get(user_id)
         if user is None:
             logger.warning("Could not find user %s - bailing")
@@ -141,7 +137,7 @@ class Sync:
             # They've since rescheduled themselves
             message.ack()
             return
-                
+
         syncStart = datetime.utcnow()
 
         # Always to an exhaustive sync if there were errors
@@ -160,8 +156,7 @@ class Sync:
 
         result = None
         try:
-            if not no_sync:
-                result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
+            result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
         finally:
             nextSync = None
             if User.HasActivePayment(user):
