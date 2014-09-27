@@ -129,12 +129,14 @@ class Sync:
         user_id = body["user_id"]
         user = User.Get(user_id)
         if user is None:
-            logger.warning("Could not find user %s - bailing")
+            logger.warning("Could not find user %s - bailing" % user_id)
             message.ack() # Otherwise the entire thing grinds to a halt
             return
         if body["generation"] != user["QueuedGeneration"]:
-            logger.warning("Queue generation mismatch - bailing")
-            # They've since rescheduled themselves
+            # QueuedGeneration being different means they've gone through sync_scheduler since this particular message was queued
+            # So, discard this and wait for that message to surface
+            # Should only happen when I manually requeue people
+            logger.warning("Queue generation mismatch for %s - bailing" % user_id)
             message.ack()
             return
 
@@ -1064,8 +1066,6 @@ class SynchronizationTask:
             # Unlock the user.
             self._unlockUser()
 
-        except SynchronizationConcurrencyException:
-            raise # Don't spit out the "Core sync exception" error
         except:
             # oops.
             logger.exception("Core sync exception")
@@ -1094,11 +1094,6 @@ class ActivityShouldNotSynchronizeException(Exception):
 
 class SynchronizationCompleteException(Exception):
     pass
-
-
-class SynchronizationConcurrencyException(Exception):
-    pass
-
 
 class SyncStep:
     List = "list"
