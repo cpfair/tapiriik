@@ -16,6 +16,8 @@
 		<li><b>Prev Sync:</b> {{ user.LastSynchronization|utctimesince }} ({{ user.LastSynchronization }} UTC)</li>
 		<li><b>Prev Sync Ver:</b> <tt>{{ user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
 		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
+		<li><b>Queued At:</b> {{ user.QueuedAt }} UTC</li>
+		<li><b>Queued Gen:</b> {{ user.QueuedGeneration }}</li>
 		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
 		<li><b>Lock Host:</b> {{ user.SynchronizationHost }}</li>
 		<li><b>Sync Control:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
