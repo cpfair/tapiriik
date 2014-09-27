@@ -170,7 +170,19 @@ class Sync:
                 if result.ForceNextSync:
                     logger.info("Forcing next sync at %s" % result.ForceNextSync)
                     nextSync = result.ForceNextSync
-            db.users.update({"_id": user["_id"]}, {"$set": {"NextSynchronization": nextSync, "LastSynchronization": datetime.utcnow(), "LastSynchronizationVersion": version}, "$unset": {"NextSyncIsExhaustive": None}})
+            db.users.update(
+                {
+                    "_id": user["_id"]
+                }, {
+                    "$set": {
+                        "NextSynchronization": nextSync,
+                        "LastSynchronization": datetime.utcnow(),
+                        "LastSynchronizationVersion": version
+                    }, "$unset": {
+                        "NextSyncIsExhaustive": None,
+                        "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
+                    }
+                })
             syncTime = (datetime.utcnow() - syncStart).total_seconds()
             db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
 
@@ -196,8 +208,7 @@ class SynchronizationTask:
                 "_id": self.user["_id"]
             }, {
                 "$unset": {
-                    "SynchronizationWorker": None,
-                    "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
+                    "SynchronizationWorker": None
                 }
             })
         logger.debug("User unlock returned %s" % unlock_result)
