@@ -144,6 +144,8 @@ def diag_user(req, user):
         db.users.update({"_id": ObjectId(user)}, {"$unset": {"SynchronizationWorker": None}})
     elif "lock" in req.POST:
         db.users.update({"_id": ObjectId(user)}, {"$set": {"SynchronizationWorker": 1}})
+    elif "requeue" in req.POST:
+        db.users.update({"_id": ObjectId(user)}, {"$unset": {"QueuedAt": None}})
     elif "hostrestrict" in req.POST:
         host = req.POST["host"]
         if host:
