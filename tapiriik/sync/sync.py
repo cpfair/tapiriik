@@ -170,7 +170,7 @@ class Sync:
                 if result.ForceNextSync:
                     logger.info("Forcing next sync at %s" % result.ForceNextSync)
                     nextSync = result.ForceNextSync
-            db.users.update(
+            scheduling_result = db.users.update(
                 {
                     "_id": user["_id"]
                 }, {
@@ -183,6 +183,7 @@ class Sync:
                         "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
                     }
                 })
+            logger.debug("User reschedule returned %s" % scheduling_result)
             syncTime = (datetime.utcnow() - syncStart).total_seconds()
             db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
 
