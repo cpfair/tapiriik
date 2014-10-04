@@ -141,12 +141,11 @@ class Activity:
                 raise Exception("Can't find TZ without a waypoint with a location, specified location, or fallback TZ")
             self.TZ = self.FallbackTZ
             return self.TZ
+
         # I guess at some point it will be faster to perform a full lookup than digging through this table.
-        cachedTzData = cachedb.tz_cache.find_one({"Latitude": loc.Latitude, "Longitude": loc.Longitude})
-        if cachedTzData is None:
-            res = TZLookup(loc.Latitude, loc.Longitude)
-            cachedTzData = {"TZ": res, "Latitude": loc.Latitude, "Longitude": loc.Longitude}
-            cachedb.tz_cache.insert(cachedTzData)
+        res = TZLookup(loc.Latitude, loc.Longitude)
+        cachedTzData = {"TZ": res, "Latitude": loc.Latitude, "Longitude": loc.Longitude}
+        cachedb.tz_cache.insert(cachedTzData)
 
         if type(cachedTzData["TZ"]) != str:
             self.TZ = pytz.FixedOffset(cachedTzData["TZ"] * 60)
