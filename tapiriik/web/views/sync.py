@@ -44,7 +44,7 @@ def sync_status(req):
                         "Errors": errorCodes,
                         "Hash": syncHash}
 
-    if stats and "QueueHeadTime" in stats:
+    if stats and "QueueHeadTime" in stats and False: # Disabled till I fix users getting stuck in the queue
         sync_status_dict["SynchronizationWaitTime"] = (stats["QueueHeadTime"] - (datetime.utcnow() - req.user["NextSynchronization"]).total_seconds()) if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None
 
     return HttpResponse(json.dumps(sync_status_dict), mimetype="application/json")
