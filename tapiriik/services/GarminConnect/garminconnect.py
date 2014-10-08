@@ -651,7 +651,12 @@ class GarminConnectService(ServiceBase):
         active_watch_user = self._user_watch_user(serviceRecord)
         session = self._get_session(email=active_watch_user["Username"], password=active_watch_user["Password"], skip_cache=True)
         self._rate_limit()
-        connections = session.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections").json()
+        connections_resp = session.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections")
+
+        if connections_resp.status_code != 200:
+            raise APIException("Error retrieving user list from watch user %s - %s" % (connections_resp.status_code, connections_resp.text))
+
+        connections = connections_resp.json()
 
         for connection in connections["userConnections"]:
             if connection["displayName"] == serviceRecord.ExternalID:
