@@ -640,6 +640,8 @@ class GarminConnectService(ServiceBase):
             assert resp.json()["requestStatus"] == "Created"
         except:
             raise APIException("Connection request failed with user watch account %s: %s %s" % (user_name, resp.status_code, resp.text))
+        else:
+            serviceRecord.SetConfiguration({"WatchConnectionID": resp.json()["id"]})
 
         serviceRecord.SetPartialSyncTriggerSubscriptionState(True)
 
@@ -650,24 +652,18 @@ class GarminConnectService(ServiceBase):
         # Unfortunately there's no way to delete a pending request - the poll worker will do this from the other end
         active_watch_user = self._user_watch_user(serviceRecord)
         session = self._get_session(email=active_watch_user["Username"], password=active_watch_user["Password"], skip_cache=True)
-        self._rate_limit()
-        connections_resp = session.get("http://connect.garmin.com/proxy/userprofile-service/socialProfile/connections")
+        if "WatchConnectionID" in serviceRecord.GetConfiguration():
+            self._rate_limit()
+            dc_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % serviceRecord.GetConfiguration()["WatchConnectionID"])
+            if dc_resp.status_code != 200:
+                raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, serviceRecord.ExternalID, dc_resp.status_code, dc_resp.text))
 
-        if connections_resp.status_code != 200:
-            raise APIException("Error retrieving user list from watch user %s - %s" % (connections_resp.status_code, connections_resp.text))
-
-        connections = connections_resp.json()
-
-        for connection in connections["userConnections"]:
-            if connection["displayName"] == serviceRecord.ExternalID:
-                self._rate_limit()
-                dc_resp = session.put("http://connect.garmin.com/proxy/userprofile-service/connection/end/%s" % connection["connectionRequestId"])
-                if dc_resp.status_code != 200:
-                    raise APIException("Error disconnecting user watch accunt %s from %s: %s %s" % (active_watch_user, connection["displayName"], dc_resp.status_code, dc_resp.text))
-
-        serviceRecord.SetConfiguration({"WatchUserKey": None})
-
-        serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
+            serviceRecord.SetConfiguration({"WatchUserKey": None, "WatchConnectionID": None})
+            serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
+        else:
+            # I broke Garmin Connect by having too many connections per account, so I can no longer query the connection list
+            # All the connection request emails are sitting unopened in an email inbox, though, so I'll be backfilling the IDs from those
+            raise APIException("Did not store connection ID")
 
     def ShouldForcePartialSyncTrigger(self, serviceRecord):
         # The poll worker can't see private activities.
