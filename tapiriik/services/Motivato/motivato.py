@@ -258,25 +258,26 @@ class MotivatoService(ServiceBase):
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
         activity.GPS = False
-        for pt in res["track"]["points"]:
-            wp = Waypoint()
-            if "moment" not in pt:
-                continue
-            wp.Timestamp = self._parseDateTime(pt["moment"])
+        if "track" in res and "points" in res["track"]:
+            for pt in res["track"]["points"]:
+                wp = Waypoint()
+                if "moment" not in pt:
+                    continue
+                wp.Timestamp = self._parseDateTime(pt["moment"])
 
-            if ("lat" in pt and "lon" in pt) or "ele" in pt:
-                wp.Location = Location()
-                if "lat" in pt and "lon" in pt:
-                    wp.Location.Latitude = pt["lat"]
-                    wp.Location.Longitude = pt["lon"]
-                    activity.GPS = True
-                if "ele" in pt:
-                    wp.Location.Altitude = float(pt["ele"])
+                if ("lat" in pt and "lon" in pt) or "ele" in pt:
+                    wp.Location = Location()
+                    if "lat" in pt and "lon" in pt:
+                        wp.Location.Latitude = pt["lat"]
+                        wp.Location.Longitude = pt["lon"]
+                        activity.GPS = True
+                    if "ele" in pt:
+                        wp.Location.Altitude = float(pt["ele"])
 
-            if "bpm" in pt:
-                wp.HR = pt["bpm"]
+                if "bpm" in pt:
+                    wp.HR = pt["bpm"]
 
-            lap.Waypoints.append(wp)
+                lap.Waypoints.append(wp)
 
         activity.Stationary = len(lap.Waypoints) == 0
 
