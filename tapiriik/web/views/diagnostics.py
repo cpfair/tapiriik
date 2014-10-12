@@ -198,7 +198,7 @@ def diag_user(req, user):
 
     if delta:
         return redirect("diagnostics_user", user=user)
-    return render(req, "diag/user.html", {"user": userRec})
+    return render(req, "diag/user.html", {"diag_user": userRec})
 
 
 @diag_requireAuth

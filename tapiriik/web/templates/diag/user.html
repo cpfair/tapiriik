@@ -7,51 +7,51 @@
 	<h4><a href="{% url 'diagnostics_dashboard' %}">&laquo; Back to dashboard</a></h4>
 	<h3>Details</h3>
 	<ul style="list-style:none;margin:0;padding:0;">
-		<li><b>Created:</b> {{ user.Created|utctimesince }} ({{ user.Created }} UTC)</li>
-		{% if user.AncestorAccounts %}
-			<li><b>Ancestor accounts:</b> {% for ancestor in user.AncestorAccounts %}<tt>{{ ancestor }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+		<li><b>Created:</b> {{ diag_user.Created|utctimesince }} ({{ diag_user.Created }} UTC)</li>
+		{% if diag_user.AncestorAccounts %}
+			<li><b>Ancestor accounts:</b> {% for ancestor in diag_user.AncestorAccounts %}<tt>{{ ancestor }}</tt>{% if not forloop.last %}, {% endif %}{% endfor %}</li>
 		{% endif %}
-		<li><b>Email:</b> {% if user.Email %}<a href="mailto:{{ user.Email }}">{{ user.Email }}</a>{% else %}Not given{% endif %}</li>
-		<li><b>TZ:</b> <tt>{{ user.Timezone }}</tt></li>
-		<li><b>Prev Sync:</b> {{ user.LastSynchronization|utctimesince }} ({{ user.LastSynchronization }} UTC)</li>
-		<li><b>Prev Sync Ver:</b> <tt>{{ user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
-		<li><b>Next Sync:</b> {{ user.NextSynchronization }} UTC</li>
-		<li><b>Queued At:</b> {{ user.QueuedAt }} UTC</li>
-		<li><b>Queued Gen:</b> {{ user.QueuedGeneration }}</li>
-		<li><b>Lock:</b> {{ user.SynchronizationWorker }}</li>
-		<li><b>Lock Host:</b> {{ user.SynchronizationHost }}</li>
-		<li><b>Sync Control:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
+		<li><b>Email:</b> {% if diag_user.Email %}<a href="mailto:{{ diag_user.Email }}">{{ diag_user.Email }}</a>{% else %}Not given{% endif %}</li>
+		<li><b>TZ:</b> <tt>{{ diag_user.Timezone }}</tt></li>
+		<li><b>Prev Sync:</b> {{ diag_user.LastSynchronization|utctimesince }} ({{ diag_user.LastSynchronization }} UTC)</li>
+		<li><b>Prev Sync Ver:</b> <tt>{{ diag_user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
+		<li><b>Next Sync:</b> {{ diag_user.NextSynchronization }} UTC</li>
+		<li><b>Queued At:</b> {{ diag_user.QueuedAt }} UTC</li>
+		<li><b>Queued Gen:</b> {{ diag_user.QueuedGeneration }}</li>
+		<li><b>Lock:</b> {{ diag_user.SynchronizationWorker }}</li>
+		<li><b>Lock Host:</b> {{ diag_user.SynchronizationHost }}</li>
+		<li><b>Sync Control:</b> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="sync" value="Full"/> <input type="submit" name="sync" value="Normal"/> <input type="submit" name="unlock" value="Unlock"/><input type="submit" name="lock" value="Lock"/><br/>
 		<input type="submit" name="requeue" value="Requeue"/>
 		<br/>
-		<input type="text" name="host" value="{{ user.SynchronizationHostRestriction }}"/><input type="submit" name="hostrestrict" value="Host restrict"/>
+		<input type="text" name="host" value="{{ diag_user.SynchronizationHostRestriction }}"/><input type="submit" name="hostrestrict" value="Host restrict"/>
 		</form></li>
-		<li><b>Substitution:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="substitute" value="session su"/></form> <a href="{% url 'dashboard' %}?su={{ user|dict_get:'_id'}}" target="_new">dashboard &raquo;</a> <a href="{% url 'activities_dashboard' %}?su={{ user|dict_get:'_id' }}" target="_new">activities &raquo;</a> <a href="{% url 'settings_panel' %}?su={{ user|dict_get:'_id' }}" target="_new">settings &raquo;</a></li>
+		<li><b>Substitution:</b> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="substitute" value="session su"/></form> <a href="{% url 'dashboard' %}?su={{ diag_user|dict_get:'_id'}}" target="_new">dashboard &raquo;</a> <a href="{% url 'activities_dashboard' %}?su={{ diag_user|dict_get:'_id' }}" target="_new">activities &raquo;</a> <a href="{% url 'settings_panel' %}?su={{ diag_user|dict_get:'_id' }}" target="_new">settings &raquo;</a></li>
 	</ul>
-	{% if user.Payments|length > 0 %}
+	{% if diag_user.Payments|length > 0 %}
 		<h3>Payments</h3>
 		<ul style="list-style:none;margin:0;padding:0;">
-		{% for payment in user.Payments %}
+		{% for payment in diag_user.Payments %}
 			<li><b>Txn:</b> <tt>{{ payment.Txn }}</tt> from <tt>{{ payment.Email }}</tt> on {{ payment.Timestamp }} UTC ~ {{ payment.Expiry }} UTC </li>
 		{% endfor %}
 		</ul>
 	{% endif %}
-	{% if user.Promos|length > 0 %}
+	{% if diag_user.Promos|length > 0 %}
 		<h3>Promos</h3>
 		<ul style="list-style:none;margin:0;padding:0;">
-		{% for promo in user.Promos %}
+		{% for promo in diag_user.Promos %}
 			<li><b>Campaign:</b> <tt>{{ promo.Campaign }}</tt> (<tt>{{ promo.Code }}</tt>) on {{ promo.FirstClaimedTimestamp }} UTC ~ {{ promo.Expiry }} UTC </li>
 		{% endfor %}
 		</ul>
 	{% endif %}
-	{% if user.ExternalPayments|length > 0 %}
+	{% if diag_user.ExternalPayments|length > 0 %}
 		<h3>External Payments</h3>
 		<ul style="list-style:none;margin:0;padding:0;">
-		{% for externalPayment in user.ExternalPayments %}
+		{% for externalPayment in diag_user.ExternalPayments %}
 			<li><b>Provider:</b> <tt>{{ externalPayment.Provider }}</tt> (ext ID <tt>{{ externalPayment.ExternalID }}</tt>) spanning {{ externalPayment.Timestamp }} UTC ~ {{ externalPayment.Expiry }} UTC</li>
 		{% endfor %}
 		</ul>
 	{% endif %}
-	{% for connection in user.ConnectedServices|svc_populate_conns %}
+	{% for connection in diag_user.ConnectedServices|svc_populate_conns %}
 		{% with svc=connection.Service %}
 			<h3>{{ connection.Service }}</h3>
 			<ul style="list-style:none;margin:0;padding:0;">
@@ -61,21 +61,21 @@
 				<li><b>Auth:</b> <tt> {{ connection.Authorization }}</tt></li>
 
 				{% if svc.PartialSyncRequiresTrigger %}
-					<li><b>Partial Sync Subscribed:</b> <tt>{% if connection.PartialSyncTriggerSubscribed %}Subscribed{% else %}Not Subscribed{% endif %}</tt> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_toggle_poll_sub" value="Toggle"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>
+					<li><b>Partial Sync Subscribed:</b> <tt>{% if connection.PartialSyncTriggerSubscribed %}Subscribed{% else %}Not Subscribed{% endif %}</tt> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_toggle_poll_sub" value="Toggle"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>
 					<li><b>Partial Sync Trigger:</b> <tt>{% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt></li>
 					<li><b>Partial Sync Trigger Timestamp:</b> {{ connection.TriggerPartialSyncTimestamp }}</li>
 				{% endif %}
 				{% if svc.RequiresExtendedAuthorizationDetails %}
 					<li><b>Extended auth:</b> <tt> {% if connection.ExtendedAuthorization %}Yes{% else %}No{% endif %}</tt></li>
 				{% endif %}
-				<li><b>Controls:</b> <form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid" style="width:700px;"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails" style="width:700px;"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Config|json }}" name="config" style="width:700px;"><input type="submit" name="svc_setconfig" value="Set `Config`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<li><b>Controls:</b> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST" onsubmit="return confirm('Really?');">{% csrf_token %}<input type="submit" name="svc_unlink" value="Force Unlink"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" placeholder="6e031901b6f39a6aa6cac2ba12890ab3" name="uid" style="width:700px;"><input type="submit" name="svc_marksync" value="Mark as synchronized"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Authorization|json }}" name="authdetails" style="width:700px;"><input type="submit" name="svc_setauth" value="Set `Authorization`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="text" value="{{ connection.Config|json }}" name="config" style="width:700px;"><input type="submit" name="svc_setconfig" value="Set `Config`"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 
-				{% if connection.ExcludedActivities.items|length %}<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>{% endif %}
-				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearacts" value="Clear synced activites and set exhaustive"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
-				<form action="{% url 'diagnostics_user' user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_tryagain" value="Reset retry failures"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				{% if connection.ExcludedActivities.items|length %}<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearexc" value="Clear exclusions"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>{% endif %}
+				<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_clearacts" value="Clear synced activites and set exhaustive"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
+				<form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_tryagain" value="Reset retry failures"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form>
 				</li>
 				{% if connection.SyncErrors|length > 0 %}
 				<li><b>Sync Errors:</b>
