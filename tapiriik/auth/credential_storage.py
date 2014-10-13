@@ -1,7 +1,8 @@
-from Crypto.Cipher import AES
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA
 from Crypto import Random
-import hashlib
-from tapiriik.settings import CREDENTIAL_STORAGE_KEY
+from tapiriik.settings import CREDENTIAL_STORAGE_PUBLIC_KEY, CREDENTIAL_STORAGE_PRIVATE_KEY
 
 #### note about tapiriik and credential storage ####
 # Some services require a username and password for every action - so they need to be stored in recoverable form
@@ -10,18 +11,18 @@ from tapiriik.settings import CREDENTIAL_STORAGE_KEY
 # If you're not comfortable with it, you can opt to not have your credentials stored, instead entering them on every sync
 
 class CredentialStore:
-    def GenerateIV():
-        return Random.new().read(AES.block_size)
+    def Init():
+        _key = RSA.importKey(CREDENTIAL_STORAGE_PRIVATE_KEY if CREDENTIAL_STORAGE_PRIVATE_KEY else CREDENTIAL_STORAGE_PUBLIC_KEY)
+        CredentialStore._cipher = PKCS1_OAEP.new(_key)
 
     def Encrypt(cred):
-        iv = CredentialStore.GenerateIV();
-        cipher = AES.new(CREDENTIAL_STORAGE_KEY, AES.MODE_CFB, iv)
-        data = cipher.encrypt(cred.encode("UTF-8"))
-        return [iv, data]
+        data = CredentialStore._cipher.encrypt(cred.encode("UTF-8"))
+        return data
 
     def Decrypt(data):
-        iv = data[0]
-        data = data[1]
-        cipher = AES.new(CREDENTIAL_STORAGE_KEY, AES.MODE_CFB, iv)
-        cred = cipher.decrypt(data).decode("UTF-8")
-        return cred
+        # I kind of doubt anyone could get away with a timing attack on the sycnhronization workers.
+        # But, dear comment-reader, I'm sure you're now contemplating the possibilities...
+        # So PKCS#1 OAEP it is.
+        return CredentialStore._cipher.decrypt(data).decode("UTF-8")
+
+CredentialStore.Init()

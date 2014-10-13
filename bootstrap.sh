@@ -16,3 +16,6 @@ sudo ln -s /usr/bin/python3.3 /usr/bin/python
 
 # Put in a default local_settings.py
 cp /vagrant/tapiriik/local_settings.py.example /vagrant/tapiriik/local_settings.py
+
+# Generate credential storage keys
+python /vagrant/credentialstore_keygen.py >> /vagrant/tapiriik/local_settings.py
