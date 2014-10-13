@@ -95,7 +95,7 @@ class Service:
     def DeleteServiceRecord(serviceRecord):
         svc = serviceRecord.Service
         svc.DeleteCachedData(serviceRecord)
-        if svc.PartialSyncTriggerRequiresPolling:
+        if svc.PartialSyncTriggerRequiresPolling and serviceRecord.PartialSyncTriggerSubscribed:
             svc.UnsubscribeFromPartialSyncTrigger(serviceRecord)
         svc.RevokeAuthorization(serviceRecord)
         cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
