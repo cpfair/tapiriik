@@ -106,8 +106,9 @@ PIPELINE_DISABLE_WRAPPER = True
 # and yes, this is overriden in local_settings.py
 SECRET_KEY = 'vag26gs^t+_y0msoemqo%_5gb*th(i!v$l6##bq9tu2ggcsn13'
 
-# key used in credential storage - please see note in credential_storage.py
-CREDENTIAL_STORAGE_KEY = b"NotTheRealKeyFYI"
+# In production, webservers must have only the public key
+CREDENTIAL_STORAGE_PUBLIC_KEY = b"NotTheRealKeyFYI"
+CREDENTIAL_STORAGE_PRIVATE_KEY = None
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (

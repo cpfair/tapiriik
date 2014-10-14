@@ -56,24 +56,28 @@ class Service:
         return ServiceRecord(db.connections.find_one({"_id": ObjectId(uid)}))
 
     def EnsureServiceRecordWithAuth(service, uid, authDetails, extendedAuthDetails=None, persistExtendedAuthDetails=False):
+        from tapiriik.auth.credential_storage import CredentialStore
         if persistExtendedAuthDetails and not service.RequiresExtendedAuthorizationDetails:
             raise ValueError("Attempting to persist extended auth details on service that doesn't use them")
         # think this entire block could be replaced with an upsert...
 
         serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
+        # Coming out of CredentialStorage these are objects that can't be stuffed into mongodb right away
+        # Should really figure out how to mangle pymongo into doing the serialization for me...
+        extendedAuthDetailsForStorage = CredentialStore.FlattenShadowedCredentials(extendedAuthDetails) if persistExtendedAuthDetails else None
         if serviceRecord is None:
-            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None})
+            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage})
             serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
             serviceRecord.ExtendedAuthorization = extendedAuthDetails # So SubscribeToPartialSyncTrigger can use it (we don't save the whole record after this point)
             if service.PartialSyncTriggerRequiresPolling:
                 service.SubscribeToPartialSyncTrigger(serviceRecord) # The subscription is attached more to the remote account than to the local one, so we subscribe/unsubscribe here rather than in User.ConnectService, etc.
-        elif serviceRecord.Authorization != authDetails or (hasattr(serviceRecord, "ExtendedAuthorization") and serviceRecord.ExtendedAuthorization != extendedAuthDetails):
-            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetails if persistExtendedAuthDetails else None}})
+        elif serviceRecord.Authorization != authDetails or (hasattr(serviceRecord, "ExtendedAuthorization") and serviceRecord.ExtendedAuthorization != extendedAuthDetailsForStorage):
+            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage}})
 
         # if not persisted, these details are stored in the cache db so they don't get backed up
         if service.RequiresExtendedAuthorizationDetails:
             if not persistExtendedAuthDetails:
-                cachedb.extendedAuthDetails.update({"ID": serviceRecord._id}, {"ID": serviceRecord._id, "ExtendedAuthorization": extendedAuthDetails}, upsert=True)
+                cachedb.extendedAuthDetails.update({"ID": serviceRecord._id}, {"ID": serviceRecord._id, "ExtendedAuthorization": extendedAuthDetailsForStorage}, upsert=True)
             else:
                 cachedb.extendedAuthDetails.remove({"ID": serviceRecord._id})
         return serviceRecord
