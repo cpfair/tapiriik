@@ -34,11 +34,11 @@ class CredentialStore:
         return CredentialStore._cipher.decrypt(data).decode("UTF-8")
 
     def FlattenShadowedCredentials(auth_dict):
-        auth_dict = copy.deepcopy(auth_dict)
+        flat_auth_dict = copy.deepcopy(auth_dict)
         for k, v in auth_dict.items():
             if isinstance(v, ShadowedCredential):
-                v = ShadowedCredential.ciphertext
-        return auth_dict
+                flat_auth_dict[k] = v.ciphertext
+        return flat_auth_dict
 
 class ShadowedCredential:
     def __init__(self, ciphertext, plaintext):
