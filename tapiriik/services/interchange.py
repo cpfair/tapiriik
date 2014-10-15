@@ -183,8 +183,6 @@ class Activity:
                 raise ValueError("Only 1 waypoint")
         if self.Stats.Distance.Value is not None and self.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value > 1000 * 1000:
             raise ValueError("Exceedingly long activity (distance)")
-        if self.Stats.Distance.Value is not None and self.Stats.Distance.Value == 0:
-            raise ValueError("0-distance activity")
         if self.StartTime.replace(tzinfo=None) > (datetime.now() + timedelta(days=5)):
             raise ValueError("Activity is from the future")
         if self.StartTime.replace(tzinfo=None) < datetime(1995, 1, 1):
