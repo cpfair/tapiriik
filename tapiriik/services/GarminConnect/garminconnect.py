@@ -57,7 +57,8 @@ class GarminConnectService(ServiceBase):
                                 "elliptical": ActivityType.Elliptical,
                                 "fitness_equipment": ActivityType.Gym,
                                 "mountaineering": ActivityType.Climbing,
-                                "all": ActivityType.Other  # everything will eventually resolve to this
+                                "all": ActivityType.Other,  # everything will eventually resolve to this
+                                "multi_sport": ActivityType.Other # Most useless type? You decide!
     }
 
     _reverseActivityMappings = {  # Removes ambiguities when mapping back to their activity types
