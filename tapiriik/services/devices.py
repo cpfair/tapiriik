@@ -97,6 +97,7 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 800", 1169, 1333, 1
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Chirp", 1253))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 200", 1325, 1555))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 910XT", 1328, 1537, 1600, 1664))
+DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 920XT", 1765)) # The SDK isn't updated yet, don't have international variants
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("ALF04", 1341))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 610", 1345, 1410))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 210", 1360)) # In the SDK this is marked as "JAPAN" :S
