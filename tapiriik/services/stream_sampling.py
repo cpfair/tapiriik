@@ -3,6 +3,7 @@ class StreamSampler:
         """
             *streams should be a dict in format {"stream1":[(ts1,val1), (ts2, val2)...]...} where ts is a numerical offset from the activity start.
             Expect callback(time_offset, stream1=value1, stream2=value2) in chronological order. Stream values may be None
+            All samples are represented - none are dropped
         """
 
         # Collate the individual streams into discrete waypoints.

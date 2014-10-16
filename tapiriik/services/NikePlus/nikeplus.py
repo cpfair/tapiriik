@@ -10,11 +10,12 @@ from django.core.urlresolvers import reverse
 from tapiriik.settings import WEB_ROOT, NIKEPLUS_CLIENT_ID, NIKEPLUS_CLIENT_SECRET, NIKEPLUS_CLIENT_NAME
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.database import cachedb
-from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, WaypointType, Location, ActivityStatistic, ActivityStatisticUnit
+from tapiriik.services.interchange import UploadedActivity, ActivityType, Waypoint, Lap, WaypointType, Location, ActivityStatistic, ActivityStatisticUnit
 from tapiriik.services.api import APIException, APIWarning, APIExcludeActivity, UserException, UserExceptionType
 from tapiriik.services.fit import FITIO
 from tapiriik.services.tcx import TCXIO
 from tapiriik.services.sessioncache import SessionCache
+from tapiriik.services.stream_sampling import StreamSampler
 
 import logging
 logger = logging.getLogger(__name__)
@@ -140,10 +141,6 @@ class NikePlusService(ServiceBase):
                 activity.Stats.Strides = ActivityStatistic(ActivityStatisticUnit.Strides, value=int(act["metricSummary"]["steps"]))
                 activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(act["metricSummary"]["calories"]))
 
-                # It's in the docs, but not getting returned :S
-                if "isGpsActivity" in act:
-                    activity.GPS = act["isGpsActivity"]
-
                 activities.append(activity)
 
             if len(list_resp["data"]) == 0 or not exhaustive:
@@ -152,8 +149,59 @@ class NikePlusService(ServiceBase):
 
         return activities, exclusions
 
+    def _nikeStream(self, stream, values_collection="values"):
+        if stream["intervalUnit"] != "SEC":
+            # Who knows if they ever return it in a different unit? Their docs don't give a list
+            raise Exception("Unknown stream interval unit %s" % stream["intervalUnit"])
+
+        interval = timedelta(seconds=stream["intervalMetric"]).total_seconds()
+        for x in range(len(stream[values_collection])):
+            yield (interval * x, stream[values_collection][x])
+
     def DownloadActivity(self, serviceRecord, activity):
-        pass
+        session = self._get_session(serviceRecord)
+        act_id = activity.ServiceData["ID"]
+        activityDetails = session.get("https://api.nike.com/me/sport/activities/%s" % act_id, params=self._with_auth(session))
+        activityDetails = activityDetails.json()
+
+        streams = {metric["metricType"].lower(): self._nikeStream(metric) for metric in activityDetails["metrics"]}
+
+        activity.GPS = activityDetails["isGpsActivity"]
+
+        if activity.GPS:
+            activityGps = session.get("https://api.nike.com/me/sport/activities/%s/gps" % act_id, params=self._with_auth(session))
+            activityGps = activityGps.json()
+            streams["gps"] = self._nikeStream(activityGps, "waypoints")
+            activity.Stats.Elevation.update(ActivityStatistic(ActivityStatisticUnit.Meters,
+                                                              gain=float(activityGps["elevationGain"]),
+                                                              loss=float(activityGps["elevationLoss"]),
+                                                              max=float(activityGps["elevationMax"]),
+                                                              min=float(activityGps["elevationMin"])))
+
+        lap = Lap(startTime=activity.StartTime, endTime=activity.EndTime)
+        activity.Laps = [lap]
+        # I thought I wrote StreamSampler to be generator-friendly - nope.
+        streams = {k: list(v) for k,v in streams.items()}
+
+        # The docs are unclear on which of these are actually stream metrics, oh well
+        def stream_waypoint(offset, speed=None, distance=None, heartrate=None, calories=None, steps=None, watts=None, gps=None, **kwargs):
+            wp = Waypoint()
+            wp.Timestamp = activity.StartTime + timedelta(seconds=offset)
+            wp.Speed = float(speed) if speed else None
+            wp.Distance = float(distance) / 1000 if distance else None
+            wp.HR = float(heartrate) if heartrate else None
+            wp.Calories = float(calories) if calories else None
+            wp.Power = float(watts) if watts else None
+
+            if gps:
+                wp.Location = Location(lat=float(gps["latitude"]), lon=float(gps["longitude"]), alt=float(gps["elevation"]))
+            lap.Waypoints.append(wp)
+
+        StreamSampler.SampleWithCallback(stream_waypoint, streams)
+
+        activity.Stationary = len(lap.Waypoints) == 0
+
+        return activity
 
     def UploadActivity(self, serviceRecord, activity):
         pass
