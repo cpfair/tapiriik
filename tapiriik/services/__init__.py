@@ -18,6 +18,8 @@ from tapiriik.services.TrainingPeaks import TrainingPeaksService
 TrainingPeaks = TrainingPeaksService()
 from tapiriik.services.Motivato import MotivatoService
 Motivato = MotivatoService()
+from tapiriik.services.VeloHero import VeloHeroService
+VeloHero = VeloHeroService()
 
 PRIVATE_SERVICES = []
 try:
