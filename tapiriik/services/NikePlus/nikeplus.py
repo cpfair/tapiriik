@@ -26,12 +26,31 @@ class NikePlusService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
 
+    _activityMappings = {
+        "RUN": ActivityType.Running,
+        "JOGGING": ActivityType.Running,
+        "WALK": ActivityType.Walking,
+        "CYCLE": ActivityType.Cycling,
+        "STATIONARY_BIKING": ActivityType.Cycling,
+        "MOUNTAIN_BIKING": ActivityType.MountainBiking,
+        "CROSS_COUNTRY": ActivityType.CrossCountrySkiing, # Well, I think?
+        "ELLIPTICAL": ActivityType.Elliptical,
+        "HIKING": ActivityType.Hiking,
+        "ROCK_CLIMBING": ActivityType.Climbing,
+        "ICE_CLIMBING": ActivityType.Climbing,
+        "SNOWBOARDING": ActivityType.Snowboarding,
+        "SKIING": ActivityType.DownhillSkiing,
+        "ICE_SKATING": ActivityType.Skating,
+        "OTHER": ActivityType.Other
+    }
+
     SupportedActivities = []
 
     _sessionCache = SessionCache(lifetime=timedelta(minutes=45), freshen_on_get=False)
 
     _obligatoryHeaders = {
-        "User-Agent": "NPConnect"
+        "User-Agent": "NPConnect",
+        "appId": NIKEPLUS_CLIENT_NAME
     }
 
     _obligatoryCookies = {
@@ -85,9 +104,53 @@ class NikePlusService(ServiceBase):
 
         return (user_id, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
+    def _durationToTimespan(self, duration):
+        # Hours:Minutes:Seconds.Milliseconds
+        duration = [float(x) for x in duration.split(":")]
+        return timedelta(seconds=duration[2], minutes=duration[1], hours=duration[0])
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        pass
+        session = self._get_session(serviceRecord)
+        list_params = self._with_auth(session, {"count": 20, "offset": 1})
+
+        activities = []
+        exclusions = []
+
+        while True:
+            list_resp = session.get("https://api.nike.com/me/sport/activities", params=list_params)
+            list_resp = list_resp.json()
+
+            for act in list_resp["data"]:
+                activity = UploadedActivity()
+                activity.ServiceData = {"ID": act["activityId"]}
+
+                if act["status"] != "COMPLETE":
+                    exclusions.append(APIExcludeActivity("Not complete", activityId=act["activityId"], permanent=False, userException=UserException(UserExceptionType.LiveTracking)))
+                    continue
+
+                activity.StartTime = dateutil.parser.parse(act["startTime"]).replace(tzinfo=pytz.utc)
+                activity.EndTime = activity.StartTime + self._durationToTimespan(act["metricSummary"]["duration"])
+
+                activity.TZ = pytz.timezone(act["activityTimeZone"])
+
+                if act["activityType"] in self._activityMappings:
+                    activity.Type = self._activityMappings[act["activityType"]]
+
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(act["metricSummary"]["distance"]))
+                activity.Stats.Strides = ActivityStatistic(ActivityStatisticUnit.Strides, value=int(act["metricSummary"]["steps"]))
+                activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(act["metricSummary"]["calories"]))
+
+                # It's in the docs, but not getting returned :S
+                if "isGpsActivity" in act:
+                    activity.GPS = act["isGpsActivity"]
+
+                activities.append(activity)
+
+            if len(list_resp["data"]) == 0 or not exhaustive:
+                break
+            list_params["offset"] += list_params["count"]
+
+        return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
         pass
