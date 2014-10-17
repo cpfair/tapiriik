@@ -192,8 +192,7 @@ class VeloHeroService(ServiceBase):
             # Distance (dist_km)
             activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(workout["dist_km"]))
             # Workout is hidden
-            if workout["hide"] is "1":
-               activity.Private
+            activity.Private = workout["hide"] == "1"
 
             activity.ServiceData = {"workoutId": workoutId}
             activity.CalculateUID()
