@@ -199,6 +199,7 @@ class NikePlusService(ServiceBase):
                                                               min=float(activityGps["elevationMin"])))
 
         lap = Lap(startTime=activity.StartTime, endTime=activity.EndTime)
+        lap.Stats = activity.Stats
         activity.Laps = [lap]
         # I thought I wrote StreamSampler to be generator-friendly - nope.
         streams = {k: list(v) for k,v in streams.items()}
