@@ -226,13 +226,6 @@ class VeloHeroService(ServiceBase):
 
         activity = PWXIO.Parse(res.content, activity)
 
-        activity.GPS = False
-        flat_wps = activity.GetFlatWaypoints()
-        for wp in flat_wps:
-            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
-                activity.GPS = True
-                break
-
         return activity
 
 

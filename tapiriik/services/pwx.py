@@ -67,6 +67,7 @@ class PWXIO:
             raise ValueError("Can't parse PWX without time")
 
         activity.StartTime = dateutil.parser.parse(xtime.text)
+        activity.GPS = False
 
         def _minMaxAvg(xminMaxAvg):
             return {"min": float(xminMaxAvg.attrib["min"]) if "min" in xminMaxAvg.attrib else None, "max": float(xminMaxAvg.attrib["max"]) if "max" in xminMaxAvg.attrib else None, "avg": float(xminMaxAvg.attrib["avg"])  if "avg" in xminMaxAvg.attrib else None} # Most useful line ever
@@ -168,7 +169,11 @@ class PWXIO:
                     if wp.Location is None:
                         wp.Location = Location()
                     wp.Location.Longitude = float(xsampleData.text)
+
             assert wp.Location is None or ((wp.Location.Latitude is None) == (wp.Location.Longitude is None)) # You never know...
+
+            if wp.Location and wp.Location.Latitude is not None:
+                activity.GPS = True
 
             # If we've left one lap, move to the next immediately
             while currentLapIdx < len(laps) - 1 and wp.Timestamp > laps[currentLapIdx].EndTime:
