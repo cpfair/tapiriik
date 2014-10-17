@@ -743,8 +743,7 @@ tapiriik.CreateServiceDialog = function(serviceID, contents) {
 
 	var icon;
 	if (serviceID != "tapiriik"){
-		var origIcon = $(".service#"+serviceID+" .icon img").first();
-		icon = origIcon.clone().attr("src", origIcon.attr("lgsrc"));
+		icon = $("<img>").attr("src", tapiriik.StaticURL + "img/services/" + serviceID + "_l.png"); // Magic URL :\
 	} else {
 		icon = $("<div>").addClass("logo inline").text("tapiriik");
 	}

@@ -1,5 +1,6 @@
 {% load users %}
 {% load displayutils %}
+tapiriik.StaticURL = "{{ STATIC_URL }}";
 tapiriik.SiteVer = "{{ config.siteVer|slice:":7" }}";
 tapiriik.ServiceInfo = {{ js_bridge_serviceinfo|safe }}
 tapiriik.MinimumSyncInterval = {{ config.minimumSyncInterval }};
