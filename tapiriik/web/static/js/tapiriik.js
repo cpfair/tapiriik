@@ -935,6 +935,20 @@ tapiriik.ShowDebugInfo = function(){
 	infoPane.slideDown();
 };
 
+var logo_variant;
+tapiriik.CycleLogo = function(){
+	var variants = ["arabic", "hebrew", "hindi", "inuktitut", "punjabi"];
+	if (logo_variant) {
+		variants.splice(variants.indexOf(logo_variant), 1);
+	}
+	logo_variant = variants[Math.floor(Math.random() * variants.length)];
+	var img = $("<img>").attr("src", tapiriik.StaticURL + "img/tapiriik-" + logo_variant + ".png");
+	$(".logo a").fadeOut(function(){
+		$(this).remove();
+		img.appendTo($("<a>").attr("href", "/").prependTo($(".logo")).hide().fadeIn());
+	});
+};
+
 tapiriik.Logout = function(){
 	$().redirect("/auth/logout", {csrfmiddlewaretoken: csrftoken});
 };

@@ -139,6 +139,7 @@ body {
 	font-size:28%;
 }
 .logo a {
+	height: 108px;
 	vertical-align: top;
 	display: inline-block;
 	color:inherit;
