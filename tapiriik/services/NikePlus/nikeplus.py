@@ -1,12 +1,12 @@
-import os
 from datetime import datetime, timedelta
 import dateutil.parser
-
-import pytz
 from dateutil.tz import tzutc
 import requests
 import json
 import calendar
+import pytz
+import os
+
 from django.core.urlresolvers import reverse
 
 from tapiriik.settings import WEB_ROOT, NIKEPLUS_CLIENT_ID, NIKEPLUS_CLIENT_SECRET, NIKEPLUS_CLIENT_NAME
@@ -50,17 +50,19 @@ class NikePlusService(ServiceBase):
 
     _reverseActivityMappings = {
         "RUN": ActivityType.Running,
-        "WALK": ActivityType.Walking,
-        "CYCLE": ActivityType.Cycling,
-        "MOUNTAIN_BIKING": ActivityType.MountainBiking,
-        "CROSS_COUNTRY": ActivityType.CrossCountrySkiing,
-        "ELLIPTICAL": ActivityType.Elliptical,
-        "HIKING": ActivityType.Hiking,
-        "ROCK_CLIMBING": ActivityType.Climbing,
-        "SNOWBOARDING": ActivityType.Snowboarding,
-        "SKIING": ActivityType.DownhillSkiing,
-        "ICE_SKATING": ActivityType.Skating,
-        "OTHER": ActivityType.Other
+        # Their web frontend has a meltdown even trying to navigate to other activity types, who knows
+        # So I won't exacerbate the problem...
+        # "WALK": ActivityType.Walking,
+        # "CYCLE": ActivityType.Cycling,
+        # "MOUNTAIN_BIKING": ActivityType.MountainBiking,
+        # "CROSS_COUNTRY": ActivityType.CrossCountrySkiing,
+        # "ELLIPTICAL": ActivityType.Elliptical,
+        # "HIKING": ActivityType.Hiking,
+        # "ROCK_CLIMBING": ActivityType.Climbing,
+        # "SNOWBOARDING": ActivityType.Snowboarding,
+        # "SKIING": ActivityType.DownhillSkiing,
+        # "ICE_SKATING": ActivityType.Skating,
+        # "OTHER": ActivityType.Other
     }
 
     SupportedActivities = list(_reverseActivityMappings.values())
