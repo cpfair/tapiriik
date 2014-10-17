@@ -5,6 +5,8 @@ import dateutil.parser
 import pytz
 from dateutil.tz import tzutc
 import requests
+import json
+import calendar
 from django.core.urlresolvers import reverse
 
 from tapiriik.settings import WEB_ROOT, NIKEPLUS_CLIENT_ID, NIKEPLUS_CLIENT_SECRET, NIKEPLUS_CLIENT_NAME
@@ -26,6 +28,7 @@ class NikePlusService(ServiceBase):
     DisplayAbbreviation = "N+"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
+    ReceivesStationaryActivities = False # No manual entry afaik
 
     _activityMappings = {
         "RUN": ActivityType.Running,
@@ -45,7 +48,22 @@ class NikePlusService(ServiceBase):
         "OTHER": ActivityType.Other
     }
 
-    SupportedActivities = []
+    _reverseActivityMappings = {
+        "RUN": ActivityType.Running,
+        "WALK": ActivityType.Walking,
+        "CYCLE": ActivityType.Cycling,
+        "MOUNTAIN_BIKING": ActivityType.MountainBiking,
+        "CROSS_COUNTRY": ActivityType.CrossCountrySkiing,
+        "ELLIPTICAL": ActivityType.Elliptical,
+        "HIKING": ActivityType.Hiking,
+        "ROCK_CLIMBING": ActivityType.Climbing,
+        "SNOWBOARDING": ActivityType.Snowboarding,
+        "SKIING": ActivityType.DownhillSkiing,
+        "ICE_SKATING": ActivityType.Skating,
+        "OTHER": ActivityType.Other
+    }
+
+    SupportedActivities = list(_reverseActivityMappings.values())
 
     _sessionCache = SessionCache(lifetime=timedelta(minutes=45), freshen_on_get=False)
 
@@ -204,8 +222,76 @@ class NikePlusService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        pass
+        metrics = {
+            "data": [],
+            "metricTypes": [],
+            "intervalUnit": "SEC",
+            "intervalValue": 10 if activity.Type == ActivityType.Running else 5 # What a joke.
+        }
 
+        act = [{
+            "deviceName": "tapiriik",
+            "deviceType": "BIKE" if activity.Type == ActivityType.Cycling else "WATCH", # ??? nike+ is weird
+            "startTime": calendar.timegm(activity.StartTime.astimezone(pytz.utc).timetuple()) * 1000,
+            "timeZoneName": str(activity.TZ),
+            "activityType": [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0],
+            "metrics": metrics
+        }]
+
+        wps = activity.GetFlatWaypoints()
+        wpidx = 0
+        for offset in range(0, int((activity.EndTime - activity.StartTime).total_seconds()), metrics["intervalValue"]):
+            # Pick the most recent waypoint in the past
+            while len(wps) > wpidx + 1 and (wps[wpidx + 1].Timestamp - activity.StartTime).total_seconds() < offset:
+                wpidx += 1
+            wp = wps[wpidx]
+            my_metrics = []
+            frame = []
+
+            if wp.Location and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
+                elev = wp.Location.Altitude if wp.Location.Altitude else 0 # They always require this field, it's meh
+                my_metrics += ["latitude", "longitude", "elevation"]
+                frame += [wp.Location.Latitude, wp.Location.Longitude, elev]
+
+            if wp.Distance is not None:
+                my_metrics.append("distance")
+                frame.append(wp.Distance / 1000) # m -> km
+
+            if wp.HR is not None:
+                my_metrics.append("heartrate")
+                frame.append(round(wp.HR))
+
+            if wp.Speed is not None:
+                my_metrics.append("speed")
+                frame.append(wp.Speed)
+
+            if wp.Calories is not None:
+                my_metrics.append("calories")
+                frame.append(int(wp.Calories))
+
+            if wp.Power is not None:
+                my_metrics.append("watts")
+                frame.append(int(wp.Power))
+
+            # The docs give some rules for which activity types need which metrics
+            # But my patience is quickly running out
+            if len(metrics["metricTypes"]):
+                if metrics["metricTypes"] != my_metrics:
+                    raise Exception("Waypoint metrics changed midstream") # I have 0 clue what happens if you let them be null?
+            else:
+                metrics["metricTypes"] = my_metrics
+
+            metrics["data"].append(frame)
+
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        session = self._get_session(serviceRecord)
+        upload_resp = session.post("https://api.nike.com/me/sport/activities", params=self._with_auth(session), data=json.dumps(act), headers=headers)
+        if upload_resp.status_code != 201:
+            raise APIException("Could not upload activity %s - %s" % (upload_resp.status_code, upload_resp.text))
+        return upload_resp.json()[0]["activityId"]
 
     def RevokeAuthorization(self, serviceRecord):
         # nothing to do here...
