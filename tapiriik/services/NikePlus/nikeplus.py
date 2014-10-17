@@ -160,7 +160,7 @@ class NikePlusService(ServiceBase):
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(act["metricSummary"]["distance"]))
                 activity.Stats.Strides = ActivityStatistic(ActivityStatisticUnit.Strides, value=int(act["metricSummary"]["steps"]))
                 activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=float(act["metricSummary"]["calories"]))
-
+                activity.CalculateUID()
                 activities.append(activity)
 
             if len(list_resp["data"]) == 0 or not exhaustive:
