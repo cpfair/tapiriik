@@ -24,7 +24,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus] + PRIVATE_SERVICES
+        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus, VeloHero] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
@@ -36,6 +36,7 @@ class Service:
             TrainingPeaks, # No seperate run cadence, but has temperature
             Dropbox, # Equivalent to any of the above
             RideWithGPS, # Uses TCX for everything, so same as Dropbox
+            VeloHero, # PWX export, no temperature
             Strava, # No laps
             Endomondo, # No laps, no cadence
             RunKeeper, # No laps, no cadence, no power

@@ -20,6 +20,8 @@ from tapiriik.services.Motivato import MotivatoService
 Motivato = MotivatoService()
 from tapiriik.services.NikePlus import NikePlusService
 NikePlus = NikePlusService()
+from tapiriik.services.VeloHero import VeloHeroService
+VeloHero = VeloHeroService()
 
 PRIVATE_SERVICES = []
 try:
