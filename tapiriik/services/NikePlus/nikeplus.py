@@ -260,48 +260,46 @@ class NikePlusService(ServiceBase):
 
         wps = activity.GetFlatWaypoints()
         wpidx = 0
+        full_metrics = []
+        max_metrics = set()
         for offset in range(0, int((activity.EndTime - activity.StartTime).total_seconds()), metrics["intervalValue"]):
             # Pick the most recent waypoint in the past
             while len(wps) > wpidx + 1 and (wps[wpidx + 1].Timestamp - activity.StartTime).total_seconds() < offset:
                 wpidx += 1
             wp = wps[wpidx]
-            my_metrics = []
-            frame = []
+            my_metrics = {}
 
             if wp.Location and wp.Location.Latitude is not None and wp.Location.Longitude is not None:
                 elev = wp.Location.Altitude if wp.Location.Altitude else 0 # They always require this field, it's meh
-                my_metrics += ["latitude", "longitude", "elevation"]
-                frame += [wp.Location.Latitude, wp.Location.Longitude, elev]
+                my_metrics.update({"latitude": wp.Location.Latitude, "longitude": wp.Location.Longitude, "elevation": elev})
 
             if wp.Distance is not None:
-                my_metrics.append("distance")
-                frame.append(wp.Distance / 1000) # m -> km
+                my_metrics["distance"] = wp.Distance / 1000 # m -> km
 
             if wp.HR is not None:
-                my_metrics.append("heartrate")
-                frame.append(round(wp.HR))
+                my_metrics["heartrate"] = round(wp.HR)
 
             if wp.Speed is not None:
-                my_metrics.append("speed")
-                frame.append(wp.Speed)
+                my_metrics["speed"] = wp.Speed
 
             if wp.Calories is not None:
-                my_metrics.append("calories")
-                frame.append(int(wp.Calories))
+                my_metrics["calories"] = int(wp.Calories)
 
             if wp.Power is not None:
-                my_metrics.append("watts")
-                frame.append(int(wp.Power))
+                my_metrics["watts"] = int(wp.Power)
 
-            # The docs give some rules for which activity types need which metrics
-            # But my patience is quickly running out
-            if len(metrics["metricTypes"]):
-                if metrics["metricTypes"] != my_metrics:
-                    raise Exception("Waypoint metrics changed midstream") # I have 0 clue what happens if you let them be null?
-            else:
-                metrics["metricTypes"] = my_metrics
+            max_metrics |= my_metrics.keys()
+            full_metrics.append(my_metrics)
 
-            metrics["data"].append(frame)
+        max_metrics = sorted(list(max_metrics))
+        metrics["metricTypes"] = max_metrics
+
+        # Passing null metric values makes Nike+ sad
+        # So we hold the last value until a new one is available
+        frame_hold = {x: 0 for x in max_metrics} # Blegh, close enough
+        for metric_frame in full_metrics:
+            frame_hold.update(metric_frame)
+            metrics["data"].append([frame_hold[x] for x in max_metrics])
 
         headers = {
             "Content-Type": "application/json"
