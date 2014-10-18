@@ -60,6 +60,7 @@ class UserExceptionType:
     StationaryUnsupported = "stationary"
     NonGPSUnsupported = "nongps"
     TypeUnsupported = "type_unsupported"
+    InsufficientData = "data_insufficient" # Some services demand more data than others provide (ahem, N+)
     DownloadError = "download"
     ListingError = "list" # Cases when a service fails listing, so nothing can be uploaded to it.
     UploadError = "upload"

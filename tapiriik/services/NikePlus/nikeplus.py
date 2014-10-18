@@ -309,8 +309,13 @@ class NikePlusService(ServiceBase):
 
         session = self._get_session(serviceRecord)
         upload_resp = session.post("https://api.nike.com/me/sport/activities", params=self._with_auth(session), data=json.dumps(act), headers=headers)
+
         if upload_resp.status_code != 201:
+            error_codes = [x["code"] for x in upload_resp.json()["errors"]]
+            if 320 in error_codes: # Invalid combination of metric types and blah blah blah
+                raise APIException("Not enough data", permanent=False, userException=UserException(UserExceptionType.InsufficientData))
             raise APIException("Could not upload activity %s - %s" % (upload_resp.status_code, upload_resp.text))
+
         return upload_resp.json()[0]["activityId"]
 
     def RevokeAuthorization(self, serviceRecord):

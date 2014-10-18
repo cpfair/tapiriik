@@ -26,6 +26,7 @@ function ActivitiesController($scope, $http) {
       "stationary": "%(service) does not support stationary activity upload.",
       "nongps": "%(service) does not support non-GPS activities with other sensor data.",
       "type_unsupported": "%(service) does not support this type of activity.",
+      "data_insufficient": "%(service) requires more data than this activity contains.",
       "download": "An error occured when retrieving the activity data to upload to %(service).",
       "list": "There was a problem indexing your activities on %(service), so no activities will be uploaded to %(service).",
       "upload": "There was a problem uploading this activity to %(service).",
