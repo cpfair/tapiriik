@@ -48,6 +48,11 @@ class NikePlusService(ServiceBase):
         "OTHER": ActivityType.Other
     }
 
+    # Leave it to Nike+ to invent new timezones
+    _timezones = {
+        "ART": "America/Argentina/Buenos_Aires" # Close enough
+    }
+
     _reverseActivityMappings = {
         "RUN": ActivityType.Running,
         # Their web frontend has a meltdown even trying to navigate to other activity types, who knows
@@ -158,7 +163,13 @@ class NikePlusService(ServiceBase):
                 activity.StartTime = dateutil.parser.parse(act["startTime"]).replace(tzinfo=pytz.utc)
                 activity.EndTime = activity.StartTime + self._durationToTimespan(act["metricSummary"]["duration"])
 
-                activity.TZ = pytz.timezone(act["activityTimeZone"])
+                tz_name = act["activityTimeZone"]
+
+                # They say these are all IANA standard names - they aren't
+                if tz_name in self._timezones:
+                    tz_name = self._timezones[tz_name]
+
+                activity.TZ = pytz.timezone(tz_name)
 
                 if act["activityType"] in self._activityMappings:
                     activity.Type = self._activityMappings[act["activityType"]]
