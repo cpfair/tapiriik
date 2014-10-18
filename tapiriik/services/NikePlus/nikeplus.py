@@ -97,7 +97,7 @@ class NikePlusService(ServiceBase):
         res = session.post("https://secure-nikeplus.nike.com/login/loginViaNike.do?mode=login", {"email": email, "password": password})
 
         if "access_token" not in res.cookies:
-            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("Invalid login %s - %s / %s" % (res.status_code, res.text, res.cookies), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
 
         # Was getting a super obscure error from the nether regions of requestse about duplicate cookies
