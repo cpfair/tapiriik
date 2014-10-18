@@ -36,6 +36,6 @@
 	</table>
 	<div class="activitiesTable-empty-message" ng-show="!loading && activities.length == 0"><h2>tapiriik doesn't know about any activities in your accounts</h2>Have you synchronized lately?</div>
 	<div class="activitiesTable-empty-message" ng-show="loading"><h2>Loading...</h2></div>
-	<p>Only the most recent activities across your accounts are shown, unless there was trouble synchronizing earlier activities. All dates shown are in UTC.</p>
+	<p><b>If your account is currently synchronizing</b>, those activities will appear here once the synchronization completes. All dates shown are in UTC.</p>
 </div>
 {% endblock %}

@@ -1014,8 +1014,11 @@ ul.itemized-clean li {
 	border-spacing: 0;
 }
 
+.fancyTable .headers, .fancyTable .footers {
+	background-color: #8ec1da;
+}
+
 .fancyTable .headers {
-	background-color:#8ec1da;
 	vertical-align: bottom;
 }
 
@@ -1034,11 +1037,11 @@ ul.itemized-clean li {
 	border-top-right-radius: 5px;
 }
 
-.fancyTable tr:last-child td:first-child {
+.fancyTable tr:last-child td:first-child, .fancyTable tr:last-child th:first-child {
 	border-bottom-left-radius: 5px;
 }
 
-.fancyTable tr:last-child td:last-child {
+.fancyTable tr:last-child td:last-child, .fancyTable tr:last-child th:last-child {
 	border-bottom-right-radius: 5px;
 }
 
@@ -1142,6 +1145,18 @@ ul.itemized-clean li {
 	border-left: 20px solid transparent;
 	border-right: 20px solid transparent;
 	border-top: 20px solid white;
+}
+
+.recentActivitiesTable {
+	width: 50%;
+	margin-left: 25%;
+}
+
+.recentActivitiesTable td.activityHeader {
+	font-size: 110%;
+	height:40px;
+	border-bottom: 0;
+	cursor: default;
 }
 
 .privacyTable .serviceCol {

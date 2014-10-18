@@ -806,6 +806,7 @@ tapiriik.ImmediateSyncRequested = function(){
 
 tapiriik.UpdateSyncCountdown = function(){
 	$.ajax({"url":"/sync/status", success:function(data){
+		$rootScope.$apply(function(){ // Tie us into Angularland
 		tapiriik.NextSync = data.NextSync !== null ? new Date(data.NextSync) : null;
 		tapiriik.LastSync = data.LastSync !== null ? new Date(data.LastSync) : null;
 		if (tapiriik.SyncHash !== undefined && tapiriik.SyncHash != data.Hash){
@@ -817,6 +818,7 @@ tapiriik.UpdateSyncCountdown = function(){
 		tapiriik.SynchronizationProgress = data.SynchronizationProgress;
 		tapiriik.SynchronizationStep = data.SynchronizationStep;
 		tapiriik.SynchronizationWaitTime = data.SynchronizationWaitTime;
+		});
 		tapiriik.RefreshSyncCountdown();
 	}, error:function(req, opts, error){
 		// I trashed the session store somehow, and everyone got logged out.
@@ -843,7 +845,7 @@ tapiriik.RefreshSyncCountdown = function(){
 	var sync_post_text = "";
 	if (tapiriik.SyncHash !== undefined){
 		var delta = tapiriik.NextSync - (new Date());
-		if (delta>0 || tapiriik.NextSync === null){
+		if (delta>0 || (tapiriik.NextSync === null && !tapiriik.Synchronizing)){
 			$("#syncButton").show();
 			var inCooldown = ((new Date()) - tapiriik.LastSync) <= tapiriik.MinimumSyncInterval*1000;
 			sync_button_active = !inCooldown;

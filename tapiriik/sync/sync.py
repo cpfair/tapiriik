@@ -1,4 +1,4 @@
-from tapiriik.database import db, cachedb
+from tapiriik.database import db, cachedb, redis
 from tapiriik.messagequeue import mq
 from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, ServiceException, ServiceExceptionScope, ServiceWarning, UserException, UserExceptionType
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
@@ -16,6 +16,7 @@ import logging
 import logging.handlers
 import pytz
 import kombu
+import json
 
 # Set this up seperate from the logger used in this scope, so services logging messages are caught and logged into user's files.
 _global_logger = logging.getLogger("tapiriik")
@@ -112,7 +113,7 @@ class Sync:
             auto_declare=False
         )
 
-        Sync._consumer.qos(prefetch_count=1, apply_global=True)
+        Sync._consumer.qos(prefetch_count=1, apply_global=False)
 
         Sync._consumer.consume()
 
@@ -692,6 +693,17 @@ class SynchronizationTask:
             if hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
                 activity.Record.MarkAsPresentOn(conn)
 
+    def _syncActivityRedisKey(user):
+        return "recent-sync:%s" % user["_id"]
+
+    def _pushRecentSyncActivity(self, activity, destinations):
+        key = SynchronizationTask._syncActivityRedisKey(self.user)
+        redis.lpush(key, json.dumps({"Name": activity.Name, "StartTime": activity.StartTime.isoformat(), "Type": activity.Type, "Timestamp": datetime.utcnow().isoformat(), "Destinations": destinations}))
+        redis.ltrim(key, 0, 4) # Only keep 5
+
+    def RecentSyncActivity(user):
+        return [json.loads(x.decode("UTF-8")) for x in redis.lrange(SynchronizationTask._syncActivityRedisKey(user), 0, 4)]
+
     def _downloadActivity(self, activity):
         act = None
         actAvailableFromSvcIds = activity.ServiceDataCollection.keys()
@@ -1016,6 +1028,8 @@ class SynchronizationTask:
 
                         full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
 
+                        successful_destination_service_ids = []
+
                         for destinationSvcRecord in eligibleServices:
                             if heartbeat_callback:
                                 heartbeat_callback(SyncStep.Upload)
@@ -1039,6 +1053,7 @@ class SynchronizationTask:
                             logger.info("\t  Uploaded")
 
                             activity.Record.MarkAsSynchronizedTo(destinationSvcRecord)
+                            successful_destination_service_ids.append(destSvc.ID)
 
                             if uploaded_external_id:
                                 # record external ID, for posterity (and later debugging)
@@ -1048,6 +1063,8 @@ class SynchronizationTask:
                                                   {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}})
 
                             db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
+
+                        self._pushRecentSyncActivity(full_activity, successful_destination_service_ids)
                         del full_activity
                         processedActivities += 1
                     except ActivityShouldNotSynchronizeException:

@@ -1,0 +1,22 @@
+<div class="syncActivityBlock" ng-controller="RecentSyncActivityController">
+<table class="activitiesTable recentActivitiesTable fancyTable" ng-show="recent_activities.length > 0">
+	<tr class="headers">
+		<th colspan="2">
+			Recently Synchronized Activities
+		</th>
+	</tr>
+	<tr ng-repeat="activity in recent_activities" class="activity">
+		<td class="activityHeader">
+			<span class="date" title="{[ activity.StartTime ]}">{[ activity.StartTime|date ]}</span> {[ activity.Name ]}
+		</td>
+		<td class="activityHeader">
+			<span class="tag float type">{[ activity.Type ]}</span>
+		</td>
+	</tr>
+	<tr class="footers">
+		<th colspan="2">
+			<a href="{% url 'activities_dashboard' %}">All Activities &raquo;</a>
+		</th>
+	</tr>
+</table>
+</div>

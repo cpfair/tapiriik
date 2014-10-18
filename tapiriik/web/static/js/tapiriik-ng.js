@@ -106,9 +106,29 @@ function SyncSettingsController($scope, $http, $window){
   };
 }
 
+function RecentSyncActivityController($scope, $http) {
+  var updateTimer;
+  $scope.$watch("tapiriik.Synchronizing", function() {
+    if ($scope.tapiriik.Synchronizing && !updateTimer) {
+      updateTimer = setInterval(update_recent_activity, 5000);
+    } else if (!$scope.tapiriik.Synchronizing && updateTimer) {
+      clearInterval(updateTimer);
+      updateTimer = undefined;
+    }
+  });
+
+  var update_recent_activity = function() {
+    $http.get("/sync/activity").success(function(data){
+      $scope.recent_activities = data;
+    });
+  };
+  update_recent_activity();
+};
+
 angular.module('tapiriik', []).config(function($interpolateProvider) {
   $interpolateProvider.startSymbol('{[').endSymbol(']}');
 }).run(function($rootScope, $http) {
+  window.$rootScope = $rootScope; // So the old stuff can call apply
   $rootScope.tapiriik = window.tapiriik;
   $http.defaults.headers.post["X-CSRFToken"] = $.cookie('csrftoken'); // ALERT ALERT JQUERY ALERT ALERT
 });

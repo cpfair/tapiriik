@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from tapiriik.auth import User
-from tapiriik.sync import Sync
+from tapiriik.sync import Sync, SynchronizationTask
 from tapiriik.database import db
 from tapiriik.services import Service
 from tapiriik.settings import MONGO_FULL_WRITE_CONCERN
@@ -48,6 +48,12 @@ def sync_status(req):
         sync_status_dict["SynchronizationWaitTime"] = (stats["QueueHeadTime"] - (datetime.utcnow() - req.user["NextSynchronization"]).total_seconds()) if "NextSynchronization" in req.user and req.user["NextSynchronization"] is not None else None
 
     return HttpResponse(json.dumps(sync_status_dict), mimetype="application/json")
+
+def sync_recent_activity(req):
+    if not req.user:
+        return HttpResponse(status=403)
+    res = SynchronizationTask.RecentSyncActivity(req.user)
+    return HttpResponse(json.dumps(res), mimetype="application/json")
 
 @require_POST
 def sync_schedule_immediate(req):
