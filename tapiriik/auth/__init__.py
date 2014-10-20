@@ -65,7 +65,7 @@ class User:
     def AssociatePayment(user, payment, schedule_now=True):
         User._assocPaymentLikeObject(user, "Payments", payment, schedule_now)
 
-    def AssociateExternalPayment(user, external_payment, schedule_now=True, skip_deassoc=False):
+    def AssociateExternalPayment(user, external_payment, schedule_now=False, skip_deassoc=False):
         User._assocPaymentLikeObject(user, "ExternalPayments", external_payment, schedule_now, skip_deassoc)
 
     def AssociatePromo(user, promo, schedule_now=True):
