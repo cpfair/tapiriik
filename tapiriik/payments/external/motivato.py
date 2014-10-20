@@ -32,7 +32,7 @@ class MotivatoExternalPaymentProvider(ExternalPaymentProvider):
 			my_connection = [x for x in connections if x._id in [y["ID"] for y in user["ConnectedServices"]]][0]
 			pmt = Payments.EnsureExternalPayment(self.ID, my_connection.ExternalID, duration=None)
 			payments.append(pmt)
-			User.AssociateExternalPayment(user, pmt)
+			User.AssociateExternalPayment(user, pmt, skip_deassoc=True)
 
 		# Bulk-remove these payments from users who don't own them (more or less - it'll leave anyone who switched remote accounts)
 		db.users.update({"_id": {"$nin": [x["_id"] for x in users]}}, {"$pull": {"ExternalPayments": {"_id": {"$in": [x["_id"] for x in payments]}}}}, multi=True)
