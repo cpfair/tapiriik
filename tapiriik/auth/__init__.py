@@ -52,10 +52,11 @@ class User:
     def SetTimezone(user, tz):
         db.users.update({"_id": ObjectId(user["_id"])}, {"$set": {"Timezone": tz}})
 
-    def _assocPaymentLikeObject(user, collection, payment_like_object, schedule_now):
+    def _assocPaymentLikeObject(user, collection, payment_like_object, schedule_now, skip_deassoc=False):
         # Since I seem to have taken this duck-typing quite far
         # First, deassociate payment ids from other accounts that may be using them
-        db.users.update({}, {"$pull": {collection: {"_id": payment_like_object["_id"] if "_id" in payment_like_object else None}}}, multi=True)
+        if "_id" in payment_like_object and not skip_deassoc:
+            db.users.update({}, {"$pull": {collection: {"_id": payment_like_object["_id"]}}}, multi=True)
         # Then, attach to us
         db.users.update({"_id": ObjectId(user["_id"])}, {"$addToSet": {collection: payment_like_object}})
         if schedule_now:
@@ -64,8 +65,8 @@ class User:
     def AssociatePayment(user, payment, schedule_now=True):
         User._assocPaymentLikeObject(user, "Payments", payment, schedule_now)
 
-    def AssociateExternalPayment(user, external_payment, schedule_now=True):
-        User._assocPaymentLikeObject(user, "ExternalPayments", external_payment, schedule_now)
+    def AssociateExternalPayment(user, external_payment, schedule_now=True, skip_deassoc=False):
+        User._assocPaymentLikeObject(user, "ExternalPayments", external_payment, schedule_now, skip_deassoc)
 
     def AssociatePromo(user, promo, schedule_now=True):
         User._assocPaymentLikeObject(user, "Promos", promo, schedule_now)

@@ -19,13 +19,23 @@ class MotivatoExternalPaymentProvider(ExternalPaymentProvider):
 
 	def RefreshPaymentState(self):
 		from tapiriik.services import ServiceRecord
+		from tapiriik.payments import Payments
+		from tapiriik.auth import User
+
 		external_ids = requests.get(MOTIVATO_PREMIUM_USERS_LIST_URL).json()
 		connections = [ServiceRecord(x) for x in db.connections.find({"Service": "motivato", "ExternalID": {"$in": external_ids}})]
-		users = db.users.find({"ConnectedServices.ID": {"$in": [x._id for x in connections]}})
+		users = list(db.users.find({"ConnectedServices.ID": {"$in": [x._id for x in connections]}}))
+		payments = []
 
+		# Pull relevant payment objects and associate with users
 		for user in users:
 			my_connection = [x for x in connections if x._id in [y["ID"] for y in user["ConnectedServices"]]][0]
-			self.ApplyPaymentState(user, True, my_connection.ExternalID, duration=None)
+			pmt = Payments.EnsureExternalPayment(self.ID, my_connection.ExternalID, duration=None)
+			payments.append(pmt)
+			User.AssociateExternalPayment(user, pmt)
+
+		# Bulk-remove these payments from users who don't own them (more or less - it'll leave anyone who switched remote accounts)
+		db.users.update({"_id": {"$nin": [x["_id"] for x in users]}}, {"$pull": {"ExternalPayments": {"_id": {"$in": [x["_id"] for x in payments]}}}}, multi=True)
 
 		# We don't bother unsetting users who are no longer on the list - they'll be refreshed at their next sync
 
