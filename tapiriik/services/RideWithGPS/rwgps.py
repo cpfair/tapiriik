@@ -109,7 +109,7 @@ class RideWithGPSService(ServiceBase):
         params = self._add_auth_params({}, record=serviceRecord)
 
         res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
-        res = res.json()
+        res = res.json().get('results', [])
         if res == []:
             return [], [] # No activities
         for act in res:
