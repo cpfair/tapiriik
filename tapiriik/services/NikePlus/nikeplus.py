@@ -262,7 +262,7 @@ class NikePlusService(ServiceBase):
         wpidx = 0
         full_metrics = []
         max_metrics = set()
-        for offset in range(0, int((activity.EndTime - activity.StartTime).total_seconds() / metrics["intervalValue"]), metrics["intervalValue"]):
+        for offset in range(0, int((activity.EndTime - activity.StartTime).total_seconds()), metrics["intervalValue"]):
             # Pick the most recent waypoint in the past
             while len(wps) > wpidx + 1 and (wps[wpidx + 1].Timestamp - activity.StartTime).total_seconds() < offset:
                 wpidx += 1
