@@ -66,15 +66,15 @@ class Service:
         serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
         # Coming out of CredentialStorage these are objects that can't be stuffed into mongodb right away
         # Should really figure out how to mangle pymongo into doing the serialization for me...
-        extendedAuthDetailsForStorage = CredentialStore.FlattenShadowedCredentials(extendedAuthDetails) if persistExtendedAuthDetails else None
+        extendedAuthDetailsForStorage = CredentialStore.FlattenShadowedCredentials(extendedAuthDetails) if extendedAuthDetails else None
         if serviceRecord is None:
-            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage})
+            db.connections.insert({"ExternalID": uid, "Service": service.ID, "SynchronizedActivities": [], "Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage if persistExtendedAuthDetails else None})
             serviceRecord = ServiceRecord(db.connections.find_one({"ExternalID": uid, "Service": service.ID}))
             serviceRecord.ExtendedAuthorization = extendedAuthDetails # So SubscribeToPartialSyncTrigger can use it (we don't save the whole record after this point)
             if service.PartialSyncTriggerRequiresPolling:
                 service.SubscribeToPartialSyncTrigger(serviceRecord) # The subscription is attached more to the remote account than to the local one, so we subscribe/unsubscribe here rather than in User.ConnectService, etc.
         elif serviceRecord.Authorization != authDetails or (hasattr(serviceRecord, "ExtendedAuthorization") and serviceRecord.ExtendedAuthorization != extendedAuthDetailsForStorage):
-            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage}})
+            db.connections.update({"ExternalID": uid, "Service": service.ID}, {"$set": {"Authorization": authDetails, "ExtendedAuthorization": extendedAuthDetailsForStorage if persistExtendedAuthDetails else None}})
 
         # if not persisted, these details are stored in the cache db so they don't get backed up
         if service.RequiresExtendedAuthorizationDetails:
