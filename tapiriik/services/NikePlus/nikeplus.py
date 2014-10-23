@@ -283,10 +283,10 @@ class NikePlusService(ServiceBase):
                 my_metrics["speed"] = wp.Speed
 
             if wp.Calories is not None:
-                my_metrics["calories"] = int(wp.Calories)
+                my_metrics["calories"] = round(wp.Calories)
 
             if wp.Power is not None:
-                my_metrics["watts"] = int(wp.Power)
+                my_metrics["watts"] = round(wp.Power)
 
             max_metrics |= my_metrics.keys()
             full_metrics.append(my_metrics)
@@ -311,7 +311,7 @@ class NikePlusService(ServiceBase):
         if upload_resp.status_code != 201:
             error_codes = [x["code"] for x in upload_resp.json()["errors"]]
             if 320 in error_codes: # Invalid combination of metric types and blah blah blah
-                raise APIException("Not enough data", permanent=False, userException=UserException(UserExceptionType.InsufficientData))
+                raise APIException("Not enough data", userException=UserException(UserExceptionType.InsufficientData))
             raise APIException("Could not upload activity %s - %s" % (upload_resp.status_code, upload_resp.text))
 
         return upload_resp.json()[0]["activityId"]
