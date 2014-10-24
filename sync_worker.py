@@ -26,8 +26,8 @@ def sync_interrupt(signal, frame):
 signal.signal(signal.SIGINT, sync_interrupt)
 signal.signal(signal.SIGUSR2, sync_interrupt)
 
-def sync_heartbeat(state):
-    db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.utcnow(), "State": state}})
+def sync_heartbeat(state, user=None):
+    db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.utcnow(), "State": state, "User": user}})
 
 print("Sync worker " + str(os.getpid()) + " initialized at " + str(datetime.now()))
 db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"Process": os.getpid(), "Heartbeat": datetime.utcnow(), "Startup":  datetime.utcnow(),  "Version": WorkerVersion, "Host": socket.gethostname(), "Index": settings.WORKER_INDEX, "State": "startup"}, upsert=True)

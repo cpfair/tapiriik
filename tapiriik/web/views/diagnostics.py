@@ -44,6 +44,9 @@ def diag_dashboard(req):
 
     context["allWorkers"] = list(db.sync_workers.find())
 
+    synchronizingUserIds = [x["User"] if "User" in x else None for x in context["allWorkers"]]
+    context["duplicatedUserSynchronizations"] = set([x for x in synchronizingUserIds if synchronizingUserIds.count(x) > 1])
+
     context["hostWorkerCount"] = {host:len([1 for x in context["allWorkers"] if x["Host"] == host]) for host in set([x["Host"] for x in context["allWorkers"]])}
 
     # Each worker can be engaged for <= 60*60 seconds in an hour

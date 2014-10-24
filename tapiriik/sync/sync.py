@@ -124,7 +124,7 @@ class Sync:
         else:
             return 1
 
-    def _consumeSyncTask(body, message, heartbeat_callback, version):
+    def _consumeSyncTask(body, message, heartbeat_callback_direct, version):
         from tapiriik.auth import User
 
         user_id = body["user_id"]
@@ -140,6 +140,9 @@ class Sync:
             logger.warning("Queue generation mismatch for %s - bailing" % user_id)
             message.ack()
             return
+
+        def heartbeat_callback(state):
+            heartbeat_callback_direct(state, user_id)
 
         syncStart = datetime.utcnow()
 
