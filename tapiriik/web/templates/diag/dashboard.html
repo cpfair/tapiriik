@@ -68,7 +68,7 @@
 							<td><a href="{% url 'diagnostics_user' user=userId %}">{{ userId|slice:":7" }}</a></td>
 							<td>{{ userId }}</td>
 							<td>{{ lockedUser.SynchronizationProgress|percentage }}</td>
-							<td>{% if lockedUser.SynchronizationWorker not in allWorkerPIDs %} <span style="color:red">(orphaned)</span>{% endif %}{% if lockedUser.SynchronizationWorker in stalledWorkerPIDs %} <span style="color:orange;">(stalled)</span>{% endif %}</td>
+							<td>{% if lockedUser.SynchronizationWorker not in allWorkerPIDs and lockedUser.SynchronizationWorker not in allWorkerPIDsPre %} <span style="color:red">(orphaned)</span>{% endif %}{% if lockedUser.SynchronizationWorker in stalledWorkerPIDs %} <span style="color:orange;">(stalled)</span>{% endif %}</td>
 						</tr>
 					{% endwith %}
 				{% endfor %}

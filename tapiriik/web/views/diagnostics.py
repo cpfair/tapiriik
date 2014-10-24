@@ -22,6 +22,9 @@ def diag_dashboard(req):
 
     stall_timeout = timedelta(minutes=1)
 
+    # We fetch this twice so the (orphaned) indicators are correct even if there were writes during all these other queries
+    context["allWorkerPIDsPre"] = [x["Process"] for x in db.sync_workers.find()]
+
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
 
