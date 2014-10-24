@@ -26,6 +26,7 @@
 					<th>Local Index</th>
 					<th>Last Heartbeat</th>
 					<th>HB State</th>
+					<th>User</th>
 					<th>Forget</th>
 				</tr>
 				{% for worker in stalledWorkers %}
@@ -35,6 +36,7 @@
 						<td>{{ worker.Index }}</td>
 						<td>{{ worker.Heartbeat|utctimesince }}</td>
 						<td><tt>{{ worker.State }}</tt></td>
+						<td><tt>{{ worker.User }}</tt></td>
 						<td>
 							<form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
 						</td>
