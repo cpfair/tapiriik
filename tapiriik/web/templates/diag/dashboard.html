@@ -82,22 +82,20 @@
 		<li><b>Queued but unlocked records:</b>
 			<table>
 				<tr>
-					<th>Worker</th>
 					<th>Host</th>
 					<th>User</th>
 					<th>ID</th>
 					<th>Prog</th>
-					<th>State</th>
+					<th>Queued Ago</th>
 				</tr>
 				{% for unlockedUser in queuedUnlockedUsers %}
 					{% with userId=unlockedUser|dict_get:'_id' %}
 						<tr>
-							<td>{{ unlockedUser.SynchronizationWorker }}</td>
 							<td>{{ unlockedUser.SynchronizationHost }}</td>
 							<td><a href="{% url 'diagnostics_user' user=userId %}">{{ userId|slice:":7" }}</a></td>
 							<td>{{ userId }}</td>
 							<td>{{ unlockedUser.SynchronizationProgress|percentage }}</td>
-							<td>{% if unlockedUser.SynchronizationWorker not in allWorkerPIDs and unlockedUser.SynchronizationWorker not in allWorkerPIDsPre %} <span style="color:red">(orphaned)</span>{% endif %}{% if unlockedUser.SynchronizationWorker in stalledWorkerPIDs %} <span style="color:orange;">(stalled)</span>{% endif %}</td>
+							<td>{{ unlockedUser.QueuedAt|utctimesince }}</td>
 						</tr>
 					{% endwith %}
 				{% endfor %}
