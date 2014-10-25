@@ -27,6 +27,7 @@ def diag_dashboard(req):
 
     context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
     context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
+    context["queuedUnlockedUsers"] = list(db.users.find({"SynchronizationWorker": {"$exists": False}, "QueuedAt": {"$ne": None}}))
 
     context["pendingSynchronizations"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}}).count()
     context["pendingSynchronizationsLocked"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}, "SynchronizationWorker": {"$ne": None}}).count()
