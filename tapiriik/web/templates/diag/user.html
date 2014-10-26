@@ -13,6 +13,7 @@
 		{% endif %}
 		<li><b>Email:</b> {% if diag_user.Email %}<a href="mailto:{{ diag_user.Email }}">{{ diag_user.Email }}</a>{% else %}Not given{% endif %}</li>
 		<li><b>TZ:</b> <tt>{{ diag_user.Timezone }}</tt></li>
+		<li><b>Config:</b> <tt>{{ diag_user.Config }}</tt></li>
 		<li><b>Prev Sync:</b> {{ diag_user.LastSynchronization|utctimesince }} ({{ diag_user.LastSynchronization }} UTC)</li>
 		<li><b>Prev Sync Ver:</b> <tt>{{ diag_user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
 		<li><b>Next Sync:</b> {{ diag_user.NextSynchronization }} UTC</li>
