@@ -187,7 +187,14 @@ class Sync:
                         "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
                     }
                 })
-            logger.debug("User reschedule returned %s" % scheduling_result)
+            reschedule_confirm_message = "User reschedule for %s returned %s" % (nextSync, scheduling_result)
+
+            # Tack this on the end of the log file since otherwise it's lost for good (blegh, but nicer than moving logging out of the sync task?)
+            user_log = open(USER_SYNC_LOGS + str(self.user["_id"]) + ".log", "a+")
+            user_log.write("\n%s\n" % reschedule_confirm_message)
+            user_log.close()
+
+            logger.debug(reschedule_confirm_message)
             syncTime = (datetime.utcnow() - syncStart).total_seconds()
             db.sync_worker_stats.insert({"Timestamp": datetime.utcnow(), "Worker": os.getpid(), "Host": socket.gethostname(), "TimeTaken": syncTime})
 
