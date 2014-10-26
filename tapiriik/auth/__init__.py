@@ -75,7 +75,7 @@ class User:
         # Payments and Promos share the essential data field - Expiry
         # We don't really care if the payment has yet to take place yet - why would it be in the system then?
         # (Timestamp too, but the fact we rely on it here is only for backwards compatability with some old payment records)
-        payment_like_objects = (user["Payments"] if "Payments" in user else []) + (user["Promos"] if "Promos" in user else [])
+        payment_like_objects = (user["Payments"] if "Payments" in user else []) + (user["Promos"] if "Promos" in user else []) + (user["ExternalPayments"] if "ExternalPayments" in user else [])
         for payment in payment_like_objects:
             if "Expiry" in payment:
                 if payment["Expiry"] == None or payment["Expiry"] > datetime.utcnow():
