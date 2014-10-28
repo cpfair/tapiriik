@@ -557,6 +557,12 @@ class SynchronizationTask:
                     logger.info("\t\t" + destSvc.ID + " doesn't receive non-GPS activities")
                     activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
                     continue
+
+            if activity.Record.GetFailureCount(destinationSvcRecord) >= destSvc.UploadRetryCount:
+                logger.info("\t\t" + destSvc.ID + " has exceeded upload retry count")
+                # There's already an error in the activity Record, no need to add anything more here
+                continue
+
             eligibleServices.append(destinationSvcRecord)
         return eligibleServices
 
@@ -805,10 +811,6 @@ class SynchronizationTask:
 
     def _uploadActivity(self, activity, destinationServiceRec):
         destSvc = destinationServiceRec.Service
-
-        if activity.Record.GetFailureCount(destinationServiceRec) >= destSvc.UploadRetryCount:
-            logger.info("\t\t...upload retry count exceeded")
-            raise UploadException()
 
         try:
             return destSvc.UploadActivity(destinationServiceRec, activity)
