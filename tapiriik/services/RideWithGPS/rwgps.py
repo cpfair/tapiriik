@@ -169,7 +169,7 @@ class RideWithGPSService(ServiceBase):
             activity.Type = ActivityType.Cycling
 
             activity.CalculateUID()
-            activity.UploadedTo = [{"Connection": serviceRecord, "ActivityID": act["id"]}]
+            activity.ServiceData = {"ActivityID": act["id"]}
             activities.append(activity)
         return activities, exclusions
 
@@ -177,7 +177,7 @@ class RideWithGPSService(ServiceBase):
         if activity.Manual:
             return activity # Nothing more to download - it doesn't serve these files for manually entered activites
         # https://ridewithgps.com/trips/??????.tcx
-        activityID = [x["ActivityID"] for x in activity.UploadedTo if x["Connection"] == serviceRecord][0]
+        activityID = activity.ServiceData["ActivityID"]
         res = requests.get("https://ridewithgps.com/trips/{}.tcx".format(activityID),
                            params=self._add_auth_params({'sub_format': 'history'}, record=serviceRecord))
         try:
