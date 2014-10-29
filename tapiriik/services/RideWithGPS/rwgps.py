@@ -179,7 +179,7 @@ class RideWithGPSService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
-        if activity.Manual:
+        if activity.Stationary:
             return activity # Nothing more to download - it doesn't serve these files for manually entered activites
         # https://ridewithgps.com/trips/??????.tcx
         activityID = activity.ServiceData["ActivityID"]
