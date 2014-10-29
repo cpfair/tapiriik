@@ -110,6 +110,11 @@ class RideWithGPSService(ServiceBase):
 
         res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
         res = res.json()
+
+        # Apparently some API users are seeing this new result format - I'm not
+        if type(res) is dict:
+            res = res.get("results", [])
+
         if res == []:
             return [], [] # No activities
         for act in res:
