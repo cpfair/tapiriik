@@ -330,6 +330,10 @@ a img {
 	border:none;
 }
 
+select option {
+	color: black;
+}
+
 p.infotip {
 	color: #777;
 	margin-top: 10px;
