@@ -662,30 +662,6 @@ class SynchronizationTask:
             for act in self._activities:
                 act.FallbackTZ = fallbackTZ
 
-    def _processActivityOrigins(self):
-        logger.info("Reading activity origins")
-        origins = list(db.activity_origins.find({"ActivityUID": {"$in": [x.UID for x in self._activities]}}))
-        activitiesWithOrigins = [x["ActivityUID"] for x in origins]
-
-        logger.info("Populating origins")
-        # Populate origins
-        for activity in self._activities:
-            if len(activity.ServiceDataCollection.keys()) == 1:
-                if not len(self._excludedServices):  # otherwise it could be incorrectly recorded
-                    # we can log the origin of this activity
-                    if activity.UID not in activitiesWithOrigins:  # No need to hammer the database updating these when they haven't changed
-                        logger.info("\t\t Updating db with origin for proceeding activity")
-                        db.activity_origins.insert({"ActivityUID": activity.UID, "Origin": {"Service": [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0].Service.ID, "ExternalID": [[y.ExternalID for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]}})
-                    activity.Origin = [[y for y in self._serviceConnections if y._id == x][0] for x in activity.ServiceDataCollection.keys()][0]
-            else:
-                if activity.UID in activitiesWithOrigins:
-                    knownOrigin = [x for x in origins if x["ActivityUID"] == activity.UID]
-                    connectedOrigins = [x for x in self._serviceConnections if knownOrigin[0]["Origin"]["Service"] == x.Service.ID and knownOrigin[0]["Origin"]["ExternalID"] == x.ExternalID]
-                    if len(connectedOrigins) > 0:  # they might have disconnected it
-                        activity.Origin = connectedOrigins[0]
-                    else:
-                        activity.Origin = ServiceRecord(knownOrigin[0]["Origin"])  # I have it on good authority that this will work
-
     def _updateSynchronizedActivities(self, activity):
         # Locally mark this activity as present on the appropriate services.
         # These needs to happen regardless of whether the activity is going to be synchronized.
@@ -903,8 +879,6 @@ class SynchronizationTask:
                     self._downloadActivityList(conn, exhaustive)
 
                 self._applyFallbackTZ()
-
-                self._processActivityOrigins()
 
                 # Makes reading the logs much easier.
                 self._activities = sorted(self._activities, key=lambda v: v.StartTime.replace(tzinfo=None), reverse=True)
