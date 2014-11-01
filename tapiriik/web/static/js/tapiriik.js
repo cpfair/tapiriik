@@ -804,8 +804,13 @@ tapiriik.ImmediateSyncRequested = function(){
 	return false;
 };
 
+tapiriik.PendingSyncStatusUpdate = false;
+
 tapiriik.UpdateSyncCountdown = function(){
+	if (tapiriik.PendingSyncStatusUpdate) return;
+	tapiriik.PendingSyncStatusUpdate = true;
 	$.ajax({"url":"/sync/status", success:function(data){
+		tapiriik.PendingSyncStatusUpdate = false;
 		$rootScope.$apply(function(){ // Tie us into Angularland
 		tapiriik.NextSync = data.NextSync !== null ? new Date(data.NextSync) : null;
 		tapiriik.LastSync = data.LastSync !== null ? new Date(data.LastSync) : null;
@@ -821,6 +826,7 @@ tapiriik.UpdateSyncCountdown = function(){
 		});
 		tapiriik.RefreshSyncCountdown();
 	}, error:function(req, opts, error){
+		tapiriik.PendingSyncStatusUpdate = false;
 		// I trashed the session store somehow, and everyone got logged out.
 		if (req.status == 403) {
 			window.location.reload();
