@@ -123,6 +123,8 @@ class Sync:
             return 0
         else:
             return 1
+        finally:
+            Sync._consumer.close()
 
     def _consumeSyncTask(body, message, heartbeat_callback_direct, version):
         from tapiriik.auth import User
