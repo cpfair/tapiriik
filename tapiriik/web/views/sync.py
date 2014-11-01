@@ -18,17 +18,19 @@ def sync_status(req):
     stats = db.stats.find_one()
     syncHash = 1  # Just used to refresh the dashboard page, until I get on the Angular bandwagon.
     conns = User.GetConnectionRecordsByUser(req.user)
-    errorCodes = []
-    for conn in conns:
+
+    def svc_id(svc):
+        return svc.Service.ID
+
+    def err_msg(err):
+        return err["Message"]
+
+    for conn in sorted(conns, key=svc_id):
         syncHash = zlib.adler32(bytes(conn.HasExtendedAuthorizationDetails()), syncHash)
         if not hasattr(conn, "SyncErrors"):
             continue
-        for err in conn.SyncErrors:
-            syncHash = zlib.adler32(bytes(str(err), "UTF-8"), syncHash)
-            if "Code" in err and err["Code"] is not None and len(err["Code"]) > 0:
-                errorCodes.append(err["Code"])
-            else:
-                errorCodes.append("SYS-" + err["Step"])
+        for err in sorted(conn.SyncErrors, key=err_msg):
+            syncHash = zlib.adler32(bytes(err_msg(err), "UTF-8"), syncHash)
 
     # Flatten NextSynchronization with QueuedAt
     pendingSyncTime = req.user["NextSynchronization"] if "NextSynchronization" in req.user else None
@@ -41,7 +43,6 @@ def sync_status(req):
                         "SynchronizationProgress": req.user["SynchronizationProgress"] if "SynchronizationProgress" in req.user else None,
                         "SynchronizationStep": req.user["SynchronizationStep"] if "SynchronizationStep" in req.user else None,
                         "SynchronizationWaitTime": None, # I wish.
-                        "Errors": errorCodes,
                         "Hash": syncHash}
 
     if stats and "QueueHeadTime" in stats and False: # Disabled till I fix users getting stuck in the queue
