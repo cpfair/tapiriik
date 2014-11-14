@@ -160,7 +160,7 @@ class NikePlusService(ServiceBase):
                 activity.ServiceData = {"ID": act["activityId"]}
 
                 if act["status"] != "COMPLETE":
-                    exclusions.append(APIExcludeActivity("Not complete", activityId=act["activityId"], permanent=False, userException=UserException(UserExceptionType.LiveTracking)))
+                    exclusions.append(APIExcludeActivity("Not complete", activityId=act["activityId"], permanent=False, user_exception=UserException(UserExceptionType.LiveTracking)))
                     continue
 
                 activity.StartTime = dateutil.parser.parse(act["startTime"]).replace(tzinfo=pytz.utc)
@@ -314,7 +314,7 @@ class NikePlusService(ServiceBase):
         if upload_resp.status_code != 201:
             error_codes = [x["code"] for x in upload_resp.json()["errors"]]
             if 320 in error_codes: # Invalid combination of metric types and blah blah blah
-                raise APIException("Not enough data", userException=UserException(UserExceptionType.InsufficientData))
+                raise APIException("Not enough data, have keys %s" % max_metrics, user_exception=UserException(UserExceptionType.InsufficientData))
             raise APIException("Could not upload activity %s - %s" % (upload_resp.status_code, upload_resp.text))
 
         return upload_resp.json()[0]["activityId"]
