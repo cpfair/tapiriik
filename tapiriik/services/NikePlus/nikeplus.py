@@ -106,6 +106,9 @@ class NikePlusService(ServiceBase):
             headers={"Accept": "application/json"}
         )
 
+        if res.status_code >= 500 and res.status_code < 600:
+            raise APIException("Login exception %s - %s" % (res.status_code, res.text))
+
         res_obj = res.json()
 
         if "access_token" not in res_obj:
