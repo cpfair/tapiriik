@@ -1012,6 +1012,14 @@ class SynchronizationTask:
                         else:
                             logger.debug("\tDetermined TZ %s" % full_activity.TZ)
 
+                        try:
+                            full_activity.CheckTimestampSanity()
+                        except ValueError:
+                            logger.warning("\t\t...failed timestamp sanity check")
+                            # self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Timestamp sanity check failed", activity=full_activity, permanent=True))
+                            # activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError))
+                            # raise ActivityShouldNotSynchronizeException()
+
                         activity.Record.SetActivity(activity) # Update with whatever more accurate information we may have.
 
                         full_activity.Record = activity.Record # Some services don't return the same object, so this gets lost, which is meh, but...
