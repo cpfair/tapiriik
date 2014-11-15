@@ -206,6 +206,8 @@ class StravaService(ServiceBase):
         if "error" in ridedata:
             raise APIException("Strava error " + ridedata["error"])
 
+        inPause = False
+
         waypointCt = len(ridedata["time"])
         for idx in range(0, waypointCt - 1):
 
@@ -226,6 +228,12 @@ class StravaService(ServiceBase):
                 waypoint.Type = WaypointType.Start
             elif idx == waypointCt - 2:
                 waypoint.Type = WaypointType.End
+            elif ridedata["moving"][idx] and inPause:
+                waypoint.Type = WaypointType.Resume
+                inPause = False
+            elif not ridedata["moving"][idx] and not inPause:
+                waypoint.Type = WaypointType.Pause
+                inPause = True
 
             if hasHR:
                 waypoint.HR = ridedata["heartrate"][idx]
