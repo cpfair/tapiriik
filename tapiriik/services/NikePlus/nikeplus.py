@@ -299,6 +299,9 @@ class NikePlusService(ServiceBase):
                 break # We're done
             wpidx += skip_delta
 
+        if wpidx == 0 and len(wps) > 0:
+            raise Exception("Activity had waypoints, none were used")
+
         max_metrics = sorted(list(max_metrics))
         metrics["metricTypes"] = max_metrics
 
