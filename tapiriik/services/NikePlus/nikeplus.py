@@ -265,10 +265,7 @@ class NikePlusService(ServiceBase):
         wpidx = 0
         full_metrics = []
         max_metrics = set()
-        for offset in range(0, int((activity.EndTime - activity.StartTime).total_seconds()), metrics["intervalValue"]):
-            # Pick the most recent waypoint in the past
-            while len(wps) > wpidx + 1 and (wps[wpidx + 1].Timestamp - activity.StartTime).total_seconds() < offset:
-                wpidx += 1
+        while True:
             wp = wps[wpidx]
             my_metrics = {}
 
@@ -293,6 +290,14 @@ class NikePlusService(ServiceBase):
 
             max_metrics |= my_metrics.keys()
             full_metrics.append(my_metrics)
+
+            # Skip to next wp
+            skip_delta = 0
+            while (wpidx + skip_delta < len(wps) - 1) and (wps[wpidx + skip_delta].Timestamp - wps[wpidx].Timestamp).total_seconds() < metrics["intervalValue"]:
+                skip_delta += 1
+            if skip_delta == 0:
+                break # We're done
+            wpidx += skip_delta
 
         max_metrics = sorted(list(max_metrics))
         metrics["metricTypes"] = max_metrics
