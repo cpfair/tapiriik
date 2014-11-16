@@ -29,7 +29,7 @@ def config_flow_save(req, service):
     #  the JS doesn't resolve the flow exceptions, it just passes in the expanded config flags for the edited service (which will override other flowexceptions)
     flowFlags = json.loads(req.POST["flowFlags"])
     for destSvc in [x for x in conns if x.Service.ID != service]:
-        User.SetFlowException(req.user, sourceSvc, destSvc, destSvc.Service.ID in flowFlags["forward"], destSvc.Service.ID in flowFlags["backward"])
+        User.SetFlowException(req.user, sourceSvc, destSvc, destSvc.Service.ID in flowFlags["forward"], None)
     Sync.SetNextSyncIsExhaustive(req.user, True)  # to pick up any activities left behind
     return HttpResponse()
 

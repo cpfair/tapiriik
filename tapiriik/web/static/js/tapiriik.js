@@ -308,10 +308,7 @@ tapiriik.OpenServiceConfigPanel = function(svcId){
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected || !tapiriik.ServiceInfo[i].ReceivesActivities) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
-		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\" id=\"flow-to-" + i +"\"/></td><td><label for=\"flow-to-" + i + "\">" + tapiriik.ServiceInfo[i].DisplayName + "</label></td><td style=\"display: none\"><input type=\"checkbox\" class=\"from\"/></td></tr>");
-		if (destSvc.BlockFlowTo.indexOf(svcId) < 0) {
-			$("input.from", destRow).attr("checked","checked");
-		}
+		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\" id=\"flow-to-" + i +"\"/></td><td><label for=\"flow-to-" + i + "\">" + tapiriik.ServiceInfo[i].DisplayName + "</label></td></tr>");
 		if (tapiriik.ServiceInfo[svcId].BlockFlowTo.indexOf(i) < 0) {
 			$("input.to", destRow).attr("checked","checked");
 		}
@@ -333,15 +330,11 @@ tapiriik.OpenServiceConfigPanel = function(svcId){
 
 		tapiriik.ServiceInfo[svcId].Config.sync_private = $("#sync_private", configPanel).is(":checked");
 
-		var flowFlags = {"forward":[],"backward":[]};
+		var flowFlags = {"forward":[]};
 		var flags = $("input[type=checkbox]", configPanel);
 		for (var i = 0; i < flags.length; i++) {
 			if ($(flags[i]).is(":checked")){
-				if ($(flags[i]).hasClass("to")){
-					flowFlags.forward.push($(flags[i]).attr("service"));
-				} else {
-					flowFlags.backward.push($(flags[i]).attr("service"));
-				}
+				flowFlags.forward.push($(flags[i]).attr("service"));
 			}
 		}
 		$.post("/configure/flow/save/"+svcId, {"flowFlags": JSON.stringify(flowFlags)}, function(){
