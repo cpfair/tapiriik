@@ -24,6 +24,7 @@ def privacy(request):
     services["nikeplus"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
     services["velohero"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
     services["runsense"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
+    services["trainerroad"].update({"email": OPTIN, "password": OPTIN, "tokens": NO, "metadata": YES, "data":NO})
 
     for svc_id in SOFT_LAUNCH_SERVICES:
         if svc_id in services:

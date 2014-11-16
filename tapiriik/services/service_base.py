@@ -37,8 +37,9 @@ class ServiceBase:
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = False
 
     # Does it?
-    ReceivesStationaryActivities = True
-    ReceivesNonGPSActivitiesWithOtherSensorData = True
+    ReceivesActivities = True # Any at all?
+    ReceivesStationaryActivities = True # Manually-entered?
+    ReceivesNonGPSActivitiesWithOtherSensorData = True # Trainer-ish?
 
     # Causes synchronizations to be skipped until...
     #  - One is triggered (via IDs returned by ExternalIDsForPartialSyncTrigger or PollPartialSyncTrigger)

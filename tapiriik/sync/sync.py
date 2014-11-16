@@ -388,6 +388,9 @@ class SynchronizationTask:
     def _determineRecipientServices(self, activity):
         recipientServices = []
         for conn in self._serviceConnections:
+            if not conn.Service.ReceivesActivities:
+                # Nope.
+                pass
             if conn._id in activity.ServiceDataCollection:
                 # The activity record is updated earlier for these, blegh.
                 pass

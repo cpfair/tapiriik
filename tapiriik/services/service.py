@@ -24,13 +24,14 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus, VeloHero] + PRIVATE_SERVICES
+        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus, VeloHero, TrainerRoad] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
         # ...but that would require either a) downloading it from evry service or b) storing a lot more activity metadata
         # So, I think this will do for now
         return [
+            TrainerRoad, # Special case, since TR has a lot more data in some very specific areas
             GarminConnect, # The reference
             SportTracks, # Pretty much equivalent to GC, no temperature (not that GC temperature works all thar well now, but I digress)
             TrainingPeaks, # No seperate run cadence, but has temperature
