@@ -34,6 +34,7 @@ def js_bridge(req):
             "UsesExtendedAuth": svc.RequiresExtendedAuthorizationDetails,
             "AuthorizationURL": svc.UserAuthorizationURL,
             "NoFrame": svc.AuthenticationNoFrame,
+            "ReceivesActivities": svc.ReceivesActivities,
             "Configurable": svc.Configurable,
             "RequiresConfiguration": False  # by default
         }
