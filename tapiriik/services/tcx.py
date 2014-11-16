@@ -53,6 +53,10 @@ class TCXIO:
             elif xact.attrib["Sport"] == "Running":
                 act.Type = ActivityType.Running
 
+        xnotes = xact.find("tcx:Notes", namespaces=ns)
+        if xnotes is not None:
+            act.Notes = xnotes.text
+
         xcreator = xact.find("tcx:Creator", namespaces=ns)
         if xcreator is not None and xcreator.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] == "Device_t":
             devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.TCX, {"ProductID": int(xcreator.find("tcx:ProductID", namespaces=ns).text)}) # Who knows if this is unique in the TCX ecosystem? We'll find out!
