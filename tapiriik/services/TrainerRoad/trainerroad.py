@@ -113,6 +113,7 @@ class TrainerRoadService(ServiceBase):
 
             activity.Stationary = False
             activity.GPS = False
+            activity.CalculateUID()
 
             activities.append(activity)
 
