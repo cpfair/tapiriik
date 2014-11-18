@@ -177,7 +177,7 @@ class StravaService(ServiceBase):
         activityID = activity.ServiceData["ActivityID"]
 
         self._globalRateLimit()
-        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng", headers=self._apiHeaders(svcRecord))
+        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng,distance,velocity_smooth", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
@@ -202,6 +202,8 @@ class StravaService(ServiceBase):
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
         hasPower = ("watts" in ridedata and len(ridedata["watts"]) > 0)
         hasAltitude = "altitude" in ridedata and len(ridedata["altitude"]) > 0
+        hasDistance = "distance" in ridedata and len(ridedata["distance"]) > 0
+        hasVelocity = "velocity_smooth" in ridedata and len(ridedata["velocity_smooth"]) > 0
 
         if "error" in ridedata:
             raise APIException("Strava error " + ridedata["error"])
@@ -235,6 +237,10 @@ class StravaService(ServiceBase):
                 waypoint.Temp = ridedata["temp"][idx]
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx]
+            if hasVelocity:
+                waypoint.Speed = ridedata["velocity_smooth"][idx]
+            if hasDistance:
+                waypoint.Distance = ridedata["distance"][idx]
             lap.Waypoints.append(waypoint)
 
         return activity
