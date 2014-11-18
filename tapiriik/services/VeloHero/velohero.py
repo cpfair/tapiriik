@@ -4,6 +4,8 @@ from tapiriik.services.interchange import UploadedActivity, ActivityType, Activi
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.fit import FITIO
 from tapiriik.services.pwx import PWXIO
+from tapiriik.services.tcx import TCXIO
+from tapiriik.services.gpx import GPXIO
 from lxml import etree
 
 from django.core.urlresolvers import reverse
@@ -231,19 +233,41 @@ class VeloHeroService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         """
         POST a Multipart-Encoded File
-
+        
         URL: http://app.velohero.com/upload/file
         Parameters:
         user = username
         pass = password
         view = json
         file = multipart-encodes file (fit, tcx, pwx, gpx, srm, hrm...)
-
+        
         Maximum file size per file is 16 MB.
         """
 
-        fit_file = FITIO.Dump(activity)
-        files = {"file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
+        for lap in activity.Laps:
+            for wp in lap.Waypoints:
+                if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
+                    has_location = True
+                if wp.Distance:
+                    has_distance = True
+                if wp.Speed:
+                    has_speed = True
+
+        if has_location and has_distance and has_speed:
+            format = "fit"
+            data = FITIO.Dump(activity)
+        elif has_location and has_distance:
+            format = "tcx"
+            data = TCXIO.Dump(activity)
+        elif has_location:
+            format = "gpx"
+            data = GPXIO.Dump(activity)
+        else:
+            format = "fit"
+            data = FITIO.Dump(activity)
+
+        # Upload
+        files = {"file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + "." + format, data)}
         params = self._add_auth_params({"view":"json"}, record=serviceRecord)
         res = requests.post(self._urlRoot + "/upload/file", files=files, params=params)
 
