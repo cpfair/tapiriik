@@ -268,7 +268,7 @@ class StravaService(ServiceBase):
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
             self._globalRateLimit()
-            response = requests.post("http://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
+            response = requests.post("https://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 201:
                 if response.status_code == 401:
                     raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -283,7 +283,7 @@ class StravaService(ServiceBase):
             while not response.json()["activity_id"]:
                 time.sleep(upload_poll_wait)
                 self._globalRateLimit()
-                response = requests.get("http://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+                response = requests.get("https://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
                 logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
                 if response.json()["error"]:
                     error = response.json()["error"]
