@@ -30,10 +30,29 @@ class VeloHeroService(ServiceBase):
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
-    SupportedActivities = ActivityType.List() # All.
-
     # http://app.velohero.com/sports/list?view=json
+    # For mapping common -> Velo Hero
+    _activityMappings = {
+        ActivityType.Cycling: "1",
+        ActivityType.Running: "2",
+        ActivityType.Swimming: "3",
+        ActivityType.Gym: "4",
+        ActivityType.Elliptical: "4",
+        ActivityType.Skating: "4",
+        ActivityType.Rowing: "5",
+        ActivityType.MountainBiking: "6",
+        ActivityType.Hiking: "7",
+        ActivityType.Walking: "7",
+        ActivityType.Snowboarding: "8",
+        ActivityType.CrossCountrySkiing: "8",
+        ActivityType.DownhillSkiing: "8",
+        ActivityType.Climbing: "7",
+        ActivityType.Wheelchair: "0",
+        ActivityType.Other: "0"
+    }
+    # For mapping Velo Hero -> common
     _reverseActivityMappings={
+        0:  ActivityType.Other, # No Sport
         1:  ActivityType.Cycling,
         2:  ActivityType.Running,
         3:  ActivityType.Swimming,
@@ -42,16 +61,10 @@ class VeloHeroService(ServiceBase):
         6:  ActivityType.MountainBiking,
         7:  ActivityType.Hiking,
         8:  ActivityType.CrossCountrySkiing,
-        # Currently not in use. Reserved for future use.
-        9:  ActivityType.Other,
-        10: ActivityType.Other,
-        11: ActivityType.Other,
-        12: ActivityType.Other,
-        13: ActivityType.Other,
-        14: ActivityType.Other,
-        15: ActivityType.Other,
+        9:  ActivityType.Cycling, # Velomobil (HPV)
+        10: ActivityType.Other # Ball Games
     }
-
+    SupportedActivities = list(_activityMappings.keys())
 
     def _add_auth_params(self, params=None, record=None):
         """
@@ -187,10 +200,10 @@ class VeloHeroService(ServiceBase):
             # End time (date_ymd, start_time) + dur_time
             activity.EndTime = self._parseDateTime(startTimeStr) + timedelta(seconds=duration)
             # Sport (sport_id)
-            if workout["sport_id"] is not "0":
-               activity.Type = self._reverseActivityMappings[int(workout["sport_id"])]
+            if workout["sport_id"] in self._reverseActivityMappings:
+                activity.Type = self._reverseActivityMappings[workout["sport_id"]]
             else:
-               activity.Type = ActivityType.Cycling
+                activity.Type = ActivityType.Other
             # Distance (dist_km)
             activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(workout["dist_km"]))
             # Workout is hidden
@@ -277,6 +290,26 @@ class VeloHeroService(ServiceBase):
           raise APIException("Unable to upload activity")
 
         res.raise_for_status()
-        res = res.json()
+        try:
+            res = res.json()
+        except ValueError:
+            raise APIException("Could not decode activity list")
+        
         if "error" in res:
             raise APIException(res["error"])
+
+        # Set date, start time, comment and sport
+        if "id" in res:
+            workoutId = res["id"]
+            params = self._add_auth_params({ 
+                "workout_date" : activity.StartTime.strftime("%Y-%m-%d"), 
+                "workout_start_time" : activity.StartTime.strftime("%H:%M:%S"),
+                "workout_comment" : activity.Notes, 
+                "sport_id" : self._activityMappings[activity.Type],
+                "workout_hide": "yes" if activity.Private else "no"
+            }, record=serviceRecord)
+            res = requests.get(self._urlRoot + "/workouts/change/{}".format(workoutId), params=params)
+            if res.status_code != 200:
+              if res.status_code == 403:
+                raise APIException("No authorization to change activity with workout ID: {}".format(workoutId), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+              raise APIException("Unable to change activity with workout ID: {}".format(workoutId))
