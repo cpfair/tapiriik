@@ -285,9 +285,9 @@ class VeloHeroService(ServiceBase):
         res = requests.post(self._urlRoot + "/upload/file", files=files, params=params)
 
         if res.status_code != 200:
-          if res.status_code == 403:
-            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-          raise APIException("Unable to upload activity")
+            if res.status_code == 403:
+                raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("Unable to upload activity")
 
         res.raise_for_status()
         try:
@@ -310,6 +310,8 @@ class VeloHeroService(ServiceBase):
             }, record=serviceRecord)
             res = requests.get(self._urlRoot + "/workouts/change/{}".format(workoutId), params=params)
             if res.status_code != 200:
-              if res.status_code == 403:
-                raise APIException("No authorization to change activity with workout ID: {}".format(workoutId), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-              raise APIException("Unable to change activity with workout ID: {}".format(workoutId))
+                if res.status_code == 403:
+                    raise APIException("No authorization to change activity with workout ID: {}".format(workoutId), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("Unable to change activity with workout ID: {}".format(workoutId))
+
+            return workoutId
