@@ -54,6 +54,7 @@ class EndomondoService(ServiceBase):
         "snowshoeing": ActivityType.Walking,
         "wheelchair": ActivityType.Wheelchair,
         "climbing": ActivityType.Climbing,
+        "roller skiing": ActivityType.RollerSkiing,
         "treadmill walking": ActivityType.Walking
     }
 
@@ -71,7 +72,8 @@ class EndomondoService(ServiceBase):
         "swimming": ActivityType.Swimming,
         "other": ActivityType.Other,
         "wheelchair": ActivityType.Wheelchair,
-        "climbing" : ActivityType.Climbing
+        "climbing" : ActivityType.Climbing,
+        "roller skiing": ActivityType.RollerSkiing
     }
 
     SupportedActivities = list(_activityMappings.values())
