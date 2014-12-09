@@ -258,10 +258,11 @@ class RunKeeperService(ServiceBase):
             record["share"] = "Just Me"
 
         if activity.CountTotalWaypoints() > 1:
+            anchor_ts = activity.Laps[0].Waypoints[0].Timestamp
             inPause = False
             for lap in activity.Laps:
                 for waypoint in lap.Waypoints:
-                    timestamp = (waypoint.Timestamp - activity.StartTime).total_seconds()
+                    timestamp = (waypoint.Timestamp - anchor_ts).total_seconds()
 
                     if waypoint.Type in self._wayptTypeMappings.values():
                         wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
