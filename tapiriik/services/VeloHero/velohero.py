@@ -39,7 +39,7 @@ class VeloHeroService(ServiceBase):
         ActivityType.Gym: "4",
         ActivityType.Elliptical: "4",
         ActivityType.Skating: "4",
-        ActivityType.Rowing: "5",
+        ActivityType.Rowing: "11",
         ActivityType.MountainBiking: "6",
         ActivityType.Hiking: "7",
         ActivityType.Walking: "7",
@@ -62,7 +62,8 @@ class VeloHeroService(ServiceBase):
         7:  ActivityType.Hiking,
         8:  ActivityType.CrossCountrySkiing,
         9:  ActivityType.Cycling, # Velomobil (HPV)
-        10: ActivityType.Other # Ball Games
+        10: ActivityType.Other, # Ball Games
+        11: ActivityType.Rowing # Water Sports
     }
     SupportedActivities = list(_activityMappings.keys())
 
