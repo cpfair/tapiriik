@@ -10,3 +10,4 @@ celery
 django-pipeline==1.3.22
 requests_oauthlib==0.4.0
 redis
+django-ipware

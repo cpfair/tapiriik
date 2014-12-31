@@ -7,6 +7,8 @@ from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from datetime import datetime, timedelta
 from pymongo.read_preferences import ReadPreference
 from bson.objectid import ObjectId
+from ipware.ip import get_real_ip
+
 import copy
 
 class User:
@@ -23,7 +25,7 @@ class User:
 
     def Ensure(req):
         if req.user == None:
-            req.user = User.Create()
+            req.user = User.Create(creationIP=get_real_ip(req))
             User.Login(req.user, req)
         return req.user
 
@@ -35,8 +37,8 @@ class User:
         del req.session["userid"]
         del req.user
 
-    def Create():
-        uid = db.users.insert({"Created": datetime.utcnow()})  # will mongodb insert an almost empty doc, i.e. _id?
+    def Create(creationIP=None):
+        uid = db.users.insert({"Created": datetime.utcnow(), "CreationIP": creationIP})  # will mongodb insert an almost empty doc, i.e. _id?
         return db.users.find_one({"_id": uid}, read_preference=ReadPreference.PRIMARY)
 
     def GetConnectionRecordsByUser(user):

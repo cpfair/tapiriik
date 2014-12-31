@@ -224,6 +224,11 @@ def diag_payments(req):
         payment["Accounts"] = [x["_id"] for x in db.users.find({"Payments.Txn": payment["Txn"]}, {"_id":1})]
     return render(req, "diag/payments.html", {"payments": payments})
 
+@diag_requireAuth
+def diag_ip(req):
+    from ipware.ip import get_real_ip
+    return str(get_real_ip(req))
+
 def diag_login(req):
     if "password" in req.POST:
         if hashlib.sha512(req.POST["password"].encode("utf-8")).hexdigest().upper() == DIAG_AUTH_PASSWORD and TOTP.Get(DIAG_AUTH_TOTP_SECRET) == int(req.POST["totp"]):
