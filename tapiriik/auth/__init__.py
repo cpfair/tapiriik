@@ -144,6 +144,7 @@ class User:
             user["AncestorAccounts"] += existingUser["AncestorAccounts"] if "AncestorAccounts" in existingUser else []
             user["AncestorAccounts"] += [existingUser["_id"]]
             user["Timezone"] = user["Timezone"] if "Timezone" in user and user["Timezone"] else (existingUser["Timezone"] if "Timezone" in existingUser else None)
+            user["CreationIP"] = user["CreationIP"] if "CreationIP" in user and user["CreationIP"] else (existingUser["CreationIP"] if "CreationIP" in existingUser else None)
             existing_config = existingUser["Config"] if "Config" in existingUser else {}
             existing_config.update(user["Config"] if "Config" in user else {})
             user["Config"] = existing_config
