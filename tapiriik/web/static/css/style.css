@@ -334,6 +334,11 @@ select option {
 	color: black;
 }
 
+.sr {
+	position:absolute;
+	text-indent:-9999px;
+}
+
 p.infotip {
 	color: #777;
 	margin-top: 10px;
@@ -664,6 +669,7 @@ p.infotip .close:hover {
 	width:0;
 	vertical-align: middle;
 	z-index:9999;
+	text-indent: -9999px;
 }
 
 .syncButton.active {
@@ -680,6 +686,7 @@ p.infotip .close:hover {
 }
 
 .syncSettingsNubbin {
+	display: block;
 	margin-top:-30px;
 	margin-left:-20px;
 	height:20px;

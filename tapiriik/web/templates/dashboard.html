@@ -29,7 +29,7 @@
 		</div>
 	{% if user.ConnectedServices|length > 1 %}
 		<div class="syncButtonBlock">
-			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><div class="syncButton"><div class="syncButtonIcon"></div></div><div class="syncSettingsNubbin" ><div class="syncSettingsNubbinIcon"></div></div></div><div class="syncButtonAttachment right">Attached info 10%</div>
+			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><a class="syncButton">Synchronize Now<div class="syncButtonIcon"></div></a><a href="#/settings" class="syncSettingsNubbin"><span class="sr">Synchronization Settings</span><div class="syncSettingsNubbinIcon"></div></a></div><div class="syncButtonAttachment right">Attached info 10%</div>
 		</div>
 		<br/>
 		{% include "settings-block.html" %}
