@@ -23,6 +23,7 @@ class User:
         return db.users.find_one({"ConnectedServices.ID": svcRec._id})
 
     def Ensure(req):
+        from ipware.ip import get_real_ip
         if req.user == None:
             req.user = User.Create(creationIP=get_real_ip(req))
             User.Login(req.user, req)
@@ -37,7 +38,6 @@ class User:
         del req.user
 
     def Create(creationIP=None):
-        from ipware.ip import get_real_ip
         uid = db.users.insert({"Created": datetime.utcnow(), "CreationIP": creationIP})  # will mongodb insert an almost empty doc, i.e. _id?
         return db.users.find_one({"_id": uid}, read_preference=ReadPreference.PRIMARY)
 
