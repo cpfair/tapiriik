@@ -47,7 +47,7 @@ body {
 }
 
 .internalPopover .popoverInner {
-	background-color:#a6cfe3;
+	background-color:#8ba9cb;
 	color: white;
 }
 
@@ -104,7 +104,7 @@ body {
 }
 
 .internalPopover .popoverArrowInner {
-	border-bottom-color: #a6cfe3;
+	border-bottom-color: #8ba9cb;
 }
 
 .popover iframe {
@@ -496,7 +496,7 @@ p.infotip .close:hover {
 	padding-bottom:10px;
 	padding-top:6px;
 	color:white;
-	background-color:#a6cfe3;
+	background-color:#8ba9cb;
 	padding-bottom:45px;
 }
 
@@ -543,7 +543,7 @@ p.infotip .close:hover {
 	font-size:70%;
 }
 .service .config .configSection {
-	background-color: #9ec5d9;
+	background-color: #84a1c1;
 	margin:10px -5px;
 	padding: 5px;
 }
@@ -789,7 +789,7 @@ to {transform: rotate(0deg);}
 }
 
 .userException p {
-	background-color:#a6cfe3;
+	background-color:#8ba9cb;
 	position: relative;
 	border-top-left-radius: 5px;
 	border-top-right-radius: 5px;
@@ -805,7 +805,7 @@ to {transform: rotate(0deg);}
 .userException h1 {
 	border-top-left-radius:5px;
 	border-top-right-radius:5px;
-	background-color:#9ec5d9;
+	background-color:#84a1c1;
 	margin:0;
 	padding-bottom:10px;
 }
@@ -815,7 +815,7 @@ to {transform: rotate(0deg);}
 }
 
 .userException .footer {
-	background-color:#9ec5d9;
+	background-color:#84a1c1;
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
 	text-align: right;
