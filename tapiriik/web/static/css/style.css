@@ -2,7 +2,7 @@
 
 body {
 	font-family:Arial;
-	background-color:#c0deed;
+	background-color:#a2b8d0;
 	height:100%;
 	width:100%;
 	margin:0;
@@ -33,7 +33,7 @@ body {
 }
 
 .internalPopover .popoverOuterBorder {
-	background-color: #8ec1da;
+	background-color: #749ac4;
 }
 
 .content, .popoverInner {
@@ -60,7 +60,7 @@ body {
 
 .content, .popoverInner {
 	font-size:130%; /* damn font is unreadable */
-	color:#333;
+	color:#111;
 }
 
 .internalPopover {
@@ -91,7 +91,7 @@ body {
 }
 
 .internalPopover .popoverArrow {
-	border-bottom-color: #8ec1da;
+	border-bottom-color: #749ac4;
 }
 
 .popoverArrowInner {
@@ -190,17 +190,17 @@ body {
 .mountains #a {
 	left:-200px;
 	border-width:300px;
-	border-bottom: 500px solid #8ec1da;
+	border-bottom: 500px solid #749ac4;
 }
 .mountains #c {
 	left:0;
 	border-width:200px;
-	border-bottom: 600px solid #a6cfe3;
+	border-bottom: 600px solid #8ba9ca;
 }
 .mountains #b {
 	left:70px;
 	border-width:300px;
-	border-bottom: 225px solid #95cbe5;
+	border-bottom: 225px solid #7aa3ce;
 }
 
 .mountains .snow {
@@ -226,7 +226,7 @@ body {
 
 hr {
 	border:0;
-	border-bottom:1px dashed #8ec1da;
+	border-bottom:1px dashed #749ac4;
 }
 
 form {
@@ -258,7 +258,7 @@ button {
 	border:0;
 	padding:10px;
 	border-radius:5px;
-	background-color:#c0deed;
+	background-color:#a2b8d0;
 	color:white;
 	margin:10px;
 	margin-bottom:0;
@@ -340,7 +340,7 @@ select option {
 }
 
 p.infotip {
-	color: #777;
+	color: #333;
 	margin-top: 10px;
 	margin-bottom: 10px;
 }
@@ -364,7 +364,7 @@ p.infotip .close:hover {
 }
 
 .splashPreamble {
-	color:#777;
+	color:#333;
 	font-size:110%;
 }
 
@@ -421,7 +421,7 @@ p.infotip .close:hover {
 
 .service .button {
 	position: relative;
-	background-color:#c0deed;
+	background-color:#a2b8d0;
 	text-align: center;
 	border-radius:5px;
 	z-index:3;
@@ -435,7 +435,7 @@ p.infotip .close:hover {
 	padding: 3px 5px;
 	padding-top:0;
 	color:white;
-	background-color:#8ec1da;
+	background-color:#749ac4;
 	border-bottom-left-radius:5px;
 	border-bottom-right-radius:5px;
 	overflow:hidden;
@@ -498,7 +498,7 @@ p.infotip .close:hover {
 	width: 0;
 	height: 0;
 	border:15px solid transparent;
-	border-top-color:#c0deed;
+	border-top-color:#a2b8d0;
 }
 
 .service .config h1 {
@@ -663,7 +663,7 @@ p.infotip .close:hover {
 .syncButton {
 	display: inline-block;
 	position:relative;
-	border:50px solid #c0deed;
+	border:50px solid #a2b8d0;
 	border-radius:50px;
 	height:0;
 	width:0;
@@ -692,7 +692,7 @@ p.infotip .close:hover {
 	height:20px;
 	left:50%;
 	position:absolute;
-	border:20px solid #8ec1da;
+	border:20px solid #749ac4;
 	border-radius:20px;
 	cursor: pointer;
 }
@@ -709,7 +709,7 @@ p.infotip .close:hover {
 .syncButtonAttachment {
 	vertical-align: middle;
 	display: inline-block;
-	background-color:#8ec1da;
+	background-color:#749ac4;
 	color:white;
 	padding:15px 15px;
 	border-radius:5px;
@@ -842,7 +842,7 @@ form.dropboxConfig #filename {
 	width:375px;
 	overflow-y:scroll;
 	overflow-x:hidden;
-	border:1px solid #8ec1da;
+	border:1px solid #749ac4;
 	background-color: #edf9ff;
 	border-radius:5px;
 }
@@ -889,7 +889,7 @@ form.dropboxConfig #filename {
 	background-color: #dbf3ff;
 }
 #folderList li a:active, #folderStack a:hover {
-	background-color: #c0deed;
+	background-color: #a2b8d0;
 }
 #folderList h2 {
 	text-align: center;
@@ -945,7 +945,7 @@ form.dropboxConfig #filename {
 }
 .settingsTable th
 {
-	background-color:#8ec1da;
+	background-color:#749ac4;
 	padding:5px 10px;
 	border-right:1px solid #749EB3;
 	text-align: center;
@@ -958,7 +958,7 @@ form.dropboxConfig #filename {
 
 .settingsTable td
 {
-	border-right:1px solid #c0deed;
+	border-right:1px solid #a2b8d0;
 	text-align: center;
 }
 .settingsTable td h3 {
@@ -971,7 +971,7 @@ form.dropboxConfig #filename {
 .settingsTable td:first-child
 {
 	text-align: left;
-	border-left:1px solid #c0deed;
+	border-left:1px solid #a2b8d0;
 	padding-left:10px;
 }
 
@@ -1026,7 +1026,7 @@ ul.itemized-clean li {
 }
 
 .fancyTable .headers, .fancyTable .footers {
-	background-color: #8ec1da;
+	background-color: #749ac4;
 }
 
 .fancyTable .headers {
@@ -1057,7 +1057,7 @@ ul.itemized-clean li {
 }
 
 .activitiesTable-empty-message {
-	color:#777;
+	color:#333;
 }
 
 .activitiesTable .service-col {
@@ -1091,7 +1091,7 @@ ul.itemized-clean li {
 
 .activitiesTable .date {
 	display: inline-block;
-	color:#777;
+	color:#333;
 	font-weight: bold;
 	padding:3px;
 	margin:5px;
@@ -1099,8 +1099,8 @@ ul.itemized-clean li {
 }
 
 .activitiesTable .tag {
-	color:#777;
-	border:1px solid #777;
+	color:#333;
+	border:1px solid #333;
 	padding: 3px;
 	border-radius: 3px;
 	margin:5px;
@@ -1172,7 +1172,7 @@ ul.itemized-clean li {
 
 .privacyTable .serviceCol {
 	color:white;
-	background-color:#8ec1da;
+	background-color:#749ac4;
 	padding:10px 0;
 	width:190px;
 	height:38px;
