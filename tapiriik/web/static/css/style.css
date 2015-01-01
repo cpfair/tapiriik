@@ -2,7 +2,7 @@
 
 body {
 	font-family:Arial;
-	background-color:#a2b8d0;
+	background-color:#394863;
 	height:100%;
 	width:100%;
 	margin:0;
@@ -178,6 +178,16 @@ body {
 	overflow:hidden;
 }
 
+.environs .background {
+	position:absolute;
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
+	background-image:url('../img/bg-sunset.svg');
+	background-size: auto 100%;
+}
+
 .mountains .mountain {
 	position:absolute;
 	bottom:0;
@@ -190,17 +200,17 @@ body {
 .mountains #a {
 	left:-200px;
 	border-width:300px;
-	border-bottom: 500px solid #749ac4;
+	border-bottom: 500px solid #2a47a4;
 }
 .mountains #c {
 	left:0;
 	border-width:200px;
-	border-bottom: 600px solid #8ba9ca;
+	border-bottom: 600px solid #4157a2;
 }
 .mountains #b {
 	left:70px;
 	border-width:300px;
-	border-bottom: 225px solid #7aa3ce;
+	border-bottom: 225px solid #2d4cac;
 }
 
 .mountains .snow {
