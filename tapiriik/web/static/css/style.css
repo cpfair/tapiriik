@@ -576,17 +576,11 @@ p.infotip .close:hover {
 
 .service .flowConfig table {
 	width:100%;
-	table-layout: fixed;
 
 }
 
 .service .flowConfig td, .service .flowConfig th {
 	text-align: left;
-}
-
-.service .flowConfig td:first-child, .service .flowConfig td:last-child,
-.service .flowConfig th:first-child, .service .flowConfig th:last-child {
-	width:25px;
 }
 
 .service .flowConfig button {
