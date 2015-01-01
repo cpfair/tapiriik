@@ -7,7 +7,6 @@ from tapiriik.settings import DIAG_AUTH_TOTP_SECRET, DIAG_AUTH_PASSWORD
 from datetime import datetime, timedelta
 from pymongo.read_preferences import ReadPreference
 from bson.objectid import ObjectId
-from ipware.ip import get_real_ip
 
 import copy
 
@@ -38,6 +37,7 @@ class User:
         del req.user
 
     def Create(creationIP=None):
+        from ipware.ip import get_real_ip
         uid = db.users.insert({"Created": datetime.utcnow(), "CreationIP": creationIP})  # will mongodb insert an almost empty doc, i.e. _id?
         return db.users.find_one({"_id": uid}, read_preference=ReadPreference.PRIMARY)
 
