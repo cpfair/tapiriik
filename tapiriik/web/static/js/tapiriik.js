@@ -305,7 +305,7 @@ tapiriik.OpenServiceConfigPanel = function(svcId){
 	tapiriik.DoDismissConfigPanel();
 	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>send activities to...</h2><table class=\"serviceTable\"></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
-		// if (i == svcId || !tapiriik.ServiceInfo[i].Connected || !tapiriik.ServiceInfo[i].ReceivesActivities) continue;
+		if (i == svcId || !tapiriik.ServiceInfo[i].Connected || !tapiriik.ServiceInfo[i].ReceivesActivities) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
 		var destRow = $("<tr><td><input type=\"checkbox\" class=\"to\" id=\"flow-to-" + i +"\"/></td><td><label for=\"flow-to-" + i + "\">" + tapiriik.ServiceInfo[i].DisplayName + "</label></td></tr>");
 		if (tapiriik.ServiceInfo[svcId].BlockFlowTo.indexOf(i) < 0) {
