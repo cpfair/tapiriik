@@ -119,10 +119,10 @@ class RideWithGPSService(ServiceBase):
             return [], [] # No activities
         for act in res:
             if "distance" not in act:
-                exclusions.append(APIExcludeActivity("No distance", activityId=act["id"], userException=UserException(UserExceptionType.Corrupt)))
+                exclusions.append(APIExcludeActivity("No distance", activity_id=act["id"], user_exception=UserException(UserExceptionType.Corrupt)))
                 continue
             if "duration" not in act or not act["duration"]:
-                exclusions.append(APIExcludeActivity("No duration", activityId=act["id"], userException=UserException(UserExceptionType.Corrupt)))
+                exclusions.append(APIExcludeActivity("No duration", activity_id=act["id"], user_exception=UserException(UserExceptionType.Corrupt)))
                 continue
             activity = UploadedActivity()
 
@@ -188,7 +188,7 @@ class RideWithGPSService(ServiceBase):
         try:
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
+            raise APIExcludeActivity("TCX parse error " + str(e), user_exception=UserException(UserExceptionType.Corrupt))
 
         return activity
 

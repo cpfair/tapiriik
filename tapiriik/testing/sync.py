@@ -209,7 +209,7 @@ class SyncTests(TapiriikTestCase):
 
         exclusionstore = {recA._id: {}}
         # regular
-        exc = APIExcludeActivity("Messag!e", activityId=3.14)
+        exc = APIExcludeActivity("Messag!e", activity_id=3.14)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
         self.assertTrue("3_14" in exclusionstore[recA._id])
         self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e")
@@ -220,7 +220,7 @@ class SyncTests(TapiriikTestCase):
         # updating
         act = TestTools.create_blank_activity(svcA)
         act.UID = "3_14"  # meh
-        exc = APIExcludeActivity("Messag!e2", activityId=42, permanent=False, activity=act)
+        exc = APIExcludeActivity("Messag!e2", activity_id=42, permanent=False, activity=act)
         Sync._accumulateExclusions(recA, exc, exclusionstore)
         self.assertTrue("3_14" in exclusionstore[recA._id])
         self.assertEqual(exclusionstore[recA._id]["3_14"]["Message"], "Messag!e2")
@@ -229,8 +229,8 @@ class SyncTests(TapiriikTestCase):
         self.assertEqual(exclusionstore[recA._id]["3_14"]["Permanent"], False)
 
         # multiple, retaining existing
-        exc2 = APIExcludeActivity("INM", activityId=13)
-        exc3 = APIExcludeActivity("FNIM", activityId=37)
+        exc2 = APIExcludeActivity("INM", activity_id=13)
+        exc3 = APIExcludeActivity("FNIM", activity_id=37)
         Sync._accumulateExclusions(recA, [exc2, exc3], exclusionstore)
         self.assertTrue("3_14" in exclusionstore[recA._id])
         self.assertTrue("37" in exclusionstore[recA._id])

@@ -160,7 +160,7 @@ class NikePlusService(ServiceBase):
                 activity.ServiceData = {"ID": act["activityId"]}
 
                 if act["status"] != "COMPLETE":
-                    exclusions.append(APIExcludeActivity("Not complete", activityId=act["activityId"], permanent=False, user_exception=UserException(UserExceptionType.LiveTracking)))
+                    exclusions.append(APIExcludeActivity("Not complete", activity_id=act["activityId"], permanent=False, user_exception=UserException(UserExceptionType.LiveTracking)))
                     continue
 
                 activity.StartTime = dateutil.parser.parse(act["startTime"]).replace(tzinfo=pytz.utc)

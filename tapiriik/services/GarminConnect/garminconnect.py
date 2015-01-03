@@ -440,7 +440,7 @@ class GarminConnectService(ServiceBase):
 
             if not lap.StartTime or not lap.EndTime:
                 # Garmin Connect is weird.
-                raise APIExcludeActivity("Activity lap has no BeginTimestamp or EndTimestamp", userException=UserException(UserExceptionType.Corrupt))
+                raise APIExcludeActivity("Activity lap has no BeginTimestamp or EndTimestamp", user_exception=UserException(UserExceptionType.Corrupt))
 
             applyStats(lap_data, lap.Stats)
             activity.Laps.append(lap)

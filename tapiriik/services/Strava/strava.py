@@ -134,7 +134,7 @@ class StravaService(ServiceBase):
                 activity.ServiceData = {"ActivityID": ride["id"], "Manual": ride["manual"]}
 
                 if ride["type"] not in self._reverseActivityTypeMappings:
-                    exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activityId=ride["id"], userException=UserException(UserExceptionType.Other)))
+                    exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride["type"], activity_id=ride["id"], user_exception=UserException(UserExceptionType.Other)))
                     logger.debug("\t\tUnknown activity")
                     continue
 

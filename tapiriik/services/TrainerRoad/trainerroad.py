@@ -137,7 +137,7 @@ class TrainerRoadService(ServiceBase):
         try:
             TCXIO.Parse(res.content, activity)
         except ValueError as e:
-            raise APIExcludeActivity("TCX parse error " + str(e), userException=UserException(UserExceptionType.Corrupt))
+            raise APIExcludeActivity("TCX parse error " + str(e), user_exception=UserException(UserExceptionType.Corrupt))
 
         return activity
 

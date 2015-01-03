@@ -780,7 +780,7 @@ class SynchronizationTask:
                 workingCopy.CheckSanity()
             except:
                 logger.info("\t\t...failed sanity check")
-                self._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy, userException=UserException(UserExceptionType.SanityError)))
+                self._accumulateExclusions(dlSvcRecord, APIExcludeActivity("Sanity check failed " + _formatExc(), activity=workingCopy, user_exception=UserException(UserExceptionType.SanityError)))
                 activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError))
                 continue
             else:

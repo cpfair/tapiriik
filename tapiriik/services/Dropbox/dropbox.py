@@ -175,9 +175,9 @@ class DropboxService(ServiceBase):
             else:
                 act = GPXIO.Parse(activityData)
         except ValueError as e:
-            raise APIExcludeActivity("Invalid GPX/TCX " + str(e), activityId=path, userException=UserException(UserExceptionType.Corrupt))
+            raise APIExcludeActivity("Invalid GPX/TCX " + str(e), activity_id=path, user_exception=UserException(UserExceptionType.Corrupt))
         except lxml.etree.XMLSyntaxError as e:
-            raise APIExcludeActivity("LXML parse error " + str(e), activityId=path, userException=UserException(UserExceptionType.Corrupt))
+            raise APIExcludeActivity("LXML parse error " + str(e), activity_id=path, user_exception=UserException(UserExceptionType.Corrupt))
         return act, metadata["rev"]
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
@@ -275,7 +275,7 @@ class DropboxService(ServiceBase):
         # activity might not be populated at this point, still possible to bail out
         if not activity.ServiceData["Tagged"]:
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
-                raise APIExcludeActivity("Activity untagged", permanent=False, activityId=activity.ServiceData["Path"], userException=UserException(UserExceptionType.Untagged))
+                raise APIExcludeActivity("Activity untagged", permanent=False, activity_id=activity.ServiceData["Path"], user_exception=UserException(UserExceptionType.Untagged))
 
         # activity might already be populated, if not download it again
         path = activity.ServiceData["Path"]
@@ -287,7 +287,7 @@ class DropboxService(ServiceBase):
 
         # Dropbox doesn't support stationary activities yet.
         if activity.CountTotalWaypoints() <= 1:
-            raise APIExcludeActivity("Too few waypoints", activityId=path, userException=UserException(UserExceptionType.Corrupt))
+            raise APIExcludeActivity("Too few waypoints", activity_id=path, user_exception=UserException(UserExceptionType.Corrupt))
 
         return activity
 

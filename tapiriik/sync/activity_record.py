@@ -65,7 +65,7 @@ class ActivityRecord:
     def MarkAsNotPresentOn(self, serviceRecord, userException):
         rec_id = serviceRecord.Service.ID if serviceRecord else None
         if rec_id not in self.NotPresentOnServices:
-            self.NotPresentOnServices[rec_id] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), userException=userException)
+            self.NotPresentOnServices[rec_id] = ActivityServicePrescence(listTimestamp=datetime.utcnow(), user_exception=userException)
         else:
             record = self.NotPresentOnServices[rec_id]
             record.ProcessedTimestamp = datetime.utcnow()
@@ -101,7 +101,7 @@ class ActivityRecord:
 
 
 class ActivityServicePrescence:
-    def __init__(self, listTimestamp=None, syncTimestamp=None, userException=None):
+    def __init__(self, listTimestamp=None, syncTimestamp=None, user_exception=None):
         self.ProcessedTimestamp = listTimestamp
         self.SynchronizedTimestamp = syncTimestamp
         # If these is a UserException then this object is actually indicating the abscence of an activity from a service.
