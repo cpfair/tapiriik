@@ -444,6 +444,7 @@ class ActivityStatistic:
 
     def convertValue(value, from_units, to_units):
         conversions = {
+			(ActivityStatisticUnit.Minutes, ActivityStatisticUnit.Seconds): 60,
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
             (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
             (ActivityStatisticUnit.KilometersPerSecond, ActivityStatisticUnit.KilometersPerHour): 60 * 60,
@@ -563,6 +564,7 @@ class ActivityStatistic:
 
 class ActivityStatisticUnit:
     Seconds = "s"
+    Minutes = "min"
     Milliseconds = "ms"
     Meters = "m"
     Kilometers = "km"
