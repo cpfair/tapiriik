@@ -206,12 +206,18 @@ class EndomondoService(ServiceBase):
 
     def SubscribeToPartialSyncTrigger(self, serviceRecord):
         resp = self._oauthSession(serviceRecord).put("https://api.endomondo.com/api/1/subscriptions/workout/%s" % serviceRecord.ExternalID)
-        assert resp.status_code in [200, 201] # Created, or already existed
+        try:
+            assert resp.status_code in [200, 201] # Created, or already existed
+        except:
+            raise APIException("Could not unsubscribe - received unknown result %s - %s" % (resp.status_code, resp.text))
         serviceRecord.SetPartialSyncTriggerSubscriptionState(True)
 
     def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
         resp = self._oauthSession(serviceRecord).delete("https://api.endomondo.com/api/1/subscriptions/workout/%s" % serviceRecord.ExternalID)
-        assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
+        try:
+            assert resp.status_code in [204, 500] # Docs say otherwise, but no-subscription-found is 500
+        except:
+            raise APIException("Could not unsubscribe - received unknown result %s - %s" % (resp.status_code, resp.text))
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
     def ExternalIDsForPartialSyncTrigger(self, req):
