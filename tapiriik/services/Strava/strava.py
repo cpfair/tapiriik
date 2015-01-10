@@ -315,7 +315,7 @@ class StravaService(ServiceBase):
                     raise APIException("Strava failed while processing activity - last status %s" % response.text)
                 upload_poll_wait = min(30, upload_poll_wait * 2)
             upload_id = response.json()["activity_id"]
-            cachedb.strava_upload_processing_durations.insert({"Duration": (datetime.now - upload_processing_start_time).total_seconds()})
+            cachedb.strava_upload_processing_durations.insert({"Duration": (datetime.now() - upload_processing_start_time).total_seconds()})
         else:
             localUploadTS = activity.StartTime.strftime("%Y-%m-%d %H:%M:%S")
             req = {
