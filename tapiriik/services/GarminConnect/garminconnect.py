@@ -125,10 +125,8 @@ class GarminConnectService(ServiceBase):
     def _rate_limit(self):
         import fcntl, struct, time
         min_period = 1  # I appear to been banned from Garmin Connect while determining this.
-        print("Waiting for lock")
         fcntl.flock(self._rate_lock,fcntl.LOCK_EX)
         try:
-            print("Have lock")
             self._rate_lock.seek(0)
             last_req_start = self._rate_lock.read()
             if not last_req_start:
@@ -142,8 +140,6 @@ class GarminConnectService(ServiceBase):
             self._rate_lock.seek(0)
             self._rate_lock.write(str(time.time()))
             self._rate_lock.flush()
-
-            print("Rate limited for %f" % wait_time)
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
