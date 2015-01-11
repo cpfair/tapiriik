@@ -11,19 +11,11 @@ import sys
 import subprocess
 import socket
 
-Run = True
 RecycleInterval = 2 # Time spent rebooting workers < time spent wrangling Python memory management.
 
 oldCwd = os.getcwd()
 WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
 os.chdir(oldCwd)
-
-def sync_interrupt(signal, frame):
-    global Run
-    Run = False
-
-signal.signal(signal.SIGINT, sync_interrupt)
-signal.signal(signal.SIGUSR2, sync_interrupt)
 
 def sync_heartbeat(state, user=None):
     db.sync_workers.update({"Process": os.getpid(), "Host": socket.gethostname()}, {"$set": {"Heartbeat": datetime.utcnow(), "State": state, "User": user}})
@@ -48,13 +40,7 @@ Sync.InitializeWorkerBindings()
 
 sync_heartbeat("ready")
 
-while Run:
-    cycleStart = datetime.utcnow() # Avoid having synchronization fall down during DST setback
-    processed_user_count = Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion)
-    RecycleInterval -= processed_user_count
-    if RecycleInterval <= 0:
-    	break
-    sync_heartbeat("idle")
+Sync.PerformGlobalSync(heartbeat_callback=sync_heartbeat, version=WorkerVersion, max_users=RecycleInterval)
 
 print("Sync worker shutting down cleanly")
 db.sync_workers.remove({"Process": os.getpid(), "Host": socket.gethostname()})
