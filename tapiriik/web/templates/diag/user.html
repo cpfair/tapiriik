@@ -17,6 +17,7 @@
 		<li><b>Prev Sync:</b> {{ diag_user.LastSynchronization|utctimesince }} ({{ diag_user.LastSynchronization }} UTC)</li>
 		<li><b>Prev Sync Ver:</b> <tt>{{ diag_user.LastSynchronizationVersion }}</tt> (current <tt>{{ config.siteVer }}</tt>)</li>
 		<li><b>Next Sync:</b> {{ diag_user.NextSynchronization }} UTC</li>
+		<li><b>Errors:</b> Non-blocking: {{ diag_user.NonblockingSyncErrorCount }} blocking: {{ diag_user.BlockingSyncErrorCount }} forcing exhaustive: {{ diag_user.ForcingExhaustiveSyncErrorCount }}</li>
 		<li><b>Queued At:</b> {{ diag_user.QueuedAt }} UTC</li>
 		<li><b>Queued Gen:</b> {{ diag_user.QueuedGeneration }}</li>
 		<li><b>Lock:</b> {{ diag_user.SynchronizationWorker }}</li>
