@@ -257,6 +257,8 @@ class VeloHeroService(ServiceBase):
         
         Maximum file size per file is 16 MB.
         """
+        
+        has_location = has_distance = has_speed = False
 
         for lap in activity.Laps:
             for wp in lap.Waypoints:
