@@ -622,13 +622,14 @@ class SynchronizationTask:
             logger.info("\tRetrieving list from " + svc.ID)
             svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
         except (ServiceException, ServiceWarning) as e:
-            # Special-case rate limiting errors thrown during listing
-            # Otherwise, things will melt down when the limit is reached
-            # (lots of users will hit this error, then be marked for full synchronization later)
-            # (but that's not really required)
-            # Though we don't want to play with things if this exception needs to take the place of an earlier, more significant one
-            if e.UserException and e.UserException.Type == UserExceptionType.RateLimited:
-                e.TriggerExhaustive = conn._id in self._hasTransientSyncErrors and self._hasTransientSyncErrors[conn._id]
+            # Historical note: there used to be a special case here where rate-limiting errors were fiddled with to trigger a full sync
+            # Wouldn't have been a problem except, elsewhere, exceptions are set as 'blocking' if they cause the retry counter to overfill
+            #  at which point those users would be indefinitely stuck doing full synchronizations, since those blocking exceptions aren't automatically cleared
+            #  so, now we don't set the special force-exhaustive flag that would stick around forever
+            # The original special case was there to ensure that, if there was a rate-limiting error while listing a service that previously had some other error,
+            #  ...the user would continue to receive full synchronizations until the rate limit error cleared (even after the old error was forgotten)
+            #  ...this being because of the fiddling mentioned above when the retry count was depleted - except that doesn't happen in the listing phase
+            #  so, it was never needed in the first place. I hope.
             self._syncErrors[conn._id].append(_packServiceException(SyncStep.List, e))
             self._excludeService(conn, e.UserException)
             if not _isWarning(e):
