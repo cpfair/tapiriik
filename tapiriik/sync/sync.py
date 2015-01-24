@@ -1012,8 +1012,8 @@ class SynchronizationTask:
 
                         try:
                             full_activity.CheckTimestampSanity()
-                        except ValueError:
-                            logger.warning("\t\t...failed timestamp sanity check")
+                        except ValueError as e:
+                            logger.warning("\t\t...failed timestamp sanity check - %s" % e)
                             # self._accumulateExclusions(full_activity.SourceConnection, APIExcludeActivity("Timestamp sanity check failed", activity=full_activity, permanent=True))
                             # activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.SanityError))
                             # raise ActivityShouldNotSynchronizeException()
