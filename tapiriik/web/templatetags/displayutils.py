@@ -34,7 +34,7 @@ def meters_per_day_to_km_per_hour(value):
 @register.filter(name="format_seconds_minutes")
 def meters_to_kms(value):
     try:
-        return round(value / 60, 1)
+        return round(value / 60, 3)
     except:
         return "NaN"
 
