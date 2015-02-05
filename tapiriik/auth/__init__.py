@@ -93,7 +93,7 @@ class User:
             "$or": [
                 {"Payments.Expiry": {"$gt": datetime.utcnow()}},
                 {"Promos.Expiry": {"$gt": datetime.utcnow()}},
-                {"Promos.Expiry": {"$eq": None, "$exists": True}}
+                {"Promos.Expiry": {"$type": 10, "$exists": True}} # === null
             ]
         }
 
