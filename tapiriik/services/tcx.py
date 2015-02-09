@@ -55,7 +55,10 @@ class TCXIO:
 
         xnotes = xact.find("tcx:Notes", namespaces=ns)
         if xnotes is not None:
-            act.Notes = xnotes.text
+            xnotes_lines = xnotes.splitlines()
+            act.Name = xnotes_lines[0]
+            if len(xnotes_lines)>1:
+                act.Notes = '\n'.join(xnotes.text[1:])
 
         xcreator = xact.find("tcx:Creator", namespaces=ns)
         if xcreator is not None and xcreator.attrib["{" + TCXIO.Namespaces["xsi"] + "}type"] == "Device_t":
@@ -257,8 +260,12 @@ class TCXIO:
 
         dateFormat = "%Y-%m-%dT%H:%M:%S.000Z"
 
-        if activity.Name is not None:
+        if activity.Name is not None and activity.Notes is not None:
+            etree.SubElement(act, "Notes").text = '\n'.join(activity.Name, activity.Notes)
+        elif activity.Name is not None:
             etree.SubElement(act, "Notes").text = activity.Name
+        elif activity.Notes is not None:
+            etree.SubElement(act, "Notes").text = '\n' + activity.Notes
 
         if activity.Type == ActivityType.Cycling:
             act.attrib["Sport"] = "Biking"
