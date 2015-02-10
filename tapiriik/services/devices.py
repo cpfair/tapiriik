@@ -119,3 +119,6 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Training Center", 20119)
 
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 620", 1623))
 
+# TomTom MySports Connect appears to produce these IDs for all of their
+# models of GPS watches (Runner, MultiSport, and Cardio versions of the same).
+DeviceIdentifier.AddIdentifierGroup(TCXDeviceIdentifier("TomTom GPS Sport Watch", 0), FITDeviceIdentifier(71, 0))
