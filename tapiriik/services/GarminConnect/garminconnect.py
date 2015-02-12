@@ -256,7 +256,8 @@ class GarminConnectService(ServiceBase):
         session = self._get_session(email=email, password=password)
         # TODO: http://connect.garmin.com/proxy/userprofile-service/socialProfile/ has the proper immutable user ID, not that anyone ever changes this one...
         self._rate_limit()
-        username = session.get("http://connect.garmin.com/user/username").json()["username"]
+        username_res = session.get("https://connect.garmin.com/modern/")
+        username = re.search(r'\\"fullName\\":\\"([^\\]+)', username_res.text).group(1)
         if not len(username):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
