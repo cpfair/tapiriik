@@ -90,7 +90,9 @@ tapiriik.Init = function(){
 				$.cookie("infotip_hide", $(this).parent().attr("id"));
 			}
 		});
-	})
+	});
+
+	setInterval(tapiriik.CycleLogo, 60 * 1000);
 };
 
 tapiriik.AddressChanged=function(){
