@@ -386,3 +386,8 @@ class EndomondoService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         pass
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        session = self._oauthSession(serviceRecord)
+        del_res = session.delete("https://api.endomondo.com/api/1/workouts/%s" % uploadId)
+        del_res.raise_for_status()

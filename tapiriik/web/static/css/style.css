@@ -933,7 +933,7 @@ form.dropboxConfig #filename {
 	color: #aaa;
 }
 
-.contactBlock {
+.contactBlock, .splitBlock {
 	display: inline-block;
 	width:49%;
 	vertical-align: top;

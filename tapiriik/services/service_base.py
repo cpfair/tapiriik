@@ -41,6 +41,10 @@ class ServiceBase:
     ReceivesStationaryActivities = True # Manually-entered?
     ReceivesNonGPSActivitiesWithOtherSensorData = True # Trainer-ish?
 
+
+    SupportsActivityDeletion = False
+
+
     # Causes synchronizations to be skipped until...
     #  - One is triggered (via IDs returned by ExternalIDsForPartialSyncTrigger or PollPartialSyncTrigger)
     #  - One is necessitated (non-partial sync, possibility of uploading new activities, etc)
@@ -77,6 +81,10 @@ class ServiceBase:
     def WebInit(self):
         pass
 
+    # Return an URL pointing directly to the specified activity on the remote site
+    def UserUploadedActivityURL(self, uploadId):
+        raise NotImplementedError
+
     def GenerateUserAuthorizationURL(self, level=None):
         raise NotImplementedError
 
@@ -92,7 +100,11 @@ class ServiceBase:
     def DownloadActivity(self, serviceRecord, activity):
         raise NotImplementedError
 
+    # Should return an uploadId for storage and potential use in DeleteActivity
     def UploadActivity(self, serviceRecord, activity):
+        raise NotImplementedError
+
+    def DeleteActivity(self, serviceRecord, uploadId):
         raise NotImplementedError
 
     def DeleteCachedData(self, serviceRecord):

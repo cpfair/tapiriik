@@ -1,0 +1,63 @@
+{% extends "site.html" %}
+{% load services %}
+{% load users %}
+{% load displayutils %}
+{% block title %}roll back activities{% endblock %}
+
+{% block content %}
+<h1>Roll back all activities uploaded by tapiriik</h1>
+<h1 style="color: red; text-decoration: underline;">READ ALL OF THIS.</h1>
+<div style="text-align: left">
+	<p>This page lets you roll back <u>all</u> activities tapiriik has uploaded to most of your accounts</p>
+	<p>To emphasize, performing a roll-back will <u>delete</u> <b>each</b> and <b>every</b> activity that tapiriik has <u>ever</u> uploaded, where possible. Gone with those activities will be any associated comments, pictures, kudos, KOMs, etc. - <b>all deleted <u>permanently</u></b>.</p>
+
+	<p>If you deleted any of the original copies after they were synced, <b>those activities will be lost <u>forever</u></b>.</p>
+
+	<p><b>No other activities will be deleted</b>. tapiriik tracks the unique identifiers assigned to each of its uploads by the remote service - it's these unique identifiers that are used to perform the rollback.</p>
+
+	<p><b>If the above sounds too scary</b>, you can use the dry-run option to retrieve a list of links to the activities which would be deleted. You can then manually delete the undesired activities.</p>
+</div>
+
+<div class="splitBlock">
+	<h2>These services support rollback</h2>
+	{% for provider in service_providers %}
+	{% if provider.SupportsActivityDeletion %}
+	<span style="white-space: nowrap">{{ provider.DisplayName }}</span> 
+	{% endif %}
+	{% endfor %}
+</div>
+<div class="splitBlock">
+	<h2>These services don't support rollback</h2>
+	{% for provider in service_providers %}
+	{% if not provider.SupportsActivityDeletion %}
+	<span style="white-space: nowrap">{{ provider.DisplayName }}</span> 
+	{% endif %}
+	{% endfor %}
+	<p><b>Why not?</b> Not all services offer a method to automatically delete activities. You can still manually delete activities on these services using the activity list below.</p>
+</div>
+
+<div ng-controller="RollbackDashboardController">
+	<button ng-show="step == 'pre'" ng-click="fetchList()">Step 1: Retrieve list of activities (will NOT delete anything)</button>
+	<h2 ng-show="step == 'fetch-list'">Fetching list (it'll take a bit)</h2>
+	<div ng-show="step == 'list'">
+		<h1>tapiriik-originating activities:</h1>
+		<p>(if some activities aren't listed, make sure you're connected to all the accounts you wish to roll back. Roll-back is not available for activities uploaded prior to January 18th 2014)</p>
+		<div ng-repeat="(svc, uploads) in task.PendingDeletions" style="text-align: left">
+			<h3>{[ DisplayNameByService(svc) ]}</h3>
+			<div ng-repeat="upload in uploads track by $index">
+				<tt>{[ svc ]}-{[ upload ]}</tt><span ng-show="task.ActivityURLs[svc][upload]"> <a ng-href="{[ task.ActivityURLs[svc][upload] ]}">See on site &raquo;</a></span>
+				<span ng-show="task.DeletionStatus[svc][upload] !== undefined">
+					<b>{[ task.DeletionStatus[svc][upload] ? "deleted" : "delete failed" ]}</b>
+				</span>
+			</div>
+		</div>
+
+		<button ng-show="executing == false" class="delete" ng-click="execute()">ATTEMPT DELETION OF THE ABOVE ACTIVITIES</button>
+		<div ng-show="executing == true">
+			<h2>Rollback scheduled - check list above for status</h2>
+			<p>Closing your browser will <b>not</b> cancel the process - however you must remain on this page to receive status updates.</p>
+			<p>Deletions may fail if the activity was already deleted, or if tapiriik no longer has access to your account. You can use this tool as many times as required.</p>
+		</div>
+	</div>
+</div>
+{% endblock %}

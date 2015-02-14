@@ -338,3 +338,8 @@ class NikePlusService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         # nothing cached...
         pass
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        session = self._get_session(serviceRecord)
+        del_res = session.delete("https://api.nike.com/v1/me/sport/activities/%d" % uploadId)
+        del_res.raise_for_status()

@@ -305,3 +305,9 @@ class RunKeeperService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         cachedb.rk_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+
+    def DeleteActivity(self, serviceRecord, uri):
+        headers = self._apiHeaders(serviceRecord)
+        del_res = requests.delete("https://api.runkeeper.com/%s" % uri, headers=headers)
+        del_res.raise_for_status()
+

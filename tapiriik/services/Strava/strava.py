@@ -31,6 +31,8 @@ class StravaService(ServiceBase):
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
+    SupportsActivityDeletion = True
+
     # For mapping common->Strava; no ambiguity in Strava activity type
     _activityTypeMappings = {
         ActivityType.Cycling: "Ride",
@@ -69,6 +71,9 @@ class StravaService(ServiceBase):
     SupportedActivities = list(_activityTypeMappings.keys())
 
     GlobalRateLimits = STRAVA_RATE_LIMITS
+
+    def UserUploadedActivityURL(self, uploadId):
+        return "https://www.strava.com/activities/%d" % uploadId
 
     def WebInit(self):
         params = {'scope':'write view_private',
@@ -341,3 +346,8 @@ class StravaService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         cachedb.strava_cache.remove({"Owner": serviceRecord.ExternalID})
         cachedb.strava_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        headers = self._apiHeaders(serviceRecord)
+        del_res = requests.delete("https://www.strava.com/api/v3/activities/%d" % uploadId, headers=headers)
+        del_res.raise_for_status()

@@ -82,6 +82,8 @@ class GarminConnectService(ServiceBase):
 
     SupportsHR = SupportsCadence = True
 
+    SupportsActivityDeletion = True
+
     _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
 
     _unitMap = {
@@ -241,6 +243,8 @@ class GarminConnectService(ServiceBase):
             raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
+    def UserUploadedActivityURL(self, uploadId):
+        return "https://connect.garmin.com/modern/activity/%d" % uploadId
 
     def _resolveActivityType(self, act_type):
         # Mostly there are two levels of a hierarchy, so we don't really need this as the parent is included in the listing.
@@ -712,3 +716,9 @@ class GarminConnectService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         # nothing cached...
         pass
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        session = self._get_session(record=serviceRecord)
+        self._rate_limit()
+        del_res = session.delete("https://connect.garmin.com/modern/proxy/activity-service/activity/%d" % uploadId)
+        del_res.raise_for_status()

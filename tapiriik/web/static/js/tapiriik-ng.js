@@ -125,6 +125,39 @@ function RecentSyncActivityController($scope, $http) {
   update_recent_activity();
 };
 
+function RollbackDashboardController($scope, $http) {
+  $scope.step = 'pre';
+  $scope.executing = false;
+
+  $scope.DisplayNameByService = function(svcId){ return tapiriik.ServiceInfo[svcId].DisplayName; };
+
+  $scope.fetchList = function(){
+    $scope.step = 'fetch-list';
+    $http.get("/account/rollback/").success(function(task){
+      $scope.task = task;
+      $scope.step = 'list';
+    });
+  };
+
+  $scope.execute = function() {
+    var confirm_coefficient = Math.floor(Math.random() * 11);
+    var confirm_base = $scope.task.PendingDeletionCount;
+    var confirm_res = prompt("Just to confirm, what's the value of " + confirm_base + " (the number of activities about to be deleted) multiplied by " + confirm_coefficient + "? LAST CHANCE - ONCE THE PROCESS BEGINS IT CANNOT BE CANCELLED.");
+    if (parseInt(confirm_res) === confirm_base * confirm_coefficient) {
+      $http.post("/account/rollback/" + $scope.task._id).success(function(task) {
+        $scope.executing = true;
+        setInterval(function(){
+          $http.get("/account/rollback/" + $scope.task._id).success(function(task){
+            $scope.task = task;
+          });
+        }, 5000);
+      });
+    } else {
+      alert("Rollback aborted - no activities will be deleted.");
+    }
+  };
+};
+
 angular.module('tapiriik', []).config(function($interpolateProvider) {
   $interpolateProvider.startSymbol('{[').endSymbol(']}');
 }).run(function($rootScope, $http) {

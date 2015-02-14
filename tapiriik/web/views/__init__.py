@@ -9,4 +9,5 @@ from .payments import *
 from .settings import *
 from .ab import *
 from .activities_dashboard import *
+from .rollback import *
 # why did I do it this way? should make it less bad

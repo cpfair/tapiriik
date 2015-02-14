@@ -25,6 +25,11 @@ urlpatterns = patterns('',
     url(r'^account/settz$', 'tapiriik.web.views.account_settimezone', {}, name='account_set_timezone', ),
     url(r'^account/configure$', 'tapiriik.web.views.account_setconfig', {}, name='account_set_config', ),
 
+    url(r'^account/rollback/?$', 'tapiriik.web.views.account_rollback_initiate', {}, name='account_rollback_initiate', ),
+    url(r'^account/rollback/(?P<task_id>.+)$', 'tapiriik.web.views.account_rollback_status', {}, name='account_rollback_status', ),
+
+    url(r'^rollback$', 'tapiriik.web.views.rollback_dashboard', {}, name='rollback_dashboard', ),
+
     url(r'^configure/save/(?P<service>.+)?$', 'tapiriik.web.views.config.config_save', {}, name='config_save', ),
     url(r'^configure/dropbox$', 'tapiriik.web.views.config.dropbox', {}, name='dropbox_config', ),
     url(r'^configure/flow/save/(?P<service>.+)?$', 'tapiriik.web.views.config.config_flow_save', {}, name='config_flow_save', ),
