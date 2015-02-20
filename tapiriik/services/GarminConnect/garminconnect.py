@@ -218,8 +218,10 @@ class GarminConnectService(ServiceBase):
             self._rate_limit()
             gcRedeemResp = session.get(gcRedeemResp.headers["location"], allow_redirects=False)
 
-            if (current_redirect_count < expected_redirect_count and gcRedeemResp.status_code != 302) or (current_redirect_count >= expected_redirect_count and gcRedeemResp.status_code != 200):
+            if current_redirect_count >= expected_redirect_count and gcRedeemResp.status_code != 200:
                 raise APIException("GC redeem %d/%d error %s %s" % (current_redirect_count, expected_redirect_count, gcRedeemResp.status_code, gcRedeemResp.text))
+            if gcRedeemResp.status_code == 200:
+                break
             current_redirect_count += 1
             if current_redirect_count > expected_redirect_count:
                 break
