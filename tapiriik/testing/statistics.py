@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from tapiriik.testing.testtools import TapiriikTestCase
 
 from tapiriik.services.interchange import ActivityStatistic, ActivityStatisticUnit

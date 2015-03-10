@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from tapiriik.services import Service, ServiceRecord, ServiceBase
-from tapiriik.services.interchange import Activity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location
+from tapiriik.services.interchange import Activity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Lap, Location
 
 from datetime import datetime, timedelta
 import random
@@ -30,31 +30,43 @@ class TapiriikTestCase(TestCase):
             self.assertEqual(a.Type, b.Type)
             self.assertEqual(a.Stats.Distance, b.Stats.Distance)
             self.assertEqual(a.Name, b.Name)
-            self.assertEqual(len(a.Waypoints), len(b.Waypoints))
-            for idx in range(0, len(a.Waypoints) - 1):
-                self.assertEqual(a.Waypoints[idx].Timestamp.astimezone(pytz.utc), b.Waypoints[idx].Timestamp.astimezone(pytz.utc))
-                self.assertEqual(a.Waypoints[idx].Location.Latitude, b.Waypoints[idx].Location.Latitude)
-                self.assertEqual(a.Waypoints[idx].Location.Longitude, b.Waypoints[idx].Location.Longitude)
-                self.assertEqual(a.Waypoints[idx].Location.Altitude, b.Waypoints[idx].Location.Altitude)
-                self.assertEqual(a.Waypoints[idx].Type, b.Waypoints[idx].Type)
-                self.assertEqual(a.Waypoints[idx].HR, b.Waypoints[idx].HR)
-                self.assertEqual(a.Waypoints[idx].Calories, b.Waypoints[idx].Calories)
-                self.assertEqual(a.Waypoints[idx].Power, b.Waypoints[idx].Power)
-                self.assertEqual(a.Waypoints[idx].Cadence, b.Waypoints[idx].Cadence)
-                self.assertEqual(a.Waypoints[idx].Temp, b.Waypoints[idx].Temp)
+            self.assertLapsListsEqual(a.Laps, b.Laps)
 
-                self.assertEqual(a.Waypoints[idx].Location, b.Waypoints[idx].Location)
-                self.assertEqual(a.Waypoints[idx], b.Waypoints[idx])
-            self.assertEqual(a, b)
+    def assertLapsListsEqual(self, lapsa, lapsb):
+        self.assertEqual(len(lapsa), len(lapsb))
+        for idx in range(len(lapsa)):
+            la = lapsa[idx]
+            lb = lapsb[idx]
+            self.assertLapsEqual(la, lb)
+
+    def assertLapsEqual(self, la, lb):
+        self.assertEqual(la.StartTime, lb.StartTime)
+        self.assertEqual(la.EndTime, lb.EndTime)
+        self.assertEqual(len(la.Waypoints), len(lb.Waypoints))
+        for idx in range(len(la.Waypoints)):
+            wpa = la.Waypoints[idx]
+            wpb = lb.Waypoints[idx]
+            self.assertEqual(wpa.Timestamp.astimezone(pytz.utc), wpb.Timestamp.astimezone(pytz.utc))
+            self.assertEqual(wpa.Location.Latitude, wpb.Location.Latitude)
+            self.assertEqual(wpa.Location.Longitude, wpb.Location.Longitude)
+            self.assertEqual(wpa.Location.Altitude, wpb.Location.Altitude)
+            self.assertEqual(wpa.Type, wpb.Type)
+            self.assertEqual(wpa.HR, wpb.HR)
+            self.assertEqual(wpa.Calories, wpb.Calories)
+            self.assertEqual(wpa.Power, wpb.Power)
+            self.assertEqual(wpa.Cadence, wpb.Cadence)
+            self.assertEqual(wpa.Temp, wpb.Temp)
+            self.assertEqual(wpa.Location, wpb.Location)
+            self.assertEqual(wpa, wpb)
 
 
 class TestTools:
     def create_mock_user():
-        db.test.insert({"asd":"asdd"})
+        db.test.insert({"asd": "asdd"})
         return {"_id": str(random.randint(1, 1000))}
 
     def create_mock_svc_record(svc):
-        return ServiceRecord({"Service": svc.ID, "_id": str(random.randint(1, 1000)), "ExternalID": str(random.randint(1,1000))})
+        return ServiceRecord({"Service": svc.ID, "_id": str(random.randint(1, 1000)), "ExternalID": str(random.randint(1, 1000))})
 
     def create_mock_servicedata(svc, record=None):
         return {"ActivityID": random.randint(1, 1000), "Connection": record}
@@ -74,7 +86,7 @@ class TestTools:
         act.CalculateUID()
         return act
 
-    def create_random_activity(svc=None, actType=ActivityType.Other, tz=False, record=None):
+    def create_random_activity(svc=None, actType=ActivityType.Other, tz=False, record=None, withPauses=True, withLaps=True):
         ''' creates completely random activity with valid waypoints and data '''
         act = TestTools.create_blank_activity(svc, actType, record=record)
 
@@ -84,7 +96,7 @@ class TestTools:
         elif tz is not False:
             act.TZ = tz
 
-        if len(act.Waypoints) > 0:
+        if act.CountTotalWaypoints() > 0:
             raise ValueError("Waypoint list already populated")
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
         act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
@@ -99,6 +111,8 @@ class TestTools:
         paused = False
         waypointTime = act.StartTime
         backToBackPauses = False
+        act.Laps = []
+        lap = Lap(startTime=act.StartTime)
         while waypointTime < act.EndTime:
             wp = Waypoint()
             if waypointTime == act.StartTime:
@@ -119,7 +133,7 @@ class TestTools:
             if svc.SupportsTemp:
                 wp.Temp = float(random.randint(0, 100))
 
-            if (random.randint(40, 50) == 42 or backToBackPauses) and not paused:  # pause quite often
+            if withPauses and (random.randint(40, 50) == 42 or backToBackPauses) and not paused:  # pause quite often
                 wp.Type = WaypointType.Pause
                 paused = True
 
@@ -130,12 +144,25 @@ class TestTools:
 
             waypointTime += timedelta(0, int(random.random() + 9.5))  # 10ish seconds
 
+            lap.Waypoints.append(wp)
             if waypointTime > act.EndTime:
                 wp.Timestamp = act.EndTime
                 wp.Type = WaypointType.End
-            act.Waypoints.append(wp)
-        if len(act.Waypoints) == 0:
+            elif withLaps and wp.Timestamp < act.EndTime and random.randint(40, 60) == 42:
+                # occasionally start new laps
+                lap.EndTime = wp.Timestamp
+                act.Laps.append(lap)
+                lap = Lap(startTime=waypointTime)
+
+        # Final lap
+        lap.EndTime = act.EndTime
+        act.Laps.append(lap)
+        if act.CountTotalWaypoints() == 0:
             raise ValueError("No waypoints populated")
+
+        act.CalculateUID()
+        act.EnsureTZ()
+
         return act
 
     def create_mock_service(id):
