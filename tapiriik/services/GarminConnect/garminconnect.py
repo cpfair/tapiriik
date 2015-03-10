@@ -114,7 +114,7 @@ class GarminConnectService(ServiceBase):
     def __init__(self):
         cachedHierarchy = cachedb.gc_type_hierarchy.find_one()
         if not cachedHierarchy:
-            rawHierarchy = requests.get("https://connect.garmin.com/modern/proxy/activity-service-1.2/json/activity_types", headers=self._obligatory_headers).text
+            rawHierarchy = requests.get("https://connect.garmin.com/proxy/activity-service-1.2/json/activity_types", headers=self._obligatory_headers).text
             self._activityHierarchy = json.loads(rawHierarchy)["dictionary"]
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
