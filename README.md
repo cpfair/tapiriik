@@ -1,6 +1,7 @@
 tapiriik keeps your fitness in sync
 ========
 
+[![Build Status](https://travis-ci.org/cpfair/tapiriik.svg?branch=master)](https://travis-ci.org/cpfair/tapiriik)
 
 ## Looking to run tapiriik locally?
 
