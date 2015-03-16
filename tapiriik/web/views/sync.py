@@ -94,6 +94,7 @@ def sync_clear_errorgroup(req, service, group):
 @csrf_exempt
 @require_POST
 def sync_trigger_partial_sync_callback(req, service):
+    from sync_remote_triggers import trigger_remote
     svc = Service.FromID(service)
     affected_connection_external_ids = svc.ExternalIDsForPartialSyncTrigger(req)
 
