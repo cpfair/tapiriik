@@ -40,7 +40,7 @@ class RideWithGPSService(ServiceBase):
 
     SupportsHR = SupportsCadence = True
 
-    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
+    _sessionCache = SessionCache("rwgps", lifetime=timedelta(minutes=30), freshen_on_get=True)
 
     def _add_auth_params(self, params=None, record=None):
         """

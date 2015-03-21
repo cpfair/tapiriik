@@ -84,7 +84,7 @@ class GarminConnectService(ServiceBase):
 
     SupportsActivityDeletion = True
 
-    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
+    _sessionCache = SessionCache("garminconnect", lifetime=timedelta(minutes=120), freshen_on_get=True)
 
     _unitMap = {
         "mph": ActivityStatisticUnit.MilesPerHour,

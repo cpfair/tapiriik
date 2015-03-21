@@ -52,7 +52,7 @@ class MotivatoService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.values())
 
-    _sessionCache = SessionCache(lifetime=timedelta(minutes=30), freshen_on_get=True)
+    _sessionCache = SessionCache("motivato", lifetime=timedelta(minutes=30), freshen_on_get=True)
     _obligatory_headers = {
         "Referer": "https://sync.tapiriik.com"
     }

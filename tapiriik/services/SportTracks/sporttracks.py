@@ -137,7 +137,7 @@ class SportTracksService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.keys())
 
-    _tokenCache = SessionCache(lifetime=timedelta(minutes=115), freshen_on_get=False)
+    _tokenCache = SessionCache("sporttracks", lifetime=timedelta(minutes=115), freshen_on_get=False)
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://api.sporttracks.mobi/oauth2/authorize?response_type=code&client_id=%s&state=mobi_api" % SPORTTRACKS_CLIENT_ID

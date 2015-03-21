@@ -72,7 +72,7 @@ class NikePlusService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.values())
 
-    _sessionCache = SessionCache(lifetime=timedelta(minutes=45), freshen_on_get=False)
+    _sessionCache = SessionCache("nikeplus", lifetime=timedelta(minutes=45), freshen_on_get=False)
 
     _obligatoryHeaders = {
         "User-Agent": "NPConnect",
