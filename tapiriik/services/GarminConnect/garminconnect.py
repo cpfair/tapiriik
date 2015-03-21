@@ -149,6 +149,7 @@ class GarminConnectService(ServiceBase):
         from tapiriik.auth.credential_storage import CredentialStore
         cached = self._sessionCache.Get(record.ExternalID if record else email)
         if cached and not skip_cache:
+                logger.debug("Using cached credential")
                 return cached
         if record:
             #  longing for C style overloads...
@@ -274,6 +275,7 @@ class GarminConnectService(ServiceBase):
                 res = session.get("https://connect.garmin.com/modern/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz})
                 # It's 10 PM and I have no clue why it's throwing these errors, maybe we just need to log in again?
                 if res.status_code == 403 and not retried_auth:
+                    logger.debug("Retrying auth w/o cache")
                     retried_auth = True
                     session = self._get_session(serviceRecord, skip_cache=True)
                 else:
