@@ -221,7 +221,7 @@ class GarminConnectService(ServiceBase):
 
             if current_redirect_count >= expected_redirect_count and gcRedeemResp.status_code != 200:
                 raise APIException("GC redeem %d/%d error %s %s" % (current_redirect_count, expected_redirect_count, gcRedeemResp.status_code, gcRedeemResp.text))
-            if gcRedeemResp.status_code == 200:
+            if gcRedeemResp.status_code == 200 or gcRedeemResp.status_code == 404:
                 break
             current_redirect_count += 1
             if current_redirect_count > expected_redirect_count:
@@ -238,7 +238,7 @@ class GarminConnectService(ServiceBase):
 
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        session = self._get_session(email=email, password=password)
+        session = self._get_session(email=email, password=password, skip_cache=True)
         # TODO: http://connect.garmin.com/proxy/userprofile-service/socialProfile/ has the proper immutable user ID, not that anyone ever changes this one...
         self._rate_limit()
         username = session.get("http://connect.garmin.com/user/username").json()["username"]
