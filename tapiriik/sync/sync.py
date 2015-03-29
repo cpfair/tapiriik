@@ -384,12 +384,12 @@ class SynchronizationTask:
         for conn in self._serviceConnections:
             if not conn.Service.ReceivesActivities:
                 # Nope.
-                pass
+                continue
             if conn._id in activity.ServiceDataCollection:
                 # The activity record is updated earlier for these, blegh.
-                pass
+                continue
             elif hasattr(conn, "SynchronizedActivities") and len([x for x in activity.UIDs if x in conn.SynchronizedActivities]):
-                pass
+                continue
             elif activity.Type not in conn.Service.SupportedActivities:
                 logger.debug("\t...%s doesn't support type %s" % (conn.Service.ID, activity.Type))
                 activity.Record.MarkAsNotPresentOn(conn, UserException(UserExceptionType.TypeUnsupported))
