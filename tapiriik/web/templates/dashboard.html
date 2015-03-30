@@ -31,10 +31,8 @@
 		<div class="syncButtonBlock">
 			<div class="syncButtonAttachment left">Queueing to Synchronize</div><div class="syncButtonWrap"><a class="syncButton">Synchronize Now<div class="syncButtonIcon"></div></a><a href="#/settings" class="syncSettingsNubbin"><span class="sr">Synchronization Settings</span><div class="syncSettingsNubbinIcon"></div></a></div><div class="syncButtonAttachment right">Attached info 10%</div>
 		</div>
-		<br/>
 		{% include "settings-block.html" %}
 		{% include "recent-sync-activity-block.html" %}
-		<br/>
 	{% endif %}
 	{% if user.NonblockingSyncErrorCount > 0 %}
 		<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>

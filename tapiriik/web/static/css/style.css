@@ -654,7 +654,8 @@ p.infotip .close:hover {
 }
 
 .syncButtonBlock {
-	margin:30px 0;
+	margin:20px 0;
+	padding-bottom: 30px;
 	opacity: 0;
 }
 
@@ -780,7 +781,7 @@ to {transform: rotate(0deg);}
 	width:50%;
 	left:25%;
 	border-radius: 5px;
-	margin:10px;
+	margin:20px 0;
 }
 
 .userException p {
@@ -1165,6 +1166,7 @@ ul.itemized-clean li {
 
 .recentActivitiesTable {
 	width: 50%;
+	margin: 20px 0;
 	margin-left: 25%;
 }
 
@@ -1231,6 +1233,10 @@ ul.itemized-clean li {
 .privacyPage .explanation .header span {
 	display:block;
 	font-size:70%;
+}
+
+.syncSettingsBlock {
+	margin: 20px 0;
 }
 
 .syncSettingsCloze {
