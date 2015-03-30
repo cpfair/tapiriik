@@ -313,6 +313,7 @@ button.delete:active {
 }
 
 form .error {
+	text-align: center;
 	display:none;
 	color:#900;
 	border-bottom:1px dotted #900;

@@ -266,7 +266,7 @@ tapiriik.OpenDeauthDialog = function(svcId){
 };
 
 tapiriik.CreateDirectLoginForm = function(svcId){
-	var form = $("<form novalidate><div class=\"error\">There was a problem logging you in</div><label for=\"email\">Email/Username</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><span class=\"persist-controls\"><input type=\"checkbox\" id=\"persist\"/><label for=\"persist\">Save these details</label><br/></span><center><button type=\"submit\" >Log in</button></center></form>");
+	var form = $("<form novalidate><div class=\"error\" id=\"login-fail\">There was a problem logging you in</div><div class=\"error\" id=\"login-error\">There was a system error :(</div><label for=\"email\">Email/Username</label><input autofocus type=\"email\" id=\"email\"/><label for=\"password\">Password</label><input type=\"password\" id=\"password\"><br/><span class=\"persist-controls\"><input type=\"checkbox\" id=\"persist\"/><label for=\"persist\">Save these details</label><br/></span><center><button type=\"submit\" >Log in</button></center></form>");
 	if (!tapiriik.ServiceInfo[svcId].UsesExtendedAuth){
 		$(".persist-controls",form).hide();
 	}
@@ -284,11 +284,15 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 					$().redirect("trainingpeaks_premium", {personId: data.result.extra, username:$("#email",form).val(), password:$("#password",form).val()});
 					return;
 				}
-				$(".error",form).show();
+				$(".error", form).hide();
+				$("#login-fail", form).show();
 				$("button",form).removeClass("disabled");
 				loginPending = false;
 			}
-		}, "json");
+		}, "json").fail(function(){
+			$(".error", form).hide();
+			$("#login-error", form).show();
+		});
 		return false;
 	});
 	return form;
