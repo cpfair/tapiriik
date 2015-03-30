@@ -37,25 +37,23 @@
 			<a href="{% url 'activities_dashboard' %}" style="color:#aaa; font-size:80%;">Some activities could not be synchronized.</a><br/>
 		{% endif %}
 
-		{% include "recent-sync-activity-block.html" %}
-	{% endif %}
-
-	{% if user.ConnectedServices|length > 1 %}
 		{% if user|has_active_payment %}
 		{% else %}
 			{% include "payment.html" %}
 		{% endif %}
-	{% endif %}
 
-	{% for connection in user.ConnectedServices|svc_populate_conns %}
-		{% with svc=connection.Service %}
-			{% for error in connection.SyncErrors %}
-				{% if error.UserException.InterventionRequired and error.Block %}
-					{% include "service-blockingexception.html" with provider=svc connection=connection exception=error %}
-				{% endif %}
-			{% endfor %}
-		{% endwith %}
-	{% endfor %}
+		{% for connection in user.ConnectedServices|svc_populate_conns %}
+			{% with svc=connection.Service %}
+				{% for error in connection.SyncErrors %}
+					{% if error.UserException.InterventionRequired and error.Block %}
+						{% include "service-blockingexception.html" with provider=svc connection=connection exception=error %}
+					{% endif %}
+				{% endfor %}
+			{% endwith %}
+		{% endfor %}
+
+		{% include "recent-sync-activity-block.html" %}
+	{% endif %}
 
 	{% for provider in user.ConnectedServices|svc_providers_except %}
 		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
