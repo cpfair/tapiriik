@@ -260,13 +260,6 @@ class TCXIO:
 
         dateFormat = "%Y-%m-%dT%H:%M:%S.000Z"
 
-        if activity.Name is not None and activity.Notes is not None:
-            etree.SubElement(act, "Notes").text = '\n'.join((activity.Name, activity.Notes))
-        elif activity.Name is not None:
-            etree.SubElement(act, "Notes").text = activity.Name
-        elif activity.Notes is not None:
-            etree.SubElement(act, "Notes").text = '\n' + activity.Notes
-
         if activity.Type == ActivityType.Cycling:
             act.attrib["Sport"] = "Biking"
         elif activity.Type == ActivityType.Running:
@@ -375,6 +368,13 @@ class TCXIO:
                 exts = xlap.find("Extensions")
                 if exts is not None:
                     track.addnext(exts)
+
+        if activity.Name is not None and activity.Notes is not None:
+            etree.SubElement(act, "Notes").text = '\n'.join((activity.Name, activity.Notes))
+        elif activity.Name is not None:
+            etree.SubElement(act, "Notes").text = activity.Name
+        elif activity.Notes is not None:
+            etree.SubElement(act, "Notes").text = '\n' + activity.Notes
 
         if activity.Device and activity.Device.Identifier:
             devId = DeviceIdentifier.FindEquivalentIdentifierOfType(DeviceIdentifierType.TCX, activity.Device.Identifier)
