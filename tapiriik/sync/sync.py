@@ -916,9 +916,11 @@ class SynchronizationTask:
                                 logger.debug(" %s since upload" % time_past)
                                 if time_remaining > timedelta(0):
                                     activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.Deferred))
-                                    next_sync = datetime.utcnow() + time_remaining
-                                    # Reschedule them so this activity syncs immediately on schedule
-                                    sync_result.ForceScheduleNextSyncOnOrBefore(next_sync)
+                                    # Only reschedule if it won't slow down their auto-sync timing
+                                    if time_remaining < (Sync.SyncInterval + Sync.SyncIntervalJitter):
+                                        next_sync = datetime.utcnow() + time_remaining
+                                        # Reschedule them so this activity syncs immediately on schedule
+                                        sync_result.ForceScheduleNextSyncOnOrBefore(next_sync)
 
                                     logger.info("\t\t...is delayed for %s (out of %s)" % (time_remaining, timedelta(seconds=self._user_config["sync_upload_delay"])))
                                     # We need to ensure we check these again when the sync re-runs
