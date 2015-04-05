@@ -1063,7 +1063,8 @@ class SynchronizationTask:
 
                             db.sync_stats.update({"ActivityID": activity.UID}, {"$addToSet": {"DestinationServices": destSvc.ID, "SourceServices": activitySource.ID}, "$set": {"Distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value, "Timestamp": datetime.utcnow()}}, upsert=True)
 
-                        self._pushRecentSyncActivity(full_activity, successful_destination_service_ids)
+                        if len(successful_destination_service_ids):
+                            self._pushRecentSyncActivity(full_activity, successful_destination_service_ids)
                         del full_activity
                         processedActivities += 1
                     except ActivityShouldNotSynchronizeException:
