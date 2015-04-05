@@ -54,7 +54,7 @@ def _isWarning(exc):
 # It's practically an ORM!
 
 def _packServiceException(step, e):
-    res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope, "TriggerExhaustive": e.TriggerExhaustive}
+    res = {"Step": step, "Message": e.Message + "\n" + _formatExc(), "Block": e.Block, "Scope": e.Scope, "TriggerExhaustive": e.TriggerExhaustive, "Timestamp": datetime.utcnow()}
     if e.UserException:
         res["UserException"] = _packUserException(e.UserException)
     return res
