@@ -122,7 +122,10 @@ class StravaService(ServiceBase):
 
             earliestDate = None
 
-            reqdata = resp.json()
+            try:
+                reqdata = resp.json()
+            except ValueError:
+                raise APIException("Failed parsing strava list response %s - %s" % (resp.status_code, resp.text))
 
             if not len(reqdata):
                 break  # No more activities to see
