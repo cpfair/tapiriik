@@ -196,7 +196,7 @@ class GarminConnectService(ServiceBase):
         data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
 
         ssoResp = session.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False)
-        if ssoResp.status_code != 200:
+        if ssoResp.status_code != 200 or "temporarily unavailable" in ssoResp.text:
             raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
         ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
