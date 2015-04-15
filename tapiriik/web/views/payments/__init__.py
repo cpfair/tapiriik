@@ -39,7 +39,8 @@ def payments_ipn(req):
     user = User.Get(req.POST["custom"])
     User.AssociatePayment(user, payment)
 
-    payments_send_confirmation(req, req.POST["payer_email"])
+    if "_id" not in payment: # Is the payment newly entered? Really should have used an ORM about 3 years ago.
+        payments_send_confirmation(req, req.POST["payer_email"])
     return HttpResponse()
 
 
