@@ -76,7 +76,7 @@ class StravaService(ServiceBase):
         return "https://www.strava.com/activities/%d" % uploadId
 
     def WebInit(self):
-        params = {'scope':'write view_private',
+        params = {'scope':'write,view_private',
                   'client_id':STRAVA_CLIENT_ID,
                   'response_type':'code',
                   'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"})}
