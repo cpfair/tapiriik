@@ -48,7 +48,7 @@ def payments_send_confirmation(request, email):
     dashboard_url = request.build_absolute_uri(reverse("dashboard"))
     from tapiriik.web.email import generate_message_from_template, send_email
     message, plaintext_message = generate_message_from_template("email/payment_confirm.html", {"url": dashboard_url})
-    send_email(email, "Thanks!", message, plaintext_message=plaintext_message)
+    send_email(email, "Thanks, %s!" % request.POST["first_name"], message, plaintext_message=plaintext_message)
 
 def payments_return(req):
     if req.user is None:
