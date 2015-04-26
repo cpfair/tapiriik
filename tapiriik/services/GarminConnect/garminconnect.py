@@ -537,6 +537,9 @@ class GarminConnectService(ServiceBase):
         res = res.json()["detailedImportResult"]
 
         if len(res["successes"]) == 0:
+            if len(res["failures"]) and len(res["failures"][0]["messages"]) and res["failures"][0]["messages"][0]["content"] == "Duplicate activity":
+                logger.debug("Duplicate")
+                return # ...cool?
             raise APIException("Unable to upload activity %s" % res)
         if len(res["successes"]) > 1:
             raise APIException("Uploaded succeeded, resulting in too many activities")
