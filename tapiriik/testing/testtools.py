@@ -91,7 +91,7 @@ class TestTools:
         act = TestTools.create_blank_activity(svc, actType, record=record)
 
         if tz is True:
-            tz = pytz.timezone(pytz.all_timezones[random.randint(0, len(pytz.all_timezones) - 1)])
+            tz = pytz.timezone("America/Atikokan")
             act.TZ = tz
         elif tz is not False:
             act.TZ = tz
