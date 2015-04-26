@@ -1,0 +1,13 @@
+{% extends "site.html" %}
+{% load displayutils %}
+{% block title %}error {{ error.value.exemplar }}{% endblock %}
+{% block content %}
+<div style="text-align:left">
+	<h4><a href="{% url 'diagnostics_errors' %}">&laquo; Back to dashboard</a></h4>
+	<h1>{{ error.value.exemplar }} ({{ error|dict_get:'_id'|dict_get:'service' }})</h1>
+	<h2>Affected users:</h2>
+	{% for user in affected_user_ids %}
+	<a href="{% url 'diagnostics_user' user  %}"><tt>{{ user }}</tt></a>
+	{% endfor %}
+</div>
+{% endblock %}

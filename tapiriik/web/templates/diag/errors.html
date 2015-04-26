@@ -3,13 +3,9 @@
 {% block title %}errors{% endblock %}
 {% block content %}
 <div style="text-align:left">
-	<ul>
-		<li><b>Sync errors (manual):</b>
-			<ul>{% for error in syncErrorSummary %}
-				<li>[{{ error.service }}] {{ error.message }} ({{ error.count }})</li>
-				{% endfor %}
-			</ul>
-		</li>
+	<ul>{% for error in syncErrorSummary %}
+		<li><a href="{% url 'diagnostics_error' error.id %}">[{{ error.service }}] {{ error.message }}</a> ({{ error.count }})</li>
+		{% endfor %}
 	</ul>
 </div>
 {% endblock %}

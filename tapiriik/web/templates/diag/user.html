@@ -84,7 +84,7 @@
 					<ul>
 						{% for err in connection.SyncErrors %}
 							<li>
-								<tt>{{ err.Step }}</tt> [<tt>{{ err.Scope }}</tt>] {% if err.Block %}(blocking){% endif %} - {% if err.UserException %}User exception <tt>{{ err.UserException.Type }}</tt> {% if err.UserException.InterventionRequired %}(intervention reqd){% endif %}{% endif %}<br/>
+								<tt>{{ err.Step }}</tt> [<tt>{{ err.Scope }}</tt>] {% if err.Block %}(blocking){% endif %} - {% if err.UserException %}User exception <tt>{{ err.UserException.Type }}</tt> {% if err.UserException.InterventionRequired %}(intervention reqd){% endif %}{% endif %} @ {{ err.Timestamp }}<br/>
 								{{ err.Message|linebreaks }}
 							</li>
 						{% endfor %}

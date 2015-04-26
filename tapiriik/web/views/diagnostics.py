@@ -91,11 +91,20 @@ def diag_errors(req):
     syncErrorListing = list(db.common_sync_errors.find({}, {"value.exemplar": 1, "value.count": 1, "_id.service": 1}).sort("value.count", -1))
     syncErrorSummary = []
     for error in syncErrorListing:    
-        syncErrorSummary.append({"service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"])})
+        syncErrorSummary.append({"id": json.dumps(error["_id"]), "service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"])})
 
     context["syncErrorSummary"] = syncErrorSummary
 
     return render(req, "diag/errors.html", context)
+
+@diag_requireAuth
+def diag_error(req, error):
+    error = db.common_sync_errors.find_one({"_id": json.loads(error)})
+
+    affected_service_ids = error["value"]["connections"]
+    affected_user_ids = [x["_id"] for x in db.users.find({"ConnectedServices.ID": {"$in": affected_service_ids}}, {"_id":1})]
+
+    return render(req, "diag/error.html", {"error": error, "affected_user_ids": affected_user_ids})
 
 
 @diag_requireAuth

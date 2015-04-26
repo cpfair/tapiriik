@@ -50,6 +50,7 @@ urlpatterns = patterns('',
 
     url(r'^diagnostics/$', 'tapiriik.web.views.diag_dashboard', {}, name='diagnostics_dashboard'),
     url(r'^diagnostics/errors$', 'tapiriik.web.views.diag_errors', {}, name='diagnostics_errors'),
+    url(r'^diagnostics/error/(?P<error>.+)$', 'tapiriik.web.views.diag_error', {}, name='diagnostics_error'),
     url(r'^diagnostics/graphs$', 'tapiriik.web.views.diag_graphs', {}, name='diagnostics_graphs'),
     url(r'^diagnostics/user/unsu$', 'tapiriik.web.views.diag_unsu', {}, name='diagnostics_unsu'),
     url(r'^diagnostics/user/(?P<user>.+)$', 'tapiriik.web.views.diag_user', {}, name='diagnostics_user'),
