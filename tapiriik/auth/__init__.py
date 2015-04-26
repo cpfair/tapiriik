@@ -39,7 +39,7 @@ class User:
 
     def Create(creationIP=None):
         uid = db.users.insert({"Created": datetime.utcnow(), "CreationIP": creationIP})  # will mongodb insert an almost empty doc, i.e. _id?
-        return db.users.find_one({"_id": uid}, read_preference=ReadPreference.PRIMARY)
+        return db.users.with_options(read_preference=ReadPreference.PRIMARY).find_one({"_id": uid})
 
     def GetConnectionRecordsByUser(user):
         return [ServiceRecord(x) for x in db.connections.find({"_id": {"$in": [x["ID"] for x in user["ConnectedServices"]]}})]

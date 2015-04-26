@@ -15,7 +15,7 @@ producer = kombu.Producer(Sync._channel, Sync._exchange)
 while True:
     generation = str(uuid.uuid4())
     queueing_at = datetime.utcnow()
-    users = list(db.users.find(
+    users = list(db.users.with_options(read_preference=ReadPreference.PRIMARY).find(
                 {
                     "NextSynchronization": {"$lte": datetime.utcnow()},
                     "QueuedAt": {"$exists": False}
@@ -23,8 +23,7 @@ while True:
                 {
                     "_id": True,
                     "SynchronizationHostRestriction": True
-                },
-                read_preference=ReadPreference.PRIMARY
+                }
             ))
     scheduled_ids = [x["_id"] for x in users]
     print("Found %d users at %s" % (len(scheduled_ids), datetime.utcnow()))
