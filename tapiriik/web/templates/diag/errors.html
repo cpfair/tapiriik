@@ -4,7 +4,7 @@
 {% block content %}
 <div style="text-align:left">
 	<ul>{% for error in syncErrorSummary %}
-		<li><a href="{% url 'diagnostics_error' error.id %}">[{{ error.service }}] {{ error.message }}</a> ({{ error.count }})</li>
+		<li><a href="{% url 'diagnostics_error' error.id %}">[{{ error.service }}] ({{ error.average_age|fractional_hour_duration }}, {{ error.count }} instances)</a> {{ error.message }}</li>
 		{% endfor %}
 	</ul>
 </div>

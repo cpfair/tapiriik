@@ -10,6 +10,12 @@ def utctimesince(value):
         return ""
     return timesince(value, now=datetime.utcnow())
 
+@register.filter(name="fractional_hour_duration")
+def fractional_hour_duration(value):
+    if value is None:
+        return ""
+    return "%2.f hours" % (value / 60 / 60)
+
 @register.filter(name="format_fractional_percentage")
 def fractional_percentage(value):
     try:
