@@ -7,6 +7,7 @@ from tapiriik.auth import TOTP, DiagnosticsUser, User
 from bson.objectid import ObjectId
 import hashlib
 import json
+import urllib.parse
 from datetime import datetime, timedelta
 
 def diag_requireAuth(view):
@@ -91,7 +92,7 @@ def diag_errors(req):
     syncErrorListing = list(db.common_sync_errors.find({}, {"value.exemplar": 1, "value.count": 1, "_id.service": 1}).sort("value.count", -1))
     syncErrorSummary = []
     for error in syncErrorListing:    
-        syncErrorSummary.append({"id": json.dumps(error["_id"]), "service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"])})
+        syncErrorSummary.append({"id": urllib.parse.quote(json.dumps(error["_id"])), "service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"])})
 
     context["syncErrorSummary"] = syncErrorSummary
 
@@ -99,7 +100,7 @@ def diag_errors(req):
 
 @diag_requireAuth
 def diag_error(req, error):
-    error = db.common_sync_errors.find_one({"_id": json.loads(error)})
+    error = db.common_sync_errors.find_one({"_id": json.loads(urllib.parse.unquote(error))})
     if not error:
         return render(req, "diag/error_error_not_found.html")
     affected_service_ids = error["value"]["connections"]
