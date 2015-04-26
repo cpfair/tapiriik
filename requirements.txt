@@ -1,5 +1,5 @@
 requests==2.2.1
-pymongo
+pymongo==3.0.1
 pytz
 lxml
 git+https://github.com/cpfair/dropbox-sdk-python.git
