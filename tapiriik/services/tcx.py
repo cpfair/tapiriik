@@ -54,7 +54,7 @@ class TCXIO:
                 act.Type = ActivityType.Running
 
         xnotes = xact.find("tcx:Notes", namespaces=ns)
-        if xnotes is not None:
+        if xnotes is not None and xnotes.text:
             xnotes_lines = xnotes.text.splitlines()
             act.Name = xnotes_lines[0]
             if len(xnotes_lines) > 1:
