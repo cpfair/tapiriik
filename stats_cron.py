@@ -2,21 +2,21 @@ from tapiriik.database import db, close_connections
 from datetime import datetime, timedelta
 
 # total distance synced
-distanceSyncedAggr = db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+distanceSyncedAggr = list(db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}]))
 if distanceSyncedAggr:
     distanceSynced = distanceSyncedAggr[0]["total"]
 else:
     distanceSynced = 0
 
 # last 24hr, for rate calculation
-lastDayDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+lastDayDistanceSyncedAggr = list(db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=24)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}]))
 if lastDayDistanceSyncedAggr:
     lastDayDistanceSynced = lastDayDistanceSyncedAggr[0]["total"]
 else:
     lastDayDistanceSynced = 0
 
 # similarly, last 1hr
-lastHourDistanceSyncedAggr = db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}])["result"]
+lastHourDistanceSyncedAggr = list(db.sync_stats.aggregate([{"$match": {"Timestamp": {"$gt": datetime.utcnow() - timedelta(hours=1)}}}, {"$group": {"_id": None, "total": {"$sum": "$Distance"}}}]))
 if lastHourDistanceSyncedAggr:
     lastHourDistanceSynced = lastHourDistanceSyncedAggr[0]["total"]
 else:
@@ -31,7 +31,7 @@ if len(queueHead):
 
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
-timeUsedAgg = db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}])["result"]
+timeUsedAgg = list(db.sync_worker_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$TimeTaken"}}}]))
 totalSyncOps = db.sync_worker_stats.count()
 if timeUsedAgg:
     timeUsed = timeUsedAgg[0]["total"]
@@ -41,41 +41,41 @@ else:
     avgSyncTime = 0
 
 # error/pending/locked stats
-lockedSyncRecords = db.users.aggregate([
+lockedSyncRecords = list(db.users.aggregate([
                                        {"$match": {"SynchronizationWorker": {"$ne": None}}},
                                        {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                       ])
-if len(lockedSyncRecords["result"]) > 0:
-    lockedSyncRecords = lockedSyncRecords["result"][0]["count"]
+                                       ]))
+if len(lockedSyncRecords) > 0:
+    lockedSyncRecords = lockedSyncRecords[0]["count"]
 else:
     lockedSyncRecords = 0
 
-pendingSynchronizations = db.users.aggregate([
+pendingSynchronizations = list(db.users.aggregate([
                                              {"$match": {"NextSynchronization": {"$lt": datetime.utcnow()}}},
                                              {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                             ])
-if len(pendingSynchronizations["result"]) > 0:
-    pendingSynchronizations = pendingSynchronizations["result"][0]["count"]
+                                             ]))
+if len(pendingSynchronizations) > 0:
+    pendingSynchronizations = pendingSynchronizations[0]["count"]
 else:
     pendingSynchronizations = 0
 
-usersWithErrors = db.users.aggregate([
+usersWithErrors = list(db.users.aggregate([
                                      {"$match": {"NonblockingSyncErrorCount": {"$gt": 0}}},
                                      {"$group": {"_id": None, "count": {"$sum": 1}}}
-                                     ])
-if len(usersWithErrors["result"]) > 0:
-    usersWithErrors = usersWithErrors["result"][0]["count"]
+                                     ]))
+if len(usersWithErrors) > 0:
+    usersWithErrors = usersWithErrors[0]["count"]
 else:
     usersWithErrors = 0
 
 
-totalErrors = db.users.aggregate([
+totalErrors = list(db.users.aggregate([
    {"$group": {"_id": None,
                "total": {"$sum": "$NonblockingSyncErrorCount"}}}
-])
+]))
 
-if len(totalErrors["result"]) > 0:
-    totalErrors = totalErrors["result"][0]["total"]
+if len(totalErrors) > 0:
+    totalErrors = totalErrors[0]["total"]
 else:
     totalErrors = 0
 
