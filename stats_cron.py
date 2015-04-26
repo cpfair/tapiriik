@@ -97,30 +97,40 @@ def aggregateCommonErrors():
     # The exception message always appears right before "LOCALS:"
     map_operation = Code(
         "function(){"
-            "var errorMatch = new RegExp(/\\n([^\\n]+)\\n\\nLOCALS:/);"
             "if (!this.SyncErrors) return;"
+            "var errorMatch = new RegExp(/\\n([^\\n]+)\\n\\nLOCALS:/);"
             "var id = this._id;"
             "var svc = this.Service;"
+            "var now = new Date();"
             "this.SyncErrors.forEach(function(error){"
                 "var message = error.Message.match(errorMatch)[1];"
                 "var key = {service: svc, stem: message.substring(0, 60)};"
-                "emit(key, {count:1, connections:[id], exemplar:message});"
+                "var recency_score = error.Timestamp ? (now - error.Timestamp)/1000 : 0;"
+                "emit(key, {count:1, ts_count: error.Timestamp ? 1 : 0, recency: recency_score, connections:[id], exemplar:message});"
             "});"
         "}"
         )
     reduce_operation = Code(
         "function(key, item){"
-            "var reduced = {count:0, connections:[]};"
+            "var reduced = {count:0, ts_count:0, connections:[], recency: 0};"
             "var connection_collections = [];"
             "item.forEach(function(error){"
                 "reduced.count+=error.count;"
+                "reduced.ts_count+=error.ts_count;"
+                "reduced.recency+=error.recency;"
                 "reduced.exemplar = error.exemplar;"
                 "connection_collections.push(error.connections);"
             "});"
             "reduced.connections = reduced.connections.concat.apply(reduced.connections, connection_collections);"
             "return reduced;"
         "}")
-    db.connections.map_reduce(map_operation, reduce_operation, "common_sync_errors") #, finalize=finalize_operation
+    finalize_operation = Code(
+        "function(key, res){"
+            "res.recency_avg = res.recency / res.ts_count;"
+            "return res;"
+        "}"
+    )
+    db.connections.map_reduce(map_operation, reduce_operation, "common_sync_errors", finalize=finalize_operation) 
     # We don't need to do anything with the result right now, just leave it there to appear in the dashboard
 
 aggregateCommonErrors()
