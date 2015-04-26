@@ -1,0 +1,8 @@
+{% extends "site.html" %}
+{% load displayutils %}
+{% block title %}diagnostics{% endblock %}
+{% block content %}
+<h1>Error not found</h1>
+<h2>(yay?)</h2>
+<h4><a href="{% url 'diagnostics_errors' %}">&laquo; Back to dashboard</a></h4>
+{% endblock %}

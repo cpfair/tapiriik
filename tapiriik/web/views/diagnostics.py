@@ -100,7 +100,8 @@ def diag_errors(req):
 @diag_requireAuth
 def diag_error(req, error):
     error = db.common_sync_errors.find_one({"_id": json.loads(error)})
-
+    if not error:
+        return render(req, "diag/error_error_not_found.html")
     affected_service_ids = error["value"]["connections"]
     affected_user_ids = [x["_id"] for x in db.users.find({"ConnectedServices.ID": {"$in": affected_service_ids}}, {"_id":1})]
 
