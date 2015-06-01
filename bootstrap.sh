@@ -11,8 +11,8 @@ pip3 install --upgrade pip
 pip install -r /vagrant/requirements.txt
 
 # Fix the default python instance
-sudo rm `which python`
-sudo ln -s /usr/bin/python3.3 /usr/bin/python
+update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+update-alternatives --install /usr/bin/python python /usr/bin/python3.4 2
 
 # Put in a default local_settings.py
 cp /vagrant/tapiriik/local_settings.py.example /vagrant/tapiriik/local_settings.py
