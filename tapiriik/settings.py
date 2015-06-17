@@ -312,6 +312,8 @@ HTTP_SOURCE_ADDR = "0.0.0.0"
 
 RABBITMQ_BROKER_URL = "amqp://guest@localhost//"
 
+RABBITMQ_USER_QUEUE_STATS_URL = "http://guest:guest@localhost:15672/api/queues/%2F/tapiriik-users?lengths_age=3600&lengths_incr=60&msg_rates_age=3600&msg_rates_incr=60"
+
 GARMIN_CONNECT_USER_WATCH_ACCOUNTS = {}
 
 from .local_settings import *

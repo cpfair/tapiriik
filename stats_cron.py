@@ -1,5 +1,7 @@
 from tapiriik.database import db, close_connections
+from tapiriik.settings import RABBITMQ_USER_QUEUE_STATS_URL
 from datetime import datetime, timedelta
+import requests
 
 # total distance synced
 distanceSyncedAggr = list(db.sync_stats.aggregate([{"$group": {"_id": None, "total": {"$sum": "$Distance"}}}]))
@@ -21,13 +23,21 @@ if lastHourDistanceSyncedAggr:
     lastHourDistanceSynced = lastHourDistanceSyncedAggr[0]["total"]
 else:
     lastHourDistanceSynced = 0
-# sync wait time, to save making 1 query/sec-user-browser
-queueHead = list(db.users.find({"QueuedAt": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"QueuedAt": 1}).sort("QueuedAt").limit(10))
-queueHeadTime = timedelta(0)
-if len(queueHead):
-    for queuedUser in queueHead:
-        queueHeadTime += datetime.utcnow() - queuedUser["QueuedAt"]
-    queueHeadTime /= len(queueHead)
+
+# How long users are taking to get pushed into rabbitMQ
+# Once called "queueHead" as, a very long time ago, this _was_ user queuing
+enqueueHead = list(db.users.find({"QueuedAt": {"$lte": datetime.utcnow()}, "SynchronizationWorker": None, "SynchronizationHostRestriction": {"$exists": False}}, {"QueuedAt": 1}).sort("QueuedAt").limit(10))
+enqueueTime = timedelta(0)
+if len(enqueueHead):
+    for pendingEnqueueUser in enqueueHead:
+        enqueueTime += datetime.utcnow() - pendingEnqueueUser["QueuedAt"]
+    enqueueTime /= len(enqueueHead)
+
+# Query rabbitMQ to get main queue throughput and length
+rmq_user_queue_stats = requests.get(RABBITMQ_USER_QUEUE_STATS_URL).json()
+rmq_user_queue_length = rmq_user_queue_stats["messages_ready_details"]["avg"]
+rmq_user_queue_rate = rmq_user_queue_stats["message_stats"]["ack_details"]["avg_rate"]
+rmq_user_queue_wait_time = rmq_user_queue_length / rmq_user_queue_rate
 
 # sync time utilization
 db.sync_worker_stats.remove({"Timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}})  # clean up old records
@@ -86,10 +96,20 @@ db.sync_status_stats.insert({
         "ErrorUsers": usersWithErrors,
         "TotalErrors": totalErrors,
         "SyncTimeUsed": timeUsed,
-        "SyncQueueHeadTime": queueHeadTime.total_seconds()
+        "SyncEnqueueTime": enqueueTime.total_seconds(),
+        "SyncQueueHeadTime": rmq_user_queue_wait_time
 })
 
-db.stats.update({}, {"$set": {"TotalDistanceSynced": distanceSynced, "LastDayDistanceSynced": lastDayDistanceSynced, "LastHourDistanceSynced": lastHourDistanceSynced, "TotalSyncTimeUsed": timeUsed, "AverageSyncDuration": avgSyncTime, "LastHourSynchronizationCount": totalSyncOps, "QueueHeadTime": queueHeadTime.total_seconds(), "Updated": datetime.utcnow()}}, upsert=True)
+db.stats.update({}, {"$set": {
+                        "TotalDistanceSynced": distanceSynced,
+                        "LastDayDistanceSynced": lastDayDistanceSynced,
+                        "LastHourDistanceSynced": lastHourDistanceSynced,
+                        "TotalSyncTimeUsed": timeUsed,
+                        "AverageSyncDuration": avgSyncTime,
+                        "LastHourSynchronizationCount": totalSyncOps,
+                        "EnqueueTime": enqueueTime.total_seconds(),
+                        "QueueHeadTime": rmq_user_queue_wait_time,
+                        "Updated": datetime.utcnow() }}, upsert=True)
 
 
 def aggregateCommonErrors():
