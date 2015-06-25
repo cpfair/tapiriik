@@ -8,7 +8,7 @@ sudo apt-get install -y python3-pip libxml2-dev libxslt-dev zlib1g-dev mongodb g
 pip3 install --upgrade pip
 
 # Install app requirements
-pip install -r /vagrant/requirements.txt
+pip install --upgrade -r /vagrant/requirements.txt
 
 # Fix the default python instance
 update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
