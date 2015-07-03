@@ -38,4 +38,9 @@ NIKEPLUS_CLIENT_SECRET = "####"
 
 RWGPS_APIKEY = "####"
 
+# See http://api.smashrun.com for info.
+# For now, you need to email hi@smashrun.com for access
+SMASHRUN_CLIENT_ID = "####"
+SMASHRUN_CLIENT_SECRET = "####"
+
 MOTIVATO_PREMIUM_USERS_LIST_URL = "http://..."
