@@ -1,0 +1,1 @@
+from .smashrun import SmashrunService
