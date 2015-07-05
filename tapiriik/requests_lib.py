@@ -34,7 +34,8 @@ def patch_requests_user_agent(user_agent):
 	import requests
 	old_request = requests.Session.request
 	def new_request(*args, **kwargs):
-		headers = kwargs.get("headers",{})
+		headers = kwargs.get("headers", {})
+		headers = headers if headers else {}
 		headers["User-Agent"] = user_agent
 		kwargs["headers"] = headers
 		return old_request(*args, **kwargs)
