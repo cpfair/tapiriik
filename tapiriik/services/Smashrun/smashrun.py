@@ -148,7 +148,7 @@ class SmashrunService(ServiceBase):
             hr = record.get('heartRate')
             runCadence = record.get('cadence')
             temp = record.get('temperature')
-            distance = record.get('distance')
+            distance = record.get('distance') * 1000
             wp = Waypoint(timestamp=ts, location=location, hr=hr,
                           runCadence=runCadence, temp=temp,
                           distance=distance)
