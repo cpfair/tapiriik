@@ -191,34 +191,57 @@ class SmashrunService(ServiceBase):
         data['laps'] = []
         recordings = defaultdict(list)
 
+        def getattr_nested(obj, attr):
+            attrs = attr.split('.')
+            while attrs:
+                r = getattr(obj, attrs.pop(0), None)
+                obj = r
+            return r
+
+        def hasStat(activity, stat):
+            for lap in activity.Laps:
+                for wp in lap.Waypoints:
+                    if getattr_nested(wp, stat) is not None:
+                        return True
+            return False
+
+        hasDistance = hasStat(activity, 'Distance')
+        hasTimestamp = hasStat(activity, 'Timestamp')
+        hasLatitude = hasStat(activity, 'Location.Latitude')
+        hasLongitude = hasStat(activity, 'Location.Longitude')
+        hasAltitude = hasStat(activity, 'Location.Altitude')
+        hasHeartRate = hasStat(activity, 'HR')
+        hasCadence = hasStat(activity, 'RunCadence')
+        hasTemp = hasStat(activity, 'Temp')
+
         for lap in activity.Laps:
             lapinfo = {'lapType': self._intensityMappings.get(lap.Intensity, 'general'),
                        'endDuration': (lap.EndTime - activity.StartTime).total_seconds(),
                        'endDistance': lap.Waypoints[-1].Distance / 1000}
             data['laps'].append(lapinfo)
             for wp in lap.Waypoints:
-                if wp.Distance is not None:
+                logger.info(wp)
+                if hasDistance:
                     recordings['distance'].append(wp.Distance / 1000)
-                if wp.Timestamp is not None:
+                if hasTimestamp:
                     clock = (wp.Timestamp - activity.StartTime).total_seconds()
                     recordings['clock'].append(int(clock))
-                if wp.Location and wp.Location.Latitude is not None:
+                if hasLatitude:
                     recordings['latitude'].append(wp.Location.Latitude)
-                if wp.Location and wp.Location.Longitude is not None:
+                if hasLongitude:
                     recordings['longitude'].append(wp.Location.Longitude)
-                if wp.Location and wp.Location.Altitude is not None:
+                if hasAltitude:
                     recordings['elevation'].append(wp.Location.Altitude)
-                if wp.HR is not None:
+                if hasHeartRate:
                     recordings['heartRate'].append(wp.HR)
-                if wp.RunCadence is not None:
+                if hasCadence:
                     recordings['cadence'].append(wp.RunCadence)
-                if wp.Temp is not None:
+                if hasTemp:
                     recordings['temperature'].append(wp.Temp)
-
-        assert len(set(len(v) for v in recordings.values())) == 1
 
         data['recordingKeys'] = sorted(recordings.keys())
         data['recordingValues'] = [recordings[k] for k in data['recordingKeys']]
+        assert len(set(len(v) for v in data['recordingValues'])) == 1
         client.create_activity(data)
 
     def DeleteCachedData(self, serviceRecord):
