@@ -137,8 +137,14 @@ class SmashrunService(ServiceBase):
             ts = activity.StartTime + timedelta(seconds=record['clock'])
             if 'latitude' in record:
                 alt = record.get('elevation')
-                location = Location(lat=record['latitude'], lon=record['longitude'],
-                                    alt=alt)
+                lat = record['latitude']
+                lon = record['longitude']
+                # Smashrun seems to replace missing measurements with -1
+                if lat == -1:
+                    lat = None
+                if lon == -1:
+                    lon = None
+                location = Location(lat=lat, lon=lon, alt=alt)
             hr = record.get('heartRate')
             runCadence = record.get('cadence')
             temp = record.get('temperature')
