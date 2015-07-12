@@ -309,7 +309,7 @@ tapiriik.ActivateSetupDialog = function(svcId){
 tapiriik.OpenServiceConfigPanel = function(svcId){
 	if ($(".service#"+svcId+" .flowConfig").length>0) return; //it's already open
 	tapiriik.DoDismissConfigPanel();
-	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>send activities to...</h2><table class=\"serviceTable\"></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
+	var configPanel = $("<form class=\"flowConfig\"><h1>Options</h1><div class=\"configSection\"><h2>send activities to...</h2><table class=\"serviceTable\"></table></div><div class=\"configSection\" id=\"sync_private_section\"><input type=\"checkbox\" id=\"sync_private\"/><label for=\"sync_private\">Sync private activities</label></div><div class=\"configSection\" id=\"auto_pause_section\"><input type=\"checkbox\" id=\"auto_pause\"/><label for=\"auto_pause\">Simulate auto-pause</label></div><span class=\"fineprint\">Settings will take effect at next sync</span><button id=\"setup\">Setup</button><button id=\"save\">Save</button><button id=\"disconnect\" class=\"delete\">Disconnect</button></form>");
 	for (var i in tapiriik.ServiceInfo) {
 		if (i == svcId || !tapiriik.ServiceInfo[i].Connected || !tapiriik.ServiceInfo[i].ReceivesActivities) continue;
 		var destSvc = tapiriik.ServiceInfo[i];
@@ -329,11 +329,21 @@ tapiriik.OpenServiceConfigPanel = function(svcId){
 	} else {
 		$("#sync_private_section", configPanel).hide();
 	}
+	if (svcId == "runkeeper")
+	{
+		if (tapiriik.ServiceInfo[svcId].Config.auto_pause)
+		{
+			$("#auto_pause", configPanel).attr("checked", 1);
+		}
+	} else {
+		$("#auto_pause_section", configPanel).hide();
+	}
 	$("button#save", configPanel).click(function(){
 		if ($(this).hasClass("disabled")) return;
 		$(this).addClass("disabled");
 
 		tapiriik.ServiceInfo[svcId].Config.sync_private = $("#sync_private", configPanel).is(":checked");
+		tapiriik.ServiceInfo[svcId].Config.auto_pause = $("#auto_pause", configPanel).is(":checked");
 
 		var flowFlags = {"forward":[]};
 		var flags = $("input[type=checkbox]", configPanel);

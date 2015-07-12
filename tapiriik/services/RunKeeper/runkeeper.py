@@ -2,6 +2,7 @@ from tapiriik.settings import WEB_ROOT, RUNKEEPER_CLIENT_ID, RUNKEEPER_CLIENT_SE
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.stream_sampling import StreamSampler
+from tapiriik.services.auto_pause import AutoPauseCalculator
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, WaypointType, Waypoint, Location, Lap
 from tapiriik.database import cachedb
@@ -192,7 +193,6 @@ class RunKeeperService(ServiceBase):
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
-        print(rawData.keys())
         streamData = {}
         for stream in ["path", "heart_rate", "calories", "distance"]:
             if stream in rawData and len(rawData[stream]):
@@ -221,7 +221,7 @@ class RunKeeperService(ServiceBase):
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
-        uploadData = self._createUploadData(activity)
+        uploadData = self._createUploadData(activity, serviceRecord.GetConfiguration()["auto_pause"])
         uris = self._getAPIUris(serviceRecord)
         headers = self._apiHeaders(serviceRecord)
         headers["Content-Type"] = "application/vnd.com.runkeeper.NewFitnessActivity+json"
@@ -233,7 +233,7 @@ class RunKeeperService(ServiceBase):
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
         return response.headers["location"]
 
-    def _createUploadData(self, activity):
+    def _createUploadData(self, activity, auto_pause=False):
         ''' create data dict for posting to RK API '''
         record = {}
 
@@ -258,48 +258,58 @@ class RunKeeperService(ServiceBase):
             record["share"] = "Just Me"
 
         if activity.CountTotalWaypoints() > 1:
-            anchor_ts = activity.Laps[0].Waypoints[0].Timestamp
+            flat_wps = activity.GetFlatWaypoints()
+
+            anchor_ts = flat_wps[0].Timestamp
+
+            # By default, use the provided waypoint types
+            wp_type_iter = (wp.Type for wp in flat_wps)
+            # Unless those types don't include pause/resume, in which case use our auto-pause calculation
+            if auto_pause and not any(wp.Type == WaypointType.Pause for wp in flat_wps):
+                # ...but not if we don't know the intended moving time
+                if activity.Stats.MovingTime.Value:
+                    wp_type_iter = AutoPauseCalculator.calculate(flat_wps, activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
+
             inPause = False
-            for lap in activity.Laps:
-                for waypoint in lap.Waypoints:
-                    timestamp = (waypoint.Timestamp - anchor_ts).total_seconds()
+            for waypoint, waypoint_type in zip(flat_wps, wp_type_iter):
+                timestamp = (waypoint.Timestamp - anchor_ts).total_seconds()
 
-                    if waypoint.Type in self._wayptTypeMappings.values():
-                        wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint.Type][0]
-                    else:
-                        wpType = "gps"  # meh
+                if waypoint_type in self._wayptTypeMappings.values():
+                    wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint_type][0]
+                else:
+                    wpType = "gps"  # meh
 
-                    if not inPause and waypoint.Type == WaypointType.Pause:
-                        inPause = True
-                    elif inPause and waypoint.Type == WaypointType.Pause:
-                        continue # RK gets all crazy when you send it multiple pause waypoints in a row.
-                    elif inPause and waypoint.Type != WaypointType.Pause:
-                        inPause = False
+                if not inPause and waypoint_type == WaypointType.Pause:
+                    inPause = True
+                elif inPause and waypoint_type == WaypointType.Pause:
+                    continue # RK gets all crazy when you send it multiple pause waypoints in a row.
+                elif inPause and waypoint_type != WaypointType.Pause:
+                    inPause = False
 
-                    if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
-                        if "path" not in record:
-                            record["path"] = []
-                        pathPt = {"timestamp": timestamp,
-                                  "latitude": waypoint.Location.Latitude,
-                                  "longitude": waypoint.Location.Longitude,
-                                  "type": wpType}
-                        pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
-                        record["path"].append(pathPt)
+                if waypoint.Location is not None and waypoint.Location.Latitude is not None and waypoint.Location.Longitude is not None:
+                    if "path" not in record:
+                        record["path"] = []
+                    pathPt = {"timestamp": timestamp,
+                              "latitude": waypoint.Location.Latitude,
+                              "longitude": waypoint.Location.Longitude,
+                              "type": wpType}
+                    pathPt["altitude"] = waypoint.Location.Altitude if waypoint.Location.Altitude is not None else 0  # this is straight of of their "example calls" page
+                    record["path"].append(pathPt)
 
-                    if waypoint.HR is not None:
-                        if "heart_rate" not in record:
-                            record["heart_rate"] = []
-                        record["heart_rate"].append({"timestamp": timestamp, "heart_rate": round(waypoint.HR)})
+                if waypoint.HR is not None:
+                    if "heart_rate" not in record:
+                        record["heart_rate"] = []
+                    record["heart_rate"].append({"timestamp": timestamp, "heart_rate": round(waypoint.HR)})
 
-                    if waypoint.Calories is not None:
-                        if "calories" not in record:
-                            record["calories"] = []
-                        record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
+                if waypoint.Calories is not None:
+                    if "calories" not in record:
+                        record["calories"] = []
+                    record["calories"].append({"timestamp": timestamp, "calories": waypoint.Calories})
 
-                    if waypoint.Distance is not None:
-                        if "distance" not in record:
-                            record["distance"] = []
-                        record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
+                if waypoint.Distance is not None:
+                    if "distance" not in record:
+                        record["distance"] = []
+                    record["distance"].append({"timestamp": timestamp, "distance": waypoint.Distance})
 
         return record
 
