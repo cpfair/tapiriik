@@ -22,5 +22,6 @@ class SessionCache:
                     redis.expire(self._cacheKey % pk, self._lifetime)
             return res
 
-    def Set(self, pk, value):
-        redis.setex(self._cacheKey % pk, pickle.dumps(value), self._lifetime)
+    def Set(self, pk, value, lifetime=None):
+        lifetime = lifetime or self._lifetime
+        redis.setex(self._cacheKey % pk, pickle.dumps(value), lifetime)
