@@ -226,7 +226,6 @@ class SmashrunService(ServiceBase):
                        'endDistance': lap.Waypoints[-1].Distance / 1000}
             data['laps'].append(lapinfo)
             for wp in lap.Waypoints:
-                logger.info(wp)
                 if hasDistance:
                     recordings['distance'].append(wp.Distance / 1000)
                 if hasTimestamp:
