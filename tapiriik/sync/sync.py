@@ -129,7 +129,7 @@ class Sync:
             logger.warning("Could not find user %s - bailing" % user_id)
             message.ack() # Otherwise the entire thing grinds to a halt
             return
-        if body["generation"] != user["QueuedGeneration"]:
+        if body["generation"] != user.get("QueuedGeneration", None):
             # QueuedGeneration being different means they've gone through sync_scheduler since this particular message was queued
             # So, discard this and wait for that message to surface
             # Should only happen when I manually requeue people
