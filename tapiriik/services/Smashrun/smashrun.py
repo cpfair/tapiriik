@@ -79,7 +79,7 @@ class SmashrunService(ServiceBase):
 
         for i, act in enumerate(client.get_activities()):
             # bail out early after some arbitrary number if not exhaustive
-            if exhaustive and i > 20:
+            if not exhaustive and i > 20:
                 break
             activity = UploadedActivity()
             activity.StartTime = dateutil.parser.parse(act['startDateTimeLocal'])
@@ -226,7 +226,6 @@ class SmashrunService(ServiceBase):
                        'endDistance': lap.Waypoints[-1].Distance / 1000}
             data['laps'].append(lapinfo)
             for wp in lap.Waypoints:
-                logger.info(wp)
                 if hasDistance:
                     recordings['distance'].append(wp.Distance / 1000)
                 if hasTimestamp:
