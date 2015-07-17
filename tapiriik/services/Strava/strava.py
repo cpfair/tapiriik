@@ -90,7 +90,6 @@ class StravaService(ServiceBase):
         code = req.GET.get("code")
         params = {"grant_type": "authorization_code", "code": code, "client_id": STRAVA_CLIENT_ID, "client_secret": STRAVA_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"})}
 
-        self._globalRateLimit()
         response = requests.post("https://www.strava.com/oauth/token", data=params)
         if response.status_code != 200:
             raise APIException("Invalid code")
@@ -98,7 +97,6 @@ class StravaService(ServiceBase):
 
         authorizationData = {"OAuthToken": data["access_token"]}
         # Retrieve the user ID, meh.
-        self._globalRateLimit()
         id_resp = requests.get("https://www.strava.com/api/v3/athlete", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
         return (id_resp.json()["id"], authorizationData)
 
@@ -115,7 +113,6 @@ class StravaService(ServiceBase):
             if before is not None and before < 0:
                 break # Caused by activities that "happened" before the epoch. We generally don't care about those activities...
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
-            self._globalRateLimit()
             resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
             if resp.status_code == 401:
                 raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -185,7 +182,6 @@ class StravaService(ServiceBase):
             return activity
         activityID = activity.ServiceData["ActivityID"]
 
-        self._globalRateLimit()
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng,distance,velocity_smooth", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -296,7 +292,6 @@ class StravaService(ServiceBase):
                 fitData = FITIO.Dump(activity)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
-            self._globalRateLimit()
             response = requests.post("https://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
             if response.status_code != 201:
                 if response.status_code == 401:
@@ -311,7 +306,6 @@ class StravaService(ServiceBase):
             upload_poll_wait = 8 # The mode of processing times
             while not response.json()["activity_id"]:
                 time.sleep(upload_poll_wait)
-                self._globalRateLimit()
                 response = requests.get("https://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
                 logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
                 if response.json()["error"]:
@@ -334,7 +328,6 @@ class StravaService(ServiceBase):
                     "elapsed_time": round((activity.EndTime - activity.StartTime).total_seconds())
                 }
             headers = self._apiHeaders(serviceRecord)
-            self._globalRateLimit()
             response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers)
             # FFR this method returns the same dict as the activity listing, as REST services are wont to do.
             if response.status_code != 201:
