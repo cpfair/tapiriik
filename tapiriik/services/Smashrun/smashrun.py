@@ -126,11 +126,12 @@ class SmashrunService(ServiceBase):
             # no laps, just make one big lap
             activity.Laps = [Lap(startTime=activity.StartTime, endTime=activity.EndTime, stats=activity.Stats)]
 
-        prevEndTime = activity.StartTime
+        startTime = activity.StartTime
         for lapRecord in act['laps']:
-            lap = Lap(startTime=prevEndTime,
-                      endTime=prevEndTime + timedelta(seconds=lapRecord['endDuration']))
+            endTime = activity.StartTime + timedelta(seconds=lapRecord['endDuration'])
+            lap = Lap(startTime=startTime, endTime=endTime)
             activity.Laps.append(lap)
+            startTime = endTime + timedelta(seconds=1)
 
         for value in zip(*act['recordingValues']):
             record = dict(zip(recordingKeys, value))
@@ -156,6 +157,7 @@ class SmashrunService(ServiceBase):
             for lap in activity.Laps:
                 if lap.StartTime <= wp.Timestamp <= lap.EndTime:
                     lap.Waypoints.append(wp)
+                    break
 
         return activity
 
