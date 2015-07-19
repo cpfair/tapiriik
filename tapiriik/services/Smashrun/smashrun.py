@@ -1,7 +1,10 @@
 import logging
 from datetime import timedelta
 from collections import defaultdict
+import contextlib
+import functools
 
+import requests
 import dateutil
 from django.core.urlresolvers import reverse
 from smashrun import Smashrun as SmashrunClient
@@ -12,8 +15,54 @@ from tapiriik.services.interchange import (UploadedActivity, ActivityType, Activ
                                            ActivityStatisticUnit, Waypoint, WaypointType,
                                            Location, Lap, LapIntensity)
 from tapiriik.services.api import APIException, APIExcludeActivity, UserException, UserExceptionType
+from tapiriik.services.sessioncache import SessionCache
 
 logger = logging.getLogger(__name__)
+
+
+def handleExpiredToken(f):
+    """Handle token expiry during execution of `f`.
+
+    Note this isn't really useful outside this module since it makes a lot
+    of assumptions about `f`.
+    """
+    @functools.wraps(f)
+    def wrapper(self, serviceRec, *args, **kwargs):
+        delete_cache = lambda: self._tokenCache.Delete(serviceRec.ExternalID)
+        with handle_exception(is_http_401, delete_cache):
+            return f(self, serviceRec, *args, **kwargs)
+        # the second attempt should now trigger a token refresh
+        with handle_exception(is_http_401, raise_api_exception):
+            return f(self, serviceRec, *args, **kwargs)
+    return wrapper
+
+
+def is_http_401(e):
+    return (isinstance(e, requests.HTTPError) and
+            e.response.status_code == 401)
+
+
+def raise_api_exception():
+    raise APIException(
+        "Token expired or revoked", block=True,
+        user_exception=UserException(UserExceptionType.Authorization,
+                                     intervention_required=True))
+
+
+@contextlib.contextmanager
+def handle_exception(pred, f=lambda: None):
+    """Handle the exception defined by `pred` by calling `f`.
+
+    Default behavior is to simply ignore the matched exception.
+    """
+    try:
+        yield
+    except Exception as e:
+        if pred(e):
+            logger.debug("Handling exception %s", e)
+            f()
+        else:
+            raise
 
 
 class SmashrunService(ServiceBase):
@@ -83,16 +132,31 @@ class SmashrunService(ServiceBase):
     def RevokeAuthorization(self, serviceRecord):
         pass  # TODO: smashrun doesn't seem to support this yet
 
+    @handleExpiredToken
+    def _getActivities(self, serviceRecord, exhaustive=False):
+        client = self._getClient(serviceRec=serviceRecord)
+        activities = []
+        for i, act in enumerate(client.get_activities()):
+            if not exhaustive and i > 20:
+                return activities
+            activities.append(act)
+        return activities
+
+    @handleExpiredToken
+    def _getActivity(self, serviceRecord, activity):
+        client = self._getClient(serviceRec=serviceRecord)
+        return client.get_activity(activity.ServiceData['ActivityID'])
+
+    @handleExpiredToken
+    def _createActivity(self, serviceRecord, data):
+        client = self._getClient(serviceRec=serviceRecord)
+        return client.create_activity(data)
+
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         activities = []
         exclusions = []
 
-        client = self._getClient(serviceRec=serviceRecord)
-
-        for i, act in enumerate(client.get_activities()):
-            # bail out early after some arbitrary number if not exhaustive
-            if not exhaustive and i > 20:
-                break
+        for act in self._getActivities(serviceRecord, exhaustive=exhaustive):
             activity = UploadedActivity()
             activity.StartTime = dateutil.parser.parse(act['startDateTimeLocal'])
             activity.EndTime = activity.StartTime + timedelta(seconds=act['duration'])
@@ -122,8 +186,7 @@ class SmashrunService(ServiceBase):
 
     # TODO: handle pauses
     def DownloadActivity(self, serviceRecord, activity):
-        client = self._getClient(serviceRec=serviceRecord)
-        act = client.get_activity(activity.ServiceData['ActivityID'])
+        act = self._getActivity(serviceRecord, activity)
         recordingKeys = act.get('recordingKeys')
         if act['source'] == 'manual' or not recordingKeys:
             # it's a manually entered run, can't get much info
@@ -181,7 +244,6 @@ class SmashrunService(ServiceBase):
         return (obj.EndTime - obj.StartTime).total_seconds()
 
     def UploadActivity(self, serviceRecord, activity):
-        client = self._getClient(serviceRecord)
         data = {}
         data['startDateTimeLocal'] = activity.StartTime.isoformat()
         data['distance'] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Kilometers).Value
@@ -205,7 +267,7 @@ class SmashrunService(ServiceBase):
 
         if not activity.Laps[0].Waypoints:
             # no info, no need to go further
-            client.create_activity(data)
+            self._createActivity(serviceRecord, data)
             return
 
         data['laps'] = []
@@ -261,7 +323,7 @@ class SmashrunService(ServiceBase):
         data['recordingKeys'] = sorted(recordings.keys())
         data['recordingValues'] = [recordings[k] for k in data['recordingKeys']]
         assert len(set(len(v) for v in data['recordingValues'])) == 1
-        client.create_activity(data)
+        self._createActivity(serviceRecord, data)
 
     def DeleteCachedData(self, serviceRecord):
         self._tokenCache.Delete(serviceRecord.ExternalID)
