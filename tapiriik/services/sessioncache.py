@@ -15,7 +15,7 @@ class SessionCache:
             try:
                 res = pickle.loads(res)
             except pickle.UnpicklingError:
-                redis.delete(self._cacheKey % pk)
+                self.Delete(pk)
                 res = None
             else:
                 if self._autorefresh or freshen:
@@ -25,3 +25,6 @@ class SessionCache:
     def Set(self, pk, value, lifetime=None):
         lifetime = lifetime or self._lifetime
         redis.setex(self._cacheKey % pk, pickle.dumps(value), lifetime)
+
+    def Delete(self, pk):
+        redis.delete(self._cacheKey % pk)
