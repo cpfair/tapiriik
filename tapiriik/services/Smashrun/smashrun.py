@@ -40,18 +40,29 @@ class SmashrunService(ServiceBase):
         LapIntensity.Cooldown: 'cooldown',
     }
 
+    _tokenCache = SessionCache("smashrun", lifetime=timedelta(days=83))
+
     def _getClient(self, serviceRec=None):
-        redirect_uri = None
-        if not serviceRec:
-            # reverse() doesn't work in the worker and we only really need the redirect
-            # uri in the ui...
-            redirect_uri = WEB_ROOT + reverse('oauth_return', kwargs={'service': 'smashrun'})
+        cached_token = None
+        if serviceRec:
+            cached_token = self._tokenCache.Get(serviceRec.ExternalID)
+        redirect_uri = None if serviceRec else WEB_ROOT + reverse('oauth_return', kwargs={'service': 'smashrun'})
         client = SmashrunClient(client_id=SMASHRUN_CLIENT_ID,
                                 client_secret=SMASHRUN_CLIENT_SECRET,
-                                redirect_uri=redirect_uri)
-        if serviceRec:
-            client.refresh_token(refresh_token=serviceRec.Authorization['refresh_token'])
+                                redirect_uri=redirect_uri,
+                                token=cached_token)
+        if serviceRec and not cached_token:
+            self._refreshToken(client, serviceRec)
         return client
+
+    def _refreshToken(self, client, serviceRec):
+        logger.info("refreshing auth token")
+        token = client.refresh_token(refresh_token=serviceRec.Authorization['refresh_token'])
+        self._cacheToken(serviceRec.ExternalID, token)
+
+    def _cacheToken(self, uid, token):
+        expiry = token['expires_in'] - 24 * 60  # a 1 day buffer means we're less likely to expire mid-run
+        self._tokenCache.Set(uid, token, lifetime=timedelta(seconds=expiry))
 
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "smashrun"})
@@ -66,6 +77,7 @@ class SmashrunService(ServiceBase):
         client = self._getClient()
         token = client.fetch_token(code=code)
         uid = client.get_userinfo()['id']
+        self._cacheToken(uid, token)
         return (uid, token)
 
     def RevokeAuthorization(self, serviceRecord):
@@ -252,7 +264,7 @@ class SmashrunService(ServiceBase):
         client.create_activity(data)
 
     def DeleteCachedData(self, serviceRecord):
-        pass
+        self._tokenCache.Delete(serviceRecord.ExternalID)
 
     def DeleteActivity(self, serviceRecord, uploadId):
         pass  # TODO: smashrun doesn't support this yet
