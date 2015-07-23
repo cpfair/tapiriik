@@ -104,6 +104,7 @@ class SmashrunService(ServiceBase):
                 activity.Stats.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius,
                                                                avg=act['temperature'])
             activity.CalculateUID()
+            logger.debug("\tActivity s/t %s", activity.StartTime)
             activities.append(activity)
 
         return activities, exclusions
