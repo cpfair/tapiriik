@@ -552,7 +552,7 @@ class SynchronizationTask:
             # ReceivesNonGPSActivitiesWithOtherSensorData doesn't matter if the activity is stationary.
             # (and the service accepts stationary activities - guaranteed immediately above)
             if not activity.Stationary:
-                if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or activity.GPS):
+                if not (destSvc.ReceivesNonGPSActivitiesWithOtherSensorData or activity.GPS is not False):
                     logger.info("\t\t" + destSvc.ID + " doesn't receive non-GPS activities")
                     activity.Record.MarkAsNotPresentOn(destinationSvcRecord, UserException(UserExceptionType.NonGPSUnsupported))
                     continue
