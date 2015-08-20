@@ -569,7 +569,7 @@ p.infotip .close:hover {
 	background-image:url('../img/unlink.png');
 	background-repeat: no-repeat;
 	background-position: center center;
-	text-indent: -999px;
+	text-indent: -9999px;
 }
 .service .flowConfig {
 	text-align: center;
