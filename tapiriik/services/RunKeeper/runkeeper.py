@@ -150,7 +150,8 @@ class RunKeeperService(ServiceBase):
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
-        activity.GPS = rawRecord["has_path"]
+        activity.GPS = rawRecord["has_path"] and rawRecord['tracking_mode'] == "outdoor"
+        activity.Stationary = not rawRecord["has_path"]
         activity.CalculateUID()
         return activity
 
@@ -205,19 +206,21 @@ class RunKeeperService(ServiceBase):
         def _addWaypoint(timestamp, path=None, heart_rate=None, calories=None, distance=None):
             waypoint = Waypoint(activity.StartTime + timedelta(seconds=timestamp))
             if path:
-                waypoint.Location = Location(path["latitude"], path["longitude"], path["altitude"] if "altitude" in path and float(path["altitude"]) != 0 else None)  # if you're running near sea level, well...
+                if path["latitude"] != 0 and path["longitude"] != 0:
+                    waypoint.Location = Location(path["latitude"], path["longitude"], path["altitude"] if "altitude" in path and float(path["altitude"]) != 0 else None)  # if you're running near sea level, well...
                 waypoint.Type = self._wayptTypeMappings[path["type"]] if path["type"] in self._wayptTypeMappings else WaypointType.Regular
             waypoint.HR = heart_rate
             waypoint.Calories = calories
             waypoint.Distance = distance
 
             lap.Waypoints.append(waypoint)
+        StreamSampler.SampleWithCallback(_addWaypoint, streamData)
+
         activity.Stationary = len(lap.Waypoints) == 0
+        activity.GPS = any(wp.Location and wp.Location.Longitude is not None and wp.Location.Latitude is not None for wp in lap.Waypoints)
         if not activity.Stationary:
             lap.Waypoints[0].Type = WaypointType.Start
             lap.Waypoints[-1].Type = WaypointType.End
-
-        StreamSampler.SampleWithCallback(_addWaypoint, streamData)
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
