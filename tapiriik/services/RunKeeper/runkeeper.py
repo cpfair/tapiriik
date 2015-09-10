@@ -150,7 +150,7 @@ class RunKeeperService(ServiceBase):
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["total_calories"] if "total_calories" in rawRecord else None)
         if rawRecord["type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["type"]]
-        activity.GPS = rawRecord["has_path"]
+        activity.GPS = rawRecord["has_path"] and (rawRecord['tracking_mode'] == "outdoor")
         activity.CalculateUID()
         return activity
 
@@ -212,12 +212,14 @@ class RunKeeperService(ServiceBase):
             waypoint.Distance = distance
 
             lap.Waypoints.append(waypoint)
+
+        if activity.GPS:
+            StreamSampler.SampleWithCallback(_addWaypoint, streamData)
+
         activity.Stationary = len(lap.Waypoints) == 0
         if not activity.Stationary:
             lap.Waypoints[0].Type = WaypointType.Start
             lap.Waypoints[-1].Type = WaypointType.End
-
-        StreamSampler.SampleWithCallback(_addWaypoint, streamData)
 
     def UploadActivity(self, serviceRecord, activity):
         #  assembly dict to post to RK
