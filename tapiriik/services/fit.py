@@ -397,7 +397,7 @@ class FITIO:
 	def Parse(raw_file):
 		raise Exception("Not implemented")
 
-	def Dump(act):
+	def Dump(act, drop_pauses=False):
 		def toUtc(ts):
 			if ts.tzinfo:
 				return ts.astimezone(pytz.utc).replace(tzinfo=None)
@@ -488,6 +488,8 @@ class FITIO:
 				elif wp.Type == WaypointType.Pause and not inPause:
 					fmg.GenerateMessage("event", timestamp=toUtc(wp.Timestamp), event=FITEvent.Timer, event_type=FITEventType.Stop)
 					inPause = True
+				if inPause and drop_pauses:
+					continue
 
 				rec_contents = {"timestamp": toUtc(wp.Timestamp)}
 				if wp.Location:

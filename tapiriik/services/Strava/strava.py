@@ -289,7 +289,7 @@ class StravaService(ServiceBase):
                 fitData = activity.PrerenderedFormats["fit"]
             else:
                 # TODO: put the fit back into PrerenderedFormats once there's more RAM to go around and there's a possibility of it actually being used.
-                fitData = FITIO.Dump(activity)
+                fitData = FITIO.Dump(activity, drop_pauses=True)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
             response = requests.post("https://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
