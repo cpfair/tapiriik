@@ -14,7 +14,7 @@ def auth_login(req, service):
 @require_POST
 def auth_login_ajax(req, service):
     res = auth_do(req, service)
-    return HttpResponse(json.dumps({"success": res == True, "result": res}), mimetype='application/json')
+    return HttpResponse(json.dumps({"success": res == True, "result": res}), content_type='application/json')
 
 
 def auth_do(req, service):
@@ -72,8 +72,8 @@ def auth_disconnect_ajax(req, service):
         status = auth_disconnect_do(req, service)
     except Exception as e:
         raise
-        return HttpResponse(json.dumps({"success": False, "error": str(e)}), mimetype='application/json', status=500)
-    return HttpResponse(json.dumps({"success": status}), mimetype='application/json')
+        return HttpResponse(json.dumps({"success": False, "error": str(e)}), content_type='application/json', status=500)
+    return HttpResponse(json.dumps({"success": status}), content_type='application/json')
 
 
 def auth_disconnect_do(req, service):

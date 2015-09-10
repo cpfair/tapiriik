@@ -17,4 +17,4 @@ def browse(req, path="/"):
         if item["is_dir"] is False:
             continue
         folders.append(item["path"])
-    return HttpResponse(json.dumps(folders), mimetype='application/json')
+    return HttpResponse(json.dumps(folders), content_type='application/json')
