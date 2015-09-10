@@ -238,8 +238,8 @@ class EndomondoService(ServiceBase):
 
         activity.GPS = False
 
-        prevLon = 0.0
-        prevLat = 0.0
+        old_location = None
+        in_pause = False
         for pt in resp["points"]:
             wp = Waypoint()
             if "time" not in pt:
@@ -254,22 +254,24 @@ class EndomondoService(ServiceBase):
                 if "lat" in pt and "lng" in pt:
                     wp.Location.Latitude = pt["lat"]
                     wp.Location.Longitude = pt["lng"]
-                    if (wp.Location.Latitude == prevLat and wp.Location.Longitude == prevLon):
-                        # we have seen the point with the same coordinates
-                        # before. This causes other services (e.g Strava) to
-                        # interpret this as if we were standing for a while,
-                        # which causes us having wrong activity time when
-                        # importing. We discard this entry to keep only unique
-                        # ones to avoid this. This is still a hack :( However,
-                        # I don't know if this will handle the situation when
-                        # we are actually standing for some time in one place
-                        # well...
-                        continue;
-                    prevLat = wp.Location.Latitude;
-                    prevLon = wp.Location.Longitude;
                     activity.GPS = True
                 if "alt" in pt:
                     wp.Location.Altitude = pt["alt"]
+
+                if wp.Location == old_location:
+                    # We have seen the point with the same coordinates
+                    # before. This causes other services (e.g Strava) to
+                    # interpret this as if we were standing for a while,
+                    # which causes us having wrong activity time when
+                    # importing. We mark the point as paused in hopes this
+                    # fixes the issue.
+                    in_pause = True
+                    wp.Type = WaypointType.Pause
+                elif in_pause:
+                    in_pause = False
+                    wp.Type = WaypointType.Resume
+
+                old_location = wp.Location
 
             if "hr" in pt:
                 wp.HR = pt["hr"]
