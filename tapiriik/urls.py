@@ -49,6 +49,7 @@ urlpatterns = patterns('',
     url(r'^sync/remote_callback/trigger_partial_sync/(?P<service>.+)$', 'tapiriik.web.views.sync_trigger_partial_sync_callback', {}, name='sync_trigger_partial_sync_callback'),
 
     url(r'^diagnostics/$', 'tapiriik.web.views.diag_dashboard', {}, name='diagnostics_dashboard'),
+    url(r'^diagnostics/queue$', 'tapiriik.web.views.diag_queue_dashboard', {}, name='diagnostics_queue_dashboard'),
     url(r'^diagnostics/errors$', 'tapiriik.web.views.diag_errors', {}, name='diagnostics_errors'),
     url(r'^diagnostics/error/(?P<error>.+)$', 'tapiriik.web.views.diag_error', {}, name='diagnostics_error'),
     url(r'^diagnostics/graphs$', 'tapiriik.web.views.diag_graphs', {}, name='diagnostics_graphs'),
