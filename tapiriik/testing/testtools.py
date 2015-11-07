@@ -99,7 +99,7 @@ class TestTools:
         if act.CountTotalWaypoints() > 0:
             raise ValueError("Waypoint list already populated")
         # this is entirely random in case the testing account already has events in it (API doesn't support delete, etc)
-        act.StartTime = datetime(random.randint(2000, 2020), random.randint(1, 12), random.randint(1, 28), random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
+        act.StartTime = datetime(2011, 12, 13, 14, 15, 16)
         if tz is not False:
             if hasattr(tz, "localize"):
                 act.StartTime = tz.localize(act.StartTime)

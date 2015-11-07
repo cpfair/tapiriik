@@ -9,3 +9,4 @@ install:
     - "pip install -r requirements.txt"
     - "cp tapiriik/local_settings.py.example tapiriik/local_settings.py"
 script: "python runtests.py"
+sudo: false
