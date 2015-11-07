@@ -553,7 +553,7 @@ class GarminConnectService(ServiceBase):
         try:
             if activity.Name and activity.Name.strip():
                 self._rate_limit()
-                res = session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urlencode({"value": activity.Name}).encode("UTF-8"), headers=encoding_headers)
+                res = session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urlencode({"value": activity.Name[:75]}).encode("UTF-8"), headers=encoding_headers)
                 try:
                     res = res.json()
                 except:
