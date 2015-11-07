@@ -277,25 +277,26 @@ class Activity:
         """
         def _cleanStatsObj(stats):
             ranges = {
-                "Power": [ActivityStatisticUnit.Watts, 0, 5000],
-                "Speed": [ActivityStatisticUnit.KilometersPerHour, 0, 150],
-                "Elevation": [ActivityStatisticUnit.Meters, -500, 8850], # Props for bringing your Forerunner up Everest
-                "HR": [ActivityStatisticUnit.BeatsPerMinute, 15, 300], # Please visit the ER before you email me about these limits
-                "Cadence": [ActivityStatisticUnit.RevolutionsPerMinute, 0, 255], # FIT
-                "RunCadence": [ActivityStatisticUnit.StepsPerMinute, 0, 255], # FIT
-                "Strides": [ActivityStatisticUnit.Strides, 1, 9999999],
-                "Temperature": [ActivityStatisticUnit.DegreesCelcius, -62, 50],
-                "Energy": [ActivityStatisticUnit.Kilocalories, 1, 65535], # FIT
-                "Distance": [ActivityStatisticUnit.Kilometers, 0, 1000] # You can let me know when you ride 1000 km and I'll up this.
+                "Power": (ActivityStatisticUnit.Watts, 0, 5000),
+                "Speed": (ActivityStatisticUnit.KilometersPerHour, 0, 150),
+                "Elevation": (ActivityStatisticUnit.Meters, -500, 8850), # Props for bringing your Forerunner up Everest
+                "HR": (ActivityStatisticUnit.BeatsPerMinute, 15, 300), # Please visit the ER before you email me about these limits
+                "Cadence": (ActivityStatisticUnit.RevolutionsPerMinute, 0, 255), # FIT
+                "RunCadence": (ActivityStatisticUnit.StepsPerMinute, 0, 255), # FIT
+                "Strides": (ActivityStatisticUnit.Strides, 1, 9999999),
+                "Temperature": (ActivityStatisticUnit.DegreesCelcius, -62, 50),
+                "Energy": (ActivityStatisticUnit.Kilocalories, 1, 65535), # FIT
+                "Distance": (ActivityStatisticUnit.Kilometers, 0, 1000) # You can let me know when you ride 1000 km and I'll up this.
             }
-            checkFields = ["Average", "Max", "Min", "Value"]
+            checkFields = ("Average", "Max", "Min", "Value")
             for key in ranges:
-                stat = stats.__dict__[key].asUnits(ranges[key][0])
+                raw_stat = getattr(stats, key)
+                stat = raw_stat.asUnits(ranges[key][0])
                 for field in checkFields:
-                    value = stat.__dict__[field]
+                    value = getattr(stat, field)
                     if value is not None and (value < ranges[key][1] or value > ranges[key][2]):
-                        stats.__dict__[key]._samples[field] = 0 # Need to update the original, not the asUnits copy
-                        stats.__dict__[key].__dict__[field] = None
+                        raw_stat._samples[field] = 0 # Need to update the original (raw_stat), not the asUnits copy (stat)
+                        setattr(raw_stat, field, None)
 
         _cleanStatsObj(self.Stats)
         for lap in self.Laps:
@@ -366,7 +367,8 @@ class Lap:
     __repr__ = __str__
 
 class ActivityStatistics:
-    _statKeyList = ["Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power"]
+    __slots__ = ("Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power")
+    _statKeys = ("Distance", "TimerTime", "MovingTime", "Energy", "Speed", "Elevation", "HR", "Cadence", "RunCadence", "Strides", "Temperature", "Power")
     def __init__(self, distance=None, timer_time=None, moving_time=None, avg_speed=None, max_speed=None, max_elevation=None, min_elevation=None, gained_elevation=None, lost_elevation=None, avg_hr=None, max_hr=None, avg_cadence=None, max_cadence=None, avg_run_cadence=None, max_run_cadence=None, strides=None, min_temp=None, avg_temp=None, max_temp=None, kcal=None, avg_power=None, max_power=None):
         self.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=distance)
         self.TimerTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=timer_time)
@@ -382,183 +384,27 @@ class ActivityStatistics:
         self.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=avg_power, max=max_power)
 
     def coalesceWith(self, other_stats):
-        for stat in ActivityStatistics._statKeyList:
-            self.__dict__[stat].coalesceWith(other_stats.__dict__[stat])
+        for stat in ActivityStatistics._statKeys:
+            getattr(self, stat).coalesceWith(getattr(other_stats, stat))
     # Could overload +, but...
     def sumWith(self, other_stats):
-        for stat in ActivityStatistics._statKeyList:
-            self.__dict__[stat].sumWith(other_stats.__dict__[stat])
+        for stat in ActivityStatistics._statKeys:
+            getattr(self, stat).sumWith(getattr(other_stats, stat))
     # Magic dict is meh
     def update(self, other_stats):
-        for stat in ActivityStatistics._statKeyList:
-            self.__dict__[stat].update(other_stats.__dict__[stat])
+        for stat in ActivityStatistics._statKeys:
+            getattr(self, stat).update(getattr(other_stats, stat))
+
     def __eq__(self, other):
         if not other:
             return False
-        for stat in ActivityStatistics._statKeyList:
-            if not self.__dict__[stat] == other.__dict__[stat]:
+        for stat in ActivityStatistics._statKeys:
+            if not getattr(self, stat) == getattr(other, stat):
                 return False
         return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-class ActivityStatistic:
-    def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
-        self.Value = value
-        self.Average = avg
-        self.Min = min
-        self.Max = max
-        self.Gain = gain
-        self.Loss = loss
-
-        # Nothing outside of this class should be accessing _samples (though CleanStats gets a pass)
-        self._samples = {}
-        self._samples["Value"] = 1 if value is not None else 0
-        self._samples["Average"] = 1 if avg is not None else 0
-        self._samples["Min"] = 1 if min is not None else 0
-        self._samples["Max"] = 1 if max is not None else 0
-        self._samples["Gain"] = 1 if gain is not None else 0
-        self._samples["Loss"] = 1 if loss is not None else 0
-
-        self.Units = units
-
-    def asUnits(self, units):
-        if units == self.Units:
-            return self
-        newStat = ActivityStatistic(units)
-        existing_dict = dict(self.__dict__)
-        del existing_dict["Units"]
-        del existing_dict["_samples"]
-        ActivityStatistic.convertUnitsInDict(existing_dict, self.Units, units)
-        newStat.__dict__ = existing_dict
-        newStat.Units = units
-        newStat._samples = self._samples
-        return newStat
-
-    def convertUnitsInDict(values_dict, from_units, to_units):
-        for key, value in values_dict.items():
-            if value is None:
-                continue
-            values_dict[key] = ActivityStatistic.convertValue(value, from_units, to_units)
-
-    def convertValue(value, from_units, to_units):
-        conversions = {
-            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
-            (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
-            (ActivityStatisticUnit.KilometersPerSecond, ActivityStatisticUnit.KilometersPerHour): 60 * 60,
-            (ActivityStatisticUnit.MilesPerHour, ActivityStatisticUnit.HundredYardsPerHour): 17.6,
-            (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
-            (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
-            (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
-            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
-            (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Yards): 1.09361,
-            (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
-            (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184,
-            (ActivityStatisticUnit.StepsPerMinute, ActivityStatisticUnit.DoubledStepsPerMinute): 2
-        }
-        def recurseFindConversionPath(unit, target, stack):
-            assert(unit != target)
-            for transform in conversions.keys():
-                if unit in transform:
-                    if transform in stack:
-                        continue  # Prevent circular conversion
-                    if target in transform:
-                        # We've arrived at the end
-                        return stack + [transform]
-                    else:
-                        next_unit = transform[0] if transform[1] == unit else transform[1]
-                        result = recurseFindConversionPath(next_unit, target, stack + [transform])
-                        if result:
-                            return result
-            return None
-
-        conversionPath = recurseFindConversionPath(from_units, to_units, [])
-        if not conversionPath:
-            raise ValueError("No conversion from %s to %s" % (from_units, to_units))
-        for transform in conversionPath:
-            if type(conversions[transform]) is float or type(conversions[transform]) is int:
-                if from_units == transform[0]:
-                    value = value * conversions[transform]
-                    from_units = transform[1]
-                else:
-                    value = value / conversions[transform]
-                    from_units = transform[0]
-            else:
-                if from_units == transform[0]:
-                    func = conversions[transform][0] if type(conversions[transform]) is tuple else conversions[transform]
-                    value = func(value)
-                    from_units = transform[1]
-                else:
-                    if type(conversions[transform]) is not tuple:
-                        raise ValueError("No transform function for %s to %s" % (from_units, to_units))
-                    value = conversions[transform][1](value)
-                    from_units = transform[0]
-        return value
-
-    def coalesceWith(self, stat):
-        stat = stat.asUnits(self.Units)
-
-        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
-        my_items = self.__dict__
-        other_items = stat.__dict__
-        my_samples = self._samples
-        other_samples = stat._samples
-        for item in items:
-            # Only average if there's a second value
-            if other_items[item] is not None:
-                # We need to override this so we can be lazy elsewhere and just assign values (.Average = ...) and don't have to use .update(ActivityStatistic(blah, blah, blah))
-                other_samples[item] = other_samples[item] if other_samples[item] else 1
-                if my_items[item] is None:
-                    # We don't have this item's value, nothing to do really.
-                    my_items[item] = other_items[item]
-                    my_samples[item] = other_samples[item]
-                else:
-                    my_items[item] += (other_items[item] - my_items[item]) / ((my_samples[item] + 1 / other_samples[item]))
-                    my_samples[item] += other_samples[item]
-
-    def sumWith(self, stat):
-        """ Used if you want to sum up, for instance, laps' stats to get the activity's stats
-            Not all items can be simply summed (min/max), and sum just shouldn't (average)
-        """
-        stat = stat.asUnits(self.Units)
-        summable_items = ["Value", "Gain", "Loss"]
-        other_items = stat.__dict__
-        for item in summable_items:
-            if item in other_items and other_items[item] is not None:
-                if self.__dict__[item] is not None:
-                    self.__dict__[item] += other_items[item]
-                    self._samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
-                else:
-                    self.__dict__[item] = other_items[item]
-                    self._samples[item] = stat._samples[item]
-        self.Average = None
-        self._samples["Average"] = 0
-
-        if self.Max is None or (stat.Max is not None and stat.Max > self.Max):
-            self.Max = stat.Max
-            self._samples["Max"] = stat._samples["Max"]
-        if self.Min is None or (stat.Min is not None and stat.Min < self.Min):
-            self.Min = stat.Min
-            self._samples["Min"] = stat._samples["Min"]
-
-    def update(self, stat):
-        stat = stat.asUnits(self.Units)
-        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
-        other_items = stat.__dict__
-        for item in items:
-            if item in other_items and other_items[item] is not None:
-                self.__dict__[item] = other_items[item]
-                self._samples[item] = stat._samples[item]
-
-    def __eq__(self, other):
-        if not other:
-            return False
-        return self.Units == other.Units and self.Value == other.Value and self.Average == other.Average and self.Max == other.Max and self.Min == other.Min and self.Gain == other.Gain and self.Loss == other.Loss
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 
 class ActivityStatisticUnit:
@@ -585,6 +431,157 @@ class ActivityStatisticUnit:
     Kilocalories = "kcal"
     Kilojoules = "kj"
     Watts = "W"
+
+
+class ActivityStatistic:
+    __slots__ = ("Value", "Average", "Min", "Max", "Gain", "Loss", "Units", "_samples")
+    _typeKeys = ("Value", "Average", "Min", "Max", "Gain", "Loss")
+    _conversions = {
+        (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
+        (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
+        (ActivityStatisticUnit.KilometersPerSecond, ActivityStatisticUnit.KilometersPerHour): 60 * 60,
+        (ActivityStatisticUnit.MilesPerHour, ActivityStatisticUnit.HundredYardsPerHour): 17.6,
+        (ActivityStatisticUnit.MetersPerSecond, ActivityStatisticUnit.KilometersPerHour): 3.6,
+        (ActivityStatisticUnit.DegreesCelcius, ActivityStatisticUnit.DegreesFahrenheit): (lambda C: C*9/5 + 32, lambda F: (F-32) * 5/9),
+        (ActivityStatisticUnit.Kilometers, ActivityStatisticUnit.Meters): 1000,
+        (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Feet): 3.281,
+        (ActivityStatisticUnit.Meters, ActivityStatisticUnit.Yards): 1.09361,
+        (ActivityStatisticUnit.Miles, ActivityStatisticUnit.Feet): 5280,
+        (ActivityStatisticUnit.Kilocalories, ActivityStatisticUnit.Kilojoules): 4.184,
+        (ActivityStatisticUnit.StepsPerMinute, ActivityStatisticUnit.DoubledStepsPerMinute): 2
+    }
+    def __init__(self, units, value=None, avg=None, min=None, max=None, gain=None, loss=None):
+        self.Value = value
+        self.Average = avg
+        self.Min = min
+        self.Max = max
+        self.Gain = gain
+        self.Loss = loss
+
+        # Nothing outside of this class should be accessing _samples (though CleanStats gets a pass)
+        self._samples = {}
+        self._samples["Value"] = 1 if value is not None else 0
+        self._samples["Average"] = 1 if avg is not None else 0
+        self._samples["Min"] = 1 if min is not None else 0
+        self._samples["Max"] = 1 if max is not None else 0
+        self._samples["Gain"] = 1 if gain is not None else 0
+        self._samples["Loss"] = 1 if loss is not None else 0
+
+        self.Units = units
+
+    def asUnits(self, units):
+        if units == self.Units:
+            return self
+        newStat = ActivityStatistic(units)
+        newStat._samples = self._samples
+        newStat.Units = units
+        for k in ActivityStatistic._typeKeys:
+            old_value = getattr(self, k, None)
+            if old_value is not None:
+                setattr(newStat, k, ActivityStatistic.convertValue(old_value, self.Units, units))
+        return newStat
+
+    def convertValue(value, from_units, to_units):
+        def recurseFindConversionPath(unit, target, stack):
+            assert(unit != target)
+            for transform in ActivityStatistic._conversions.keys():
+                if unit in transform:
+                    if transform in stack:
+                        continue  # Prevent circular conversion
+                    if target in transform:
+                        # We've arrived at the end
+                        return stack + [transform]
+                    else:
+                        next_unit = transform[0] if transform[1] == unit else transform[1]
+                        result = recurseFindConversionPath(next_unit, target, stack + [transform])
+                        if result:
+                            return result
+            return None
+
+        conversionPath = recurseFindConversionPath(from_units, to_units, [])
+        if not conversionPath:
+            raise ValueError("No conversion from %s to %s" % (from_units, to_units))
+        for transform in conversionPath:
+            if type(ActivityStatistic._conversions[transform]) is float or type(ActivityStatistic._conversions[transform]) is int:
+                if from_units == transform[0]:
+                    value = value * ActivityStatistic._conversions[transform]
+                    from_units = transform[1]
+                else:
+                    value = value / ActivityStatistic._conversions[transform]
+                    from_units = transform[0]
+            else:
+                if from_units == transform[0]:
+                    func = ActivityStatistic._conversions[transform][0] if type(ActivityStatistic._conversions[transform]) is tuple else ActivityStatistic._conversions[transform]
+                    value = func(value)
+                    from_units = transform[1]
+                else:
+                    if type(ActivityStatistic._conversions[transform]) is not tuple:
+                        raise ValueError("No transform function for %s to %s" % (from_units, to_units))
+                    value = ActivityStatistic._conversions[transform][1](value)
+                    from_units = transform[0]
+        return value
+
+    def coalesceWith(self, stat):
+        stat = stat.asUnits(self.Units)
+        items = ["Value", "Max", "Min", "Average", "Gain", "Loss"]
+        my_samples = self._samples
+        their_samples = stat._samples
+        for item in items:
+            my_value = getattr(self, item, None)
+            their_value = getattr(stat, item, None)
+            # Only average if there's a second value
+            if their_value is not None:
+                # We need to override this so we can be lazy elsewhere and just assign values (.Average = ...) and don't have to use .update(ActivityStatistic(blah, blah, blah))
+                their_samples[item] = their_samples[item] if their_samples[item] else 1
+                if my_value is None:
+                    # We don't have this item's value, nothing to do really, just take theirs
+                    setattr(self, item, their_value)
+                    my_samples[item] = their_samples[item]
+                else:
+                    setattr(self, item, my_value + (their_value - my_value) / ((my_samples[item] + 1 / their_samples[item])))
+                    my_samples[item] += their_samples[item]
+
+    def sumWith(self, stat):
+        """ Used if you want to sum up, for instance, laps' stats to get the activity's stats
+            Not all items can be simply summed (min/max), and some just shouldn't (average)
+        """
+        stat = stat.asUnits(self.Units)
+        summable_items = ("Value", "Gain", "Loss")
+        for item in summable_items:
+            their_value = getattr(stat, item, None)
+            my_value = getattr(self, item, None)
+            if their_value is not None:
+                if my_value is not None:
+                    setattr(self, item, my_value + their_value)
+                    self._samples[item] = 1 # Break the chain of coalesceWith() calls - this is an entirely fresh "measurement"
+                else:
+                    setattr(self, item, their_value)
+                    self._samples[item] = stat._samples[item]
+        self.Average = None
+        self._samples["Average"] = 0
+
+        if self.Max is None or (stat.Max is not None and stat.Max > self.Max):
+            self.Max = stat.Max
+            self._samples["Max"] = stat._samples["Max"]
+        if self.Min is None or (stat.Min is not None and stat.Min < self.Min):
+            self.Min = stat.Min
+            self._samples["Min"] = stat._samples["Min"]
+
+    def update(self, stat):
+        stat = stat.asUnits(self.Units)
+        for item in self._typeKeys:
+            their_value = getattr(stat, item, None)
+            if their_value is not None:
+                setattr(self, item, their_value)
+                self._samples[item] = stat._samples[item]
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        return self.Units == other.Units and self.Value == other.Value and self.Average == other.Average and self.Max == other.Max and self.Min == other.Min and self.Gain == other.Gain and self.Loss == other.Loss
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class WaypointType:

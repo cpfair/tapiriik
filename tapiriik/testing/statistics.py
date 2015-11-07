@@ -151,3 +151,33 @@ class StatisticTests(TapiriikTestCase):
         self.assertEqual(stat1.Max, 2)
         self.assertEqual(stat1.Gain, 3)
         self.assertEqual(stat1.Loss, 4)
+
+    def test_stat_sum(self):
+        stat1 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, min=None)
+        stat2 = ActivityStatistic(ActivityStatisticUnit.Meters, value=2, max=2)
+        stat3 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, gain=3)
+        stat4 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, gain=4)
+        stat5 = ActivityStatistic(ActivityStatisticUnit.Meters, value=5, max=3)
+        stat5.sumWith(stat2)
+        stat3.sumWith(stat5)
+        stat4.sumWith(stat3)
+        stat1.sumWith(stat4)
+
+        self.assertEqual(stat1.Value, 7)
+        self.assertEqual(stat1.Max, 3)
+        self.assertEqual(stat1.Gain, 7)
+
+    def test_stat_update(self):
+        stat1 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, min=None)
+        stat2 = ActivityStatistic(ActivityStatisticUnit.Meters, value=2, max=2)
+        stat3 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, gain=3)
+        stat4 = ActivityStatistic(ActivityStatisticUnit.Meters, value=None, gain=4)
+        stat5 = ActivityStatistic(ActivityStatisticUnit.Meters, value=5, max=3)
+        stat5.update(stat2)
+        stat3.update(stat5)
+        stat4.update(stat3)
+        stat1.update(stat4)
+
+        self.assertEqual(stat1.Value, 2)
+        self.assertEqual(stat1.Max, 2)
+        self.assertEqual(stat1.Gain, 3)
