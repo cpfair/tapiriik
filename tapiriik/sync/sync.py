@@ -4,9 +4,9 @@ from tapiriik.services import Service, ServiceRecord, APIExcludeActivity, Servic
 from tapiriik.settings import USER_SYNC_LOGS, DISABLED_SERVICES, WITHDRAWN_SERVICES
 from .activity_record import ActivityRecord, ActivityServicePrescence
 from datetime import datetime, timedelta
-from pymongo.read_preferences import ReadPreference
 import sys
 import os
+import io
 import socket
 import traceback
 import pprint
@@ -22,7 +22,7 @@ import json
 _global_logger = logging.getLogger("tapiriik")
 
 _global_logger.setLevel(logging.DEBUG)
-logging_console_handler = logging.StreamHandler(sys.stdout)
+logging_console_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8'))
 logging_console_handler.setLevel(logging.DEBUG)
 logging_console_handler.setFormatter(logging.Formatter('%(message)s'))
 _global_logger.addHandler(logging_console_handler)
