@@ -87,9 +87,9 @@ def diag_queue_dashboard(req):
 @diag_requireAuth
 def diag_errors(req):
     context = {}
-    syncErrorListing = list(db.common_sync_errors.find({"value.count": {"$gt": 5}}, {"value.exemplar": 1, "value.count": 1, "value.recency_avg": 1, "_id.service": 1}).sort("value.count", -1))
+    syncErrorListing = list(db.common_sync_errors.find({"value.count": {"$gt": 5}}, {"value.exemplar": 1, "value.count": 1, "value.recency_avg": 1, "_id.service": 1}))
     syncErrorSummary = []
-    for error in syncErrorListing:    
+    for error in sorted(syncErrorListing, key=lambda error: error["value"]["count"], reverse=True):
         syncErrorSummary.append({"id": urllib.parse.quote(json.dumps(error["_id"])), "service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"]), "average_age": error["value"].get("recency_avg", 0)})
 
     context["syncErrorSummary"] = syncErrorSummary
