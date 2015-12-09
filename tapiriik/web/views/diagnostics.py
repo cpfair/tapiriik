@@ -19,72 +19,7 @@ def diag_requireAuth(view):
 
 @diag_requireAuth
 def diag_dashboard(req):
-    context = {}
-    stats = db.stats.find_one()
-
-    stall_timeout = timedelta(minutes=1)
-
-    # We fetch this twice so the (orphaned) indicators are correct even if there were writes during all these other queries
-    context["allWorkerPIDsPre"] = [x["Process"] for x in db.sync_workers.find()]
-
-    context["lockedSyncUsers"] = list(db.users.find({"SynchronizationWorker": {"$ne": None}}))
-    context["lockedSyncRecords"] = len(context["lockedSyncUsers"])
-    context["queuedUnlockedUsers"] = list(db.users.find({"SynchronizationWorker": {"$exists": False}, "QueuedAt": {"$ne": None}}))
-
-    context["pendingSynchronizations"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}}).count()
-    context["pendingSynchronizationsLocked"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}, "SynchronizationWorker": {"$ne": None}}).count()
-    context["pendingSynchronizationsLockedQueued"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}, "QueuedAt": {"$ne": None, "$exists": True}, "SynchronizationWorker": {"$ne": None}}).count()
-    context["pendingSynchronizationsQueued"] = db.users.find({"NextSynchronization": {"$lt": datetime.utcnow()}, "QueuedAt": {"$ne": None, "$exists": True}}).count()
-    context["queuedSynchronizations"] = db.users.find({"QueuedAt": {"$lt": datetime.utcnow()}}).count()
-    context["queuedSynchronizationsLocked"] = db.users.find({"QueuedAt": {"$lt": datetime.utcnow()}, "SynchronizationWorker": {"$ne": None}}).count()
-
-    context["userCt"] = db.users.count()
-    context["scheduledCt"] = db.users.find({"$or":[{"NextSynchronization": {"$ne": None, "$exists": True}}, {"QueuedAt": {"$ne": None, "$exists": True}}]}).count()
-    context["autosyncCt"] = db.users.find(User.PaidUserMongoQuery()).count()
-
-    context["errorUsersCt"] = db.users.find({"NonblockingSyncErrorCount": {"$gt": 0}}).count()
-    context["exclusionUsers"] = db.users.find({"SyncExclusionCount": {"$gt": 0}}).count()
-
-    context["allWorkers"] = list(db.sync_workers.find())
-
-    synchronizingUserIds = [x["User"] if "User" in x else None for x in context["allWorkers"]]
-    context["duplicatedUserSynchronizations"] = set([x for x in synchronizingUserIds if synchronizingUserIds.count(x) > 1])
-
-    context["hostWorkerCount"] = {host:len([1 for x in context["allWorkers"] if x["Host"] == host]) for host in set([x["Host"] for x in context["allWorkers"]])}
-
-    # Each worker can be engaged for <= 60*60 seconds in an hour
-    if len(context["allWorkers"]) > 0 and stats:
-        context["loadFactor"] = stats["TotalSyncTimeUsed"] / (len(context["allWorkers"]) * 60 * 60)
-    else:
-        context["loadFactor"] = 0
-
-    context["allWorkerPIDs"] = [x["Process"] for x in context["allWorkers"]]
-    context["activeWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] > datetime.utcnow() - stall_timeout]
-
-    context["workerStates"]= {}
-    workerStates = set(x["State"] for x in context["allWorkers"])
-    for state in workerStates:
-        context["workerStates"][state] = len([x for x in context["allWorkers"] if x["State"] == state])
-
-
-    context["stalledWorkers"] = [x for x in context["allWorkers"] if x["Heartbeat"] < datetime.utcnow() - stall_timeout]
-    context["stalledWorkerPIDs"] = [x["Process"] for x in context["stalledWorkers"]]
-
-    delta = False
-    if "deleteStalledWorker" in req.POST:
-        db.sync_workers.remove({"Process": int(req.POST["pid"])})
-        delta = True
-    if "unlockOrphaned" in req.POST:
-        orphanedUserIDs = [x["_id"] for x in context["lockedSyncUsers"] if x["SynchronizationWorker"] not in context["allWorkerPIDs"]]
-        db.users.update({"_id":{"$in":orphanedUserIDs}}, {"$unset": {"SynchronizationWorker": None}}, multi=True)
-        delta = True
-    if "requeueQueued" in req.POST:
-        db.users.update({"QueuedAt": {"$lt": datetime.utcnow()}, "$or": [{"SynchronizationWorker": {"$exists": False}}, {"SynchronizationWorker": None}]}, {"$set": {"NextSynchronization": datetime.utcnow(), "QueuedGeneration": "manual"}, "$unset": {"QueuedAt": True}}, multi=True)
-
-    if delta:
-        return redirect("diagnostics_dashboard")
-
-    return render(req, "diag/dashboard.html", context)
+    return redirect("diag_queue_dashboard")
 
 
 @diag_requireAuth
@@ -152,7 +87,7 @@ def diag_queue_dashboard(req):
 @diag_requireAuth
 def diag_errors(req):
     context = {}
-    syncErrorListing = list(db.common_sync_errors.find({}, {"value.exemplar": 1, "value.count": 1, "value.recency_avg": 1, "_id.service": 1}).sort("value.count", -1))
+    syncErrorListing = list(db.common_sync_errors.find({"value.count": {"$gt": 5}}, {"value.exemplar": 1, "value.count": 1, "value.recency_avg": 1, "_id.service": 1}).sort("value.count", -1))
     syncErrorSummary = []
     for error in syncErrorListing:    
         syncErrorSummary.append({"id": urllib.parse.quote(json.dumps(error["_id"])), "service": error["_id"]["service"], "message": error["value"]["exemplar"], "count": int(error["value"]["count"]), "average_age": error["value"].get("recency_avg", 0)})
