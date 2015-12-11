@@ -39,7 +39,7 @@
 						<td><tt>{{ worker.State }}</tt></td>
 						<td><tt>{{ worker.User }}</tt></td>
 						<td>
-							<form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
+							<form action="{% url 'diagnostics_queue_dashboard' %}" method="POST">{% csrf_token %}<input type="hidden" name="pid" value="{{ worker.Process }}"><input type="submit" name="deleteStalledWorker" value="x"/></form>
 						</td>
 					</tr>
 				{% endfor %}
@@ -51,7 +51,7 @@
 		<li><b>Pending synchronizations:</b> {{ pendingSynchronizations }} ({{ pendingSynchronizationsLocked }} locked, {{ pendingSynchronizationsQueued }} double-scheduled, {{ pendingSynchronizationsLockedQueued }} double-scheduled and locked)</li>
 		<li><b>Queued synchronizations:</b> {{ queuedSynchronizations }} ({{ queuedSynchronizationsLocked }} locked)</li>
 		<li><b>Duped users:</b> {{ duplicatedUserSynchronizations }}</li>
-		<li><form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="submit" name="requeueQueued" value="Requeue not-locked"/></form></li>
+		<li><form action="{% url 'diagnostics_queue_dashboard' %}" method="POST">{% csrf_token %}<input type="submit" name="requeueQueued" value="Requeue not-locked"/></form></li>
 		<li><b>Users with errors:</b> <a href="{% url 'diagnostics_errors' %}">{{ errorUsersCt }} &raquo;</a></li>
 		<li><b>Locked records:</b> {{ lockedSyncRecords }}
 			{% if lockedSyncRecords > 0 %}
@@ -78,7 +78,7 @@
 				{% endfor %}
 			</table>
 			{% endif %}
-			<form action="{% url 'diagnostics_dashboard' %}" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
+			<form action="{% url 'diagnostics_queue_dashboard' %}" method="POST">{% csrf_token %}<input type="submit" name="unlockOrphaned" value="Unlock orphaned"></form>
 		</li>
 		<li><b>Queued but unlocked records:</b>
 			<table>
