@@ -22,10 +22,14 @@ import json
 _global_logger = logging.getLogger("tapiriik")
 
 _global_logger.setLevel(logging.DEBUG)
-logging_console_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8'))
-logging_console_handler.setLevel(logging.DEBUG)
-logging_console_handler.setFormatter(logging.Formatter('%(message)s'))
-_global_logger.addHandler(logging_console_handler)
+
+# In celery tasks, sys.stdout has already been monkeypatched
+# So we'll assume they know what they're doing.
+if hasattr(sys.stdout, "buffer"):
+    logging_console_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8'))
+    logging_console_handler.setLevel(logging.DEBUG)
+    logging_console_handler.setFormatter(logging.Formatter('%(message)s'))
+    _global_logger.addHandler(logging_console_handler)
 
 logger = logging.getLogger("tapiriik.sync.worker")
 
