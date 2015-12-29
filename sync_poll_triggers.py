@@ -27,7 +27,7 @@ celery_app.config_from_object(_celeryConfig())
 def celery_shutdown():
     close_connections()
 
-@celery_app.task()
+@celery_app.task(acks_late=True)
 def trigger_poll(service_id, index):
     from tapiriik.auth import User
     print("Polling %s-%d" % (service_id, index))

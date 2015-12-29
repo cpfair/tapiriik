@@ -18,7 +18,7 @@ celery_app.config_from_object(_celeryConfig())
 def celery_shutdown():
     close_connections()
 
-@celery_app.task()
+@celery_app.task(acks_late=True)
 def trigger_remote(service_id, affected_connection_external_ids):
     from tapiriik.auth import User
     from tapiriik.services import Service
