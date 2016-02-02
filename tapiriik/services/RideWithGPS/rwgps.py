@@ -108,7 +108,7 @@ class RideWithGPSService(ServiceBase):
         # They don't actually support paging right now, for whatever reason
         params = self._add_auth_params({}, record=serviceRecord)
 
-        res = requests.get("http://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
+        res = requests.get("https://ridewithgps.com/users/{}/trips.json".format(serviceRecord.ExternalID), params=params)
         res = res.json()
 
         # Apparently some API users are seeing this new result format - I'm not
