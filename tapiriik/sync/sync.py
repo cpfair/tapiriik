@@ -63,6 +63,9 @@ def _packServiceException(step, e):
         res["UserException"] = _packUserException(e.UserException)
     return res
 
+def _packException(step):
+    return {"Step": step, "Message": _formatExc(), "Timestamp": datetime.utcnow()}
+
 def _packUserException(userException):
     if userException:
         return {"Type": userException.Type, "Extra": userException.Extra, "InterventionRequired": userException.InterventionRequired, "ClearGroup": userException.ClearGroup}
@@ -643,7 +646,7 @@ class SynchronizationTask:
             if not _isWarning(e):
                 return
         except Exception as e:
-            self._syncErrors[conn._id].append({"Step": SyncStep.List, "Message": _formatExc()})
+            self._syncErrors[conn._id].append(_packException(SyncStep.List))
             self._excludeService(conn, UserException(UserExceptionType.ListingError))
             return
         self._accumulateExclusions(conn, svcExclusions)
@@ -761,7 +764,7 @@ class SynchronizationTask:
                 activity.Record.MarkAsNotPresentOtherwise(e.UserException)
                 continue
             except Exception as e:
-                packed_exc = {"Step": SyncStep.Download, "Message": _formatExc()}
+                packed_exc = _packException(SyncStep.Download)
 
                 activity.Record.IncrementFailureCount(dlSvcRecord)
                 if activity.Record.GetFailureCount(dlSvcRecord) >= dlSvc.DownloadRetryCount:
@@ -814,7 +817,7 @@ class SynchronizationTask:
                 activity.Record.MarkAsNotPresentOn(destinationServiceRec, e.UserException if e.UserException else UserException(UserExceptionType.UploadError))
                 raise UploadException()
         except Exception as e:
-            packed_exc = {"Step": SyncStep.Upload, "Message": _formatExc()}
+            packed_exc = _packException(SyncStep.Upload)
 
             activity.Record.IncrementFailureCount(destinationServiceRec)
             if activity.Record.GetFailureCount(destinationServiceRec) >= destSvc.UploadRetryCount:
