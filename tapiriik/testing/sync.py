@@ -393,8 +393,8 @@ class SyncTests(TapiriikTestCase):
         s._accumulateActivities(recB, [copy.deepcopy(actB)])
 
         self.assertEqual(len(s._activities), 2)
-        act = s._activities[0]
-        self.assertEqual(act.Type, actA.Type)
+        self.assertEqual(s._activities[0].Type, actB.Type)
+        self.assertEqual(s._activities[1].Type, actA.Type)
 
     def test_eligibility_excluded(self):
         user = TestTools.create_mock_user()
