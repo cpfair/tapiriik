@@ -3,16 +3,13 @@
 {% block title %}contact{% endblock %}
 {% block content %}
 <div class="contactBlock">
-	<h1>For quick questions</h1>
-	<p>(but I can't answer questions specific to your account)</p>
+	<h1>For system status updates</h1>
 	<a href="https://twitter.com/tapiriik" target="_new" class="large">@tapiriik</a>
 </div>
 <div class="contactBlock">
 	<h1>For help with your account</h1>
-	<p>(or if you've got a feature request, question about the system, etc.)</p>
 	<a href="mailto:contact@tapiriik.com{% if user %}?body=My tapiriik user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank" class="large">contact@tapiriik.com</a>
-	<p>{% if not user %}I'll need your User ID to diagnose issues with your account - once you've connected to a service, it'll be included in the link above{% endif %}</p>
-	<p>If you're tracking down an activity that hasn't synchronized, <b>please check <a href="{% url 'activities_dashboard' %}">the activity dashboard</a></b>. It'll do its best to tell you what went wrong. If you can't get things working yourself, make sure to <b>include the date of the problem activity in your message</b>.</p>
+	<p>If you're dissatisfied with the service and want a refund, make sure to mention that in the subject line so I can respond quickly.</p>
+    <p>Unfortunately, I'm only one person and I can't reply to every message received. If you're trying to track down an activity that hasn't synchronized, <b>please check <a href="{% url 'activities_dashboard' %}">the activity dashboard</a></b>. It'll do its best to tell you what went wrong.</p>
 </div>
-<p>In either case, I'll try to get back to you as soon as possible, subject to the whims of my day job and the current riding conditions.</p>
 {% endblock %}
