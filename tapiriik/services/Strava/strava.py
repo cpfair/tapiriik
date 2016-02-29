@@ -54,6 +54,7 @@ class StravaService(ServiceBase):
     _reverseActivityTypeMappings = {
         "Ride": ActivityType.Cycling,
         "VirtualRide": ActivityType.Cycling,
+        "EBikeRide": ActivityType.Cycling,
         "MountainBiking": ActivityType.MountainBiking,
         "Run": ActivityType.Running,
         "Hike": ActivityType.Hiking,
