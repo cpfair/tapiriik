@@ -36,6 +36,10 @@ NIKEPLUS_CLIENT_NAME = "####"
 NIKEPLUS_CLIENT_ID = "####"
 NIKEPLUS_CLIENT_SECRET = "####"
 
+HEXOSKIN_CLIENT_RESOURCE_ID = "####"
+HEXOSKIN_CLIENT_ID = "####"
+HEXOSKIN_CLIENT_SECRET = "####"
+
 RWGPS_APIKEY = "####"
 
 # See http://api.smashrun.com for info.

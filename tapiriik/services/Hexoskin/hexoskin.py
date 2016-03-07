@@ -1,4 +1,4 @@
-from tapiriik.settings import WEB_ROOT, HEXOSKIN_CLIENT_SECRET, HEXOSKIN_CLIENT_ID
+from tapiriik.settings import WEB_ROOT, HEXOSKIN_CLIENT_SECRET, HEXOSKIN_CLIENT_ID, HEXOSKIN_CLIENT_RESOURCE_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
@@ -14,8 +14,6 @@ import pytz
 import time
 
 logger = logging.getLogger(__name__)
-serverRoot = "https://api.hexoskin.com/"
-
 
 class HexoskinService(ServiceBase):
     """Define the base service object"""
@@ -23,8 +21,8 @@ class HexoskinService(ServiceBase):
     DisplayName = "Hexoskin"
     DisplayAbbreviation = "Hx"
     AuthenticationType = ServiceAuthenticationType.OAuth
-    UserProfileURL = serverRoot + "api/account/"
-    UserActivityURL = serverRoot + "api/range/"
+    UserProfileURL = "https://api.hexoskin.com/api/account/"
+    UserActivityURL = "https://api.hexoskin.com/api/range/"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
     LastUpload = None
 
@@ -78,7 +76,7 @@ class HexoskinService(ServiceBase):
 
 
     def UserUploadedActivityURL(self, uploadId):
-        return serverRoot + "api/range/%d/" % uploadId
+        return "https://api.hexoskin.com/api/range/%d/" % uploadId
 
 
     def WebInit(self):
@@ -92,7 +90,7 @@ class HexoskinService(ServiceBase):
                   'response_type':'code',
                   'state': str(uuid4()),
                   'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "hexoskin"})}
-        self.UserAuthorizationURL = serverRoot + "api/connect/oauth2/auth/?" + urlencode(params)
+        self.UserAuthorizationURL = "https://api.hexoskin.com/api/connect/oauth2/auth/?" + urlencode(params)
 
 
     def _apiHeaders(self, serviceRecord):
@@ -103,7 +101,7 @@ class HexoskinService(ServiceBase):
         """In OAuth flow, retrieve the Authorization Token"""
         code = req.GET.get("code")
         params = {"grant_type": "authorization_code", "code": code,"client_id":HEXOSKIN_CLIENT_ID, "client_secret": HEXOSKIN_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "hexoskin"})}
-        path = serverRoot + "api/connect/oauth2/token/"
+        path = "https://api.hexoskin.com/api/connect/oauth2/token/"
         response = requests.post(path, params=params, auth=(HEXOSKIN_CLIENT_ID,HEXOSKIN_CLIENT_SECRET))
 
         if response.status_code != 200:
@@ -111,13 +109,13 @@ class HexoskinService(ServiceBase):
 
         data = response.json()
         authorizationData = {"OAuthToken": data["access_token"]}
-        id_resp = requests.get(serverRoot + "api/account/", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
+        id_resp = requests.get("https://api.hexoskin.com/api/account/", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
         return (id_resp.json()['objects'][0]['id'], authorizationData)
 
 
     def RevokeAuthorization(self, serviceRecord):
         """Delete authorization token"""
-        path = serverRoot + "api/oauth2token/232/"
+        path = "https://api.hexoskin.com/api/oauth2token/%s/" % HEXOSKIN_CLIENT_RESOURCE_ID
         headers = self._apiHeaders(serviceRecord)
         result = requests.delete(path, headers=headers)
         if result.status_code is not 204:
@@ -143,11 +141,11 @@ class HexoskinService(ServiceBase):
         if exhaustive:
             listEnd = (datetime.now() + timedelta(days=1.5) - datetime(1970,1,1)).total_seconds()*256
             listStart = (datetime(day=21, month=8, year=1985) - datetime(1970,1,1)).total_seconds()*256  # The distant past
-            resp = requests.get(serverRoot + "api/range/?user=%s&limit=100&rank=0&start__range=%s,%s" % (serviceRecord.ExternalID, int(listStart), int(listEnd)), headers=self._apiHeaders(serviceRecord))
+            resp = requests.get("https://api.hexoskin.com/api/range/?user=%s&limit=100&rank=0&start__range=%s,%s" % (serviceRecord.ExternalID, int(listStart), int(listEnd)), headers=self._apiHeaders(serviceRecord))
         else:
             listEnd = (datetime.now() + timedelta(days=1.5) - datetime(1970,1,1)).total_seconds()*256
             listStart = (datetime.now() - timedelta(days=30) - datetime(1970,1,1)).total_seconds()*256
-            resp = requests.get(serverRoot + "api/range/?user=%s&limit=30&rank=0&start__range=%s,%s" % (serviceRecord.ExternalID, int(listStart), int(listEnd)), headers=self._apiHeaders(serviceRecord))
+            resp = requests.get("https://api.hexoskin.com/api/range/?user=%s&limit=30&rank=0&start__range=%s,%s" % (serviceRecord.ExternalID, int(listStart), int(listEnd)), headers=self._apiHeaders(serviceRecord))
         if resp.status_code == 401:
             raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         try:
@@ -186,8 +184,7 @@ class HexoskinService(ServiceBase):
 
                     activity.Name = ride["name"]
                     activity.Stationary = False
-
-                    ride_track = requests.get(serverRoot + "api/track/?range=%s" % ride['id'], headers=self._apiHeaders(serviceRecord))
+                    ride_track = requests.get("https://api.hexoskin.com/api/track/?range=%s" % ride['id'], headers=self._apiHeaders(serviceRecord))
                     time.sleep(0.2)
                     activity.GPS = (True if ride_track.json()['objects'] else False)
 
@@ -205,13 +202,14 @@ class HexoskinService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         """Extract activity from Hexoskin"""
         activityID = activity.ServiceData["ActivityID"]
+        activityPreTCXParseName = activity.Name  # Keep activity name in memory because TCX overrides activity name with somehting that's more a note than a name
         logger.debug('Hexoskin - Extracting activity %s' % activityID)
         headers = self._apiHeaders(serviceRecord)
         headers.update({"Accept":"application/vnd.garmin.tcx+xml"})
-        range_tcx = requests.get(serverRoot + "api/range/%s/" % (str(activityID)), headers=headers)
+        range_tcx = requests.get("https://api.hexoskin.com/api/range/%s/" % (str(activityID)), headers=headers)
         TCXIO.Parse(range_tcx.content, activity)
-        activity.Notes = activity.Name
-        activity.Name = '%s - Hx' % (activity.Type)
+        activity.Notes = 'Hexoskin - %s' % activity.Name
+        activity.Name = activityPreTCXParseName
         return activity
 
 
@@ -221,14 +219,14 @@ class HexoskinService(ServiceBase):
         headers = self._apiHeaders(serviceRecord)
         headers.update({"Content-Type":"application/vnd.garmin.tcx+xml"})
 
-        range_tcx = requests.post(serverRoot + "api/import/", data=tcx_data.encode('utf-8'), headers=headers)
+        range_tcx = requests.post("https://api.hexoskin.com/api/import/", data=tcx_data.encode('utf-8'), headers=headers)
         import_id = str(range_tcx.json()['resource_uri'])
         # TODO In line below, fix the way the resource_uri is constructed when the /importfile/ fix is deployed
         uploaded = False
         process_start_time = datetime.now()
         while uploaded is False:
             time.sleep(1)
-            range_upload_status = requests.get(serverRoot + import_id, headers=headers).json()
+            range_upload_status = requests.get("https://api.hexoskin.com/" + import_id, headers=headers).json()
             if (datetime.now() - process_start_time).total_seconds() < 20:
                 if range_upload_status['results'] is not None and 'error' in range_upload_status['results']:
                     err = range_upload_status['results']['error']
