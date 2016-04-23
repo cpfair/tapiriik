@@ -39,6 +39,7 @@ class DropboxService(ServiceBase):
         ActivityType.Wheelchair: "wheelchair",
         ActivityType.Rowing: "row",
         ActivityType.Elliptical: "elliptical",
+        ActivityType.RollerSkiing: "rollerskiing",
         ActivityType.Other: "(other|unknown)"
     }
     ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"tcx", "Filename":"%Y-%m-%d_#NAME_#TYPE"}
