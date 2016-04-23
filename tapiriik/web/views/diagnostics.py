@@ -19,7 +19,7 @@ def diag_requireAuth(view):
 
 @diag_requireAuth
 def diag_dashboard(req):
-    return redirect("diag_queue_dashboard")
+    return redirect("diagnostics_queue_dashboard")
 
 
 @diag_requireAuth
