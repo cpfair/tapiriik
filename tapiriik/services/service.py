@@ -25,7 +25,7 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus, VeloHero, TrainerRoad, Smashrun] + PRIVATE_SERVICES
+        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, Endomondo, Motivato, NikePlus, VeloHero, TrainerRoad, Smashrun, Hexoskin] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
@@ -44,7 +44,8 @@ class Service:
             Endomondo, # No laps, no cadence
             RunKeeper, # No laps, no cadence, no power
             Motivato,
-            NikePlus
+            NikePlus,
+            Hexoskin
         ] + PRIVATE_SERVICES
 
     def WebInit():
