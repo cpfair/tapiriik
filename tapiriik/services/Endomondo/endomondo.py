@@ -46,7 +46,7 @@ class EndomondoService(ServiceBase):
         "rowing": ActivityType.Rowing,
         "fitness walking": ActivityType.Walking,
         "hiking": ActivityType.Hiking,
-        "orienteering": ActivityType.Walking,
+        "orienteering": ActivityType.Running,
         "walking": ActivityType.Walking,
         "swimming": ActivityType.Swimming,
         "other": ActivityType.Other,
