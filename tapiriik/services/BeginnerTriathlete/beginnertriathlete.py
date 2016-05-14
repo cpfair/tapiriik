@@ -95,12 +95,6 @@ class BeginnerTriathleteService(ServiceBase):
             from tapiriik.auth.credential_storage import CredentialStore
             member_id = int(response["MemberId"])
             token = response["UserToken"]
-
-            # Grab the user's timezone. The information retrieved from DownloadActivityList is technically TZ naive,
-            # but the user has a timezone in their settings that we can use to translate.
-            # I think it is OK to grab this value once during authorization, but we could cache it and read it
-            # at the beginning of each synchronization if it causes problems.
-            timezone = self._getTimeZone(token)
             return member_id, {}, {"UserToken": CredentialStore.Encrypt(token), "TimeZone": timezone}
 
         if response["LoginResponseCode"] == 0:
