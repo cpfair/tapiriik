@@ -56,6 +56,7 @@ class BeginnerTriathleteService(ServiceBase):
     _deviceUploadUrl = _urlRoot + "deviceupload/"
     _accountSettingsUrl = _urlRoot + "GeneralSettings/"
     _accountProfileUrl = _urlRoot + "profilesettings/"
+    _accountInformationUrl = _urlRoot + "accountinformation/"
     _dateFormat = "{d.month}/{d.day}/{d.year}"
     _serverDefaultTimezone = "US/Central"
     _workoutTypeMappings = {
@@ -95,7 +96,7 @@ class BeginnerTriathleteService(ServiceBase):
             from tapiriik.auth.credential_storage import CredentialStore
             member_id = int(response["MemberId"])
             token = response["UserToken"]
-            return member_id, {}, {"UserToken": CredentialStore.Encrypt(token), "TimeZone": timezone}
+            return member_id, {}, {"UserToken": CredentialStore.Encrypt(token)}
 
         if response["LoginResponseCode"] == 0:
             raise APIException("Invalid API key")
@@ -123,11 +124,10 @@ class BeginnerTriathleteService(ServiceBase):
     # Get an activity summary over a date range
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         activities = []
-
         if exhaustive:
-            # "Exhaustive" currently goes back one year
             listEnd = datetime.now().date() + timedelta(days=1.5)
-            listStart = listEnd - timedelta(days=365)
+            firstEntry = self._getFirstTrainingEntryForMember(self._getUserToken(serviceRecord))
+            listStart = dateutil.parser.parse(firstEntry).date()
         else:
             listEnd = datetime.now() + timedelta(days=1.5)
             listStart = listEnd - timedelta(days=20)
@@ -354,6 +354,17 @@ class BeginnerTriathleteService(ServiceBase):
     def _set_request_authentication_header(self, userToken):
         return {"UserToken": userToken}
 
+    def _getFirstTrainingEntryForMember(self, userToken):
+        session = self._prepare_request(userToken)
+        response = session.get(self._accountInformationUrl)
+        self._handleHttpErrorCodes(response)
+
+        try:
+            responseJson = response.json()
+            return responseJson['FirstTrainingLog']
+        except ValueError as e:
+            raise APIException("Parse error reading profile JSON " + str(e))
+
     def _getUserSettings(self, serviceRecord, skip_cache=False):
         cached = self._sessionCache.Get(serviceRecord.ExternalID)
         if cached and not skip_cache:
@@ -378,17 +389,7 @@ class BeginnerTriathleteService(ServiceBase):
     def _getTimeZone(self, token):
         session = self._prepare_request(token)
         response = session.get(self._accountSettingsUrl)
-        if response.status_code != 200:
-            if response.status_code == 401:
-                # After login, the API does not differentiate between an unauthorized token and an invalid API key
-                raise APIException(
-                    "Invalid login or API key",
-                    block=True,
-                    user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-            # Server error?
-            raise APIException(
-                "HTTP error " + response.status_code,
-                block=True)
+        self._handleHttpErrorCodes(response)
 
         try:
             # BT does not record whether the user observes DST and I am not even attempting to guess.
@@ -407,17 +408,7 @@ class BeginnerTriathleteService(ServiceBase):
     def _getPrivacy(self, token):
         session = self._prepare_request(token)
         response = session.get(self._accountProfileUrl)
-        if response.status_code != 200:
-            if response.status_code == 401:
-                # After login, the API does not differentiate between an unauthorized token and an invalid API key
-                raise APIException(
-                    "Invalid login or API key",
-                    block=True,
-                    user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-            # Server error?
-            raise APIException(
-                "HTTP error " + response.status_code,
-                block=True)
+        self._handleHttpErrorCodes(response)
 
         try:
             # public           - Everyone. Public
@@ -430,3 +421,15 @@ class BeginnerTriathleteService(ServiceBase):
         except ValueError as e:
             raise APIException("Parse error reading privacy JSON " + str(e))
 
+    def _handleHttpErrorCodes(self, response):
+        if response.status_code != 200:
+            if response.status_code == 401:
+                # After login, the API does not differentiate between an unauthorized token and an invalid API key
+                raise APIException(
+                    "Invalid login or API key",
+                    block=True,
+                    user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            # Server error?
+            raise APIException(
+                "HTTP error " + response.status_code,
+                block=True)
