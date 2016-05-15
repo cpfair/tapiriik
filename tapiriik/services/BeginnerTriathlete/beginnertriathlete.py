@@ -130,16 +130,16 @@ class BeginnerTriathleteService(ServiceBase):
             listStart = dateutil.parser.parse(firstEntry).date()
         else:
             listEnd = datetime.now() + timedelta(days=1.5)
-            listStart = listEnd - timedelta(days=20)
+            listStart = listEnd - timedelta(days=60)
 
         # Set headers necessary for a successful API request
         session = self._prepare_request(self._getUserToken(serviceRecord))
         settings = self._getUserSettings(serviceRecord)
 
-        # Iterate through the date range 20 days at a time. Dates are inclusive for all events on that date,
+        # Iterate through the date range 60 days at a time. Dates are inclusive for all events on that date,
         # and do not contain timestamps. 5/1/20xx through 5/2/20xx would include all events 5/1 => 5/2 11:59:59PM
         while listStart < listEnd:
-            pageDate = listStart + timedelta(days=19)
+            pageDate = listStart + timedelta(days=59)
             if pageDate > listEnd:
                 pageDate = listEnd
 
