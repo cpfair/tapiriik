@@ -36,6 +36,7 @@ class BeginnerTriathleteService(ServiceBase):
     # TODO: BT has a kcal expenditure calculation, it just isn't being reported. Supply that for a future update..
     # TODO: Implement DeleteActivity
     # TODO: Implement laps on manual entries
+    # TODO: BT supports activities other than the standard swim/bike/run, but a different interface is regrettably used
 
     ID = "beginnertriathlete"
     DisplayName = "BeginnerTriathlete"
@@ -74,8 +75,12 @@ class BeginnerTriathleteService(ServiceBase):
         ".tcx": _DeviceFileTypes.TCX,
         ".fit": _DeviceFileTypes.FIT
     }
-
-    SupportedActivities = list(_workoutTypeMappings.values())
+    SupportedActivities = [
+        ActivityType.Running,
+        ActivityType.Cycling,
+        ActivityType.MountainBiking,
+        ActivityType.Walking,
+        ActivityType.Swimming]
 
     def WebInit(self):
         self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
@@ -304,12 +309,10 @@ class BeginnerTriathleteService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        # We could try to recreate the activity using the user facing event entry methods, but if we can just upload the
-        # workout as a TCX, that seems even better.
-        # Would a .FIT file be better? This endpoint will support both file types.
+        # Upload the workout as a .FIT file
         session = self._prepare_request(self._getUserToken(serviceRecord))
-        uploaddata = TCXIO.Dump(activity)
-        files = {"deviceFile": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", uploaddata)}
+        uploaddata = FITIO.Dump(activity)
+        files = {"deviceFile": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", uploaddata)}
         response = session.post(self._deviceUploadUrl, files=files)
 
         if response.status_code != 200:
@@ -319,7 +322,7 @@ class BeginnerTriathleteService(ServiceBase):
 
         responseJson = response.json()
 
-        if not responseJson.Success:
+        if not responseJson['Success']:
             raise APIException(
                 "Error uploading workout - " + response.Message,
                 block=False)
