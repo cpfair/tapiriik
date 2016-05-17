@@ -30,11 +30,10 @@ class _DeviceFileTypes:
 # - Authorization exchanges username and password for a token, which is included on all authenticated requests.
 # - DownloadActivityList makes requests via the WebAPI
 # - Detailed device data, if present, is acquired in DownloadActivity. Otherwise does nothing.
-# - Uploads use the TCX helper and the device upload endpoint
+# - Uploads use the FIT helper and the device upload endpoint
 class BeginnerTriathleteService(ServiceBase):
 
     # TODO: BT has a kcal expenditure calculation, it just isn't being reported. Supply that for a future update..
-    # TODO: Implement DeleteActivity
     # TODO: Implement laps on manual entries
     # TODO: BT supports activities other than the standard swim/bike/run, but a different interface is regrettably used
 
@@ -45,6 +44,7 @@ class BeginnerTriathleteService(ServiceBase):
     RequiresExtendedAuthorizationDetails = True
     ReceivesStationaryActivities = True
     SupportsHR = True
+    SupportsActivityDeletion = True
 
     # Don't need to cache user settings for long, it is a quick lookup But if a user changes their timezone
     # or privacy settings, let's catch it *relatively* quick. Five minutes seems good.
@@ -52,12 +52,15 @@ class BeginnerTriathleteService(ServiceBase):
 
     # Private fields
     _urlRoot = "https://beginnertriathlete.com/WebAPI/api/"
+    #_urlRoot = "http://192.168.1.13:53367/api/"
     _loginUrlRoot = _urlRoot + "login/"
     _sbrEventsUrlRoot = _urlRoot + "sbreventsummary/"
+    _sbrEventDeleteUrlRoot = _urlRoot + "deletesbrevent/"
     _deviceUploadUrl = _urlRoot + "deviceupload/"
     _accountSettingsUrl = _urlRoot + "GeneralSettings/"
     _accountProfileUrl = _urlRoot + "profilesettings/"
     _accountInformationUrl = _urlRoot + "accountinformation/"
+    _viewEntryUrl = "https://beginnertriathlete.com/discussion/training/view-event.asp?id="
     _dateFormat = "{d.month}/{d.day}/{d.year}"
     _serverDefaultTimezone = "US/Central"
     _workoutTypeMappings = {
@@ -177,7 +180,7 @@ class BeginnerTriathleteService(ServiceBase):
                 activity = self._populate_sbr_activity(workout, settings)
                 activities.append(activity)
 
-            listStart = listStart + timedelta(days=20)
+            listStart = listStart + timedelta(days=60)
 
         return activities, []
 
@@ -327,12 +330,33 @@ class BeginnerTriathleteService(ServiceBase):
                 "Error uploading workout - " + response.Message,
                 block=False)
 
+        # The upload didn't return a PK for some reason. The queue might be stuck or some other internal error
+        # but that doesn't necessarily warrant a reupload.
+        eventId = responseJson["EventId"]
+        if eventId == 0:
+            return None
+        return eventId
+
     def RevokeAuthorization(self, serviceRecord):
         # nothing to do here...
         pass
 
+    def UserUploadedActivityURL(self, uploadId):
+        return self._viewEntryUrl + str(uploadId)
+
     def DeleteActivity(self, serviceRecord, uploadId):
-        pass
+        session = self._prepare_request(self._getUserToken(serviceRecord))
+        requestParameters = {"id": uploadId}
+        response = session.post(self._sbrEventDeleteUrlRoot, params=requestParameters)
+
+        self._handleHttpErrorCodes(response)
+
+        responseJson = response.json()
+
+        if not responseJson:
+            raise APIException(
+                "Error deleting workout - " + uploadId,
+                block=False)
 
     def DeleteCachedData(self, serviceRecord):
         # nothing to do here...
@@ -434,5 +458,5 @@ class BeginnerTriathleteService(ServiceBase):
                     user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             # Server error?
             raise APIException(
-                "HTTP error " + response.status_code,
+                "HTTP error " + str(response.status_code),
                 block=True)
