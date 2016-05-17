@@ -52,7 +52,6 @@ class BeginnerTriathleteService(ServiceBase):
 
     # Private fields
     _urlRoot = "https://beginnertriathlete.com/WebAPI/api/"
-    #_urlRoot = "http://192.168.1.13:53367/api/"
     _loginUrlRoot = _urlRoot + "login/"
     _sbrEventsUrlRoot = _urlRoot + "sbreventsummary/"
     _sbrEventDeleteUrlRoot = _urlRoot + "deletesbrevent/"
