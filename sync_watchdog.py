@@ -35,4 +35,6 @@ for worker in db.sync_workers.find({"Host": host}):
         # Unlock users attached to it.
         db.users.update({"SynchronizationWorker": worker["Process"], "SynchronizationHost": host}, {"$unset":{"SynchronizationWorker": True}}, multi=True)
 
+db.sync_watchdogs.update({"Host": host}, {"Host": host, "Timestamp": datetime.utcnow()}, upsert=True)
+
 close_connections()
