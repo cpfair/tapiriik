@@ -32,13 +32,5 @@ def privacy(request):
         if svc_id in services:
             del services[svc_id]
 
-    def user_services_sort(service):
-        if not request.user:
-            return 0
-        if User.IsServiceConnected(request.user, service["ID"]):
-            return 0
-        else:
-            return 1
-
-    services_list = sorted(services.values(), key=user_services_sort)
+    services_list = sorted(services.values(), key=lambda service: service["ID"])
     return render(request, "privacy.html", {"services": services_list})
