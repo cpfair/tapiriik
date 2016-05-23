@@ -38,6 +38,9 @@ NIKEPLUS_CLIENT_SECRET = "####"
 
 RWGPS_APIKEY = "####"
 
+# http://beginnertriathlete.com/discussion/contact.asp?department=api
+BT_APIKEY = "####"
+
 # See http://api.smashrun.com for info.
 # For now, you need to email hi@smashrun.com for access
 SMASHRUN_CLIENT_ID = "####"
