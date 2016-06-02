@@ -54,11 +54,13 @@ class BeginnerTriathleteService(ServiceBase):
     _urlRoot = "https://beginnertriathlete.com/WebAPI/api/"
     _loginUrlRoot = _urlRoot + "login/"
     _sbrEventsUrlRoot = _urlRoot + "sbreventsummary/"
+    _sbrEventCommentUrlRoot = _urlRoot + "sbreventcomments/"
     _sbrEventDeleteUrlRoot = _urlRoot + "deletesbrevent/"
     _deviceUploadUrl = _urlRoot + "deviceupload/"
     _accountSettingsUrl = _urlRoot + "GeneralSettings/"
     _accountProfileUrl = _urlRoot + "profilesettings/"
     _accountInformationUrl = _urlRoot + "accountinformation/"
+
     _viewEntryUrl = "https://beginnertriathlete.com/discussion/training/view-event.asp?id="
     _dateFormat = "{d.month}/{d.day}/{d.year}"
     _serverDefaultTimezone = "US/Central"
@@ -206,7 +208,7 @@ class BeginnerTriathleteService(ServiceBase):
         #    "HasDeviceUpload": true,
         #    "DeviceUploadFile": "http://beginnertriathlete.com/discussion/storage/workouts/555555/abcd-123.fit",
         #    "RouteName": "",                       #  Might contain a description of the event
-        #    "Comments": "",                        #  Same as above. Not overly often used.
+        #    "Comments": "",                        #  User supplied notes
         # }, ... ]
 
         activity = UploadedActivity()
@@ -220,6 +222,7 @@ class BeginnerTriathleteService(ServiceBase):
         minimumHr = api_sbr_activity["MinimumHeartRate"]
         maximumHr = api_sbr_activity["MaximumHeartRate"]
         deviceUploadFile = api_sbr_activity["DeviceUploadFile"]
+        comments = api_sbr_activity["Comments"]
 
         # Basic SBR data does not include GPS or sensor data. If this event originated from a device upload,
         # DownloadActivity will find it.
@@ -228,6 +231,7 @@ class BeginnerTriathleteService(ServiceBase):
         # Same as above- The data might be there, but it's not supplied in the basic activity feed.
         activity.GPS = False
 
+        activity.Notes = comments
         activity.Private = usersettings["Privacy"]
         activity.Type = self._workoutTypeMappings[str(eventType)]
 
@@ -334,6 +338,17 @@ class BeginnerTriathleteService(ServiceBase):
         eventId = responseJson["EventId"]
         if eventId == 0:
             return None
+
+        # Set the comment
+        notes = ""
+        if activity.Name:
+            notes = activity.Name + "\n"
+        if activity.Notes:
+            notes = notes + activity.Notes
+
+        if notes:
+            self._setComments(self._getUserToken(serviceRecord), eventId, notes)
+
         return eventId
 
     def RevokeAuthorization(self, serviceRecord):
@@ -446,6 +461,15 @@ class BeginnerTriathleteService(ServiceBase):
             return not (privacy == "public" or privacy == "publicrestricted")
         except ValueError as e:
             raise APIException("Parse error reading privacy JSON " + str(e))
+
+    def _setComments(self, token, eventId, notes):
+        session = self._prepare_request(token)
+        requestParameters = {
+            "EventId": eventId,
+            "Comment": notes
+        }
+        response = session.post(self._sbrEventCommentUrlRoot, data=requestParameters)
+        return response
 
     def _handleHttpErrorCodes(self, response):
         if response.status_code != 200:
