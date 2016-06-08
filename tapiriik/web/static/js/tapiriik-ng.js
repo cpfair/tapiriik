@@ -87,7 +87,7 @@ function SyncSettingsController($scope, $http, $window){
     }
   });
   $scope.sync_suppress_options = [{k: true, v: "manually"}, {k: false, v: "automatically"}];
-  $scope.sync_delay_options = [{k: 0, v: "as soon as possible"}, {k: 20*60, v: "20 minutes"}, {k: 60*60, v: "1 hour"}, {k: 60*60*24, v: "1 day"}];
+  $scope.sync_delay_options = [{k: 0, v: "as soon as possible"}, {k: 20*60, v: "20 minutes"}, {k: 60*60, v: "1 hour"}, {k: 60*60*3, v: "3 hours"}, {k: 60*60*6, v: "6 hours"}, {k: 60*60*12, v: "12 hours"}, {k: 60*60*24, v: "1 day"}];
   $scope.save = function(){
     if (isNaN(Date.parse($scope.sync_skip_before_entry)) && $scope.sync_skip_before_entry) {
       alert("Double-check that date");
