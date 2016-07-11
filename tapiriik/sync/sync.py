@@ -427,7 +427,7 @@ class SynchronizationTask:
     def _accumulateActivities(self, conn, svcActivities, no_add=False):
         # Yep, abs() works on timedeltas
         activityStartLeeway = timedelta(minutes=3)
-        activityStartTZOffsetLeeway = timedelta(seconds=10)
+        activityStartTZOffsetLeeway = timedelta(minutes=1)
         timezoneErrorPeriod = timedelta(hours=38)
         from tapiriik.services.interchange import ActivityType
         for act in svcActivities:
