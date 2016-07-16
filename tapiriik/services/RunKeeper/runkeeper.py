@@ -59,12 +59,8 @@ class RunKeeperService(ServiceBase):
             raise APIException("Invalid code")
         token = response.json()["access_token"]
 
-        # hacky, but also totally their fault for not giving the user id in the token req
-        existingRecord = Service.GetServiceRecordWithAuthDetails(self, {"Token": token})
-        if existingRecord is None:
-            uid = self._getUserId(ServiceRecord({"Authorization": {"Token": token}}))  # meh
-        else:
-            uid = existingRecord.ExternalID
+        # This used to check with GetServiceRecordWithAuthDetails but that's hideously slow on an unindexed field.
+        uid = self._getUserId(ServiceRecord({"Authorization": {"Token": token}}))  # meh
 
         return (uid, {"Token": token})
 

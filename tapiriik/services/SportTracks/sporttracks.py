@@ -175,12 +175,8 @@ class SportTracksService(ServiceBase):
         access_token = response.json()["access_token"]
         refresh_token = response.json()["refresh_token"]
 
-        existingRecord = Service.GetServiceRecordWithAuthDetails(self, {"Token": access_token})
-        if existingRecord is None:
-            uid_res = requests.post("https://api.sporttracks.mobi/api/v2/system/connect", headers={"Authorization": "Bearer %s" % access_token})
-            uid = uid_res.json()["user"]["uid"]
-        else:
-            uid = existingRecord.ExternalID
+        uid_res = requests.post("https://api.sporttracks.mobi/api/v2/system/connect", headers={"Authorization": "Bearer %s" % access_token})
+        uid = uid_res.json()["user"]["uid"]
 
         return (uid, {"RefreshToken": refresh_token})
 

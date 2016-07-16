@@ -33,14 +33,3 @@ def authreturn(req, service, level=None):
 
     return render(req, "oauth-return.html", {"success": 1 if success else 0})
 
-
-@csrf_exempt
-@require_POST
-def deauth(req, service):  # this is RK-specific
-    deauthData = json.loads(req.body.decode("ASCII"))
-    token = deauthData["access_token"]
-    svc = Service.FromID(service)
-    svcRecord = Service.GetServiceRecordWithAuthDetails(svc, {"Token": token})
-    Service.DeleteServiceRecord(svcRecord)
-    User.DisconnectService(svcRecord)
-    return HttpResponse(status=200)

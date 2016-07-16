@@ -55,9 +55,6 @@ class Service:
             itm.WebInit()
             itm.UserDisconnectURL = WEB_ROOT + reverse("auth_disconnect", kwargs={"service": itm.ID})
 
-    def GetServiceRecordWithAuthDetails(service, authDetails):
-        return ServiceRecord(db.connections.find_one({"Service": service.ID, "Authorization": authDetails}))
-
     def GetServiceRecordByID(uid):
         return ServiceRecord(db.connections.find_one({"_id": ObjectId(uid)}))
 
