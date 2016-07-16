@@ -436,6 +436,11 @@ class BeginnerTriathleteService(ServiceBase):
             # BT does not record whether the user observes DST and I am not even attempting to guess.
             responseJson = response.json()
             timezone = responseJson["UtcOffset"]
+            # The "POSIX style" used by the tz database for Etc/GMT offsets are reversed from the more standard ISO 8601
+            # For example, GMT -5 (EST) is named Etc/GMT+5 in the tzdb
+            # https://en.wikipedia.org/wiki/Tz_database#Area
+            # http://www.timezoneconverter.com/cgi-bin/zoneinfo.tzc
+            timezone *= -1
             if timezone == 0:
                 timezoneStr = "Etc/GMT"
             elif timezone > 0:
