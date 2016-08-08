@@ -23,6 +23,7 @@ import json
 import re
 import random
 import tempfile
+import json
 from urllib.parse import urlencode
 logger = logging.getLogger(__name__)
 
@@ -544,58 +545,31 @@ class GarminConnectService(ServiceBase):
 
         name = activity.Name # Capture in logs
         notes = activity.Notes
-        encoding_headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"} # GC really, really needs this part, otherwise it throws obscure errors like "Invalid signature for signature method HMAC-SHA1"
-        warnings = []
-        try:
-            if activity.Name and activity.Name.strip():
-                res = self._request_with_reauth(serviceRecord, lambda session: session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/name/" + str(actid), data=urlencode({"value": activity.Name[:75]}).encode("UTF-8"), headers=encoding_headers))
-                try:
-                    res = res.json()
-                except:
-                    raise APIWarning("Activity name request failed - %s" % res.text)
-                if "display" not in res or res["display"]["value"] != activity.Name:
-                    raise APIWarning("Unable to set activity name")
-        except APIWarning as e:
-            warnings.append(e)
 
-        try:
-            if activity.Notes and activity.Notes.strip():
-                res = self._request_with_reauth(serviceRecord, lambda session: session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/description/" + str(actid), data=urlencode({"value": activity.Notes}).encode("UTF-8"), headers=encoding_headers))
-                try:
-                    res = res.json()
-                except:
-                    raise APIWarning("Activity notes request failed - %s" % res.text)
-                if "display" not in res or res["display"]["value"] != activity.Notes:
-                    raise APIWarning("Unable to set activity notes")
-        except APIWarning as e:
-            warnings.append(e)
+        # Update activity metadata not included in the FIT file.
+        metadata_object = {}
+        if activity.Name and activity.Name.strip():
+            metadata_object["activityName"] = activity.Name
+        if activity.Notes and activity.Notes.strip():
+            metadata_object["description"] = activity.Notes
+        if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
+            # Set the legit activity type - whatever it is, it's not supported by the FIT schema
+            acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
+            if len(acttype) == 0:
+                raise APIWarning("GarminConnect does not support activity type " + activity.Type)
+            else:
+                acttype = acttype[0]
+            metadata_object["activityTypeDTO"] = {"typeKey": acttype}
+        if activity.Private:
+            metadata_object["accessControlRuleDTO"] = {"typeKey": "private"}
 
-        try:
-            if activity.Type not in [ActivityType.Running, ActivityType.Cycling, ActivityType.Other]:
-                # Set the legit activity type - whatever it is, it's not supported by the TCX schema
-                acttype = [k for k, v in self._reverseActivityMappings.items() if v == activity.Type]
-                if len(acttype) == 0:
-                    raise APIWarning("GarminConnect does not support activity type " + activity.Type)
-                else:
-                    acttype = acttype[0]
-                res = self._request_with_reauth(serviceRecord, lambda session: session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/type/" + str(actid), data={"value": acttype}))
-                res = res.json()
-                if "activityType" not in res or res["activityType"]["key"] != acttype:
-                    raise APIWarning("Unable to set activity type")
-        except APIWarning as e:
-            warnings.append(e)
+        if metadata_object:
+            metadata_object["activityId"] = actid
+            encoding_headers = {"Content-Type": "application/json; charset=UTF-8"} # GC really, really needs this part, otherwise it throws obscure errors like "Invalid signature for signature method HMAC-SHA1"
+            res = self._request_with_reauth(serviceRecord, lambda session: session.put("https://connect.garmin.com/proxy/activity-service/activity/" + str(actid), data=json.dumps(metadata_object), headers=encoding_headers))
+            if res.status_code != 204:
+                raise APIWarning("Unable to set activity metadata - %d %s" % (res.status_code, res.text))
 
-        try:
-            if activity.Private:
-                res = self._request_with_reauth(serviceRecord, lambda session: session.post("https://connect.garmin.com/proxy/activity-service-1.2/json/privacy/" + str(actid), data={"value": "private"}))
-                res = res.json()
-                if "definition" not in res or res["definition"]["key"] != "private":
-                    raise APIWarning("Unable to set activity privacy")
-        except APIWarning as e:
-            warnings.append(e)
-
-        if len(warnings):
-            raise APIWarning(str(warnings)) # Meh
         return actid
 
     def _user_watch_user(self, serviceRecord):
