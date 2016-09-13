@@ -68,6 +68,7 @@ class StravaService(ServiceBase):
         "IceSkate": ActivityType.Skating,
         "Workout": ActivityType.Gym,
         "Rowing": ActivityType.Rowing,
+        "Kayaking": ActivityType.Rowing,
         "Elliptical": ActivityType.Elliptical,
         "RollerSki": ActivityType.RollerSkiing
     }
