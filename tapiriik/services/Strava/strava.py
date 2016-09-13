@@ -64,11 +64,14 @@ class StravaService(ServiceBase):
         "CrossCountrySkiing": ActivityType.CrossCountrySkiing,
         "NordicSki": ActivityType.CrossCountrySkiing,
         "BackcountrySki": ActivityType.DownhillSkiing,
+        "Snowboard": ActivityType.Snowboarding,
         "Swim": ActivityType.Swimming,
         "IceSkate": ActivityType.Skating,
         "Workout": ActivityType.Gym,
         "Rowing": ActivityType.Rowing,
         "Kayaking": ActivityType.Rowing,
+        "Canoeing": ActivityType.Rowing,
+        "StandUpPaddling": ActivityType.Rowing,
         "Elliptical": ActivityType.Elliptical,
         "RollerSki": ActivityType.RollerSkiing
     }
