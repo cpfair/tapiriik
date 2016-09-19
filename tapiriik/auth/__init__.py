@@ -164,7 +164,7 @@ class User:
 
         db.users.update({"_id": user["_id"]}, user)
         if delta or (hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0):  # also schedule an immediate sync if there is an outstanding error (i.e. user reconnected)
-            db.connections.update({"_id": serviceRecord._id}, {"$pull": {"SyncErrors": {"UserException.Type": {"$or": [UserExceptionType.Authorization, UserExceptionType.RenewPassword]}}}}) # Pull all auth-related errors from the service so they don't continue to see them while the sync completes.
+            db.connections.update({"_id": serviceRecord._id}, {"$pullAll": {"SyncErrors": [{"UserException.Type": UserExceptionType.Authorization}, {"UserException.Type": UserExceptionType.RenewPassword}]}}) # Pull all auth-related errors from the service so they don't continue to see them while the sync completes.
             Sync.SetNextSyncIsExhaustive(user, True)  # exhaustive, so it'll pick up activities from newly added services / ones lost during an error
             if hasattr(serviceRecord, "SyncErrors") and len(serviceRecord.SyncErrors) > 0:
                 Sync.ScheduleImmediateSync(user)
