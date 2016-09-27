@@ -639,8 +639,12 @@ class GarminConnectService(ServiceBase):
         session = self._get_session(email=watch_user["Username"], password=watch_user["Password"], skip_cache=True)
 
         # Then, check for users with new activities
-        self._rate_limit()
-        watch_activities_resp = session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/subscriptionFeed?limit=1000")
+        while True:
+            self._rate_limit()
+            watch_activities_resp = session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/subscriptionFeed?limit=1000")
+            # This seems to fail with a timeout the first time, so keep trying.
+            if watch_activities_resp.status_code != 500:
+                break
         try:
             watch_activities = watch_activities_resp.json()
         except ValueError:
