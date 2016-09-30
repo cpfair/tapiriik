@@ -356,66 +356,63 @@ class GarminConnectService(ServiceBase):
     def _downloadActivitySummary(self, serviceRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
 
-        res = self._request_with_reauth(serviceRecord, lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service/activity/" + str(activityID)))
+        summary_resp = self._request_with_reauth(serviceRecord, lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service/activity/" + str(activityID)))
 
         try:
-            raw_data = res.json()
+            summary_data = summary_resp.json()
         except ValueError:
-            raise APIException("Failure downloading activity summary %s:%s" % (res.status_code, res.text))
+            raise APIException("Failure downloading activity summary %s:%s" % (summary_resp.status_code, summary_resp.text))
         stat_map = {}
-        def mapStat(gcKey, statKey, type):
+
+
+        def mapStat(gcKey, statKey, type, units):
             stat_map[gcKey] = {
                 "key": statKey,
-                "attr": type
+                "attr": type,
+                "units": units
             }
 
         def applyStats(gc_dict, stats_obj):
             for gc_key, stat in stat_map.items():
                 if gc_key in gc_dict:
-                    value = float(gc_dict[gc_key]["value"])
-                    units = self._unitMap[gc_dict[gc_key]["uom"]]
+                    value = float(gc_dict[gc_key])
                     if math.isinf(value):
                         continue # GC returns the minimum speed as "-Infinity" instead of 0 some times :S
-                    getattr(stats_obj, stat["key"]).update(ActivityStatistic(units, **({stat["attr"]: value})))
+                    getattr(stats_obj, stat["key"]).update(ActivityStatistic(stat["units"], **({stat["attr"]: value})))
 
-        mapStat("SumMovingDuration", "MovingTime", "value")
-        mapStat("SumDuration", "TimerTime", "value")
-        mapStat("SumDistance", "Distance", "value")
-        mapStat("MinSpeed", "Speed", "min")
-        mapStat("MaxSpeed", "Speed", "max")
-        mapStat("WeightedMeanSpeed", "Speed", "avg")
-        mapStat("MinAirTemperature", "Temperature", "min")
-        mapStat("MaxAirTemperature", "Temperature", "max")
-        mapStat("WeightedMeanAirTemperature", "Temperature", "avg")
-        mapStat("SumEnergy", "Energy", "value")
-        mapStat("MaxHeartRate", "HR", "max")
-        mapStat("WeightedMeanHeartRate", "HR", "avg")
-        mapStat("MaxDoubleCadence", "RunCadence", "max")
-        mapStat("WeightedMeanDoubleCadence", "RunCadence", "avg")
-        mapStat("MaxBikeCadence", "Cadence", "max")
-        mapStat("WeightedMeanBikeCadence", "Cadence", "avg")
-        mapStat("MinPower", "Power", "min")
-        mapStat("MaxPower", "Power", "max")
-        mapStat("WeightedMeanPower", "Power", "avg")
-        mapStat("MinElevation", "Elevation", "min")
-        mapStat("MaxElevation", "Elevation", "max")
-        mapStat("GainElevation", "Elevation", "gain")
-        mapStat("LossElevation", "Elevation", "loss")
+        mapStat("movingDuration", "MovingTime", "value", ActivityStatisticUnit.Seconds)
+        mapStat("duration", "TimerTime", "value", ActivityStatisticUnit.Seconds)
+        mapStat("distance", "Distance", "value", ActivityStatisticUnit.Meters)
+        mapStat("maxSpeed", "Speed", "max", ActivityStatisticUnit.MetersPerSecond)
+        mapStat("averageSpeed", "Speed", "avg", ActivityStatisticUnit.MetersPerSecond)
+        mapStat("calories", "Energy", "value", ActivityStatisticUnit.Kilocalories)
+        mapStat("maxHR", "HR", "max", ActivityStatisticUnit.BeatsPerMinute)
+        mapStat("averageHR", "HR", "avg", ActivityStatisticUnit.BeatsPerMinute)
+        mapStat("minElevation", "Elevation", "min", ActivityStatisticUnit.Meters)
+        mapStat("maxElevation", "Elevation", "max", ActivityStatisticUnit.Meters)
+        mapStat("elevationGain", "Elevation", "gain", ActivityStatisticUnit.Meters)
+        mapStat("elevationLoss", "Elevation", "loss", ActivityStatisticUnit.Meters)
+        mapStat("averageBikeCadence", "Cadence", "avg", ActivityStatisticUnit.RevolutionsPerMinute)
+        mapStat("averageCadence", "Cadence", "avg", ActivityStatisticUnit.StepsPerMinute)
 
-        applyStats(raw_data["activity"]["activitySummary"], activity.Stats)
+        applyStats(summary_data["summaryDTO"], activity.Stats)
 
-        for lap_data in raw_data["activity"]["totalLaps"]["lapSummaryList"]:
+        laps_resp = self._request_with_reauth(serviceRecord, lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service/activity/%s/splits" % str(activityID)))
+        try:
+            laps_data = laps_resp.json()
+        except ValueError:
+            raise APIException("Failure downloading activity laps summary %s:%s" % (laps_resp.status_code, laps_resp.text))
+
+        for lap_data in laps_data["lapDTOs"]:
             lap = Lap()
-            if "BeginTimestamp" in lap_data:
-                lap.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["BeginTimestamp"]["value"]) / 1000))
-            if "EndTimestamp" in lap_data:
-                lap.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(lap_data["EndTimestamp"]["value"]) / 1000))
+            if "startTimeGMT" in lap_data:
+                lap.StartTime = pytz.utc.localize(datetime.strptime(lap_data["startTimeGMT"], "%Y-%m-%dT%H:%M:%S.0"))
 
             elapsed_duration = None
-            if "SumElapsedDuration" in lap_data:
-                elapsed_duration = timedelta(seconds=round(float(lap_data["SumElapsedDuration"]["value"])))
-            elif "SumDuration" in lap_data:
-                elapsed_duration = timedelta(seconds=round(float(lap_data["SumDuration"]["value"])))
+            if "elapsedDuration" in lap_data:
+                elapsed_duration = timedelta(seconds=round(float(lap_data["elapsedDuration"])))
+            elif "duration" in lap_data:
+                elapsed_duration = timedelta(seconds=round(float(lap_data["duration"])))
 
             if lap.StartTime and elapsed_duration:
                 # Always recalculate end time based on duration, if we have the start time
