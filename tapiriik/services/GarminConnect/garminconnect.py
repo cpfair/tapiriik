@@ -638,11 +638,12 @@ class GarminConnectService(ServiceBase):
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
         session = self._get_session(email=watch_user["Username"], password=watch_user["Password"], skip_cache=True)
 
+        # These seems to fail with a 500 (talkking about a timeout) the first time, so keep trying.
+        SERVER_ERROR_RETRIES = 10
         # Then, check for users with new activities
-        while True:
+        for x in range(SERVER_ERROR_RETRIES):
             self._rate_limit()
             watch_activities_resp = session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/subscriptionFeed?limit=1000")
-            # This seems to fail with a timeout the first time, so keep trying.
             if watch_activities_resp.status_code != 500:
                 break
         try:
@@ -668,7 +669,10 @@ class GarminConnectService(ServiceBase):
                 active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id, "WatchUserKey": watch_user_key})
 
         self._rate_limit()
-        pending_connections_resp = session.get("https://connect.garmin.com/modern/proxy/userprofile-service/connection/pending")
+        for x in range(SERVER_ERROR_RETRIES):
+            pending_connections_resp = session.get("https://connect.garmin.com/modern/proxy/userprofile-service/connection/pending")
+            if pending_connections_resp.status_code != 500:
+                break
         try:
             pending_connections = pending_connections_resp.json()
         except ValueError:
