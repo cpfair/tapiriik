@@ -356,7 +356,7 @@ class GarminConnectService(ServiceBase):
     def _downloadActivitySummary(self, serviceRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
 
-        res = self._request_with_reauth(serviceRecord, lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service-1.3/json/activity/" + str(activityID)))
+        res = self._request_with_reauth(serviceRecord, lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service/activity/" + str(activityID)))
 
         try:
             raw_data = res.json()
