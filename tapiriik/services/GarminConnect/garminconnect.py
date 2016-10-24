@@ -36,6 +36,10 @@ class GarminConnectService(ServiceBase):
     PartialSyncRequiresTrigger = len(GARMIN_CONNECT_USER_WATCH_ACCOUNTS) > 0
     PartialSyncTriggerPollInterval = timedelta(minutes=20)
     PartialSyncTriggerPollMultiple = len(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys())
+    # +1 from default due to my embarrassing inability to...
+    # a) create a reasonable schema to allow for these updates.
+    # b) write a query to reset the counters in the existing schema.
+    DownloadRetryCount = 6
 
     ConfigurationDefaults = {
         "WatchUserKey": None,
