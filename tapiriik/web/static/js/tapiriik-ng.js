@@ -11,6 +11,7 @@ function ActivitiesController($scope, $http) {
     var type = presc.Exception.Type;
     var explanations = {
       "auth": "The credentials you entered for %(service) are no longer functional - visit the dashboard to re-authorize tapiriik.",
+      "renew_password": "The credentials you entered for %(service) are no longer functional - visit the dashboard to re-authorize tapiriik.",
       "full": "Your %(service) account is full. Make some space available then visit the dashboard to re-synchronize.",
       "expired": "Your %(service) account has expired. Once it's back in action, visit the dashboard to re-synchronize.",
       "unpaid": "You must have a paid account with %(service) in order to synchronize activities.",
