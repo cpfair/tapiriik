@@ -107,6 +107,7 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 10", 1482, 16
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Swim", 1499))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix", 1551))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 2", 1967))
+DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 3", 2050))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 510", 1561, 1742, 1821))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 810", 1567, 1721, 1822, 1823))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 1000", 1836))
@@ -122,6 +123,3 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 620", 1623))
 # TomTom MySports Connect appears to produce these IDs for all of their
 # models of GPS watches (Runner, MultiSport, and Cardio versions of the same).
 DeviceIdentifier.AddIdentifierGroup(TCXDeviceIdentifier("TomTom GPS Sport Watch", 0), FITDeviceIdentifier(71, 0))
-
-# Added DeviceIdentifier for Garmin Fenix 3
-DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 3", 2050))
