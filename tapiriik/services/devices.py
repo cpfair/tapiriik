@@ -107,6 +107,7 @@ DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Forerunner 10", 1482, 16
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Swim", 1499))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix", 1551))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 2", 1967))
+DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Fenix 3", 2050))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 510", 1561, 1742, 1821))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 810", 1567, 1721, 1822, 1823))
 DeviceIdentifier.AddIdentifierGroup(*_garminIdentifier("Edge 1000", 1836))
