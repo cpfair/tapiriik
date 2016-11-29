@@ -180,6 +180,7 @@ class StravaService(ServiceBase):
 
             if not exhaustive or not earliestDate:
                 break
+            time.sleep(60)
 
         return activities, exclusions
 
