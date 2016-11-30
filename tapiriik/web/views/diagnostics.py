@@ -191,6 +191,10 @@ def diag_user(req, user):
         from tapiriik.services import Service
         svcRec = Service.GetServiceRecordByID(req.POST["id"])
         svcRec.SetPartialSyncTriggerSubscriptionState(not svcRec.PartialSyncTriggerSubscribed)
+    elif "svc_toggle_poll_trigger" in req.POST:
+        from tapiriik.services import Service
+        svcRec = Service.GetServiceRecordByID(req.POST["id"])
+        db.connections.update({"_id": ObjectId(req.POST["id"])}, {"$set": {"TriggerPartialSync": not svcRec.TriggerPartialSync}})
     elif "svc_tryagain" in req.POST:
         from tapiriik.services import Service
         svcRec = Service.GetServiceRecordByID(req.POST["id"])

@@ -64,7 +64,7 @@
 
 				{% if svc.PartialSyncRequiresTrigger %}
 					<li><b>Partial Sync Subscribed:</b> <tt>{% if connection.PartialSyncTriggerSubscribed %}Subscribed{% else %}Not Subscribed{% endif %}</tt> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_toggle_poll_sub" value="Toggle"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>
-					<li><b>Partial Sync Trigger:</b> <tt>{% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt></li>
+					<li><b>Partial Sync Trigger:</b> <tt>{% if connection.TriggerPartialSync %}Triggered{% else %}No{% endif %}</tt> <form action="{% url 'diagnostics_user' diag_user|dict_get:'_id' %}" method="POST">{% csrf_token %}<input type="submit" name="svc_toggle_poll_trigger" value="Toggle"/><input type="hidden" name="id" value="{{ connection|dict_get:'_id' }}"/></form></li>
 					<li><b>Partial Sync Trigger Timestamp:</b> {{ connection.TriggerPartialSyncTimestamp }}</li>
 				{% endif %}
 				{% if svc.RequiresExtendedAuthorizationDetails %}
