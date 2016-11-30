@@ -16,6 +16,7 @@ import logging
 import pytz
 import re
 import time
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class StravaService(ServiceBase):
     UserProfileURL = "http://www.strava.com/athletes/{0}"
     UserActivityURL = "http://app.strava.com/activities/{1}"
     AuthenticationNoFrame = True  # They don't prevent the iframe, it just looks really ugly.
+    PartialSyncRequiresTrigger = True
     LastUpload = None
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
@@ -180,9 +182,28 @@ class StravaService(ServiceBase):
 
             if not exhaustive or not earliestDate:
                 break
-            time.sleep(60)
 
         return activities, exclusions
+
+    def SubscribeToPartialSyncTrigger(self, serviceRecord):
+        # There is no per-user webhook subscription with Strava.
+        serviceRecord.SetPartialSyncTriggerSubscriptionState(True)
+
+    def UnsubscribeFromPartialSyncTrigger(self, serviceRecord):
+        # As above.
+        serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
+
+    def ExternalIDsForPartialSyncTrigger(self, req):
+        data = json.loads(req.body.decode("UTF-8"))
+        return [data["owner_id"]]
+
+    def PartialSyncTriggerGET(self, req):
+        # Strava requires this endpoint to echo back a challenge.
+        # Only happens once during manual endpoint setup?
+        from django.http import HttpResponse
+        return HttpResponse(json.dumps({
+            "hub.challenge": req.GET["hub.challenge"]
+        }))
 
     def DownloadActivity(self, svcRecord, activity):
         if activity.ServiceData["Manual"]:  # I should really add a param to DownloadActivity for this value as opposed to constantly doing this

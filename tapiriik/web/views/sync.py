@@ -92,11 +92,14 @@ def sync_clear_errorgroup(req, service, group):
     return HttpResponse(status=404)
 
 @csrf_exempt
-@require_POST
 def sync_trigger_partial_sync_callback(req, service):
-    from sync_remote_triggers import trigger_remote
     svc = Service.FromID(service)
-    affected_connection_external_ids = svc.ExternalIDsForPartialSyncTrigger(req)
-
-    trigger_remote.apply_async(args=[service, affected_connection_external_ids])
-    return HttpResponse(status=204)
+    if req.method == "POST":
+        from sync_remote_triggers import trigger_remote
+        affected_connection_external_ids = svc.ExternalIDsForPartialSyncTrigger(req)
+        trigger_remote.apply_async(args=[service, affected_connection_external_ids])
+        return HttpResponse(status=204)
+    elif req.method == "GET":
+        return svc.PartialSyncTriggerGET(req)
+    else:
+        return HttpResponse(status=400)
