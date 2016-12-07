@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 import dateutil.parser
 import requests
 import logging
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +20,7 @@ class TrainingPeaksService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
     ReceivesStationaryActivities = False
+    SuppliesActivities = False
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
@@ -168,21 +168,6 @@ class TrainingPeaksService(ServiceBase):
                 break # We're done
 
         return activities, exclusions
-
-    def DownloadActivity(self, svcRecord, activity):
-        params = self._authData(svcRecord)
-        params.update({"workoutIds": activity.ServiceData["WorkoutID"], "personId": svcRecord.ExternalID})
-        resp = requests.get("https://www.trainingpeaks.com/tpwebservices/service.asmx/GetExtendedWorkoutsForAccessibleAthlete", params=params)
-        activity = PWXIO.Parse(resp.content, activity)
-
-        activity.GPS = False
-        flat_wps = activity.GetFlatWaypoints()
-        for wp in flat_wps:
-            if wp.Location and wp.Location.Latitude and wp.Location.Longitude:
-                activity.GPS = True
-                break
-
-        return activity
 
     def UploadActivity(self, svcRecord, activity):
         pwxdata = PWXIO.Dump(activity)

@@ -52,6 +52,7 @@ class UserExceptionType:
     # Activity-level exceptions
     FlowException = "flow"
     Private = "private"
+    NoSupplier = "nosupplier"
     NotTriggered = "notrigger"
     Deferred = "deferred" # They've instructed us not to synchronize activities for some time after they complete
     PredatesWindow = "predates_window" # They've instructed us not to synchronize activities before some date

@@ -732,6 +732,10 @@ class SynchronizationTask:
         for dlSvcRecord in actAvailableFromSvcs:
             dlSvc = dlSvcRecord.Service
             logger.info("\tfrom " + dlSvc.ID)
+            if not dlSvc.SuppliesActivities:
+                activity.Record.MarkAsNotPresentOtherwise(UserException(UserExceptionType.NoSupplier))
+                logger.info("\t\t...does not supply activities")
+                continue
             if activity.UID in self._syncExclusions[dlSvcRecord._id]:
                 activity.Record.MarkAsNotPresentOtherwise(_unpackUserException(self._syncExclusions[dlSvcRecord._id][activity.UID]))
                 logger.info("\t\t...has activity exclusion logged")

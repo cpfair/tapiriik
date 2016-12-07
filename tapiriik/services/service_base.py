@@ -40,6 +40,7 @@ class ServiceBase:
     ReceivesActivities = True # Any at all?
     ReceivesStationaryActivities = True # Manually-entered?
     ReceivesNonGPSActivitiesWithOtherSensorData = True # Trainer-ish?
+    SuppliesActivities = True
 
 
     SupportsActivityDeletion = False

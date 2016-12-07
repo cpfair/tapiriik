@@ -17,6 +17,7 @@ function ActivitiesController($scope, $http) {
       "unpaid": "You must have a paid account with %(service) in order to synchronize activities.",
       "flow": "You've excluded this activity from synchronizing to %(service).",
       "private": "This activity is private and will not synchronize to %(service).",
+      "nosupplier": "This activity is uploaded to a service which does not support downloading activities.",
       "notrigger": "%(service) is only synchronized when new activities are available.", // I have nooo clue why I made this error, keeping it for posterity.
       // Temporary fix since lots of people are seeing this now, and I might as well assign blame accurately (or be vague)
       "ratelimited": "Some services limit how many actions tapiriik can perform on your behalf per hour - more activities will transfer soon.", // per hour - close enough
