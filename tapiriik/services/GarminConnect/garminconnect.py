@@ -191,7 +191,7 @@ class GarminConnectService(ServiceBase):
             # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
             # "webhost": "olaxpw-connect00.garmin.com",
             "clientId": "GarminConnect",
-            # "gauthHost": "https://sso.garmin.com/sso",
+            "gauthHost": "https://sso.garmin.com/sso",
             # "rememberMeShown": "true",
             # "rememberMeChecked": "false",
             "consumeServiceTicket": "false",
