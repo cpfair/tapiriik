@@ -1,7 +1,6 @@
 from tapiriik.settings import WEB_ROOT, TRAINASONE_SERVER_URL, TRAINASONE_CLIENT_SECRET, TRAINASONE_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.database import cachedb
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
@@ -61,7 +60,7 @@ class TrainAsONEService(ServiceBase):
         data = response.json()
 
         authorizationData = {"OAuthToken": data["access_token"]}
-        
+
         id_resp = requests.get(TRAINASONE_SERVER_URL + "/api/sync/user", headers=self._apiHeaders(authorizationData))
         return (id_resp.json()["id"], authorizationData)
 
@@ -150,6 +149,4 @@ class TrainAsONEService(ServiceBase):
         return activityId
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.trainasone_cache.remove({"Owner": serviceRecord.ExternalID})
-        cachedb.trainasone_activity_cache.remove({"Owner": serviceRecord.ExternalID})
-
+        pass  # No cached data...
