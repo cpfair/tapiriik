@@ -71,7 +71,8 @@ class RunKeeperService(ServiceBase):
         pass
 
     def _apiHeaders(self, serviceRecord):
-        return {"Authorization": "Bearer " + serviceRecord.Authorization["Token"]}
+        return {"Authorization": "Bearer " + serviceRecord.Authorization["Token"],
+                "Accept-Charset": "UTF-8"}
 
     def _getAPIUris(self, serviceRecord):
         if hasattr(self, "_uris"):  # cache these for the life of the batch job at least? hope so
