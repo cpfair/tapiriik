@@ -46,4 +46,8 @@ BT_APIKEY = "####"
 SMASHRUN_CLIENT_ID = "####"
 SMASHRUN_CLIENT_SECRET = "####"
 
+TRAINASONE_SERVER_URL = "https://beta.trainasone.com"
+TRAINASONE_CLIENT_SECRET = "####"
+TRAINASONE_CLIENT_ID = "####"
+
 MOTIVATO_PREMIUM_USERS_LIST_URL = "http://..."
