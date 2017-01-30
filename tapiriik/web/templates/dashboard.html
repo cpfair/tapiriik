@@ -14,7 +14,7 @@
 		{% if user.ConnectedServices|length > 1 %}
 			{% infotip connectedWillSync %}Connected services will be synchronized {% if user|has_active_payment %}automatically{% else %}when you click Synchronize now{% endif %}{% endinfotip %}
 		{% else %}
-			{% infotip connectOneMore %}Connected a second service to synchronize your activities to &amp; from{% endinfotip %}
+			{% infotip connectOneMore %}Connect a second service to synchronize your activities to &amp; from{% endinfotip %}
 		{% endif %}
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
