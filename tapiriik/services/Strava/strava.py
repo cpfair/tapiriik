@@ -50,7 +50,8 @@ class StravaService(ServiceBase):
         ActivityType.Gym: "Workout",
         ActivityType.Rowing: "Rowing",
         ActivityType.Elliptical: "Elliptical",
-        ActivityType.RollerSkiing: "RollerSki"
+        ActivityType.RollerSkiing: "RollerSki",
+        ActivityType.StrengthTraining: "WeightTraining",
     }
 
     # For mapping Strava->common
@@ -75,7 +76,8 @@ class StravaService(ServiceBase):
         "Canoeing": ActivityType.Rowing,
         "StandUpPaddling": ActivityType.Rowing,
         "Elliptical": ActivityType.Elliptical,
-        "RollerSki": ActivityType.RollerSkiing
+        "RollerSki": ActivityType.RollerSkiing,
+        "WeightTraining": ActivityType.StrengthTraining,
     }
 
     SupportedActivities = list(_activityTypeMappings.keys())

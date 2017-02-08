@@ -22,6 +22,7 @@ class ActivityType:  # taken from RK API docs. The text values have no meaning e
     Gym = "Gym"
     Climbing = "Climbing"
     RollerSkiing = "RollerSkiing"
+    StrengthTraining = "StrengthTraining"
     Other = "Other"
 
     def List():
