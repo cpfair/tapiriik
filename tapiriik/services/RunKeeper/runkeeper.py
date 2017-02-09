@@ -253,8 +253,11 @@ class RunKeeperService(ServiceBase):
             record["total_calories"] = activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
         if activity.Stats.Distance.Value is not None:
             record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
-        if activity.Name:
-            record["notes"] = activity.Name  # not symetric, but better than nothing
+        if activity.Notes:
+            if activity.Name:
+                record["notes"] = activity.Name + " - " + activity.Notes
+            else:
+                record["notes"] = activity.Notes
         if activity.Private:
             record["share"] = "Just Me"
 
