@@ -25,13 +25,14 @@ class Service:
         raise ValueError
 
     def List():
-        return [RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, TrainAsONE, Endomondo, Motivato, NikePlus, VeloHero, TrainerRoad, Smashrun, BeginnerTriathlete] + PRIVATE_SERVICES
+        return [Pulsstory, RunKeeper, Strava, GarminConnect, SportTracks, Dropbox, TrainingPeaks, RideWithGPS, TrainAsONE, Endomondo, Motivato, NikePlus, VeloHero, TrainerRoad, Smashrun, BeginnerTriathlete] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
         # ...but that would require either a) downloading it from evry service or b) storing a lot more activity metadata
         # So, I think this will do for now
         return [
+		    Pulsstory,
             TrainerRoad, # Special case, since TR has a lot more data in some very specific areas
             GarminConnect, # The reference
             Smashrun,  # TODO: not sure if this is the right place, but it seems to have a lot of data
