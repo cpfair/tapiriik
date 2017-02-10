@@ -11,6 +11,7 @@ import requests
 import urllib.parse
 import json
 import logging
+import collections
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class PulsstoryService(ServiceBase):
     def RevokeAuthorization(self, serviceRecord):
         resp = requests.post(self.URLBase + "/ExternalSyncAPI/Deauthorize", data=self._apiData(serviceRecord))
         if resp.status_code != 204 and resp.status_code != 200:
-            raise APIException("Unable to deauthorize RK auth token, status " + str(resp.status_code) + " resp " + resp.text)
+            raise APIException("Unable to deauthorize pulsstory auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
 
     def _apiData(self, serviceRecord):
@@ -113,10 +114,7 @@ class PulsstoryService(ServiceBase):
                     raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to retrieve activity list " + str(response) + " " + response.text)
             data = response.json()
-                        
-            with open('data.txt', 'w') as outfile:
-                json.dump(data, outfile)
-                
+                                        
             allItems += data["Data"]["items"]
             if not exhaustive or "next" not in data["Data"] or data["Data"]["next"] == "":
                 break
@@ -132,15 +130,12 @@ class PulsstoryService(ServiceBase):
                 continue
 
             logger.debug("\tActivity s/t " + str(activity.StartTime))
-            if (activity.StartTime - activity.EndTime).total_seconds() == 0:
-                exclusions.append(APIExcludeActivity("0-length", activity_id=act["URI"]))
-                continue  # these activites are corrupted
             activity.ServiceData = {"ActivityID": act["URI"]}
             activities.append(activity)
         return activities, exclusions
 
     def _populateActivity(self, rawRecord):
-        ''' Populate the 1st level of the activity object with all details required for UID from RK API data '''
+        ''' Populate the 1st level of the activity object with all details required for UID from pulsstory API data '''
         activity = UploadedActivity()
         #  can stay local + naive here, recipient services can calculate TZ as required
         activity.Name = rawRecord["Name"] if "Name" in rawRecord else None
@@ -161,7 +156,7 @@ class PulsstoryService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):        
         activityID = activity.ServiceData["ActivityID"]
         if AGGRESSIVE_CACHE:
-            ridedata = cachedb.rk_activity_cache.find_one({"uri": activityID})
+            ridedata = cachedb.pulsstory_activity_cache.find_one({"uri": activityID})
         if not AGGRESSIVE_CACHE or ridedata is None:
             response = requests.post(self.URLBase + activityID, data=self._apiData(serviceRecord))
             if response.status_code != 200:
@@ -171,7 +166,7 @@ class PulsstoryService(ServiceBase):
             ridedata = response.json()
             ridedata["Owner"] = serviceRecord.ExternalID
             if AGGRESSIVE_CACHE:
-                cachedb.rk_activity_cache.insert(ridedata)
+                cachedb.pulsstory_activity_cache.insert(ridedata)
 
         if "UserID" in ridedata and int(ridedata["UserID"]) != int(serviceRecord.ExternalID):
             raise APIExcludeActivity("Not the user's own activity", activity_id=activityID, user_exception=UserException(UserExceptionType.Other))
@@ -189,42 +184,33 @@ class PulsstoryService(ServiceBase):
         return activity
     
     def _convertList(self, rawData, listName):
-        streamData = []
         timeListName = listName + "Time"
         valueListName = listName + "Value"
-        try:
-            check = timeListName is not None and timeListName in rawData
-            check = check and valueListName is not None and valueListName in rawData
-            if check:
-                timeList = rawData[timeListName]
-                valueList = rawData[valueListName]            
-                Nt = len(timeList)
-                Nv = len(valueList)            
-                if Nt == Nv:
-                    for n in range(Nt):
-                        streamData.append((timeList[n], valueList[n]))
-                else:
-                    raise Exception("Different size of lists:" + listName);
-        except Exception as e:
-            pass
-            # logger.warn("Cannot convert list.", e)
-                    
+        check = timeListName is not None and timeListName in rawData
+        check = check and valueListName is not None and valueListName in rawData
+        if check:
+            timeList = rawData[timeListName]
+            valueList = rawData[valueListName]
+            if isinstance(timeList, collections.Iterable) and isinstance(valueList, collections.Iterable):
+                result = list(zip(timeList, valueList))                                
+                return result
 
-        return streamData
+        return []
        
     def _convertPathList(self, rawData):
         streamData = []
         timeListName = "PathTime"
         longitudeListName = "LongitudePathValue"
         latitudeListName = "LatitudePathValue"
-        try:   
-            check = timeListName is not None and timeListName in rawData
-            check = check and longitudeListName is not None and longitudeListName in rawData
-            check = check and latitudeListName is not None and latitudeListName in rawData
-            if check:
-                timeList = rawData[timeListName]
-                longitudeList = rawData[longitudeListName]
-                latitudeList = rawData[latitudeListName]                        
+        
+        check = timeListName is not None and timeListName in rawData
+        check = check and longitudeListName is not None and longitudeListName in rawData
+        check = check and latitudeListName is not None and latitudeListName in rawData
+        if check:
+            timeList = rawData[timeListName]
+            longitudeList = rawData[longitudeListName]
+            latitudeList = rawData[latitudeListName]
+            if isinstance(timeList, collections.Iterable) and isinstance(longitudeList, collections.Iterable) and isinstance(latitudeList, collections.Iterable):                        
                 Nt = len(timeList)
                 Nv1 = len(longitudeList)
                 Nv2 = len(latitudeList)
@@ -232,14 +218,11 @@ class PulsstoryService(ServiceBase):
                     for n in range(Nt):
                         point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
                         streamData.append((timeList[n], point))
-        except Exception as e:
-            pass
-            # logger.warn("Cannot convert path list.", e)
 
         return streamData        
 
     def _populateActivityWaypoints(self, rawData, activity):
-        ''' populate the Waypoints collection from RK API data '''
+        ''' populate the Waypoints collection from pulsstory API data '''
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
@@ -274,8 +257,7 @@ class PulsstoryService(ServiceBase):
             lap.Waypoints[-1].Type = WaypointType.End
 
     def UploadActivity(self, serviceRecord, activity):
-        #  assembly dict to post to RK
-        # serviceRecord.GetConfiguration()["auto_pause"]
+        #  assembly dict to post to pulsstory
         uploadData = self._createUploadData(activity, False)
         uris = self._getAPIUris(serviceRecord)
         data = self._apiData(serviceRecord)
@@ -306,21 +288,25 @@ class PulsstoryService(ServiceBase):
             "Energy": activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
             }        
                 
-        record["Waypoints"] = {
+        waypoints = {
             "AvgHR" : int(activity.Stats.HR.Average),
             "Notes" : activity.Notes,
-            "Private" : activity.Private,
-            "TimeList" : [],
-            "HeartRateValue" : [],            
+            "Private" : activity.Private,            
+            "HeartRateValue" : [],
+            "HeartRateTime" : [],                   
             "CadanceValue" : [],
+            "CadanceTime" : [],            
             "LongitudePathValue" : [],
             "LatitudePathValue" : [],
             "AltitudePathValue" : [],
-            "CaloriesValue" : [],
+            "PathTime" : [],            
             "SpeedValue" : [],
-            "PowerValue" : [],                
+            "SpeedTime" : [],
+            "PowerValue" : [], 
+            "PowerTime" : [],               
             }
-
+        record["Waypoints"] = waypoints;
+        
         if activity.CountTotalWaypoints() > 1:
             flat_wps = activity.GetFlatWaypoints()
 
@@ -337,15 +323,7 @@ class PulsstoryService(ServiceBase):
             inPause = False
             for waypoint, waypoint_type in zip(flat_wps, wp_type_iter):
                 timestamp = (waypoint.Timestamp - anchor_ts).total_seconds()
-                record["Waypoints"]["TimeList"].append(timestamp)
-                
-                '''
-                if waypoint_type in self._wayptTypeMappings.values():
-                    wpType = [key for key, value in self._wayptTypeMappings.items() if value == waypoint_type][0]
-                else:
-                    wpType = "gps"  # meh
-                '''
-
+                                
                 if not inPause and waypoint_type == WaypointType.Pause:
                     inPause = True
                 elif inPause and waypoint_type == WaypointType.Pause:
@@ -354,32 +332,44 @@ class PulsstoryService(ServiceBase):
                     inPause = False
 
                 if waypoint.HR is not None:
-                    record["Waypoints"]["HeartRateValue"].append(round(waypoint.HR))
+                    waypoints["HeartRateTime"].append(timestamp)
+                    waypoints["HeartRateValue"].append(round(waypoint.HR))
 
-                if waypoint.Power is not None:                    
-                    record["Waypoints"]["PowerValue"].append(waypoint.Power)
+                if waypoint.Power is not None:
+                    waypoints["PowerTime"].append(timestamp)                    
+                    waypoints["PowerValue"].append(waypoint.Power)
                     
-                if waypoint.Speed is not None:                    
-                    record["Waypoints"]["SpeedValue"].append(waypoint.Speed)
+                if waypoint.Speed is not None:
+                    waypoints["SpeedTime"].append(timestamp)                    
+                    waypoints["SpeedValue"].append(waypoint.Speed)
                     
-                if waypoint.Cadence is not None:                    
-                    record["Waypoints"]["CadanceValue"].append(waypoint.Cadence)
+                if waypoint.Cadence is not None:   
+                    waypoints["CadanceTime"].append(timestamp)                 
+                    waypoints["CadanceValue"].append(waypoint.Cadence)
                     
-                if waypoint.Location is not None and waypoint.Location.Longitude is not None:                    
-                    record["Waypoints"]["LongitudePathValue"].append(waypoint.Location.Longitude)
-                    
-                if waypoint.Location is not None and waypoint.Location.Latitude is not None:
-                    record["Waypoints"]["LatitudePathValue"].append(waypoint.Location.Latitude)
-                
-                if waypoint.Location is not None and waypoint.Location.Altitude is not None:                 
-                    record["Waypoints"]["AltitudePathValue"].append(waypoint.Location.Altitude)
+                if waypoint.Location is not None:
+                    waypoints["PathTime"].append(timestamp)
+                                               
+                    if waypoint.Location.Longitude is not None:         
+                        waypoints["LongitudePathValue"].append(waypoint.Location.Longitude)
+                    else:
+                        waypoints["LongitudePathValue"].append(-1)
+                        
+                    if waypoint.Location.Latitude is not None:    
+                        waypoints["LatitudePathValue"].append(waypoint.Location.Latitude)
+                    else:
+                        waypoints["LatitudePathValue"].append(-1)
+                        
+                    if waypoint.Location.Altitude is not None:
+                        waypoints["AltitudePathValue"].append(waypoint.Location.Altitude)
+                    else:
+                        waypoints["AltitudePathValue"].append(-1)
 
         return record
 
     def DeleteCachedData(self, serviceRecord):
-        cachedb.rk_activity_cache.remove({"Owner": serviceRecord.ExternalID})
+        cachedb.pulsstory_activity_cache.remove({"Owner": serviceRecord.ExternalID})
 
     def DeleteActivity(self, serviceRecord, uri):
-        # not supported
-        pass                
+        raise APIException("Not supported.")
 
