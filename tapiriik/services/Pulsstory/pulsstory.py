@@ -1,4 +1,4 @@
-from tapiriik.settings import PULSSTORY_CLIENT_ID, PULSSTORY_CLIENT_SECRET, AGGRESSIVE_CACHE
+from tapiriik.settings import PULSSTORY_CLIENT_ID, PULSSTORY_CLIENT_SECRET
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.stream_sampling import StreamSampler
@@ -150,23 +150,22 @@ class PulsstoryService(ServiceBase):
             activity.Type = self._activityMappings[rawRecord["Type"]]
         activity.GPS = rawRecord["HasPath"]
         activity.Stationary = not rawRecord["HasPath"]
-        activity.CalculateUID()
+        activity.Notes = rawRecord["Notes"] if "Notes" in rawRecord else None
+        activity.Private = rawRecord["Private"] != "false"
+                
+        activity.CalculateUID()        
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):        
         activityID = activity.ServiceData["ActivityID"]
-        if AGGRESSIVE_CACHE:
-            ridedata = cachedb.pulsstory_activity_cache.find_one({"uri": activityID})
-        if not AGGRESSIVE_CACHE or ridedata is None:
-            response = requests.post(self.URLBase + activityID, data=self._apiData(serviceRecord))
-            if response.status_code != 200:
-                if response.status_code == 401 or response.status_code == 403:
-                    raise APIException("No authorization to download activity" + activityID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-                raise APIException("Unable to download activity " + activityID + " response " + str(response) + " " + response.text)
-            ridedata = response.json()
-            ridedata["Owner"] = serviceRecord.ExternalID
-            if AGGRESSIVE_CACHE:
-                cachedb.pulsstory_activity_cache.insert(ridedata)
+
+        response = requests.post(self.URLBase + activityID, data=self._apiData(serviceRecord))
+        if response.status_code != 200:
+            if response.status_code == 401 or response.status_code == 403:
+                raise APIException("No authorization to download activity" + activityID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("Unable to download activity " + activityID + " response " + str(response) + " " + response.text)
+        ridedata = response.json()
+        ridedata["Owner"] = serviceRecord.ExternalID
 
         if "UserID" in ridedata and int(ridedata["UserID"]) != int(serviceRecord.ExternalID):
             raise APIExcludeActivity("Not the user's own activity", activity_id=activityID, user_exception=UserException(UserExceptionType.Other))
@@ -179,11 +178,9 @@ class PulsstoryService(ServiceBase):
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["AvgHr"]))
         activity.Stationary = activity.CountTotalWaypoints() <= 1
         
-        activity.Notes = ridedata["Notes"] if "Notes" in ridedata else None
-        activity.Private = ridedata["Private"] != "false"
         return activity
     
-    def _convertList(self, rawData, listName):
+    def _convertList(self, streamData, streamDataKey, rawData, listName):
         timeListName = listName + "Time"
         valueListName = listName + "Value"
         check = timeListName is not None and timeListName in rawData
@@ -191,14 +188,13 @@ class PulsstoryService(ServiceBase):
         if check:
             timeList = rawData[timeListName]
             valueList = rawData[valueListName]
-            if isinstance(timeList, collections.Iterable) and isinstance(valueList, collections.Iterable):
-                result = list(zip(timeList, valueList))                                
-                return result
-
-        return []
+            if timeList is not None and valueList is not None:
+                if len(timeList) > 0:
+                    result = list(zip(timeList, valueList))
+                    streamData[streamDataKey] = result
        
-    def _convertPathList(self, rawData):
-        streamData = []
+    def _convertPathList(self, streamData, streamDataKey, rawData):
+        result = []
         timeListName = "PathTime"
         longitudeListName = "LongitudePathValue"
         latitudeListName = "LatitudePathValue"
@@ -210,17 +206,14 @@ class PulsstoryService(ServiceBase):
             timeList = rawData[timeListName]
             longitudeList = rawData[longitudeListName]
             latitudeList = rawData[latitudeListName]
-            if isinstance(timeList, collections.Iterable) and isinstance(longitudeList, collections.Iterable) and isinstance(latitudeList, collections.Iterable):                        
-                Nt = len(timeList)
-                Nv1 = len(longitudeList)
-                Nv2 = len(latitudeList)
-                if Nt == Nv1 and Nt == Nv2:
-                    for n in range(Nt):
-                        point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
-                        streamData.append((timeList[n], point))
-
-        return streamData        
-
+            if timeList is not None and longitudeList is not None and latitudeList is not None:
+               Nt = len(timeList)
+               if Nt > 0:
+                   for n in range(Nt):
+                       point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
+                       result.append((timeList[n], point))
+                   streamData[streamDataKey] = result                
+    
     def _populateActivityWaypoints(self, rawData, activity):
         ''' populate the Waypoints collection from pulsstory API data '''
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
@@ -228,12 +221,12 @@ class PulsstoryService(ServiceBase):
 
         streamData = {}
                         
-        streamData["heart_rate"] = self._convertList(rawData, "HeartRate")
-        streamData["distance"] = self._convertList(rawData, "Distance")
-        streamData["speed"] = self._convertList(rawData, "Speed")
-        streamData["power"] = self._convertList(rawData, "Power")
-        streamData["cadence"] = self._convertList(rawData, "Cadence")
-        streamData["path"] = self._convertPathList(rawData)
+        self._convertList(streamData, "heart_rate", rawData, "HeartRate")
+        self._convertList(streamData, "distance", rawData, "Distance")
+        self._convertList(streamData, "speed", rawData, "Speed")
+        self._convertList(streamData, "power", rawData, "Power")
+        self._convertList(streamData, "cadence", rawData, "Cadence")
+        self._convertPathList(streamData, "path", rawData)
     
         def _addWaypoint(timestamp, path=None, heart_rate=None, power=None, distance=None, speed=None, cadence=None):
             waypoint = Waypoint(activity.StartTime + timedelta(seconds=timestamp))
@@ -285,25 +278,25 @@ class PulsstoryService(ServiceBase):
             "Distance" : activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
             "StartTime": activity.StartTime.strftime("%Y-%m-%d %H:%M:%S"),
             "Type": activity.Type,
-            "Energy": activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value
-            }        
+            "Energy": activity.Stats.Energy.asUnits(ActivityStatisticUnit.Kilocalories).Value,
+            "Notes" : activity.Notes,
+            "Private" : activity.Private,
+            }
                 
         waypoints = {
             "AvgHR" : int(activity.Stats.HR.Average),
-            "Notes" : activity.Notes,
-            "Private" : activity.Private,            
             "HeartRateValue" : [],
-            "HeartRateTime" : [],                   
-            "CadanceValue" : [],
-            "CadanceTime" : [],            
+            "HeartRateTime" : [],
+            "CadenceValue" : [],
+            "CadenceTime" : [],
             "LongitudePathValue" : [],
             "LatitudePathValue" : [],
             "AltitudePathValue" : [],
-            "PathTime" : [],            
+            "PathTime" : [],
             "SpeedValue" : [],
             "SpeedTime" : [],
-            "PowerValue" : [], 
-            "PowerTime" : [],               
+            "PowerValue" : [],
+            "PowerTime" : [],
             }
         record["Waypoints"] = waypoints;
         
@@ -344,8 +337,8 @@ class PulsstoryService(ServiceBase):
                     waypoints["SpeedValue"].append(waypoint.Speed)
                     
                 if waypoint.Cadence is not None:   
-                    waypoints["CadanceTime"].append(timestamp)                 
-                    waypoints["CadanceValue"].append(waypoint.Cadence)
+                    waypoints["CadenceTime"].append(timestamp)                 
+                    waypoints["CadenceValue"].append(waypoint.Cadence)
                     
                 if waypoint.Location is not None:
                     waypoints["PathTime"].append(timestamp)
@@ -366,10 +359,3 @@ class PulsstoryService(ServiceBase):
                         waypoints["AltitudePathValue"].append(-1)
 
         return record
-
-    def DeleteCachedData(self, serviceRecord):
-        cachedb.pulsstory_activity_cache.remove({"Owner": serviceRecord.ExternalID})
-
-    def DeleteActivity(self, serviceRecord, uri):
-        raise APIException("Not supported.")
-

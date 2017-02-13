@@ -31,7 +31,7 @@ class Service:
         # Ideally, we'd make an informed decision based on whatever features the activity had
         # ...but that would require either a) downloading it from evry service or b) storing a lot more activity metadata
         # So, I think this will do for now
-        return [		    
+        return [
             TrainerRoad, # Special case, since TR has a lot more data in some very specific areas
             GarminConnect, # The reference
             Smashrun,  # TODO: not sure if this is the right place, but it seems to have a lot of data
@@ -47,7 +47,7 @@ class Service:
             BeginnerTriathlete, # No temperature
             Motivato,
             NikePlus,
-			Pulsstory
+            Pulsstory
         ] + PRIVATE_SERVICES
 
     def WebInit():
