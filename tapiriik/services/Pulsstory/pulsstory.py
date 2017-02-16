@@ -307,11 +307,6 @@ class PulsstoryService(ServiceBase):
 
             # By default, use the provided waypoint types
             wp_type_iter = (wp.Type for wp in flat_wps)
-            # Unless those types don't include pause/resume, in which case use our auto-pause calculation
-            if auto_pause and not any(wp.Type == WaypointType.Pause for wp in flat_wps):
-                # ...but not if we don't know the intended moving time
-                if activity.Stats.MovingTime.Value:
-                    wp_type_iter = AutoPauseCalculator.calculate(flat_wps, activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value)
 
             inPause = False
             for waypoint, waypoint_type in zip(flat_wps, wp_type_iter):
