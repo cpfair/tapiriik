@@ -297,15 +297,15 @@ class EndomondoService(ServiceBase):
         csp.update(SECRET_KEY.encode("utf-8"))
         return "tap-" + csp.hexdigest()
     
-    def _shouldUseOriginalSport(activity):
+    def _shouldUseOriginalSport(self, activity):
         # This is an activity type that doesn't round trip
-        return (activity.Type in _activitiesThatDontRoundTrip and 
+        return (activity.Type in self._activitiesThatDontRoundTrip and 
         # We have the original sport
         "Sport" in activity.ServiceData and 
         # We know what this sport is
-        activity.ServiceData["Sport"] in _activityMappings and 
+        activity.ServiceData["Sport"] in self._activityMappings and 
         # The type didn't change (if we changed from Walking to Cycling, we'd want to let the new value through)
-        activity.Type == _activityMappings[activity.ServiceData["Sport"]])
+        activity.Type == self._activityMappings[activity.ServiceData["Sport"]])
 
     def UploadActivity(self, serviceRecord, activity):
         session = self._oauthSession(serviceRecord)
