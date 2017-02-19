@@ -75,6 +75,12 @@ class EndomondoService(ServiceBase):
         "climbing" : ActivityType.Climbing,
         "roller skiing": ActivityType.RollerSkiing
     }
+    
+    _activitiesThatDontRoundTrip = {
+        ActivityType.Cycling,
+        ActivityType.Running,
+        ActivityType.Walking
+    }
 
     SupportedActivities = list(_activityMappings.values())
 
@@ -193,7 +199,7 @@ class EndomondoService(ServiceBase):
                 if "title" in actInfo:
                     activity.Name = actInfo["title"]
 
-                activity.ServiceData = {"WorkoutID": int(actInfo["id"])}
+                activity.ServiceData = {"WorkoutID": int(actInfo["id"]), "Sport": actInfo["sport"]}
 
                 activity.CalculateUID()
                 activities.append(activity)
@@ -290,6 +296,16 @@ class EndomondoService(ServiceBase):
         csp.update(str(serviceRecord.ExternalID).encode("utf-8"))
         csp.update(SECRET_KEY.encode("utf-8"))
         return "tap-" + csp.hexdigest()
+    
+    def _shouldUseOriginalSport(activity):
+        # This is an activity type that doesn't round trip
+        return (activity.Type in _activitiesThatDontRoundTrip and 
+        # We have the original sport
+        "Sport" in activity.ServiceData and 
+        # We know what this sport is
+        activity.ServiceData["Sport"] in _activityMappings and 
+        # The type didn't change (if we changed from Walking to Cycling, we'd want to let the new value through)
+        activity.Type == _activityMappings[activity.ServiceData["Sport"]])
 
     def UploadActivity(self, serviceRecord, activity):
         session = self._oauthSession(serviceRecord)
@@ -311,10 +327,16 @@ class EndomondoService(ServiceBase):
             serviceRecord.SetConfiguration({"DeviceRegistered": True})
 
         activity_id = "tap-" + activity.UID + "-" + str(os.getpid())
+        
+        if _shouldUseOriginalSport(activity)
+            # it's something that doesn't round trip, use the original 
+            sport = activity.ServiceData["Sport"]
+        else
+            sport = [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0]
 
         upload_data = {
             "device_id": device_id,
-            "sport": [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0],
+            "sport": sport,
             "start_time": self._formatDate(activity.StartTime),
             "end_time": self._formatDate(activity.EndTime),
             "points": []
