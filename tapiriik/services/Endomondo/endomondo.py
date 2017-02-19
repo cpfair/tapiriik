@@ -328,7 +328,7 @@ class EndomondoService(ServiceBase):
 
         activity_id = "tap-" + activity.UID + "-" + str(os.getpid())
         
-        if _shouldUseOriginalSport(activity)
+        if self._shouldUseOriginalSport(activity)
             # it's something that doesn't round trip, use the original 
             sport = activity.ServiceData["Sport"]
         else
