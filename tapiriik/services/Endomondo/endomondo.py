@@ -305,9 +305,9 @@ class EndomondoService(ServiceBase):
         # We know what this sport is
         activity.ServiceData["Sport"] in self._activityMappings and 
         # The type didn't change (if we changed from Walking to Cycling, we'd want to let the new value through)
-        activity.Type == self._activityMappings[activity.ServiceData["Sport"]])
+        activity.Type == self._activityMappings[activity.ServiceData["Sport"]]):
             return activity.ServiceData["Sport"]
-        else
+        else:
             return [k for k,v in self._reverseActivityMappings.items() if v == activity.Type][0]
 
     def UploadActivity(self, serviceRecord, activity):
