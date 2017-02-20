@@ -36,6 +36,9 @@ NIKEPLUS_CLIENT_NAME = "####"
 NIKEPLUS_CLIENT_ID = "####"
 NIKEPLUS_CLIENT_SECRET = "####"
 
+PULSSTORY_CLIENT_ID="####"
+PULSSTORY_CLIENT_SECRET="####"
+
 RWGPS_APIKEY = "####"
 
 # http://beginnertriathlete.com/discussion/contact.asp?department=api
