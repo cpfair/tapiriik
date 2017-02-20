@@ -1,5 +1,5 @@
 from pymongo import MongoClient, MongoReplicaSetClient
-from tapiriik.settings import MONGO_HOST, MONGO_REPLICA_SET, MONGO_CLIENT_OPTIONS, REDIS_HOST
+from tapiriik.settings import MONGO_HOST, MONGO_REPLICA_SET, MONGO_CLIENT_OPTIONS, REDIS_HOST, REDIS_CLIENT_OPTIONS
 
 # MongoDB
 
@@ -18,7 +18,7 @@ ratelimit = _connection["tapiriik_ratelimit"]
 # Redis
 if REDIS_HOST:
 	import redis as redis_client
-	redis = redis_client.Redis(host=REDIS_HOST)
+	redis = redis_client.Redis(host=REDIS_HOST, **REDIS_CLIENT_OPTIONS)
 else:
 	redis = None # Must be defined
 
