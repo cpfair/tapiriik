@@ -99,7 +99,7 @@ class ServiceBase:
     def RevokeAuthorization(self, serviceRecord):
         raise NotImplementedError
 
-    def DownloadActivityList(self, serviceRecord, exhaustive=False, start_time=None):
+    def DownloadActivityList(self, serviceRecord, exhaustive_start_date=None):
         raise NotImplementedError
 
     def DownloadActivity(self, serviceRecord, activity):

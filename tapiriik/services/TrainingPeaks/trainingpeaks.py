@@ -110,7 +110,7 @@ class TrainingPeaksService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         pass  # No cached data...
 
-    def DownloadActivityList(self, svcRecord, exhaustive=False, start_time=None):
+    def DownloadActivityList(self, svcRecord, exhaustive_start_time=None):
         activities = []
         exclusions = []
 
@@ -118,9 +118,9 @@ class TrainingPeaksService(ServiceBase):
 
         limitDateFormat = "%Y-%m-%d"
 
-        if exhaustive:
+        if exhaustive_start_time:
             totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
-            totalListStart = start_time
+            totalListStart = exhaustive_start_time
         else:
             totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
             totalListStart = totalListEnd - timedelta(days=20) # Doesn't really matter
@@ -177,7 +177,7 @@ class TrainingPeaksService(ServiceBase):
                 activity.CalculateUID()
                 activities.append(activity)
 
-            if not exhaustive:
+            if not exhaustive_start_time:
                 break
 
             listStart -= listStep

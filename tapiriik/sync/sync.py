@@ -644,11 +644,10 @@ class SynchronizationTask:
 
         try:
             logger.info("\tRetrieving list from " + svc.ID)
-            if not exhaustive or svc.SupportsExhaustiveListing:
+            if not exhaustive or not self._activities:
                 svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
             else:
-                svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive,
-                                                                        start_time=min((x.StartTime for x in self._activities)))
+                svcActivities, svcExclusions = svc.DownloadActivityList(conn, min((x.StartTime for x in self._activities)))
         except (ServiceException, ServiceWarning) as e:
             # Special-case rate limiting errors thrown during listing
             # Otherwise, things will melt down when the limit is reached
