@@ -267,6 +267,14 @@ class PulsstoryService(ServiceBase):
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
         
         return response.json()["Id"]
+    
+    def _getDuration(self, activity):
+        if activity.Stats.MovingTime.Value is not None:
+            return activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        elif activity.Stats.TimerTime.Value is not None:
+            return activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        else:
+            return (activity.EndTime - activity.StartTime).total_seconds()        
 
     def _createUploadData(self, activity, auto_pause=False):
         ''' create data dict for posting to pulsstory API '''
@@ -274,7 +282,7 @@ class PulsstoryService(ServiceBase):
         
         record["Basic"] = {
             "Name" : activity.Name,
-            "Duration" : activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value,
+            "Duration" : self._getDuration(activity),
             "Distance" : activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
             "StartTime": activity.StartTime.strftime("%Y-%m-%d %H:%M:%S"),
             "Type": activity.Type,
