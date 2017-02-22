@@ -218,11 +218,14 @@ class GarminConnectService(ServiceBase):
         if ssoResp.status_code != 200 or "temporarily unavailable" in ssoResp.text:
             raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
-        if "renewPassword" in ssoResp.text:
-            raise APIException("Reset password", block=True, user_exception=UserException(UserExceptionType.RenewPassword, intervention_required=True))
+        if ">sendEvent('FAIL')" in ssoResp.text:
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        if ">sendEvent('ACCOUNT_LOCKED')" in ssoResp.text:
+            raise APIException("Account locked", block=True, user_exception=UserException(UserExceptionType.Locked, intervention_required=True))
+
         ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
         if not ticket_match:
-            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("Invalid login (no ticket)", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         ticket = ticket_match.groups(1)[0]
 
         # ...AND WE'RE NOT DONE YET!
