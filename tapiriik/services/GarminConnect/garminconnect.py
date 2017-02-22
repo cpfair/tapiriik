@@ -221,7 +221,10 @@ class GarminConnectService(ServiceBase):
         if ">sendEvent('FAIL')" in ssoResp.text:
             raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         if ">sendEvent('ACCOUNT_LOCKED')" in ssoResp.text:
-            raise APIException("Account locked", block=True, user_exception=UserException(UserExceptionType.Locked, intervention_required=True))
+            raise APIException("Account Locked", block=True, user_exception=UserException(UserExceptionType.Locked, intervention_required=True))
+
+        if "renewPassword" in ssoResp.text:
+            raise APIException("Reset password", block=True, user_exception=UserException(UserExceptionType.RenewPassword, intervention_required=True))
 
         ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
         if not ticket_match:
