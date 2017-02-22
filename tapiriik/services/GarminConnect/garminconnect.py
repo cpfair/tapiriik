@@ -240,18 +240,18 @@ class GarminConnectService(ServiceBase):
 
         # There are 6 redirects that need to be followed to get the correct cookie
         # ... :(
-        expected_redirect_count = 6
+        max_redirect_count = 7
         current_redirect_count = 1
         while True:
             self._rate_limit()
             gcRedeemResp = session.get(gcRedeemResp.headers["location"], allow_redirects=False)
 
-            if current_redirect_count >= expected_redirect_count and gcRedeemResp.status_code != 200:
-                raise APIException("GC redeem %d/%d error %s %s" % (current_redirect_count, expected_redirect_count, gcRedeemResp.status_code, gcRedeemResp.text))
+            if current_redirect_count >= max_redirect_count and gcRedeemResp.status_code != 200:
+                raise APIException("GC redeem %d/%d error %s %s" % (current_redirect_count, max_redirect_count, gcRedeemResp.status_code, gcRedeemResp.text))
             if gcRedeemResp.status_code == 200 or gcRedeemResp.status_code == 404:
                 break
             current_redirect_count += 1
-            if current_redirect_count > expected_redirect_count:
+            if current_redirect_count > max_redirect_count:
                 break
 
         self._sessionCache.Set(record.ExternalID if record else email, session)
