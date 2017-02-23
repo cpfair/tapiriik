@@ -130,7 +130,7 @@ class TrainingPeaksService(ServiceBase):
         listStart = max(totalListStart, totalListEnd - listStep)
 
         while True:
-            print("Requesting %s to %s" % (listStart, listEnd))
+            logger.debug("Requesting %s to %s" % (listStart, listEnd))
             resp = requests.get(
                 TRAININGPEAKS_API_BASE_URL + "/v1/workouts/%s/%s" % (
                     listStart.strftime(limitDateFormat),
@@ -142,6 +142,7 @@ class TrainingPeaksService(ServiceBase):
                     continue
                 activity = UploadedActivity()
                 activity.StartTime = dateutil.parser.parse(act["StartTime"]).replace(tzinfo=None)
+                logger.debug("Activity s/t " + str(activity.StartTime))
                 activity.EndTime = activity.StartTime + timedelta(hours=act["TotalTime"])
                 activity.Name = act.get("Title", None)
                 activity.Notes = act.get("Description", None)
