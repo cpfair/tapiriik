@@ -120,7 +120,7 @@ class TrainingPeaksService(ServiceBase):
 
         if exhaustive_start_time:
             totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
-            totalListStart = exhaustive_start_time
+            totalListStart = exhaustive_start_time - timedelta(days - 1.5)
         else:
             totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
             totalListStart = totalListEnd - timedelta(days=20) # Doesn't really matter
