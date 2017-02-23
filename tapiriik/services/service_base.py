@@ -41,6 +41,10 @@ class ServiceBase:
     ReceivesStationaryActivities = True # Manually-entered?
     ReceivesNonGPSActivitiesWithOtherSensorData = True # Trainer-ish?
     SuppliesActivities = True
+    # Services with this flag unset will receive an explicit date range for activity listing,
+    # rather than the exhaustive flag alone. They are also processed after all other services.
+    # An account must have at least one service that supports exhaustive listing.
+    SupportsExhaustiveListing = True
 
 
     SupportsActivityDeletion = False
@@ -95,7 +99,7 @@ class ServiceBase:
     def RevokeAuthorization(self, serviceRecord):
         raise NotImplementedError
 
-    def DownloadActivityList(self, serviceRecord, exhaustive=False):
+    def DownloadActivityList(self, serviceRecord, exhaustive_start_date=None):
         raise NotImplementedError
 
     def DownloadActivity(self, serviceRecord, activity):

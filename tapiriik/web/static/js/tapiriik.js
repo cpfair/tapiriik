@@ -280,10 +280,6 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 				$.address.value("");
 				window.location.reload();
 			} else {
-				if (typeof data.result === 'object' && data.result.type == "unpaid" && svcId == "trainingpeaks") {
-					$().redirect("trainingpeaks_premium", {personId: data.result.extra, username:$("#email",form).val(), password:$("#password",form).val()});
-					return;
-				}
 				if (typeof data.result === 'object' && data.result.type == "renew_password" && svcId == "garminconnect") {
 					alert("You need to visit connect.garmin.com directly to fix a problem with your account.\n\nOnce you're done, try logging in again.");
 				}

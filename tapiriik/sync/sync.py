@@ -630,6 +630,12 @@ class SynchronizationTask:
             self._excludeService(conn, UserException(UserExceptionType.Other))
             return
 
+        if exhaustive and not svc.SupportsExhaustiveListing and not self._activities:
+            # If we get to this point, we must already have activity listings from another service.
+            logger.info("Account does not contain any services supporting exhaustive activity listing")
+            self._excludeService(conn, UserException(UserExceptionType.Other))
+            return
+
         if svc.RequiresExtendedAuthorizationDetails:
             if not conn.ExtendedAuthorization:
                 logger.info("No extended auth details for " + svc.ID)
@@ -638,7 +644,10 @@ class SynchronizationTask:
 
         try:
             logger.info("\tRetrieving list from " + svc.ID)
-            svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
+            if not exhaustive or not self._activities:
+                svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
+            else:
+                svcActivities, svcExclusions = svc.DownloadActivityList(conn, min((x.StartTime for x in self._activities)))
         except (ServiceException, ServiceWarning) as e:
             # Special-case rate limiting errors thrown during listing
             # Otherwise, things will melt down when the limit is reached
@@ -882,7 +891,12 @@ class SynchronizationTask:
 
         try:
             try:
-                for conn in self._serviceConnections:
+                # Sort services that don't support exhaustive listing last.
+                # That way, we can provide them with the proper bounds for listing based
+                # on activities from other services.
+                for conn in sorted(self._serviceConnections,
+                                   key=lambda x: x.Service.SupportsExhaustiveListing,
+                                   reverse=True):
                     # If we're not going to be doing anything anyways, stop now
                     if len(self._serviceConnections) - len(self._excludedServices) <= 1:
                         raise SynchronizationCompleteException()
