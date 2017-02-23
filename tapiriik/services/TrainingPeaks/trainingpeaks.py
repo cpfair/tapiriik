@@ -198,8 +198,7 @@ class TrainingPeaksService(ServiceBase):
             "UploadClient": "tapiriik",
             "Filename": "tap-%s.pwx" % activity.UID,
             "SetWorkoutPublic": not activity.Private,
-            "Title": activity.Name,
-            # NB activity notes are in the PWX.
+            # NB activity notes and name are in the PWX.
             "Data": base64.b64encode(pwxdata_gz.getvalue()).decode("ascii")
         }
 
