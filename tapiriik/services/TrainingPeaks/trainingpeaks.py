@@ -22,7 +22,7 @@ class TrainingPeaksService(ServiceBase):
     DisplayName = "TrainingPeaks"
     DisplayAbbreviation = "TP"
     AuthenticationType = ServiceAuthenticationType.OAuth
-    RequiresExtendedAuthorizationDetails = True
+    RequiresExtendedAuthorizationDetails = False
     ReceivesStationaryActivities = False
     SuppliesActivities = False
     AuthenticationNoFrame = True
