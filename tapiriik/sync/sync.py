@@ -647,7 +647,7 @@ class SynchronizationTask:
             if not exhaustive or not self._activities:
                 svcActivities, svcExclusions = svc.DownloadActivityList(conn, exhaustive)
             else:
-                svcActivities, svcExclusions = svc.DownloadActivityList(conn, min((x.StartTime for x in self._activities)))
+                svcActivities, svcExclusions = svc.DownloadActivityList(conn, min((x.StartTime.replace(tzinfo=None) for x in self._activities)))
         except (ServiceException, ServiceWarning) as e:
             # Special-case rate limiting errors thrown during listing
             # Otherwise, things will melt down when the limit is reached
