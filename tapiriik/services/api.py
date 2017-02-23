@@ -49,6 +49,7 @@ class UserExceptionType:
     AccountFull = "full"
     AccountExpired = "expired"
     AccountUnpaid = "unpaid" # vs. expired, which implies it was at some point function, via payment or trial or otherwise.
+    NonAthleteAccount = "non_athlete_account" # trainingpeaks
 
     # Activity-level exceptions
     FlowException = "flow"

@@ -286,6 +286,9 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 				if (typeof data.result === 'object' && data.result.type == "locked" && svcId == "garminconnect") {
 					alert("If you entered your Garmin Connect username instead of your email, try using your email. If that doesn't work, visit connect.garmin.com to double-check your login.\n\nOnce you're done, try logging in again.");
 				}
+				if (typeof data.result === 'object' && data.result.type == "non_athlete_account" && svcId == "trainingpeaks") {
+					alert("It looks like you used a TrainingPeaks Coach account - you'll have to sign in with your individual account to continue.");
+				}
 				$(".error", form).hide();
 				$("#login-fail", form).show();
 				$("button",form).removeClass("disabled");

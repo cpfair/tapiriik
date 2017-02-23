@@ -74,7 +74,8 @@ class TrainingPeaksService(ServiceBase):
 
         profile_data = requests.get(TRAININGPEAKS_API_BASE_URL + "/v1/athlete/profile",
                                     headers={"Authorization": "Bearer %s" % auth_data["access_token"]}).json()
-
+        if type(profile_data) is list and any("is not a valid athlete" in x for x in profile_data):
+            raise APIException("TP user is coach account", block=True, user_exception=UserException(UserExceptionType.NonAthleteAccount, intervention_required=True))
         return (profile_data["Id"], {"RefreshToken": auth_data["refresh_token"]})
 
     def _apiHeaders(self, serviceRecord):
