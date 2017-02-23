@@ -437,6 +437,8 @@ class SynchronizationTask:
             if hasattr(act, "ServiceData") and act.ServiceData is not None:
                 act.ServiceDataCollection[conn._id] = act.ServiceData
                 del act.ServiceData
+            else:
+                act.ServiceDataCollection[conn._id] = None
             if act.TZ and not hasattr(act.TZ, "localize"):
                 raise ValueError("Got activity with TZ type " + str(type(act.TZ)) + " instead of a pytz timezone")
             # Used to ensureTZ() right here - doubt it's needed any more?
