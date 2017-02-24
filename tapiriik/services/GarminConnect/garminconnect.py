@@ -542,8 +542,14 @@ class GarminConnectService(ServiceBase):
         fit_file = FITIO.Dump(activity)
         files = {"data": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".fit", fit_file)}
 
-        res = self._request_with_reauth(serviceRecord, lambda session: session.post("https://connect.garmin.com/proxy/upload-service-1.1/json/upload/.fit", files=files))
-        res = res.json()["detailedImportResult"]
+        res = self._request_with_reauth(serviceRecord,\
+            lambda session: session.post("https://connect.garmin.com/modern/proxy/upload-service/upload/.fit",
+                                         files=files,
+                                         headers={"nk": "NT"}))
+        try:
+            res = res.json()["detailedImportResult"]
+        except ValueError:
+            raise APIException("Bad response during GC upload: %s %s" % (res.status_code, res.text))
 
         if len(res["successes"]) == 0:
             if len(res["failures"]) and len(res["failures"][0]["messages"]) and res["failures"][0]["messages"][0]["content"] == "Duplicate activity":
