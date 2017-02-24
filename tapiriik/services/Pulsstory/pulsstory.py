@@ -12,6 +12,8 @@ import urllib.parse
 import json
 import logging
 import collections
+import zipfile
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -254,13 +256,15 @@ class PulsstoryService(ServiceBase):
         uploadData = self._createUploadData(activity, False)
         uris = self._getAPIUris(serviceRecord)
         data = self._apiData(serviceRecord)
-        data["container"] = uploadData
-
         headers={}        
-        headers["Content-Type"] = "application/json"
-        
-        response = requests.post(uris["upload_activity"], data=json.dumps(data), headers=headers)
 
+        jsonData = json.dumps(uploadData)
+        buffer = io.BytesIO()        
+        with zipfile.ZipFile(buffer, 'w') as myzip:
+                myzip.writestr('activity.txt', jsonData, compress_type=zipfile.ZIP_DEFLATED)
+        files = {"data": buffer.getvalue()}
+
+        response = requests.post(uris["upload_activity_zip"], data=data, files=files, headers=headers)
         if response.status_code != 200:
             if response.status_code == 401 or response.status_code == 403:
                 raise APIException("No authorization to upload activity " + activity.UID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
