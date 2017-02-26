@@ -674,11 +674,11 @@ class GarminConnectService(ServiceBase):
                 if watch_activities_resp.status_code != 500:
                     break
             try:
-                watch_activities.append(watch_activities_resp.json())
+                watch_activities += watch_activities_resp.json()["activityList"]
             except ValueError:
                 raise Exception("Could not parse new activities list: %s %s" % (watch_activities_resp.status_code, watch_activities_resp.text))
 
-        active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
+        active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities]
         active_user_pairs.sort(key=lambda x: x[1]) # Highest IDs last (so they make it into the dict, supplanting lower IDs where appropriate)
         active_users = dict(active_user_pairs)
 
