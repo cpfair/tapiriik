@@ -683,8 +683,8 @@ class GarminConnectService(ServiceBase):
                 to_sync_ids.append(active_user_rec.ExternalID)
                 active_user_rec.SetConfiguration({"WatchUserLastID": this_active_id, "WatchUserKey": watch_user_key})
 
-        self._rate_limit()
         for x in range(SERVER_ERROR_RETRIES):
+            self._rate_limit()
             pending_connections_resp = session.get("https://connect.garmin.com/modern/proxy/userprofile-service/connection/pending")
             if pending_connections_resp.status_code != 500:
                 break
