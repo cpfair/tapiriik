@@ -651,6 +651,7 @@ class GarminConnectService(ServiceBase):
         # First, accept any pending connections
         watch_user_key = sorted(list(GARMIN_CONNECT_USER_WATCH_ACCOUNTS.keys()))[multiple_index]
         watch_user = GARMIN_CONNECT_USER_WATCH_ACCOUNTS[watch_user_key]
+        logger.debug("Initiating session for watch user %s", watch_user["Username"])
         session = self._get_session(email=watch_user["Username"], password=watch_user["Password"], skip_cache=True)
 
         # These seems to fail with a 500 (talkking about a timeout) the first time, so keep trying.
@@ -661,15 +662,16 @@ class GarminConnectService(ServiceBase):
         watch_activities = []
         for i in range(1, TOTAL_SIZE, PAGE_SIZE):
             for x in range(SERVER_ERROR_RETRIES):
+                logger.debug("Fetching activity list from %d - attempt %d", i, x)
                 self._rate_limit()
                 watch_activities_resp = session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/subscriptionFeed",
                                                     params={"limit": PAGE_SIZE, "start": i})
                 if watch_activities_resp.status_code != 500:
                     break
-                try:
-                    watch_activities.append(watch_activities_resp.json())
-                except ValueError:
-                    raise Exception("Could not parse new activities list: %s %s" % (watch_activities_resp.status_code, watch_activities_resp.text))
+            try:
+                watch_activities.append(watch_activities_resp.json())
+            except ValueError:
+                raise Exception("Could not parse new activities list: %s %s" % (watch_activities_resp.status_code, watch_activities_resp.text))
 
         active_user_pairs = [(x["ownerDisplayName"], x["activityId"]) for x in watch_activities["activityList"]]
         active_user_pairs.sort(key=lambda x: x[1]) # Highest IDs last (so they make it into the dict, supplanting lower IDs where appropriate)
@@ -690,6 +692,7 @@ class GarminConnectService(ServiceBase):
 
         for x in range(SERVER_ERROR_RETRIES):
             self._rate_limit()
+            logger.debug("Fetching connection request list - attempt %d", x)
             pending_connections_resp = session.get("https://connect.garmin.com/modern/proxy/userprofile-service/connection/pending")
             if pending_connections_resp.status_code != 500:
                 break
