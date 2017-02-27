@@ -12,6 +12,8 @@ import urllib.parse
 import json
 import logging
 import collections
+import zipfile
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -254,19 +256,29 @@ class PulsstoryService(ServiceBase):
         uploadData = self._createUploadData(activity, False)
         uris = self._getAPIUris(serviceRecord)
         data = self._apiData(serviceRecord)
-        data["container"] = uploadData
-
         headers={}        
-        headers["Content-Type"] = "application/json"
-        
-        response = requests.post(uris["upload_activity"], data=json.dumps(data), headers=headers)
 
+        jsonData = json.dumps(uploadData)
+        buffer = io.BytesIO()        
+        with zipfile.ZipFile(buffer, 'w') as myzip:
+                myzip.writestr('activity.txt', jsonData, compress_type=zipfile.ZIP_DEFLATED)
+        files = {"data": buffer.getvalue()}
+
+        response = requests.post(uris["upload_activity_zip"], data=data, files=files, headers=headers)
         if response.status_code != 200:
             if response.status_code == 401 or response.status_code == 403:
                 raise APIException("No authorization to upload activity " + activity.UID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
         
         return response.json()["Id"]
+    
+    def _getDuration(self, activity):
+        if activity.Stats.MovingTime.Value is not None:
+            return activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        elif activity.Stats.TimerTime.Value is not None:
+            return activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
+        else:
+            return (activity.EndTime - activity.StartTime).total_seconds()        
 
     def _createUploadData(self, activity, auto_pause=False):
         ''' create data dict for posting to pulsstory API '''
@@ -274,7 +286,7 @@ class PulsstoryService(ServiceBase):
         
         record["Basic"] = {
             "Name" : activity.Name,
-            "Duration" : activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value,
+            "Duration" : self._getDuration(activity),
             "Distance" : activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
             "StartTime": activity.StartTime.strftime("%Y-%m-%d %H:%M:%S"),
             "Type": activity.Type,

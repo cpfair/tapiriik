@@ -1,0 +1,6 @@
+{% extends "site.html" %}
+{% block title %}login failed{% endblock %}
+{% block content %}
+<div class="error">There was a problem logging you into {{ service.DisplayName }}: <br/>
+<tt>{{ error }}</tt></div>
+{% endblock %}

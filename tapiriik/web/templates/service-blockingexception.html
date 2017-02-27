@@ -5,6 +5,8 @@
 			There <strong>wasn't enough room in your {{ provider.DisplayName }} account</strong> to synchronize activities. Once you've cleared up some space, hit the button below to re-synchronize your {{ provider.DisplayName }} account.
 		{% elif exception.UserException.Type == "auth" %}
 			There was a <strong>problem accessing your {{ provider.DisplayName }} account</strong>. Use the button below to reauthorize tapiriik to access your account. <strong>Garmin Connect User?</strong> You may need to sign in directly on <a href="https://connect.garmin.com" target="_blank">Garmin Connect</a> and reset your password to meet new security requirements - then come back here and try again.
+		{% elif exception.UserException.Type == "locked" or exception.UserException.Type == "reset_password" %}
+			There was a <strong>problem accessing your {{ provider.DisplayName }} account</strong>. Visit {{ provider.DisplayName }} directly and make sure you can sign in with your username and password - there may be a problem with your account that needs to be resolved. Then, use the button below to reauthorize tapiriik to access your account.
 		{% elif exception.UserException.Type == "renew_password" %}
 			There was a problem signing into your {{ provider.DisplayName }} account. You may have changed your password on {{ provider.DisplayName }} recently, or you need to sign into your {{ provider.DisplayName }} account directly and reset your password to meet {{ provider.DisplayName }}'s new security requirements. Once you've done so, use the button below to update your password and resume synchronization.
 		{% elif exception.UserException.Type == "expired" %}

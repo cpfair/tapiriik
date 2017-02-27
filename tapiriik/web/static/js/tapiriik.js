@@ -280,12 +280,14 @@ tapiriik.CreateDirectLoginForm = function(svcId){
 				$.address.value("");
 				window.location.reload();
 			} else {
-				if (typeof data.result === 'object' && data.result.type == "unpaid" && svcId == "trainingpeaks") {
-					$().redirect("trainingpeaks_premium", {personId: data.result.extra, username:$("#email",form).val(), password:$("#password",form).val()});
-					return;
-				}
 				if (typeof data.result === 'object' && data.result.type == "renew_password" && svcId == "garminconnect") {
-					alert("You need to visit connect.garmin.com directly to re-set your password to meet Garmin's new security requirements.\n\nOnce you're done, try logging in again.");
+					alert("You need to visit connect.garmin.com directly to fix a problem with your account.\n\nOnce you're done, try logging in again.");
+				}
+				if (typeof data.result === 'object' && data.result.type == "locked" && svcId == "garminconnect") {
+					alert("If you entered your Garmin Connect username instead of your email, try using your email. If that doesn't work, visit connect.garmin.com to double-check your login.\n\nOnce you're done, try logging in again.");
+				}
+				if (typeof data.result === 'object' && data.result.type == "non_athlete_account" && svcId == "trainingpeaks") {
+					alert("It looks like you used a TrainingPeaks Coach account - you'll have to sign in with your individual account to continue.");
 				}
 				$(".error", form).hide();
 				$("#login-fail", form).show();

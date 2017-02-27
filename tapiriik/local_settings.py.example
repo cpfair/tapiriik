@@ -12,8 +12,8 @@ USER_SYNC_LOGS = "./"
 # These settings are used to communicate with each respective service
 # Register your installation with each service to get these values
 
-RUNKEEPER_CLIENT_ID="####"
-RUNKEEPER_CLIENT_SECRET="####"
+# http://beginnertriathlete.com/discussion/contact.asp?department=api
+BT_APIKEY = "####"
 
 DROPBOX_FULL_APP_KEY = "####"
 DROPBOX_FULL_APP_SECRET = "####"
@@ -21,16 +21,10 @@ DROPBOX_FULL_APP_SECRET = "####"
 DROPBOX_APP_KEY = "####"
 DROPBOX_APP_SECRET = "####"
 
-STRAVA_CLIENT_SECRET = "####"
-STRAVA_CLIENT_ID = "####"
-
-STRAVA_RATE_LIMITS = []
-
-SPORTTRACKS_CLIENT_ID = "####"
-SPORTTRACKS_CLIENT_SECRET = "####"
-
 ENDOMONDO_CLIENT_KEY = "####"
 ENDOMONDO_CLIENT_SECRET = "####"
+
+MOTIVATO_PREMIUM_USERS_LIST_URL = "http://..."
 
 NIKEPLUS_CLIENT_NAME = "####"
 NIKEPLUS_CLIENT_ID = "####"
@@ -39,18 +33,29 @@ NIKEPLUS_CLIENT_SECRET = "####"
 PULSSTORY_CLIENT_ID="####"
 PULSSTORY_CLIENT_SECRET="####"
 
-RWGPS_APIKEY = "####"
+RUNKEEPER_CLIENT_ID="####"
+RUNKEEPER_CLIENT_SECRET="####"
 
-# http://beginnertriathlete.com/discussion/contact.asp?department=api
-BT_APIKEY = "####"
+RWGPS_APIKEY = "####"
 
 # See http://api.smashrun.com for info.
 # For now, you need to email hi@smashrun.com for access
 SMASHRUN_CLIENT_ID = "####"
 SMASHRUN_CLIENT_SECRET = "####"
 
+SPORTTRACKS_CLIENT_ID = "####"
+SPORTTRACKS_CLIENT_SECRET = "####"
+
+STRAVA_CLIENT_SECRET = "####"
+STRAVA_CLIENT_ID = "####"
+STRAVA_RATE_LIMITS = []
+
 TRAINASONE_SERVER_URL = "https://beta.trainasone.com"
 TRAINASONE_CLIENT_SECRET = "####"
 TRAINASONE_CLIENT_ID = "####"
 
-MOTIVATO_PREMIUM_USERS_LIST_URL = "http://..."
+TRAININGPEAKS_CLIENT_ID = "####"
+TRAININGPEAKS_CLIENT_SECRET = "####"
+TRAININGPEAKS_CLIENT_SCOPE = "cats:cuddle dogs:throw-frisbee"
+TRAININGPEAKS_API_BASE_URL = "https://api.trainingpeaks.com"
+TRAININGPEAKS_OAUTH_BASE_URL = "https://oauth.trainingpeaks.com"

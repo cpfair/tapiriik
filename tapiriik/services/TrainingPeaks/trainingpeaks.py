@@ -1,15 +1,19 @@
-from tapiriik.settings import WEB_ROOT
+from tapiriik.settings import WEB_ROOT, TRAININGPEAKS_CLIENT_ID, TRAININGPEAKS_CLIENT_SECRET, TRAININGPEAKS_CLIENT_SCOPE, TRAININGPEAKS_OAUTH_BASE_URL, TRAININGPEAKS_API_BASE_URL
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit
-from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
+from tapiriik.services.api import APIException, UserException, UserExceptionType
 from tapiriik.services.pwx import PWXIO
-from lxml import etree
+from tapiriik.services.sessioncache import SessionCache
 
-from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 import dateutil.parser
 import requests
 import logging
+from io import BytesIO
+import gzip
+import base64
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -17,68 +21,89 @@ class TrainingPeaksService(ServiceBase):
     ID = "trainingpeaks"
     DisplayName = "TrainingPeaks"
     DisplayAbbreviation = "TP"
-    AuthenticationType = ServiceAuthenticationType.UsernamePassword
-    RequiresExtendedAuthorizationDetails = True
+    AuthenticationType = ServiceAuthenticationType.OAuth
+    RequiresExtendedAuthorizationDetails = False
     ReceivesStationaryActivities = False
     SuppliesActivities = False
+    AuthenticationNoFrame = True
+    SupportsExhaustiveListing = False
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
     # Not-so-coincidentally, similar to PWX.
     _workoutTypeMappings = {
-        "Bike": ActivityType.Cycling,
-        "Run": ActivityType.Running,
-        "Walk": ActivityType.Walking,
-        "Swim": ActivityType.Swimming,
-        "MTB": ActivityType.MountainBiking,
-        "XC-Ski": ActivityType.CrossCountrySkiing,
-        "Rowing": ActivityType.Rowing,
-        "X-Train": ActivityType.Other,
-        "Strength": ActivityType.Other,
-        "Race": ActivityType.Other,
-        "Custom": ActivityType.Other,
-        "Other": ActivityType.Other,
+        "bike": ActivityType.Cycling,
+        "run": ActivityType.Running,
+        "walk": ActivityType.Walking,
+        "swim": ActivityType.Swimming,
+        "mtb": ActivityType.MountainBiking,
+        "xc-Ski": ActivityType.CrossCountrySkiing,
+        "rowing": ActivityType.Rowing,
+        "x-train": ActivityType.Other,
+        "strength": ActivityType.Other,
+        "other": ActivityType.Other,
     }
     SupportedActivities = ActivityType.List() # All.
 
-    _tp_ns = {
-        "tpw": "http://www.trainingpeaks.com/TPWebServices/",
-        "xsi": "http://www.w3.org/2001/XMLSchema-instance"
-    }
+    _redirect_url = "https://tapiriik.com/auth/return/trainingpeaks"
+    _tokenCache = SessionCache("trainingpeaks", lifetime=timedelta(minutes=30), freshen_on_get=False)
 
     def WebInit(self):
-        self.UserAuthorizationURL = WEB_ROOT + reverse("auth_simple", kwargs={"service": self.ID})
+        self.UserAuthorizationURL = TRAININGPEAKS_OAUTH_BASE_URL + "/oauth/authorize?" + urlencode({
+            "client_id": TRAININGPEAKS_CLIENT_ID,
+            "response_type": "code",
+            "redirect_uri": self._redirect_url,
+            "scope": TRAININGPEAKS_CLIENT_SCOPE
+        })
 
-    def _authData(self, serviceRecord):
-        from tapiriik.auth.credential_storage import CredentialStore
-        password = CredentialStore.Decrypt(serviceRecord.ExtendedAuthorization["Password"])
-        username = CredentialStore.Decrypt(serviceRecord.ExtendedAuthorization["Username"])
-        return {"username": username, "password": password}
+    def RetrieveAuthorizationToken(self, req, level):
+        code = req.GET.get("code")
+        params = {
+            "client_id": TRAININGPEAKS_CLIENT_ID,
+            "client_secret": TRAININGPEAKS_CLIENT_SECRET,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": self._redirect_url
+        }
 
-    def Authorize(self, email, password):
-        from tapiriik.auth.credential_storage import CredentialStore
+        req_url = TRAININGPEAKS_OAUTH_BASE_URL + "/oauth/token"
+        response = requests.post(req_url, data=params)
+        if response.status_code != 200:
+            raise APIException("Invalid code")
+        auth_data = response.json()
 
-        soap_auth_data = {"username":email, "password": password}
+        profile_data = requests.get(TRAININGPEAKS_API_BASE_URL + "/v1/athlete/profile",
+                                    headers={"Authorization": "Bearer %s" % auth_data["access_token"]}).json()
+        if type(profile_data) is list and any("is not a valid athlete" in x for x in profile_data):
+            raise APIException("TP user is coach account", block=True, user_exception=UserException(UserExceptionType.NonAthleteAccount, intervention_required=True))
+        return (profile_data["Id"], {"RefreshToken": auth_data["refresh_token"]})
 
-        resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/AuthenticateAccount", data=soap_auth_data)
-        if resp.status_code != 200:
-            raise APIException("Invalid login")
+    def _apiHeaders(self, serviceRecord):
+        # The old API was username/password, and the new API provides no means to automatically upgrade these credentials.
+        if not serviceRecord.Authorization or "RefreshToken" not in serviceRecord.Authorization:
+            raise APIException("TP user lacks OAuth credentials", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
-        soap_auth_data.update({"types": "CoachedPremium,SelfCoachedPremium,SharedCoachedPremium,CoachedFree,SharedFree,Plan"})
-        users_resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/GetAccessibleAthletes", data=soap_auth_data)
-        users_resp = etree.XML(users_resp.content)
+        token = self._tokenCache.Get(serviceRecord.ExternalID)
+        if not token:
+            # Use refresh token to get access token
+            # Hardcoded return URI to get around the lack of URL reversing without loading up all the Django stuff
+            params = {
+                "client_id": TRAININGPEAKS_CLIENT_ID,
+                "client_secret": TRAININGPEAKS_CLIENT_SECRET,
+                "grant_type": "refresh_token",
+                "refresh_token": serviceRecord.Authorization["RefreshToken"],
+                # "redirect_uri": self._redirect_url
+            }
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            response = requests.post(TRAININGPEAKS_OAUTH_BASE_URL + "/oauth/token", data=urlencode(params), headers=headers)
+            if response.status_code != 200:
+                if response.status_code >= 400 and response.status_code < 500:
+                    raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text))
+            token = response.json()["access_token"]
+            self._tokenCache.Set(serviceRecord.ExternalID, token)
 
-        personId = None
-        for xperson in users_resp:
-            xpersonid = xperson.find("tpw:PersonId", namespaces=self._tp_ns)
-            if xpersonid is not None and xpersonid.text:
-                personId = int(xpersonid.text)
-                break
-
-        # Yes, I have it on good authority that this is checked further on on the remote end.
-        if not personId:
-            raise APIException("Account not premium", block=True, user_exception=UserException(UserExceptionType.AccountUnpaid, intervention_required=True, extra=personId))
-        return (personId, {}, {"Username": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
+        return {"Authorization": "Bearer %s" % token}
 
     def RevokeAuthorization(self, serviceRecord):
         pass  # No auth tokens to revoke...
@@ -86,92 +111,100 @@ class TrainingPeaksService(ServiceBase):
     def DeleteCachedData(self, serviceRecord):
         pass  # No cached data...
 
-    def DownloadActivityList(self, svcRecord, exhaustive=False):
-        ns = self._tp_ns
+    def DownloadActivityList(self, svcRecord, exhaustive_start_time=None):
         activities = []
         exclusions = []
 
-        reqData = self._authData(svcRecord)
+        headers = self._apiHeaders(svcRecord)
 
-        limitDateFormat = "%d %B %Y"
+        limitDateFormat = "%Y-%m-%d"
 
-        if exhaustive:
-            listEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
-            listStart = datetime(day=1, month=1, year=1980) # The beginning of time
+        if exhaustive_start_time:
+            totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
+            totalListStart = exhaustive_start_time - timedelta(days=1.5)
         else:
-            listEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
-            listStart = listEnd - timedelta(days=20) # Doesn't really matter
+            totalListEnd = datetime.now() + timedelta(days=1.5) # Who knows which TZ it's in
+            totalListStart = totalListEnd - timedelta(days=20) # Doesn't really matter
 
-        lastActivityDay = None
-        discoveredWorkoutIds = []
+        listStep = timedelta(days=45)
+        listEnd = totalListEnd
+        listStart = max(totalListStart, totalListEnd - listStep)
+
         while True:
-            reqData.update({"startDate": listStart.strftime(limitDateFormat), "endDate": listEnd.strftime(limitDateFormat)})
-            print("Requesting %s to %s" % (listStart, listEnd))
-            resp = requests.post("https://www.trainingpeaks.com/tpwebservices/service.asmx/GetWorkoutsForAthlete", data=reqData)
-            xresp = etree.XML(resp.content)
-            for xworkout in xresp:
-                activity = UploadedActivity()
+            logger.debug("Requesting %s to %s" % (listStart, listEnd))
+            resp = requests.get(
+                TRAININGPEAKS_API_BASE_URL + "/v1/workouts/%s/%s" % (
+                    listStart.strftime(limitDateFormat),
+                    listEnd.strftime(limitDateFormat)),
+                headers=headers)
 
-                workoutId = xworkout.find("tpw:WorkoutId", namespaces=ns).text
-
-                workoutDayEl = xworkout.find("tpw:WorkoutDay", namespaces=ns)
-                startTimeEl = xworkout.find("tpw:StartTime", namespaces=ns)
-
-                workoutDay = dateutil.parser.parse(workoutDayEl.text)
-                startTime = dateutil.parser.parse(startTimeEl.text) if startTimeEl is not None and startTimeEl.text else None
-
-                if lastActivityDay is None or workoutDay.replace(tzinfo=None) > lastActivityDay:
-                    lastActivityDay = workoutDay.replace(tzinfo=None)
-
-                if startTime is None:
-                    continue # Planned but not executed yet.
-                activity.StartTime = startTime
-
-                endTimeEl = xworkout.find("tpw:TimeTotalInSeconds", namespaces=ns)
-                if not endTimeEl.text:
-                    exclusions.append(APIExcludeActivity("Activity has no duration", activity_id=workoutId, user_exception=UserException(UserExceptionType.Corrupt)))
+            for act in resp.json():
+                if not act.get("completed", True):
                     continue
+                activity = UploadedActivity()
+                activity.StartTime = dateutil.parser.parse(act["StartTime"]).replace(tzinfo=None)
+                logger.debug("Activity s/t " + str(activity.StartTime))
+                activity.EndTime = activity.StartTime + timedelta(hours=act["TotalTime"])
+                activity.Name = act.get("Title", None)
+                activity.Notes = act.get("Description", None)
+                activity.Type = self._workoutTypeMappings.get(act.get("WorkoutType", "").lower(), ActivityType.Other)
 
-                activity.EndTime = activity.StartTime + timedelta(seconds=float(endTimeEl.text))
-
-                distEl = xworkout.find("tpw:DistanceInMeters", namespaces=ns)
-                if distEl.text:
-                    activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(distEl.text))
-                # PWX is damn near comprehensive, no need to fill in any of the other statisitcs here, really
-
-                if workoutId in discoveredWorkoutIds:
-                    continue # There's the possibility of query overlap, if there are multiple activities on a single day that fall across the query return limit
-                discoveredWorkoutIds.append(workoutId)
-
-                workoutTypeEl = xworkout.find("tpw:WorkoutTypeDescription", namespaces=ns)
-                if workoutTypeEl.text:
-                    if workoutTypeEl.text == "Day Off":
-                        continue # TrainingPeaks has some weird activity types...
-                    if workoutTypeEl.text not in self._workoutTypeMappings:
-                        exclusions.append(APIExcludeActivity("Activity type %s unknown" % workoutTypeEl.text, activity_id=workoutId, user_exception=UserException(UserExceptionType.Corrupt)))
-                        continue
-                    activity.Type = self._workoutTypeMappings[workoutTypeEl.text]
-
-                activity.ServiceData = {"WorkoutID": workoutId}
+                activity.Stats.Cadence = ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute,
+                                                           avg=act.get("CadenceAverage", None),
+                                                           max=act.get("CadenceMaximum", None))
+                activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters,
+                                                            value=act.get("Distance", None))
+                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters,
+                                                             avg=act.get("ElevationAverage", None),
+                                                             min=act.get("ElevationMinimum", None),
+                                                             max=act.get("ElevationMaximum", None),
+                                                             gain=act.get("ElevationGain", None),
+                                                             loss=act.get("ElevationLoss", None))
+                activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilojoules,
+                                                          value=act.get("Energy", None))
+                activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute,
+                                                      avg=act.get("HeartRateAverage", None),
+                                                      min=act.get("HeartRateMinimum", None),
+                                                      max=act.get("HeartRateMaximum", None))
+                activity.Stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts,
+                                                         avg=act.get("PowerAverage", None),
+                                                         max=act.get("PowerMaximum", None))
+                activity.Stats.Temperature = ActivityStatistic(ActivityStatisticUnit.DegreesCelcius,
+                                                               avg=act.get("TemperatureAverage", None),
+                                                               min=act.get("TemperatureMinimum", None),
+                                                               max=act.get("TemperatureMaximum", None))
+                activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond,
+                                                         avg=act.get("VelocityAverage", None),
+                                                         max=act.get("VelocityMaximum", None))
                 activity.CalculateUID()
                 activities.append(activity)
 
-            if not exhaustive:
+            if not exhaustive_start_time:
                 break
 
-            # Since TP only lets us query by date range, to get full activity history we need to query successively smaller ranges
-            if len(xresp):
-                if listStart == lastActivityDay:
-                    break # This wouldn't work if you had more than #MaxQueryReturn activities on that day - but that number is probably 50+
-                listStart = lastActivityDay
-            else:
-                break # We're done
+            listStart -= listStep
+            listEnd -= listStep
+            if listEnd < totalListStart:
+                break
 
         return activities, exclusions
 
     def UploadActivity(self, svcRecord, activity):
-        pwxdata = PWXIO.Dump(activity)
-        params = self._authData(svcRecord)
-        resp = requests.post("https://www.trainingpeaks.com/TPWebServices/EasyFileUpload.ashx", params=params, data=pwxdata.encode("UTF-8"))
-        if resp.text != "OK":
+        pwxdata_gz = BytesIO()
+        with gzip.GzipFile(fileobj=pwxdata_gz, mode="w") as gzf:
+          gzf.write(PWXIO.Dump(activity).encode("utf-8"))
+
+        headers = self._apiHeaders(svcRecord)
+        headers.update({"Content-Type": "application/json"})
+        data = {
+            "UploadClient": "tapiriik",
+            "Filename": "tap-%s.pwx" % activity.UID,
+            "SetWorkoutPublic": not activity.Private,
+            # NB activity notes and name are in the PWX.
+            "Data": base64.b64encode(pwxdata_gz.getvalue()).decode("ascii")
+        }
+
+        resp = requests.post(TRAININGPEAKS_API_BASE_URL + "/v1/file", data=json.dumps(data), headers=headers)
+        if resp.status_code != 200:
             raise APIException("Unable to upload activity response " + resp.text + " status " + str(resp.status_code))
+        return resp.json()[0]["Id"]

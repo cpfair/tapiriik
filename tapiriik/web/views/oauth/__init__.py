@@ -17,7 +17,13 @@ def authreturn(req, service, level=None):
         success = False
     else:
         svc = Service.FromID(service)
-        uid, authData = svc.RetrieveAuthorizationToken(req, level)
+        try:
+            uid, authData = svc.RetrieveAuthorizationToken(req, level)
+        except Exception as e:
+            return render(req, "oauth-failure.html", {
+                "service": svc,
+                "error": str(e)
+            })
         serviceRecord = Service.EnsureServiceRecordWithAuth(svc, uid, authData)
 
         # auth by this service connection
