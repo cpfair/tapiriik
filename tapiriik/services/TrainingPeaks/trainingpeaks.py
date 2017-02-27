@@ -154,7 +154,7 @@ class TrainingPeaksService(ServiceBase):
                                                            max=act.get("CadenceMaximum", None))
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters,
                                                             value=act.get("Distance", None))
-                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute,
+                activity.Stats.Elevation = ActivityStatistic(ActivityStatisticUnit.Meters,
                                                              avg=act.get("ElevationAverage", None),
                                                              min=act.get("ElevationMinimum", None),
                                                              max=act.get("ElevationMaximum", None),
