@@ -350,19 +350,16 @@ class PulsstoryService(ServiceBase):
                 if waypoint.Location is not None:
                     waypoints["PathTime"].append(timestamp)
                                                
-                    if waypoint.Location.Longitude is not None:         
+                    if waypoint.Location.Longitude is not None and waypoint.Location.Latitude is not None:         
                         waypoints["LongitudePathValue"].append(waypoint.Location.Longitude)
-                    else:
-                        waypoints["LongitudePathValue"].append(-1)
-                        
-                    if waypoint.Location.Latitude is not None:    
                         waypoints["LatitudePathValue"].append(waypoint.Location.Latitude)
                     else:
-                        waypoints["LatitudePathValue"].append(-1)
-                        
+                        waypoints["LongitudePathValue"].append(None)
+                        waypoints["LatitudePathValue"].append(None)                        
+
                     if waypoint.Location.Altitude is not None:
                         waypoints["AltitudePathValue"].append(waypoint.Location.Altitude)
                     else:
-                        waypoints["AltitudePathValue"].append(-1)
+                        waypoints["AltitudePathValue"].append(None)
 
         return record
