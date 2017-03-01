@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class PulsstoryService(ServiceBase):
     ID = "pulsstory"
     DisplayName = "pulsstory"
-    DisplayAbbreviation = "PLS"    
+    DisplayAbbreviation = "PLS"
     URLBase = 'https://www.pulsstory.com'
     AuthenticationType = ServiceAuthenticationType.OAuth
     UserProfileURL = URLBase + "/user/{0}/profile"
@@ -49,7 +49,7 @@ class PulsstoryService(ServiceBase):
 
     _wayptTypeMappings = {"start": WaypointType.Start, "end": WaypointType.End, "pause": WaypointType.Pause, "resume": WaypointType.Resume}
 
-    def WebInit(self):        
+    def WebInit(self):
         self.UserAuthorizationURL = self.URLBase + "/Account/LogOn?&ReturnUrl=/ExternalSyncAPI/GenerateCode"
 
     def RetrieveAuthorizationToken(self, req, level):
@@ -60,7 +60,7 @@ class PulsstoryService(ServiceBase):
         response = requests.post(self.URLBase + "/ExternalSyncAPI/GenerateToken", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
         if response.status_code != 200:
             raise APIException("Invalid code")
-        
+
         token = response.json()["access_token"]
 
         # This used to check with GetServiceRecordWithAuthDetails but that's hideously slow on an unindexed field.
@@ -80,7 +80,7 @@ class PulsstoryService(ServiceBase):
     def _getAPIUris(self, serviceRecord):
         if hasattr(self, "_uris"):  # cache these for the life of the batch job at least? hope so
             return self._uris
-        else:                    
+        else:
             response = requests.post(self.URLBase + "/ExternalSyncAPI/Uris", data=self._apiData(serviceRecord))
 
             if response.status_code != 200:
@@ -116,7 +116,7 @@ class PulsstoryService(ServiceBase):
                     raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
                 raise APIException("Unable to retrieve activity list " + str(response) + " " + response.text)
             data = response.json()
-                                        
+
             allItems += data["Data"]["items"]
             if not exhaustive or "next" not in data["Data"] or data["Data"]["next"] == "":
                 break
@@ -154,11 +154,11 @@ class PulsstoryService(ServiceBase):
         activity.Stationary = not rawRecord["HasPath"]
         activity.Notes = rawRecord["Notes"] if "Notes" in rawRecord else None
         activity.Private = rawRecord["Private"] != "false"
-                
-        activity.CalculateUID()        
+
+        activity.CalculateUID()
         return activity
 
-    def DownloadActivity(self, serviceRecord, activity):        
+    def DownloadActivity(self, serviceRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
 
         response = requests.post(self.URLBase + activityID, data=self._apiData(serviceRecord))
@@ -179,9 +179,9 @@ class PulsstoryService(ServiceBase):
         if "AvgHr" in ridedata:
             activity.Stats.HR = ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(ridedata["AvgHr"]))
         activity.Stationary = activity.CountTotalWaypoints() <= 1
-        
+
         return activity
-    
+
     def _convertList(self, streamData, streamDataKey, rawData, listName):
         timeListName = listName + "Time"
         valueListName = listName + "Value"
@@ -194,13 +194,13 @@ class PulsstoryService(ServiceBase):
                 if len(timeList) > 0:
                     result = list(zip(timeList, valueList))
                     streamData[streamDataKey] = result
-       
+
     def _convertPathList(self, streamData, streamDataKey, rawData):
         result = []
         timeListName = "PathTime"
         longitudeListName = "LongitudePathValue"
         latitudeListName = "LatitudePathValue"
-        
+
         check = timeListName is not None and timeListName in rawData
         check = check and longitudeListName is not None and longitudeListName in rawData
         check = check and latitudeListName is not None and latitudeListName in rawData
@@ -214,22 +214,22 @@ class PulsstoryService(ServiceBase):
                    for n in range(Nt):
                        point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
                        result.append((timeList[n], point))
-                   streamData[streamDataKey] = result                
-    
+                   streamData[streamDataKey] = result
+
     def _populateActivityWaypoints(self, rawData, activity):
         ''' populate the Waypoints collection from pulsstory API data '''
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime)
         activity.Laps = [lap]
 
         streamData = {}
-                        
+
         self._convertList(streamData, "heart_rate", rawData, "HeartRate")
         self._convertList(streamData, "distance", rawData, "Distance")
         self._convertList(streamData, "speed", rawData, "Speed")
         self._convertList(streamData, "power", rawData, "Power")
         self._convertList(streamData, "cadence", rawData, "Cadence")
         self._convertPathList(streamData, "path", rawData)
-    
+
         def _addWaypoint(timestamp, path=None, heart_rate=None, power=None, distance=None, speed=None, cadence=None):
             waypoint = Waypoint(activity.StartTime + timedelta(seconds=timestamp))
             if path:
@@ -241,8 +241,8 @@ class PulsstoryService(ServiceBase):
             waypoint.Speed = speed
             waypoint.Cadence = cadence
             waypoint.Power = power
-            lap.Waypoints.append(waypoint)            
-            
+            lap.Waypoints.append(waypoint)
+
         StreamSampler.SampleWithCallback(_addWaypoint, streamData)
 
         activity.Stationary = len(lap.Waypoints) == 0
@@ -256,10 +256,10 @@ class PulsstoryService(ServiceBase):
         uploadData = self._createUploadData(activity, False)
         uris = self._getAPIUris(serviceRecord)
         data = self._apiData(serviceRecord)
-        headers={}        
+        headers={}
 
         jsonData = json.dumps(uploadData)
-        buffer = io.BytesIO()        
+        buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w') as myzip:
                 myzip.writestr('activity.txt', jsonData, compress_type=zipfile.ZIP_DEFLATED)
         files = {"data": buffer.getvalue()}
@@ -269,21 +269,21 @@ class PulsstoryService(ServiceBase):
             if response.status_code == 401 or response.status_code == 403:
                 raise APIException("No authorization to upload activity " + activity.UID, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
             raise APIException("Unable to upload activity " + activity.UID + " response " + str(response) + " " + response.text)
-        
+
         return response.json()["Id"]
-    
+
     def _getDuration(self, activity):
         if activity.Stats.MovingTime.Value is not None:
             return activity.Stats.MovingTime.asUnits(ActivityStatisticUnit.Seconds).Value
         elif activity.Stats.TimerTime.Value is not None:
             return activity.Stats.TimerTime.asUnits(ActivityStatisticUnit.Seconds).Value
         else:
-            return (activity.EndTime - activity.StartTime).total_seconds()        
+            return (activity.EndTime - activity.StartTime).total_seconds()
 
     def _createUploadData(self, activity, auto_pause=False):
         ''' create data dict for posting to pulsstory API '''
         record = {}
-        
+
         record["Basic"] = {
             "Name" : activity.Name,
             "Duration" : self._getDuration(activity),
@@ -294,7 +294,7 @@ class PulsstoryService(ServiceBase):
             "Notes" : activity.Notes,
             "Private" : activity.Private,
             }
-                
+
         waypoints = {
             "AvgHR" : int(activity.Stats.HR.Average),
             "HeartRateValue" : [],
@@ -311,7 +311,7 @@ class PulsstoryService(ServiceBase):
             "PowerTime" : [],
             }
         record["Waypoints"] = waypoints;
-        
+
         if activity.CountTotalWaypoints() > 1:
             flat_wps = activity.GetFlatWaypoints()
 
@@ -323,7 +323,7 @@ class PulsstoryService(ServiceBase):
             inPause = False
             for waypoint, waypoint_type in zip(flat_wps, wp_type_iter):
                 timestamp = (waypoint.Timestamp - anchor_ts).total_seconds()
-                                
+
                 if not inPause and waypoint_type == WaypointType.Pause:
                     inPause = True
                 elif inPause and waypoint_type == WaypointType.Pause:
@@ -336,33 +336,37 @@ class PulsstoryService(ServiceBase):
                     waypoints["HeartRateValue"].append(round(waypoint.HR))
 
                 if waypoint.Power is not None:
-                    waypoints["PowerTime"].append(timestamp)                    
+                    waypoints["PowerTime"].append(timestamp)
                     waypoints["PowerValue"].append(waypoint.Power)
-                    
+
                 if waypoint.Speed is not None:
-                    waypoints["SpeedTime"].append(timestamp)                    
+                    waypoints["SpeedTime"].append(timestamp)
                     waypoints["SpeedValue"].append(waypoint.Speed)
-                    
-                if waypoint.Cadence is not None:   
-                    waypoints["CadenceTime"].append(timestamp)                 
+
+                if waypoint.Cadence is not None:
+                    waypoints["CadenceTime"].append(timestamp)
                     waypoints["CadenceValue"].append(waypoint.Cadence)
-                    
+
                 if waypoint.Location is not None:
                     waypoints["PathTime"].append(timestamp)
-                                               
-                    if waypoint.Location.Longitude is not None:         
+
+                    if waypoint.Location.Longitude is not None:
                         waypoints["LongitudePathValue"].append(waypoint.Location.Longitude)
                     else:
                         waypoints["LongitudePathValue"].append(-1)
-                        
-                    if waypoint.Location.Latitude is not None:    
+
+                    if waypoint.Location.Latitude is not None:
                         waypoints["LatitudePathValue"].append(waypoint.Location.Latitude)
                     else:
                         waypoints["LatitudePathValue"].append(-1)
-                        
+
                     if waypoint.Location.Altitude is not None:
                         waypoints["AltitudePathValue"].append(waypoint.Location.Altitude)
                     else:
                         waypoints["AltitudePathValue"].append(-1)
 
         return record
+
+    def DeleteCachedData(self, serviceRecord):
+        # nothing cached...
+        pass
