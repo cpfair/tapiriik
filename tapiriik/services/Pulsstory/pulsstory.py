@@ -200,19 +200,28 @@ class PulsstoryService(ServiceBase):
         timeListName = "PathTime"
         longitudeListName = "LongitudePathValue"
         latitudeListName = "LatitudePathValue"
+        altitudeListName = "AltitudePathValue"        
 
         check = timeListName is not None and timeListName in rawData
-        check = check and longitudeListName is not None and longitudeListName in rawData
-        check = check and latitudeListName is not None and latitudeListName in rawData
+        check = check and longitudeListName in rawData
+        check = check and latitudeListName in rawData
         if check:
             timeList = rawData[timeListName]
             longitudeList = rawData[longitudeListName]
             latitudeList = rawData[latitudeListName]
+            if altitudeListName in rawData:
+                altitudeList = rawData[altitudeListName]
+            else:
+                altitudeList = None
+
             if timeList is not None and longitudeList is not None and latitudeList is not None:
                Nt = len(timeList)
                if Nt > 0:
                    for n in range(Nt):
                        point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
+                       if altitudeList is not None:
+                           point["altitude"] = altitudeList[n]
+
                        result.append((timeList[n], point))
                    streamData[streamDataKey] = result
 
