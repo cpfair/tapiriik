@@ -150,10 +150,10 @@ class PulsstoryService(ServiceBase):
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["Energy"] if "Energy" in rawRecord else None)
         if rawRecord["Type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["Type"]]
-        activity.GPS = rawRecord["HasPath"]
-        activity.Stationary = not rawRecord["HasPath"]
+        activity.GPS = rawRecord["HasPath"] if "HasPath" in rawRecord else False
+        activity.Stationary = rawRecord["HasPoints"] if "HasPoints" in rawRecord else True
         activity.Notes = rawRecord["Notes"] if "Notes" in rawRecord else None
-        activity.Private = rawRecord["Private"] != "false"
+        activity.Private = rawRecord["Private"] if "Private" in rawRecord else True
 
         activity.CalculateUID()
         return activity
@@ -305,7 +305,7 @@ class PulsstoryService(ServiceBase):
             }
 
         waypoints = {
-            "AvgHR" : int(activity.Stats.HR.Average),
+            "AvgHR" : activity.Stats.HR.Average,
             "HeartRateValue" : [],
             "HeartRateTime" : [],
             "CadenceValue" : [],
