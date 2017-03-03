@@ -150,10 +150,10 @@ class PulsstoryService(ServiceBase):
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=rawRecord["Energy"] if "Energy" in rawRecord else None)
         if rawRecord["Type"] in self._activityMappings:
             activity.Type = self._activityMappings[rawRecord["Type"]]
-        activity.GPS = rawRecord["HasPath"]
-        activity.Stationary = not rawRecord["HasPath"]
+        activity.GPS = rawRecord["HasPath"] if "HasPath" in rawRecord else False
+        activity.Stationary = rawRecord["HasPoints"] if "HasPoints" in rawRecord else True
         activity.Notes = rawRecord["Notes"] if "Notes" in rawRecord else None
-        activity.Private = rawRecord["Private"] != "false"
+        activity.Private = rawRecord["Private"] if "Private" in rawRecord else True
 
         activity.CalculateUID()
         return activity
@@ -200,19 +200,28 @@ class PulsstoryService(ServiceBase):
         timeListName = "PathTime"
         longitudeListName = "LongitudePathValue"
         latitudeListName = "LatitudePathValue"
+        altitudeListName = "AltitudePathValue"        
 
         check = timeListName is not None and timeListName in rawData
-        check = check and longitudeListName is not None and longitudeListName in rawData
-        check = check and latitudeListName is not None and latitudeListName in rawData
+        check = check and longitudeListName in rawData
+        check = check and latitudeListName in rawData
         if check:
             timeList = rawData[timeListName]
             longitudeList = rawData[longitudeListName]
             latitudeList = rawData[latitudeListName]
+            if altitudeListName in rawData:
+                altitudeList = rawData[altitudeListName]
+            else:
+                altitudeList = None
+
             if timeList is not None and longitudeList is not None and latitudeList is not None:
                Nt = len(timeList)
                if Nt > 0:
                    for n in range(Nt):
                        point = { "longitude" : longitudeList[n], "latitude": latitudeList[n] }
+                       if altitudeList is not None:
+                           point["altitude"] = altitudeList[n]
+
                        result.append((timeList[n], point))
                    streamData[streamDataKey] = result
 
@@ -296,7 +305,7 @@ class PulsstoryService(ServiceBase):
             }
 
         waypoints = {
-            "AvgHR" : int(activity.Stats.HR.Average),
+            "AvgHR" : activity.Stats.HR.Average,
             "HeartRateValue" : [],
             "HeartRateTime" : [],
             "CadenceValue" : [],
@@ -350,20 +359,14 @@ class PulsstoryService(ServiceBase):
                 if waypoint.Location is not None:
                     waypoints["PathTime"].append(timestamp)
 
-                    if waypoint.Location.Longitude is not None:
+                    if waypoint.Location.Longitude is not None and waypoint.Location.Latitude is not None:         
                         waypoints["LongitudePathValue"].append(waypoint.Location.Longitude)
-                    else:
-                        waypoints["LongitudePathValue"].append(-1)
-
-                    if waypoint.Location.Latitude is not None:
                         waypoints["LatitudePathValue"].append(waypoint.Location.Latitude)
                     else:
-                        waypoints["LatitudePathValue"].append(-1)
+                        waypoints["LongitudePathValue"].append(None)
+                        waypoints["LatitudePathValue"].append(None)
 
-                    if waypoint.Location.Altitude is not None:
-                        waypoints["AltitudePathValue"].append(waypoint.Location.Altitude)
-                    else:
-                        waypoints["AltitudePathValue"].append(-1)
+                    waypoints["AltitudePathValue"].append(waypoint.Location.Altitude)
 
         return record
 
