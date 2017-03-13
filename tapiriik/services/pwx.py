@@ -15,6 +15,7 @@ class PWXIO:
         "Walk": ActivityType.Walking,
         "Swim": ActivityType.Swimming,
         "Mountain Bike": ActivityType.MountainBiking,
+        "Strength": ActivityType.StrengthTraining,
         "XC Ski": ActivityType.CrossCountrySkiing,
         "Rowing": ActivityType.Rowing,
         "Other": ActivityType.Other
@@ -27,6 +28,7 @@ class PWXIO:
         ActivityType.Hiking: "Walk", # Hilly walking?
         ActivityType.Swimming: "Swim",
         ActivityType.MountainBiking: "Mountain Bike",
+        ActivityType.StrengthTraining: "Strength",
         ActivityType.CrossCountrySkiing: "XC Ski",
         ActivityType.DownhillSkiing: "XC Ski", # For whatever reason there's no "ski" type
         ActivityType.Rowing: "Rowing",

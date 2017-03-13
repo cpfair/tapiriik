@@ -40,7 +40,7 @@ class TrainingPeaksService(ServiceBase):
         "xc-Ski": ActivityType.CrossCountrySkiing,
         "rowing": ActivityType.Rowing,
         "x-train": ActivityType.Other,
-        "strength": ActivityType.Other,
+        "strength": ActivityType.StrengthTraining,
         "other": ActivityType.Other,
     }
     SupportedActivities = ActivityType.List() # All.
