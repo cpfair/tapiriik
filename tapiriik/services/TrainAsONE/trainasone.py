@@ -9,6 +9,7 @@ from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 import calendar
+import dateutil.parser
 import requests
 import os
 import logging
@@ -104,7 +105,7 @@ class TrainAsONEService(ServiceBase):
     def _populateActivity(self, rawRecord):
         ''' Populate the 1st level of the activity object with all details required for UID from  API data '''
         activity = UploadedActivity()
-        activity.StartTime = datetime.fromtimestamp(rawRecord["start"] / 1000)
+        activity.StartTime = dateutil.parser.parse(rawRecord["start"])
         activity.EndTime = activity.StartTime + timedelta(seconds=rawRecord["duration"])
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=rawRecord["distance"])
         activity.GPS = rawRecord["hasGps"]
