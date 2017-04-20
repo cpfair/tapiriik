@@ -661,7 +661,7 @@ class GarminConnectService(ServiceBase):
         # These seems to fail with a 500 (talkking about a timeout) the first time, so keep trying.
         SERVER_ERROR_RETRIES = 10
         PAGE_SIZE = 100
-        TOTAL_SIZE = 1000
+        TOTAL_SIZE = 10000
         # Then, check for users with new activities
         watch_activities = []
         for i in range(1, TOTAL_SIZE, PAGE_SIZE):
