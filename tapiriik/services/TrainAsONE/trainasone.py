@@ -3,6 +3,7 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
+from tapiriik.services.fit import FITIO
 from tapiriik.services.tcx import TCXIO
 
 from django.core.urlresolvers import reverse
@@ -116,6 +117,7 @@ class TrainAsONEService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         activity_id = activity.ServiceData["id"]
 
+	# Switch URL to /api/sync/activity/fit/ once FITIO.Parse() available
         resp = requests.get(TRAINASONE_SERVER_URL + "/api/sync/activity/tcx/" + activity_id, headers=self._apiHeaders(serviceRecord.Authorization))
 
         try:
@@ -126,12 +128,12 @@ class TrainAsONEService(ServiceBase):
         return activity
 
     def UploadActivity(self, serviceRecord, activity):
-        # Upload the workout as a .TCX file
-        uploaddata = TCXIO.Dump(activity)
+        # Upload the workout as a .FIT file
+        uploaddata = FITIO.Dump(activity)
 
         headers = self._apiHeaders(serviceRecord.Authorization)
-        headers['Content-Type'] = 'application/xml'
-        resp = requests.post(TRAINASONE_SERVER_URL + "/api/sync/activity/tcx", data=uploaddata, headers=headers)
+        headers['Content-Type'] = 'application/octet-stream'
+        resp = requests.post(TRAINASONE_SERVER_URL + "/api/sync/activity/fit", data=uploaddata, headers=headers)
 
         if resp.status_code != 200:
             raise APIException(
