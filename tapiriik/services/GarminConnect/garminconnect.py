@@ -243,7 +243,7 @@ class GarminConnectService(ServiceBase):
             if url.startswith("/"):
                 url = url_prefix + url
             url_prefix = "/".join(url.split("/")[:3])
-            gcRedeemResp = session.get(gcRedeemResp.headers["location"], allow_redirects=False)
+            gcRedeemResp = session.get(url, allow_redirects=False)
 
             if current_redirect_count >= max_redirect_count and gcRedeemResp.status_code != 200:
                 raise APIException("GC redeem %d/%d error %s %s" % (current_redirect_count, max_redirect_count, gcRedeemResp.status_code, gcRedeemResp.text))
