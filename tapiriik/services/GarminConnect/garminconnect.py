@@ -231,13 +231,18 @@ class GarminConnectService(ServiceBase):
         gcRedeemResp = session.get("https://connect.garmin.com/post-auth/login", allow_redirects=False)
         if gcRedeemResp.status_code != 302:
             raise APIException("GC redeem-start error %s %s" % (gcRedeemResp.status_code, gcRedeemResp.text))
-
+        url_prefix = "https://connect.garmin.com"
         # There are 6 redirects that need to be followed to get the correct cookie
         # ... :(
         max_redirect_count = 7
         current_redirect_count = 1
         while True:
             self._rate_limit()
+            url = gcRedeemResp.headers["location"]
+            # Fix up relative redirects.
+            if url.startswith("/"):
+                url = url_prefix + url
+            url_prefix = "/".join(url.split("/")[:3])
             gcRedeemResp = session.get(gcRedeemResp.headers["location"], allow_redirects=False)
 
             if current_redirect_count >= max_redirect_count and gcRedeemResp.status_code != 200:
