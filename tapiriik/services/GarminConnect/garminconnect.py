@@ -212,7 +212,6 @@ class GarminConnectService(ServiceBase):
         preResp = session.get("https://sso.garmin.com/sso/login", params=params)
         if preResp.status_code != 200:
             raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
-        data["lt"] = re.search("name=\"lt\"\s+value=\"([^\"]+)\"", preResp.text).groups(1)[0]
 
         ssoResp = session.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False)
         if ssoResp.status_code != 200 or "temporarily unavailable" in ssoResp.text:
@@ -226,15 +225,10 @@ class GarminConnectService(ServiceBase):
         if "renewPassword" in ssoResp.text:
             raise APIException("Reset password", block=True, user_exception=UserException(UserExceptionType.RenewPassword, intervention_required=True))
 
-        ticket_match = re.search("ticket=([^']+)'", ssoResp.text)
-        if not ticket_match:
-            raise APIException("Invalid login (no ticket)", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-        ticket = ticket_match.groups(1)[0]
-
         # ...AND WE'RE NOT DONE YET!
 
         self._rate_limit()
-        gcRedeemResp = session.get("https://connect.garmin.com/post-auth/login", params={"ticket": ticket}, allow_redirects=False)
+        gcRedeemResp = session.get("https://connect.garmin.com/post-auth/login", allow_redirects=False)
         if gcRedeemResp.status_code != 302:
             raise APIException("GC redeem-start error %s %s" % (gcRedeemResp.status_code, gcRedeemResp.text))
 
