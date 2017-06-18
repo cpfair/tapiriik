@@ -114,7 +114,7 @@ class StravaService(ServiceBase):
 
     def RevokeAuthorization(self, serviceRecord):
         resp = requests.post("https://www.strava.com/oauth/deauthorize", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
-        if resp.status_code != 200:
+        if resp.status_code != 204 and resp.status_code != 200:
             raise APIException("Unable to deauthorize Strava auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
 
