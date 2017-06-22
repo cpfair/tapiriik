@@ -14,7 +14,7 @@ class GPXIO:
         "gpxext": "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
     }
 
-    def Parse(gpxData, suppress_validity_errors=False, activity=None):
+    def Parse(gpxData, activity=None, suppress_validity_errors=False):
         ns = copy.deepcopy(GPXIO.Namespaces)
         ns["gpx"] = ns[None]
         del ns[None]
