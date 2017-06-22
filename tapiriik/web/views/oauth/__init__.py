@@ -9,7 +9,7 @@ import json
 
 def authredirect(req, service, level=None):
     svc = Service.FromID(service)
-    return redirect(svc.GenerateUserAuthorizationURL(level))
+    return redirect(svc.GenerateUserAuthorizationURL(req.session, level))
 
 
 def authreturn(req, service, level=None):

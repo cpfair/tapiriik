@@ -99,7 +99,7 @@ class EndomondoService(ServiceBase):
             params["resource_owner_secret"] = connection.Authorization["Secret"]
         return OAuth1Session(ENDOMONDO_CLIENT_KEY, client_secret=ENDOMONDO_CLIENT_SECRET, **params)
 
-    def GenerateUserAuthorizationURL(self, level=None):
+    def GenerateUserAuthorizationURL(self, session, level=None):
         oauthSession = self._oauthSession(callback_uri=WEB_ROOT + reverse("oauth_return", kwargs={"service": "endomondo"}))
         tokens = oauthSession.fetch_request_token("https://api.endomondo.com/oauth/request_token")
         redis_token_key = 'endomondo:oauth:%s' % tokens["oauth_token"]
