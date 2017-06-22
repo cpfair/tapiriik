@@ -1,19 +1,21 @@
-from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
-from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
+from datetime import datetime, timedelta
+from django.core.urlresolvers import reverse
+from tapiriik.database import cachedb
 from tapiriik.services.api import APIException, ServiceExceptionScope, UserException, UserExceptionType, APIExcludeActivity, ServiceException
-from tapiriik.services.interchange import ActivityType, UploadedActivity
 from tapiriik.services.exception_tools import strip_context
 from tapiriik.services.gpx import GPXIO
+from tapiriik.services.interchange import ActivityType, UploadedActivity
+from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.tcx import TCXIO
-from tapiriik.database import cachedb, redis
-from dropbox import client, rest, session
-from django.core.urlresolvers import reverse
-import re
-import lxml
-from datetime import datetime, timedelta
-import logging
+from tapiriik.settings import WEB_ROOT, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET
 import bson
+import dropbox
+import json
+import logging
+import lxml
 import pickle
+import re
+import requests
 logger = logging.getLogger(__name__)
 
 class DropboxService(ServiceBase):
@@ -48,56 +50,58 @@ class DropboxService(ServiceBase):
 
     SupportedActivities = ActivityTaggingTable.keys()
 
-    def _getClient(self, serviceRec):
-        if serviceRec.Authorization["Full"]:
-            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
+    def _app_credentials(self, full):
+        if full:
+            return (DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET)
         else:
-            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
-        sess.set_token(serviceRec.Authorization["Key"], serviceRec.Authorization["Secret"])
-        return client.DropboxClient(sess)
+            return (DROPBOX_APP_KEY, DROPBOX_APP_SECRET)
+
+    def _getClient(self, serviceRec):
+        from tapiriik.services import Service
+        if "Secret" in serviceRec.Authorization:
+            # Upgrade OAuth v1 token to v2.
+            # The new Python SDK has a method for this
+            # ...that requires initializing a client with a v2 user auth token :|
+            upgrade_data = {
+                "oauth1_token": serviceRec.Authorization["Key"],
+                "oauth1_token_secret": serviceRec.Authorization["Secret"]
+            }
+            res = requests.post("https://api.dropboxapi.com/2/auth/token/from_oauth1",
+                                json=upgrade_data,
+                                auth=self._app_credentials(serviceRec.Authorization["Full"]))
+            token = res.json()["oauth2_token"]
+            # Update service record.
+            Service.EnsureServiceRecordWithAuth(self, serviceRec.ExternalID, {
+                "Token": token,
+                "Full": serviceRec.Authorization["Full"]
+            })
+        else:
+            token = serviceRec.Authorization["Token"]
+        return dropbox.Dropbox(token)
 
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "dropbox"})
-        pass
 
     def RequiresConfiguration(self, svcRec):
         return svcRec.Authorization["Full"] and ("SyncRoot" not in svcRec.Config or not len(svcRec.Config["SyncRoot"]))
 
-    def GenerateUserAuthorizationURL(self, level=None):
-        full = level == "full"
-        if full:
-            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
-        else:
-            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
+    def _oauth2_flow(self, full, session):
+        app_credentials = self._app_credentials(full)
 
-        reqToken = sess.obtain_request_token()
-        redis.setex("dropbox:oauth:%s" % reqToken.key, pickle.dumps(reqToken), timedelta(hours=24))
-        return sess.build_authorize_url(reqToken, oauth_callback=WEB_ROOT + reverse("oauth_return", kwargs={"service": "dropbox", "level": "full" if full else "normal"}))
+        redirect_uri = WEB_ROOT + reverse("oauth_return",
+                                          kwargs={"service": "dropbox", "level": "full" if full else "normal"})
+        return dropbox.DropboxOAuth2Flow(
+            app_credentials[0], app_credentials[1], redirect_uri, session,
+            "dropbox-auth-csrf-token")
 
-    def _getUserId(self, serviceRec):
-        info = self._getClient(serviceRec).account_info()
-        return info['uid']
+    def GenerateUserAuthorizationURL(self, session, level=None):
+        return self._oauth2_flow(level == "full", session).start()
 
     def RetrieveAuthorizationToken(self, req, level):
-        from tapiriik.services import Service
-        tokenKey = req.GET["oauth_token"]
-
-        redis_key = "dropbox:oauth:%s" % tokenKey
-        token = redis.get(redis_key)
-        assert token
-        token = pickle.loads(token)
-        redis.delete(redis_key)
-
         full = level == "full"
-        if full:
-            sess = session.DropboxSession(DROPBOX_FULL_APP_KEY, DROPBOX_FULL_APP_SECRET, "dropbox")
-        else:
-            sess = session.DropboxSession(DROPBOX_APP_KEY, DROPBOX_APP_SECRET, "app_folder")
-
-        accessToken = sess.obtain_access_token(token)
-
-        uid = int(req.GET["uid"])  # duh!
-        return (uid, {"Key": accessToken.key, "Secret": accessToken.secret, "Full": full})
+        result = self._oauth2_flow(full, req.session).finish(req.GET)
+        uid = int(result.user_id)
+        return (uid, {"Token": result.access_token, "Full": full})
 
     def RevokeAuthorization(self, serviceRecord):
         pass  # :(
@@ -110,47 +114,11 @@ class DropboxService(ServiceBase):
             cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, {"$unset": {"Structure": None}})
 
     def _raiseDbException(self, e):
-        if e.status == 401:
-            raise APIException("Authorization error - status " + str(e.status) + " reason " + str(e.error_msg) + " body " + str(e.body), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-        if e.status == 507:
+        if type(e) is dropbox.exceptions.AuthError:
+            raise APIException("Authorization error - %s" % e, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        if hasattr(e, "error") and getattr(e.error, "insufficient_space", None):
             raise APIException("Dropbox quota error", block=True, user_exception=UserException(UserExceptionType.AccountFull, intervention_required=True))
-        raise APIException("API failure - status " + str(e.status) + " reason " + str(e.reason) + " body " + str(e.error_msg))
-
-    def _folderRecurse(self, structCache, dbcl, path):
-        hash = None
-        existingRecord = [x for x in structCache if x["Path"] == path]
-        children = [x for x in structCache if x["Path"].startswith(path) and x["Path"] != path]
-        existingRecord = existingRecord[0] if len(existingRecord) else None
-        if existingRecord:
-            hash = existingRecord["Hash"]
-        try:
-            dirmetadata = dbcl.metadata(path, hash=hash)
-        except rest.ErrorResponse as e:
-            if e.status == 304:
-                for child in children:
-                    self._folderRecurse(structCache, dbcl, child["Path"])  # still need to recurse for children
-                return  # nothing new to update here
-            if e.status == 404:
-                # dir doesn't exist any more, delete it and all children
-                structCache[:] = (x for x in structCache if x != existingRecord and x not in children)
-                return
-            self._raiseDbException(e)
-        if not existingRecord:
-            existingRecord = {"Files": [], "Path": dirmetadata["path"]}
-            structCache.append(existingRecord)
-
-        existingRecord["Hash"] = dirmetadata["hash"]
-        existingRecord["Files"] = []
-        curDirs = []
-        for file in dirmetadata["contents"]:
-            if file["is_dir"]:
-                curDirs.append(file["path"])
-                self._folderRecurse(structCache, dbcl, file["path"])
-            else:
-                if not file["path"].lower().endswith(".gpx") and not file["path"].lower().endswith(".tcx"):
-                    continue  # another kind of file
-                existingRecord["Files"].append({"Rev": file["rev"], "Path": file["path"]})
-        structCache[:] = (x for x in structCache if x["Path"] in curDirs or x not in children)  # delete ones that don't exist
+        raise APIException("API failure - %s" % e)
 
     def _tagActivity(self, text):
         for act, pattern in self.ActivityTaggingTable.items():
@@ -158,28 +126,22 @@ class DropboxService(ServiceBase):
                 return act
         return None
 
-    def _getActivity(self, serviceRecord, dbcl, path):
-        activityData = None
-
+    def _getActivity(self, serviceRecord, dbcl, path, base_activity=None):
         try:
-            f, metadata = dbcl.get_file_and_metadata(path)
-        except rest.ErrorResponse as e:
+            metadata, file = dbcl.files_download(path)
+        except dropbox.exceptions.DropboxException as e:
             self._raiseDbException(e)
-
-        if not activityData:
-            activityData = f.read()
-
 
         try:
             if path.lower().endswith(".tcx"):
-                act = TCXIO.Parse(activityData)
+                act = TCXIO.Parse(file.content, base_activity)
             else:
-                act = GPXIO.Parse(activityData)
+                act = GPXIO.Parse(file.content, base_activity)
         except ValueError as e:
             raise APIExcludeActivity("Invalid GPX/TCX " + str(e), activity_id=path, user_exception=UserException(UserExceptionType.Corrupt))
         except lxml.etree.XMLSyntaxError as e:
             raise APIExcludeActivity("LXML parse error " + str(e), activity_id=path, user_exception=UserException(UserExceptionType.Corrupt))
-        return act, metadata["rev"]
+        return act, metadata.rev
 
     def DownloadActivityList(self, svcRec, exhaustive=False):
         dbcl = self._getClient(svcRec)
@@ -187,19 +149,37 @@ class DropboxService(ServiceBase):
             syncRoot = "/"
         else:
             syncRoot = svcRec.Config["SyncRoot"]
+        # Dropbox API v2 doesn't like / as root.
+        if syncRoot == "/":
+            syncRoot = ""
+        # New Dropbox API prefers path_lower, it would seem.
+        syncRoot = syncRoot.lower()
+
         cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec.ExternalID})
         if cache is None:
-            cache = {"ExternalID": svcRec.ExternalID, "Structure": [], "Activities": {}}
-        if "Structure" not in cache:
-            cache["Structure"] = []
-        self._folderRecurse(cache["Structure"], dbcl, syncRoot)
+            cache = {"ExternalID": svcRec.ExternalID, "Activities": {}}
+
+        # There used to be a massive affair going on here to cache the folder structure locally.
+        # Dropbox API 2.0 doesn't support the hashes I need for that.
+        # Oh well. Throw that data out now.
+        if "Structure" in cache:
+            del cache["Structure"]
+
+        try:
+            list_result = dbcl.files_list_folder(syncRoot, recursive=True)
+        except dropbox.exceptions.DropboxException as e:
+            self._raiseDbException(e)
 
         activities = []
         exclusions = []
+        discovered_activity_cache_keys = set()
 
-        for dir in cache["Structure"]:
-            for file in dir["Files"]:
-                path = file["Path"]
+        while True:
+            for entry in list_result.entries:
+                if not hasattr(entry, "rev"):
+                    # Not a file -> we don't care.
+                    continue
+                path = entry.path_lower
                 if svcRec.Authorization["Full"]:
                     relPath = path.replace(syncRoot, "", 1)
                 else:
@@ -208,6 +188,7 @@ class DropboxService(ServiceBase):
                 hashedRelPath = self._hash_path(relPath)
                 if hashedRelPath in cache["Activities"]:
                     existing = cache["Activities"][hashedRelPath]
+                    discovered_activity_cache_keys.add(hashedRelPath)
                 else:
                     existing = None
 
@@ -217,9 +198,10 @@ class DropboxService(ServiceBase):
                     existing = existing[0] if existing else None
                     if existing is not None:
                         existUID, existing = existing
+                        discovered_activity_cache_keys.add(existUID)
                         existing["UID"] = existUID
 
-                if existing and existing["Rev"] == file["Rev"]:
+                if existing and existing["Rev"] == entry.rev:
                     # don't need entire activity loaded here, just UID
                     act = UploadedActivity()
                     act.UID = existing["UID"]
@@ -244,27 +226,28 @@ class DropboxService(ServiceBase):
                     except:
                         pass # We tried.
 
-                    if hasattr(act, "OriginatedFromTapiriik") and not act.CountTotalWaypoints():
-                        # This is one of the files created when TCX export was hopelessly broken for non-GPS activities.
-                        # Right now, no activities in dropbox from tapiriik should be devoid of waypoints - since dropbox doesn't receive stationary activities
-                        # In the future when this changes, will obviously have to modify this code to also look at modification dates or similar.
-                        if ".tcx.summary-data" in path:
-                            logger.info("...summary file already moved")
-                        else:
-                            logger.info("...moving summary-only file")
-                            dbcl.file_move(path, path.replace(".tcx", ".tcx.summary-data"))
-                        continue # DON'T include in listing - it'll be regenerated
-                    del act.Laps
                     act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][hashedRelPath] = {"Rev": rev, "UID": act.UID, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
+                    discovered_activity_cache_keys.add(hashedRelPath)
                 tagRes = self._tagActivity(relPath)
-                act.ServiceData = {"Path": path, "Tagged":tagRes is not None}
+                act.ServiceData = {"Path": path, "Tagged": tagRes is not None}
 
                 act.Type = tagRes if tagRes is not None else ActivityType.Other
 
                 logger.debug("Activity s/t %s" % act.StartTime)
 
                 activities.append(act)
+
+            # Perform pagination.
+            if list_result.has_more:
+                list_result = dbcl.files_list_folder_continue(list_result.cursor)
+            else:
+                break
+
+        # Drop deleted activities' records from cache.
+        all_activity_cache_keys = set(cache["Activities"].keys())
+        for deleted_key in all_activity_cache_keys - discovered_activity_cache_keys:
+            del cache["Activities"][deleted_key]
 
         if "_id" in cache:
             cachedb.dropbox_cache.save(cache)
@@ -278,13 +261,9 @@ class DropboxService(ServiceBase):
             if not (hasattr(serviceRecord, "Config") and "UploadUntagged" in serviceRecord.Config and serviceRecord.Config["UploadUntagged"]):
                 raise APIExcludeActivity("Activity untagged", permanent=False, activity_id=activity.ServiceData["Path"], user_exception=UserException(UserExceptionType.Untagged))
 
-        # activity might already be populated, if not download it again
         path = activity.ServiceData["Path"]
         dbcl = self._getClient(serviceRecord)
-        fullActivity, rev = self._getActivity(serviceRecord, dbcl, path)
-        fullActivity.Type = activity.Type
-        fullActivity.ServiceDataCollection = activity.ServiceDataCollection
-        activity = fullActivity
+        activity, rev = self._getActivity(serviceRecord, dbcl, path, base_activity=activity)
 
         # Dropbox doesn't support stationary activities yet.
         if activity.CountTotalWaypoints() <= 1:
@@ -339,12 +318,12 @@ class DropboxService(ServiceBase):
             fpath = serviceRecord.Config["SyncRoot"] + "/" + fname
 
         try:
-            metadata = dbcl.put_file(fpath, data.encode("UTF-8"))
-        except rest.ErrorResponse as e:
+            metadata = dbcl.files_upload(data.encode("UTF-8"), fpath, mode=dropbox.files.WriteMode.overwrite)
+        except dropbox.exceptions.DropboxException as e:
             self._raiseDbException(e)
-        # fake this in so we don't immediately redownload the activity next time 'round
+        # Fake this in so we don't immediately redownload the activity next time 'round
         cache = cachedb.dropbox_cache.find_one({"ExternalID": serviceRecord.ExternalID})
-        cache["Activities"][self._hash_path("/" + fname)] = {"Rev": metadata["rev"], "UID": activity.UID, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
+        cache["Activities"][self._hash_path("/" + fname)] = {"Rev": metadata.rev, "UID": activity.UID, "StartTime": activity.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": activity.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
         cachedb.dropbox_cache.update({"ExternalID": serviceRecord.ExternalID}, cache)  # not upsert, hope the record exists at this time...
         return fpath
 
