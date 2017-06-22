@@ -116,7 +116,7 @@ class SmashrunService(ServiceBase):
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "smashrun"})
 
-    def GenerateUserAuthorizationURL(self, level=None):
+    def GenerateUserAuthorizationURL(self, session, level=None):
         client = self._getClient()
         url, state = client.get_auth_url()
         return url

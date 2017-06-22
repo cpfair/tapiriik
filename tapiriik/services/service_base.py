@@ -90,7 +90,7 @@ class ServiceBase:
     def UserUploadedActivityURL(self, uploadId):
         raise NotImplementedError
 
-    def GenerateUserAuthorizationURL(self, level=None):
+    def GenerateUserAuthorizationURL(self, session, level=None):
         raise NotImplementedError
 
     def Authorize(self, email, password, store=False):
