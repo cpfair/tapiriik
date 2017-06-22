@@ -15,7 +15,7 @@ celery_app = Celery('sync_remote_triggers', broker=RABBITMQ_BROKER_URL)
 celery_app.config_from_object(_celeryConfig())
 
 @worker_shutdown.connect
-def celery_shutdown():
+def celery_shutdown(**kwargs):
     close_connections()
 
 @celery_app.task(acks_late=True)
