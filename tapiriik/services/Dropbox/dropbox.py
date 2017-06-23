@@ -155,20 +155,25 @@ class DropboxService(ServiceBase):
         # New Dropbox API prefers path_lower, it would seem.
         syncRoot = syncRoot.lower()
 
-        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec.ExternalID})
-        if cache is None:
-            cache = {"ExternalID": svcRec.ExternalID, "Activities": {}}
-
         # There used to be a massive affair going on here to cache the folder structure locally.
         # Dropbox API 2.0 doesn't support the hashes I need for that.
-        # Oh well. Throw that data out now.
-        if "Structure" in cache:
-            del cache["Structure"]
+        # Oh well. Throw that data out now. Well, don't load it at all.
+        cache = cachedb.dropbox_cache.find_one({"ExternalID": svcRec.ExternalID}, {"ExternalID": True, "Activities": True})
+        if cache is None:
+            cache = {"ExternalID": svcRec.ExternalID, "Activities": {}}
 
         try:
             list_result = dbcl.files_list_folder(syncRoot, recursive=True)
         except dropbox.exceptions.DropboxException as e:
             self._raiseDbException(e)
+
+        def cache_writeback():
+            if "_id" in cache:
+                cachedb.dropbox_cache.save(cache)
+            else:
+                insert_result = cachedb.dropbox_cache.insert(cache)
+                cache["_id"] = insert_result.inserted_id
+
 
         activities = []
         exclusions = []
@@ -228,6 +233,10 @@ class DropboxService(ServiceBase):
 
                     act.Laps = []  # Yeah, I'll process the activity twice, but at this point CPU time is more plentiful than RAM.
                     cache["Activities"][hashedRelPath] = {"Rev": rev, "UID": act.UID, "StartTime": act.StartTime.strftime("%H:%M:%S %d %m %Y %z"), "EndTime": act.EndTime.strftime("%H:%M:%S %d %m %Y %z")}
+                    # Incrementally update the cache db.
+                    # Otherwise, if we crash later on in listing
+                    # (due to OOM or similar), we'll never make progress on this account.
+                    cache_writeback()
                     discovered_activity_cache_keys.add(hashedRelPath)
                 tagRes = self._tagActivity(relPath)
                 act.ServiceData = {"Path": path, "Tagged": tagRes is not None}
@@ -249,10 +258,7 @@ class DropboxService(ServiceBase):
         for deleted_key in all_activity_cache_keys - discovered_activity_cache_keys:
             del cache["Activities"][deleted_key]
 
-        if "_id" in cache:
-            cachedb.dropbox_cache.save(cache)
-        else:
-            cachedb.dropbox_cache.insert(cache)
+        cache_writeback()
         return activities, exclusions
 
     def DownloadActivity(self, serviceRecord, activity):
