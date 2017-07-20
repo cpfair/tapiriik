@@ -41,7 +41,8 @@ class Service:
             VeloHero,
             TrainerRoad,
             Smashrun,
-            BeginnerTriathlete
+            BeginnerTriathlete,
+            Setio
         ] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
@@ -64,7 +65,8 @@ class Service:
             BeginnerTriathlete, # No temperature
             Motivato,
             NikePlus,
-            Pulsstory
+            Pulsstory,
+            Setio
         ] + PRIVATE_SERVICES
 
     def WebInit():
