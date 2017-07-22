@@ -191,20 +191,11 @@ class DropboxService(ServiceBase):
                     relPath = path.replace("/Apps/tapiriik/", "", 1)  # dropbox api is meh api
 
                 hashedRelPath = self._hash_path(relPath)
+                discovered_activity_cache_keys.add(hashedRelPath)
                 if hashedRelPath in cache["Activities"]:
                     existing = cache["Activities"][hashedRelPath]
-                    discovered_activity_cache_keys.add(hashedRelPath)
                 else:
                     existing = None
-
-                if not existing:
-                    # Continue to use the old records keyed by UID where possible
-                    existing = [(k, x) for k, x in cache["Activities"].items() if "Path" in x and x["Path"] == relPath]  # path is relative to syncroot to reduce churn if they relocate it
-                    existing = existing[0] if existing else None
-                    if existing is not None:
-                        existUID, existing = existing
-                        discovered_activity_cache_keys.add(existUID)
-                        existing["UID"] = existUID
 
                 if existing and existing["Rev"] == entry.rev:
                     # don't need entire activity loaded here, just UID
@@ -237,7 +228,6 @@ class DropboxService(ServiceBase):
                     # Otherwise, if we crash later on in listing
                     # (due to OOM or similar), we'll never make progress on this account.
                     cache_writeback()
-                    discovered_activity_cache_keys.add(hashedRelPath)
                 tagRes = self._tagActivity(relPath)
                 act.ServiceData = {"Path": path, "Tagged": tagRes is not None}
 
