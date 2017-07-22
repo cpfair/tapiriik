@@ -178,19 +178,26 @@ class Sync:
                 if result.ForceNextSync:
                     logger.info("Forcing next sync at %s" % result.ForceNextSync)
                     nextSync = result.ForceNextSync
+            reschedule_update = {
+                "$set": {
+                    "NextSynchronization": nextSync,
+                    "LastSynchronization": datetime.utcnow(),
+                    "LastSynchronizationVersion": version
+                }, "$unset": {
+                    "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
+                }
+            }
+
+            if result.ForceExhaustive:
+                logger.info("Forcing next sync as exhaustive")
+                reschedule_update["$set"]["NextSyncIsExhaustive"] = True
+            else:
+                reschedule_update["$unset"]["NextSyncIsExhaustive"] = ""
+
             scheduling_result = db.users.update(
                 {
                     "_id": user["_id"]
-                }, {
-                    "$set": {
-                        "NextSynchronization": nextSync,
-                        "LastSynchronization": datetime.utcnow(),
-                        "LastSynchronizationVersion": version
-                    }, "$unset": {
-                        "NextSyncIsExhaustive": None,
-                        "QueuedAt": None # Set by sync_scheduler when the record enters the MQ
-                    }
-                })
+                }, reschedule_update)
             reschedule_confirm_message = "User reschedule for %s returned %s" % (nextSync, scheduling_result)
 
             # Tack this on the end of the log file since otherwise it's lost for good (blegh, but nicer than moving logging out of the sync task?)
@@ -290,7 +297,15 @@ class SynchronizationTask:
                 # Only reset the trigger if we succesfully got through the entire sync without bailing on this particular connection
                 update_values["$unset"] = {"TriggerPartialSync": None}
 
-            db.connections.update({"_id": conn._id}, update_values)
+            try:
+                db.connections.update({"_id": conn._id}, update_values)
+            except pymongo.errors.WriteError as e:
+                if e.code == 17419: # Update makes document too large.
+                    # Throw them all out - exhaustive sync will recover whichever still apply.
+                    # NB we don't explicitly mark as exhaustive here, the error counts will trigger it if appropriate.
+                    db.connections.update({"_id": conn._id}, {"$unset": {"SyncErrors": "", "ExcludedActivities": ""}})
+                else:
+                    raise
             nonblockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" not in x or not x["Block"]])
             blockingSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"]])
             forcingExhaustiveSyncErrorsCount += len([x for x in self._syncErrors[conn._id] if "Block" in x and x["Block"] and "TriggerExhaustive" in x and x["TriggerExhaustive"]])
@@ -706,9 +721,18 @@ class SynchronizationTask:
 
         if updateServicesWithExistingActivity:
             logger.debug("\t\tUpdating SynchronizedActivities")
-            db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
-                                  {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}},
-                                  multi=True)
+            try:
+                db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}},
+                                      {"$addToSet": {"SynchronizedActivities": {"$each": list(activity.UIDs)}}},
+                                      multi=True)
+            except pymongo.errors.WriteError as e:
+                if e.code == 17419: # Update makes document too large.
+                    # Throw them all out - exhaustive sync will recover.
+                    # I should probably check that this is actually due to transient issues - otherwise it'll keep happening.
+                    db.connections.update({"_id": {"$in": list(activity.ServiceDataCollection.keys())}}, {"$unset": {"SynchronizedActivities": ""}})
+                    self._sync_result.ForceExhaustive = True
+                else:
+                    raise
 
     def _updateActivityRecordInitialPrescence(self, activity):
         for connWithExistingActivityId in activity.ServiceDataCollection.keys():
@@ -864,6 +888,7 @@ class SynchronizationTask:
             return # Done and done!
 
         sync_result = SynchronizationTaskResult()
+        self._sync_result = sync_result
 
         self._user_config = User.GetConfiguration(self.user)
 
@@ -1148,8 +1173,9 @@ class SynchronizationTask:
 
 
 class SynchronizationTaskResult:
-    def __init__(self, force_next_sync=None):
+    def __init__(self, force_next_sync=None, force_exhaustive=False):
         self.ForceNextSync = force_next_sync
+        self.ForceExhaustive = force_exhaustive
 
     def ForceScheduleNextSyncOnOrBefore(self, next_sync):
         self.ForceNextSync = self.ForceNextSync if self.ForceNextSync and self.ForceNextSync < next_sync else next_sync
