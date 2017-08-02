@@ -1,0 +1,20 @@
+version: '2'
+services:
+    tapiriik:
+        image: tapiriik
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: ["0.0.0.0:8000"]
+        ports:
+            - "8000:8000"
+        depends_on:
+            - redis
+            - rabbitmq
+            - mongodb
+    redis:
+        image: redis:latest
+    rabbitmq:
+        image: rabbitmq:latest
+    mongodb:
+        image: mongo:latest
