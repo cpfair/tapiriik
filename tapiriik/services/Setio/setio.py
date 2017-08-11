@@ -3,7 +3,8 @@
 #
 from tapiriik.settings import WEB_ROOT, SETIO_CLIENT_SECRET, SETIO_CLIENT_ID
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, \
+    Waypoint, WaypointType, Location, Lap
 
 from django.core.urlresolvers import reverse
 from datetime import datetime
@@ -14,6 +15,7 @@ import dateutil.parser
 import json
 
 logger = logging.getLogger(__name__)
+
 
 class SetioService(ServiceBase):
     ID = "setio"
@@ -77,10 +79,10 @@ class SetioService(ServiceBase):
     SupportedActivities = list(_activityTypeMappings.keys())
 
     def WebInit(self):
-        params = {'scope':'write,view_private',
-                  'client_id':SETIO_CLIENT_ID,
-                  'response_type':'code',
-                  'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "setio"})}
+        params = {'scope': 'write,view_private',
+                  'client_id': SETIO_CLIENT_ID,
+                  'response_type': 'code',
+                  'redirect_uri': WEB_ROOT + reverse("oauth_return", kwargs={"service": "setio"})}
         self.UserAuthorizationURL = \
             "https://setio.run/oauth/authorize?" + urlencode(params)
 
@@ -96,7 +98,6 @@ class SetioService(ServiceBase):
         #  you can't revoke the tokens setio distributes :\
         pass
 
-
     def DownloadActivityList(self, svcRecord, exhaustive=False):
         activities = []
         exclusions = []
@@ -104,27 +105,24 @@ class SetioService(ServiceBase):
         url = self.SetioDomain + "getRunsByUserId"
         extID = svcRecord.ExternalID
 
-        #payload = "{\"userId\": \"" + extID + "\"}"
-        payload = {}
-        payload["userId"] = extID
-        payload=json.dumps(payload, ensure_ascii=False)
-
+        payload = {"userId": extID}
         headers = {
             'content-type': "application/json",
             'cache-control': "no-cache",
         }
-        response = requests.post( url, data=payload, headers=headers)
+        response = requests.post(url, data=json.dumps(payload), headers=headers)
         try:
             reqdata = response.json()
         except ValueError:
             raise APIException("Failed parsing Setio list response %s - %s" % (resp.status_code, resp.text))
 
-
         for ride in reqdata:
             activity = UploadedActivity()
-            activity.StartTime = datetime.strptime(datetime.utcfromtimestamp(ride["startTimeStamp"]).strftime('%Y-%m-%d %H:%M:%S'), "%Y-%m-%d %H:%M:%S")
+            activity.StartTime = datetime.strptime(
+                datetime.utcfromtimestamp(ride["startTimeStamp"]).strftime('%Y-%m-%d %H:%M:%S'), "%Y-%m-%d %H:%M:%S")
             if "stopTimeStamp" in ride:
-                activity.EndTime = datetime.strptime(datetime.utcfromtimestamp(ride["stopTimeStamp"]).strftime('%Y-%m-%d %H:%M:%S'), "%Y-%m-%d %H:%M:%S")
+                activity.EndTime = datetime.strptime(
+                    datetime.utcfromtimestamp(ride["stopTimeStamp"]).strftime('%Y-%m-%d %H:%M:%S'), "%Y-%m-%d %H:%M:%S")
             activity.ServiceData = {"ActivityID": ride["runId"], "Manual": "False"}
 
             activity.Name = ride["programName"]
@@ -135,23 +133,21 @@ class SetioService(ServiceBase):
                 activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=ride["totalDistance"])
 
             if "averageCadence" in ride:
-                activity.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=ride["averageCadence"]))
+                activity.Stats.Cadence.update(
+                    ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=ride["averageCadence"]))
 
             if "averageSpeed" in ride:
-                activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=ride["averageSpeed"])
+                activity.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond,
+                                                         avg=ride["averageSpeed"])
 
-            #get comment
+            # get comment
             url = self.SetioDomain + "getRunComment"
-            payload = {}
-            payload["userId"] = extID
-            payload["runId"] = activity.ServiceData["ActivityID"]
-            payload=json.dumps(payload, ensure_ascii=False)
-
+            payload = { "userId": extID, "runId": activity.ServiceData["ActivityID"]}
             headers = {
                 'content-type': "application/json",
                 'cache-control': "no-cache",
             }
-            streamdata = requests.post(url, data=payload, headers=headers)
+            streamdata = requests.post(url, data=json.dumps(payload), headers=headers)
             if streamdata.status_code == 500:
                 raise APIException("Internal server error")
 
@@ -160,7 +156,7 @@ class SetioService(ServiceBase):
                                    user_exception=UserException(UserExceptionType.Authorization,
                                                                 intervention_required=True))
 
-            if streamdata.status_code == 200: # Ok
+            if streamdata.status_code == 200:  # Ok
                 try:
                     commentdata = streamdata.json()
                 except:
@@ -176,7 +172,7 @@ class SetioService(ServiceBase):
             activity.GPS = True
 
             activity.Private = False
-            activity.Stationary = False #True = no sensor data
+            activity.Stationary = False  # True = no sensor data
 
             activity.CalculateUID()
             activities.append(activity)
@@ -184,32 +180,25 @@ class SetioService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
-        # if activity.ServiceData["Manual"]:
-        #    # Maybe implement later
-        #    activity.Laps = [Lap(startTime=activity.StartTime, endTime=activity.EndTime, stats=activity.Stats)]
-        #    return activity
+
         activityID = activity.ServiceData["ActivityID"]
-
         extID = svcRecord.ExternalID
-
         url = self.SetioDomain + "getRunData"
-        payload = {}
-        payload["userId"] = extID
-        payload["runId"] = activityID
-        payload=json.dumps(payload, ensure_ascii=False)
-
+        payload = {"userId": extID, "runId": activityID}
         headers = {
             'content-type': "application/json",
             'cache-control': "no-cache",
         }
-        streamdata = requests.post( url, data=payload, headers=headers)
+        streamdata = requests.post(url, data=json.dumps(payload), headers=headers)
         if streamdata.status_code == 500:
             raise APIException("Internal server error")
 
         if streamdata.status_code == 403:
-            raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("No authorization to download activity", block=True,
+                               user_exception=UserException(UserExceptionType.Authorization,
+                                                            intervention_required=True))
 
-        if streamdata.status_code == 200: #Ok
+        if streamdata.status_code == 200:  # Ok
             try:
                 streamdata = streamdata.json()
             except:
@@ -217,7 +206,8 @@ class SetioService(ServiceBase):
 
         ridedata = {}
 
-        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime) # Setio doesn't support laps, but we need somewhere to put the waypoints.
+        lap = Lap(stats=activity.Stats, startTime=activity.StartTime,
+                  endTime=activity.EndTime)  # Setio doesn't support laps, but we need somewhere to put the waypoints.
         activity.Laps = [lap]
         lap.Waypoints = []
 
@@ -252,7 +242,6 @@ class SetioService(ServiceBase):
             lap.Waypoints.append(waypoint)
 
         return activity
-
 
     def UploadActivity(self, serviceRecord, activity):
         pass
