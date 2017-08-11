@@ -32,6 +32,8 @@ from tapiriik.services.BeginnerTriathlete import BeginnerTriathleteService
 BeginnerTriathlete = BeginnerTriathleteService()
 from tapiriik.services.Pulsstory import PulsstoryService
 Pulsstory = PulsstoryService()
+from tapiriik.services.Setio import SetioService
+Setio = SetioService()
 
 PRIVATE_SERVICES = []
 try:

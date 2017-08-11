@@ -156,6 +156,7 @@ class SetioService(ServiceBase):
                                    user_exception=UserException(UserExceptionType.Authorization,
                                                                 intervention_required=True))
 
+            activity.Notes = None
             if streamdata.status_code == 200:  # Ok
                 try:
                     commentdata = streamdata.json()
@@ -164,10 +165,6 @@ class SetioService(ServiceBase):
 
                 if "comment" in commentdata:
                     activity.Notes = commentdata["comment"]
-                else:
-                    activity.Notes = None
-            else:
-                activity.Notes = None
 
             activity.GPS = True
 
@@ -180,7 +177,6 @@ class SetioService(ServiceBase):
         return activities, exclusions
 
     def DownloadActivity(self, svcRecord, activity):
-
         activityID = activity.ServiceData["ActivityID"]
         extID = svcRecord.ExternalID
         url = self.SetioDomain + "getRunData"
@@ -198,11 +194,13 @@ class SetioService(ServiceBase):
                                user_exception=UserException(UserExceptionType.Authorization,
                                                             intervention_required=True))
 
-        if streamdata.status_code == 200:  # Ok
-            try:
-                streamdata = streamdata.json()
-            except:
-                raise APIException("Stream data returned is not JSON")
+        if streamdata.status_code != 200:
+            raise APIException("Unknown Setio response %d %s" % (streamdata.status_code, streamdata.text))
+
+        try:
+            streamdata = streamdata.json()
+        except:
+            raise APIException("Stream data returned is not JSON")
 
         ridedata = {}
 
