@@ -174,10 +174,9 @@ class Sync:
                     logger.info("Not scheduling auto sync for paid user")
                 else:
                     nextSync = datetime.utcnow() + Sync.SyncInterval + timedelta(seconds=random.randint(-Sync.SyncIntervalJitter.total_seconds(), Sync.SyncIntervalJitter.total_seconds()))
-            if result:
-                if result.ForceNextSync:
-                    logger.info("Forcing next sync at %s" % result.ForceNextSync)
-                    nextSync = result.ForceNextSync
+            if result and result.ForceNextSync:
+                logger.info("Forcing next sync at %s" % result.ForceNextSync)
+                nextSync = result.ForceNextSync
             reschedule_update = {
                 "$set": {
                     "NextSynchronization": nextSync,
@@ -188,7 +187,7 @@ class Sync:
                 }
             }
 
-            if result.ForceExhaustive:
+            if result and result.ForceExhaustive:
                 logger.info("Forcing next sync as exhaustive")
                 reschedule_update["$set"]["NextSyncIsExhaustive"] = True
             else:
