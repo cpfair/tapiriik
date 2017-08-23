@@ -42,7 +42,8 @@ class Service:
             TrainerRoad,
             Smashrun,
             BeginnerTriathlete,
-            Setio
+            Setio,
+            Singletracker
         ] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
@@ -66,7 +67,8 @@ class Service:
             Motivato,
             NikePlus,
             Pulsstory,
-            Setio
+            Setio,
+            Singletracker
         ] + PRIVATE_SERVICES
 
     def WebInit():
