@@ -152,7 +152,7 @@ class SingletrackerService(ServiceBase):
         activityID = activity.ServiceData["ActivityID"]
         extID = svcRecord.ExternalID
         url = self.SingletrackerDomain + "getRideData"
-         #     + "getRideData"
+
         payload = {"userId": extID, "rideId": activityID}
         headers = {
             'content-type': "application/json",
