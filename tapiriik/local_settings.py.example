@@ -41,6 +41,9 @@ RWGPS_APIKEY = "####"
 SETIO_CLIENT_ID = "####"
 SETIO_CLIENT_SECRET = "####"
 
+SINGLETRACKER_CLIENT_ID = "####"
+SINGLETRACKER_CLIENT_SECRET = "####"
+
 # See http://api.smashrun.com for info.
 # For now, you need to email hi@smashrun.com for access
 SMASHRUN_CLIENT_ID = "####"
