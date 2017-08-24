@@ -34,6 +34,8 @@ from tapiriik.services.Pulsstory import PulsstoryService
 Pulsstory = PulsstoryService()
 from tapiriik.services.Setio import SetioService
 Setio = SetioService()
+from tapiriik.services.Singletracker import SingletrackerService
+Singletracker = SingletrackerService()
 
 PRIVATE_SERVICES = []
 try:

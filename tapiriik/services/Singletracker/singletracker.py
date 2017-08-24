@@ -27,9 +27,11 @@ class SingletrackerService(ServiceBase):
     LastUpload = None
     SingletrackerDomain = "https://us-central1-sweltering-inferno-5571.cloudfunctions.net/"
 
-    SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
+    SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = False
 
-    SupportsActivityDeletion = True
+    SupportsActivityDeletion = False
+
+    ReceivesActivities = False
 
     # For mapping common->SINGLETRACKER; no ambiguity in Singletracker activity type
     _activityTypeMappings = {
@@ -166,11 +168,13 @@ class SingletrackerService(ServiceBase):
             raise APIException("No authorization to download activity", block=True,
                                user_exception=UserException(UserExceptionType.Authorization,
                                                             intervention_required=True))
-        if streamdata.status_code == 200:  # Ok
-            try:
-                streamdata = streamdata.json()
-            except:
-                raise APIException("Stream data returned is not JSON")
+        if streamdata.status_code != 200:
+            raise APIException("Unknown Singletracker response %d %s" % (streamdata.status_code, streamdata.text))
+
+        try:
+            streamdata = streamdata.json()
+        except:
+            raise APIException("Stream data returned is not JSON")
 
         ridedata = {}
 
