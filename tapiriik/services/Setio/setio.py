@@ -27,9 +27,12 @@ class SetioService(ServiceBase):
     LastUpload = None
     SetioDomain = "https://us-central1-project-2489250248063150762.cloudfunctions.net/"
 
-    SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
+    SupportsCadence = True
+    SupportsHR = SupportsTemp = SupportsPower = True
 
-    SupportsActivityDeletion = True
+    SupportsActivityDeletion = False
+
+    ReceivesActivities = False
 
     # For mapping common->Setio; no ambiguity in Setio activity type
     _activityTypeMappings = {
