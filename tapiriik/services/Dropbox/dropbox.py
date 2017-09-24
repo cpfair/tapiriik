@@ -185,6 +185,11 @@ class DropboxService(ServiceBase):
                     # Not a file -> we don't care.
                     continue
                 path = entry.path_lower
+
+                if not path.endswith(".gpx") and not path.endswith(".tcx"):
+                    # Not an activity file -> we don't care.
+                    continue
+
                 if svcRec.Authorization["Full"]:
                     relPath = path.replace(syncRoot, "", 1)
                 else:
