@@ -95,6 +95,8 @@ class RunKeeperService(ServiceBase):
 
     def _getUserId(self, serviceRecord):
         resp = requests.get("https://api.runkeeper.com/user/", headers=self._apiHeaders(serviceRecord))
+        if resp.status_code != 200:
+            raise APIException("Failed to retrieve RK user metadata %s: %s" % (resp.status_code, resp.text))
         data = resp.json()
         return data["userID"]
 

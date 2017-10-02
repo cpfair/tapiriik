@@ -1,6 +1,7 @@
 {% extends "site.html" %}
 {% block title %}login failed{% endblock %}
 {% block content %}
-<div class="error">There was a problem logging you into {{ service.DisplayName }}: <br/>
-<tt>{{ error }}</tt></div>
+<div class="error"><p>There was a problem logging you into {{ service.DisplayName }}: <br/>
+<tt>{{ error }}</tt></p>
+<p>Try logging in again - it might just be a temporary problem connecting to {{ service.DisplayName }}. If that doesn't help, try connecting this account using a different browser or device.</p></div>
 {% endblock %}
