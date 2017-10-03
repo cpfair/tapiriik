@@ -974,7 +974,7 @@ class SynchronizationTask:
 
                             if tz and endtime: # We can't really know for sure otherwise
                                 time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
-                                time_past += tz.dst(endtime.replace(tzinfo=None)) if tz.dst(endtime.replace(tzinfo=None)) else timedelta(0) # For some reason DST wasn't being taken into account - maybe just GC?
+                                time_past += tz.dst(endtime, is_dst=False) # I believe astimezone(utc) is scrubbing the DST away - put it back here.
                                 time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
                                 logger.debug(" %s since upload" % time_past)
                                 if time_remaining > timedelta(0):
