@@ -974,7 +974,14 @@ class SynchronizationTask:
 
                             if tz and endtime: # We can't really know for sure otherwise
                                 time_past = (datetime.utcnow() - endtime.astimezone(pytz.utc).replace(tzinfo=None))
-                                time_past += tz.dst(endtime, is_dst=False) # I believe astimezone(utc) is scrubbing the DST away - put it back here.
+                                 # I believe astimezone(utc) is scrubbing the DST away - put it back here.
+                                 # We must try this twice because not all of our TZ objects are pytz for... some reason.
+                                 # And, thus, dst() may not accept is_dst.
+                                try:
+                                    time_past += tz.dst(endtime)
+                                except pytz.AmbiguousTimeError:
+                                    time_past += tz.dst(endtime, is_dst=False)
+
                                 time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
                                 logger.debug(" %s since upload" % time_past)
                                 if time_remaining > timedelta(0):
