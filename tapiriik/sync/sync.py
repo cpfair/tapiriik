@@ -977,10 +977,14 @@ class SynchronizationTask:
                                  # I believe astimezone(utc) is scrubbing the DST away - put it back here.
                                  # We must try this twice because not all of our TZ objects are pytz for... some reason.
                                  # And, thus, dst() may not accept is_dst.
+
                                 try:
-                                    time_past += tz.dst(endtime)
+                                    dst_offset = tz.dst(endtime)
                                 except pytz.AmbiguousTimeError:
-                                    time_past += tz.dst(endtime, is_dst=False)
+                                    dst_offset = tz.dst(endtime, is_dst=False)
+
+                                if dst_offset:
+                                    time_past += dst_offset
 
                                 time_remaining = timedelta(seconds=self._user_config["sync_upload_delay"]) - time_past
                                 logger.debug(" %s since upload" % time_past)
