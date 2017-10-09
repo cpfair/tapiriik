@@ -5,7 +5,7 @@ from tapiriik.services.stream_sampling import StreamSampler
 from tapiriik.services.auto_pause import AutoPauseCalculator
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, WaypointType, Waypoint, Location, Lap
-from tapiriik.database import cachedb
+from tapiriik.database import cachedb, redis
 from django.core.urlresolvers import reverse
 from datetime import datetime, timedelta
 import requests
@@ -44,6 +44,7 @@ class RunKeeperService(ServiceBase):
     SupportsCalories = True
 
     _wayptTypeMappings = {"start": WaypointType.Start, "end": WaypointType.End, "pause": WaypointType.Pause, "resume": WaypointType.Resume}
+    _URI_CACHE_KEY = "rk:user_uris"
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://runkeeper.com/apps/authorize?client_id=" + RUNKEEPER_CLIENT_ID + "&response_type=code&redirect_uri=" + WEB_ROOT + reverse("oauth_return", kwargs={"service": "runkeeper"})
@@ -79,17 +80,24 @@ class RunKeeperService(ServiceBase):
         if hasattr(self, "_uris"):  # cache these for the life of the batch job at least? hope so
             return self._uris
         else:
-            response = requests.get("https://api.runkeeper.com/user/", headers=self._apiHeaders(serviceRecord))
+            uris_json = redis.get(self._URI_CACHE_KEY)
+            if uris_json is not None:
+                uris = json.loads(uris_json)
+            else:
+                response = requests.get("https://api.runkeeper.com/user/", headers=self._apiHeaders(serviceRecord))
+                if response.status_code != 200:
+                    if response.status_code == 401 or response.status_code == 403:
+                        raise APIException("No authorization to retrieve user URLs", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                    raise APIException("Unable to retrieve user URLs" + str(response))
 
-            if response.status_code != 200:
-                if response.status_code == 401 or response.status_code == 403:
-                    raise APIException("No authorization to retrieve user URLs", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-                raise APIException("Unable to retrieve user URLs" + str(response))
-
-            uris = response.json()
-            for k in uris.keys():
-                if type(uris[k]) == str:
-                    uris[k] = "https://api.runkeeper.com" + uris[k]
+                uris = response.json()
+                for k in uris.keys():
+                    if type(uris[k]) == str:
+                        uris[k] = "https://api.runkeeper.com" + uris[k]
+                # Runkeeper wants you to request these on a per-user basis.
+                # In practice, the URIs are identical for ever user (only the userID key changes).
+                # So, only do it once every 24 hours, across the entire system.
+                redis.setex(self._URI_CACHE_KEY, json.dumps(uris), timedelta(hours=24))
             self._uris = uris
             return uris
 
@@ -256,7 +264,7 @@ class RunKeeperService(ServiceBase):
         if activity.Stats.Distance.Value is not None:
             record["total_distance"] = activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value
 
-        if activity.Name and activity.Notes:
+        if activity.Name and activity.Notes and activity.Name != activity.Notes:
             record["notes"] = activity.Name + " - " + activity.Notes
         elif activity.Notes:
             record["notes"] = activity.Notes
