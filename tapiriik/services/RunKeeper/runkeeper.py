@@ -82,7 +82,7 @@ class RunKeeperService(ServiceBase):
         else:
             uris_json = redis.get(self._URI_CACHE_KEY)
             if uris_json is not None:
-                uris = json.loads(uris_json)
+                uris = json.loads(uris_json.decode('utf-8'))
             else:
                 response = requests.get("https://api.runkeeper.com/user/", headers=self._apiHeaders(serviceRecord))
                 if response.status_code != 200:
