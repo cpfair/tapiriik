@@ -979,9 +979,9 @@ class SynchronizationTask:
                                  # And, thus, dst() may not accept is_dst.
 
                                 try:
-                                    dst_offset = tz.dst(endtime)
+                                    dst_offset = tz.dst(endtime.replace(tzinfo=None))
                                 except pytz.AmbiguousTimeError:
-                                    dst_offset = tz.dst(endtime, is_dst=False)
+                                    dst_offset = tz.dst(endtime.replace(tzinfo=None), is_dst=False)
 
                                 if dst_offset:
                                     time_past += dst_offset
