@@ -56,7 +56,7 @@ class RunKeeperService(ServiceBase):
             # than the limit is expired. The maximum period appears to be 1 day.
             # This entire thing is an excercise in better-safe-than-sorry as it's unclear
             # how their rate-limit logic works (when limits reset, etc).
-            redis.setex(self._RATE_LIMIT_KEY % endpoint, 1, timedelta(hours=24))
+            redis.setex(self._RATE_LIMIT_KEY % endpoint, response.text, timedelta(hours=24))
             raise APIException("RK global rate limit reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
         return response
 
