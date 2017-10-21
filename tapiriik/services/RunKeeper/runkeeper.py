@@ -12,6 +12,7 @@ import requests
 import urllib.parse
 import json
 import logging
+import re
 logger = logging.getLogger(__name__)
 
 
@@ -52,12 +53,29 @@ class RunKeeperService(ServiceBase):
             raise APIException("RK global rate limit previously reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
         response = req_lambda()
         if response.status_code == 429:
-            # When we hit a limit we preemptively fail all future requests till we're sure
-            # than the limit is expired. The maximum period appears to be 1 day.
-            # This entire thing is an excercise in better-safe-than-sorry as it's unclear
-            # how their rate-limit logic works (when limits reset, etc).
-            redis.setex(self._RATE_LIMIT_KEY % endpoint, response.text, timedelta(hours=24))
-            raise APIException("RK global rate limit reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
+            if "user" not in response.text:
+                # When we hit a limit we preemptively fail all future requests till we're sure
+                # than the limit is expired. The maximum period appears to be 1 day.
+                # This entire thing is an excercise in better-safe-than-sorry as it's unclear
+                # how their rate-limit logic works (when limits reset, etc).
+
+                # As it turns out, there are several parallel rate limits operating at once.
+                # Attempt to parse out how long we should wait - if we can't figure it out,
+                # default to the shortest time I've seen (15m). As long as the timer doesn't reset
+                # every time you request during the over-quota period, this should work.
+                timeout = timedelta(minutes=15)
+                timeout_match = re.search(r"(\d+) (second|minute|hour|day)", response.text)
+                if timeout_match:
+                    # This line is too clever for its own good.
+                    timeout = timedelta(**{"%ss" % timeout_match.group(2): float(timeout_match.group(1))})
+
+                redis.setex(self._RATE_LIMIT_KEY % endpoint, response.text, timeout)
+                raise APIException("RK global rate limit reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
+            else:
+                # Per-user limit hit: don't halt entire system, just bail for this user
+                # If a user has too many pages of activities, they will never sync as we'll keep hitting the limit.
+                # But that's a Very Hard Problem to Solve™ given that I can't do incremental listings...
+                raise APIException("RK user rate limit reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
         return response
 
     def WebInit(self):
