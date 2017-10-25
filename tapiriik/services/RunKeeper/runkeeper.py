@@ -46,10 +46,10 @@ class RunKeeperService(ServiceBase):
 
     _wayptTypeMappings = {"start": WaypointType.Start, "end": WaypointType.End, "pause": WaypointType.Pause, "resume": WaypointType.Resume}
     _URI_CACHE_KEY = "rk:user_uris"
-    _RATE_LIMIT_KEY = "rk:rate_limit:%s:hit"
+    _RATE_LIMIT_KEY = "rk:rate_limit:hit"
 
     def _rate_limit(self, endpoint, req_lambda):
-        if redis.get(self._RATE_LIMIT_KEY % endpoint) is not None:
+        if redis.get(self._RATE_LIMIT_KEY) is not None:
             raise APIException("RK global rate limit previously reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
         response = req_lambda()
         if response.status_code == 429:
@@ -69,7 +69,7 @@ class RunKeeperService(ServiceBase):
                     # This line is too clever for its own good.
                     timeout = timedelta(**{"%ss" % timeout_match.group(2): float(timeout_match.group(1))})
 
-                redis.setex(self._RATE_LIMIT_KEY % endpoint, response.text, timeout)
+                redis.setex(self._RATE_LIMIT_KEY, response.text, timeout)
                 raise APIException("RK global rate limit reached on %s" % endpoint, user_exception=UserException(UserExceptionType.RateLimited))
             else:
                 # Per-user limit hit: don't halt entire system, just bail for this user
