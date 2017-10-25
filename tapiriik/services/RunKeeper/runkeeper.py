@@ -38,6 +38,7 @@ class RunKeeperService(ServiceBase):
                          "Rowing": ActivityType.Rowing,
                          "Elliptical": ActivityType.Elliptical,
                          "Strength Training": ActivityType.StrengthTraining,
+                         "Yoga": ActivityType.Yoga,
                          "Other": ActivityType.Other}
     SupportedActivities = list(_activityMappings.values())
 
