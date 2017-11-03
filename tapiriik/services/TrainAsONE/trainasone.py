@@ -75,7 +75,10 @@ class TrainAsONEService(ServiceBase):
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         allItems = []
 
-        pageUri = TRAINASONE_SERVER_URL + "/api/sync/activities"
+        if exhaustive:
+            pageUri = TRAINASONE_SERVER_URL + "/api/sync/activities?pageSize=200"
+        else:
+            pageUri = TRAINASONE_SERVER_URL + "/api/sync/activities"
 
         while True:
             response = requests.get(pageUri,  headers=self._apiHeaders(serviceRecord.Authorization))
