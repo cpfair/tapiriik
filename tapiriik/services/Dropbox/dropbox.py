@@ -28,7 +28,7 @@ class DropboxService(ServiceBase):
     ReceivesStationaryActivities = False
 
     ActivityTaggingTable = {  # earlier items have precedence over
-        ActivityType.Running: "run",
+        ActivityType.Running: "run(?!tastic)",
         ActivityType.MountainBiking: "m(oun)?t(ai)?n\s*bik(e|ing)",
         ActivityType.Cycling: "(cycl(e|ing)|bik(e|ing))",
         ActivityType.Walking: "walk",
@@ -123,6 +123,7 @@ class DropboxService(ServiceBase):
     def _tagActivity(self, text):
         for act, pattern in self.ActivityTaggingTable.items():
             if re.search(pattern, text, re.IGNORECASE):
+                logger.debug("File %s tagged as %s" % (text, act))
                 return act
         return None
 
