@@ -127,10 +127,10 @@ class RideWithGPSService(ServiceBase):
             activity = UploadedActivity()
 
             logger.debug("Name " + act["name"] + ":")
-            if len(act["name"].strip()):
+            if act.get("name", None) and len(act["name"].strip()):
                 activity.Name = act["name"]
 
-            if len(act["description"].strip()):
+            if act.get("description", None) and len(act["description"].strip()):
                 activity.Notes = act["description"]
 
             activity.GPS = act["is_gps"]
