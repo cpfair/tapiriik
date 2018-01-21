@@ -3,6 +3,9 @@ from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AerobiaService(ServiceBase):
     ID = "aerobia"
@@ -21,6 +24,8 @@ class AerobiaService(ServiceBase):
             raise APIException("Login error")
 
         response = user_resp.text()
+
+        logger.debug("LoggerTest")
 
         # Something extra unusual has happened
         raise APIException(
