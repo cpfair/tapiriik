@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class AerobiaService(ServiceBase):
     ID = "aerobia"
     DisplayName = "Aerobia"
+    DisplayAbbreviation = "ARB"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
 
     _urlRoot = "http://aerobia.ru/"
@@ -17,7 +18,7 @@ class AerobiaService(ServiceBase):
 
     def Authorize(self, username, password):
         session = self._prepare_request()
-        requestParameters = {"username": username,  "password": password}
+        requestParameters = {"user[email]": username,  "user[password]": password}
         user_resp = session.get(self._loginUrlRoot, params=requestParameters)
 
         if user_resp.status_code != 200:
