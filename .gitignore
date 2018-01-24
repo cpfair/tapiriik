@@ -4,3 +4,5 @@
 local_settings.py
 *.sublime-workspace
 private/
+.vscode/
+C:/
