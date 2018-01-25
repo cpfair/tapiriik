@@ -2,7 +2,6 @@ from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBas
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.sessioncache import SessionCache
-from html.parser import HTMLParser
 
 import requests
 import logging
@@ -19,9 +18,7 @@ class AerobiaService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
 
-    _parser = HTMLParser()
     _sessionCache = SessionCache("aerobia", lifetime=timedelta(minutes=120), freshen_on_get=True)
-    _userid = ""
 
     _urlRoot = "http://aerobia.ru/"
     _loginUrlRoot = _urlRoot + "users/sign_in"
@@ -36,7 +33,7 @@ class AerobiaService(ServiceBase):
         if record:
             #  longing for C style overloads...
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
-            email = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
+            username = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
 
         session = requests.Session()
         # Without user-agent patch aerobia requests doesn't work   
@@ -48,30 +45,47 @@ class AerobiaService(ServiceBase):
         if res.status_code >= 500 and res.status_code < 600:
             raise APIException("Login exception %s - %s" % (res.status_code, res.text), user_exception=UserException(UserExceptionType.Authorization))
 
-        id_match = re.search(r"users/(\d+)/workouts", res.text)
-        if not id_match:
+        # Userid is needed for urls
+        idMatch = re.search(r"users/(\d+)/workouts", res.text)
+        if not idMatch:
             raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         else:
-            self._userid = id_match.group(0)
+            session.user_id = idMatch.group(1)
 
-        self._parser.feed(res.text)
+        # Token is passed with GET queries as a parameter
+        tokenMatch = re.search(r"meta content=\"(.+)\" name=\"csrf-token", res.text)
+        if not tokenMatch:
+            raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        else:
+            session.authenticity_token = tokenMatch.group(1)
 
-        #TODO extract token
-        session.access_token = "foo"
         self._sessionCache.Set(record.ExternalID if record else username, session)
 
         return session
 
     def _with_auth(self, session, params={}):
-        # For whatever reason the access_token needs to be a GET parameter :(
-        params.update({"""authenticity_token""": session.access_token})
+        # For whatever reason the authenticity_token needs to be a GET parameter :(
+        params.update({"\"authenticity_token\"": session.authenticity_token})
         return params
 
     def Authorize(self, username, password):
         from tapiriik.auth.credential_storage import CredentialStore
         session = self._get_session(username=username, password=password, skip_cache=True)
 
-        return (self._userid, {}, {"Email": CredentialStore.Encrypt(username), "Password": CredentialStore.Encrypt(password)})
+        return (session.user_id, {}, {"Email": CredentialStore.Encrypt(username), "Password": CredentialStore.Encrypt(password)})
+
+    def DownloadActivityList(self, serviceRecord, exhaustive_start_date=None):
+        pass
+
+    def DownloadActivity(self, serviceRecord, activity):
+        pass
+
+    # Should return an uploadId for storage and potential use in DeleteActivity
+    def UploadActivity(self, serviceRecord, activity):
+        pass
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        pass
 
     def DeleteCachedData(self, serviceRecord):
         pass  # No cached data...
