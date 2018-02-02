@@ -157,17 +157,14 @@ class AerobiaService(ServiceBase):
         tcx_data = session.get(self._urlRoot + "export/workouts/%d/tcx" %activity.ServiceData["ActivityID"])
         return TCXIO.Parse(tcx_data, activity)
 
+    # todo Should return an uploadId for storage and potential use in DeleteActivity
     def UploadActivity(self, serviceRecord, activity):
         session = self._get_session(serviceRecord)
         tcx_data = TCXIO.Dump(activity)
         file = {"workout_file[file][]": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_data)}
         #todo why session dont contains token?
-        res = session.post(self._urlRoot + "import/files", params=self._with_auth(session), files=file)
-        res_obj = res.json()
-        #confirm file upload
-        session.get(res_obj.continue_path)
-        #return just uploaded activity id
-        return res_obj.id
+        req = session.post(self._urlRoot + "import/files", params=self._with_auth(session), files=file)
+        pass
 
     def DeleteActivity(self, serviceRecord, uploadId):
         session = self._get_session(serviceRecord)
