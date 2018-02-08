@@ -56,7 +56,7 @@ class AerobiaService(ServiceBase):
 
     SupportsActivityDeletion = True
 
-    _sessionCache = SessionCache("aerobia", lifetime=timedelta(minutes=120), freshen_on_get=False)
+    _sessionCache = SessionCache("aerobia", lifetime=timedelta(minutes=30), freshen_on_get=True)
 
     _urlRoot = "http://aerobia.ru/"
     _loginUrlRoot = _urlRoot + "users/sign_in"
@@ -103,16 +103,28 @@ class AerobiaService(ServiceBase):
 
         return session
 
-    def _with_auth(self, session, params={}):
+    def _get_user_token(self, serviceRecord):
+        userToken = None
+        if serviceRecord:
+            from tapiriik.auth.credential_storage import CredentialStore
+            userToken = CredentialStore.Decrypt(serviceRecord.ExtendedAuthorization["UserToken"])
+        return userToken
+
+    def _with_auth(self, serviceRecord, params={}):
         # For whatever reason the authenticity_token needs to be a parameter
-        params.update({"\"authenticity_token\"": session.authenticity_token})
+        params.update({"\"authenticity_token\"": self._get_user_token(serviceRecord)})
         return params
 
     def Authorize(self, username, password):
         from tapiriik.auth.credential_storage import CredentialStore
         session = self._get_session(username=username, password=password, skip_cache=True)
 
-        return (session.user_id, {}, {"Email": CredentialStore.Encrypt(username), "Password": CredentialStore.Encrypt(password)})
+        secret = {
+            "Email": CredentialStore.Encrypt(username), 
+            "Password": CredentialStore.Encrypt(password)#, 
+            #"UserToken": CredentialStore.Encrypt(session.authenticity_token)
+            }
+        return (session.user_id, {}, secret)
 
     def DownloadActivityList(self, serviceRecord, exhaustive_start_date=None):
         session = self._get_session(serviceRecord)
@@ -155,18 +167,20 @@ class AerobiaService(ServiceBase):
     def DownloadActivity(self, serviceRecord, activity):
         session = self._get_session(serviceRecord)
         tcx_data = session.get(self._urlRoot + "export/workouts/%d/tcx" %activity.ServiceData["ActivityID"])
+        #todo get notes!
         return TCXIO.Parse(tcx_data, activity)
 
     def UploadActivity(self, serviceRecord, activity):
-        session = self._get_session(serviceRecord)
+        session = self._get_session(serviceRecord, skip_cache=True)
         tcx_data = TCXIO.Dump(activity)
-        file = {"workout_file[file][]": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_data)}
+        file = {"workout_file[file][]": (tcx_data, "tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx")}
         #todo why session dont contains token?
-        res = session.post(self._urlRoot + "import/files", params=self._with_auth(session), files=file)
+        res = session.post(self._urlRoot + "import/files", params=self._with_auth(serviceRecord), files=file)
         res_obj = res.json()
         #confirm file upload
         session.get(res_obj.continue_path)
         #return just uploaded activity id
+        #todo change training notes!
         return res_obj.id
 
     def DeleteActivity(self, serviceRecord, uploadId):
