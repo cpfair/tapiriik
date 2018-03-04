@@ -215,7 +215,9 @@ class AerobiaService(ServiceBase):
         
         pagination = dairy_xml.find("pagination")
         #workouts_per_page = int(pagination.get("per_page"))
-        total_pages = int(pagination.get("total_pages")) 
+        # New accounts have no data pages initially
+        total_pages_str = pagination.get("total_pages")
+        total_pages = int(total_pages_str) if total_pages_str else 1
         
         for page in range(2, total_pages + 2):
             for workout_info in dairy_xml.findall("workouts/r"):
