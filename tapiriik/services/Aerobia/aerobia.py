@@ -8,6 +8,7 @@ from tapiriik.services.tcx import TCXIO
 from tapiriik.services.sessioncache import SessionCache
 
 from lxml import etree
+from bs4 import BeautifulSoup
 
 import requests
 import logging
@@ -130,16 +131,15 @@ class AerobiaService(ServiceBase):
 
     SupportsActivityDeletion = True
 
-    _sessionCache = SessionCache("aerobia_session", lifetime=timedelta(minutes=30), freshen_on_get=True)
-    _tokenCache = SessionCache("aerobia_token", lifetime=timedelta(minutes=120), freshen_on_get=True)
-
-    _utf8_parser = etree.XMLParser(encoding='utf-8')
+    _sessionCache = SessionCache("aerobia_session", lifetime=timedelta(minutes=120), freshen_on_get=True)
+    _tokenCache = SessionCache("aerobia_token", lifetime=timedelta(days=1), freshen_on_get=True)
 
     _urlRoot = "http://aerobia.ru/"
-    _loginUrlRoot = _urlRoot + "api/sign_in"
-    # api/calendar/:year/:month 
-    #_calendarUrl = _urlRoot + "api/calendar/%d/%d"
-    _workoutsUrl = _urlRoot + "api/workouts"
+    _apiRoot = "http://aerobia.ru/api/"
+    _loginUrlRoot = _apiRoot + "sign_in"
+    _workoutsUrl = _apiRoot + "workouts"
+    _workoutUrl = _apiRoot + "workouts/{id}.json"
+    _uploadsUrl = _apiRoot + "uploads.json"
 
     def _get_session(self, record=None, username=None, password=None, skip_cache=False):
         from tapiriik.auth.credential_storage import CredentialStore
@@ -163,14 +163,15 @@ class AerobiaService(ServiceBase):
         res = session.post(self._loginUrlRoot, data=request_parameters)
 
         if res.status_code != 200:
-            raise APIException("Login exception %s - %s" % (res.status_code, res.text), user_exception=UserException(UserExceptionType.Authorization))
+            raise APIException("Login exception {} - {}".format(res.status_code, res.text), user_exception=UserException(UserExceptionType.Authorization))
 
-        res_xml = etree.fromstring(res.text.encode('utf-8'), parser=self._utf8_parser)
+        res_xml = etree.fromstring(res.text.encode('utf-8'))
 
         info = res_xml.find("info")
         if info.get("status") != "ok":
             raise APIException(info.get("description"), user_exception=UserException(UserExceptionType.Authorization))
 
+        session.user_id = res_xml.find("user/id").get("value")
         # store response token
         token = res_xml.find("user/authentication_token").get("value")
         self._tokenCache.Set(record.ExternalID if record else username, token)
@@ -191,13 +192,13 @@ class AerobiaService(ServiceBase):
 
     def Authorize(self, username, password):
         from tapiriik.auth.credential_storage import CredentialStore
-        self._get_session(username=username, password=password, skip_cache=True)
+        session = self._get_session(username=username, password=password, skip_cache=True)
 
         secret = {
             "Email": CredentialStore.Encrypt(username), 
             "Password": CredentialStore.Encrypt(password)
             }
-        return (username, {}, secret)
+        return (session.user_id, {}, secret)
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
         session = self._get_session(serviceRecord)
@@ -207,7 +208,7 @@ class AerobiaService(ServiceBase):
 
         # use first query responce to detect pagination options as well
         dairy_data = session.get(self._workoutsUrl, params=self._with_auth(serviceRecord))
-        dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'), parser=self._utf8_parser)
+        dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
 
         info = dairy_xml.find("info")
         if info.get("status") != "ok":
@@ -229,7 +230,7 @@ class AerobiaService(ServiceBase):
 
             page_param = {"page": page}
             dairy_data = session.get(self._workoutsUrl, params=self._with_auth(serviceRecord, page_param))
-            dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'), parser=self._utf8_parser)
+            dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
 
         return activities, exclusions
 
@@ -239,10 +240,7 @@ class AerobiaService(ServiceBase):
         activity.StartTime = pytz.utc.localize(datetime.strptime(data.get("start_at"), "%Y-%m-%dT%H:%M:%SZ"))
         activity.EndTime = activity.StartTime + timedelta(0, float(data.get("duration")))
         sport_id = data.get("sport_id")
-        if not sport_id:
-            activity.Type = ActivityType.Other
-        else:
-            activity.Type = self._reverseActivityMappings[int(sport_id)]
+        activity.Type = self._reverseActivityMappings[int(sport_id)] if sport_id else ActivityType.Other
 
         distance = data.get("distance")
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(distance) if distance else None)
@@ -258,37 +256,53 @@ class AerobiaService(ServiceBase):
 
         activity.ServiceData = {"ActivityID": data.get("id")}
 
-        logger.debug("\tActivity s/t %s: %s" % (activity.StartTime, activity.Type))
+        logger.debug("\tActivity s/t {}: {}".format(activity.StartTime, activity.Type))
         activity.CalculateUID()
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
         session = self._get_session(serviceRecord)
-        # todo use api to download tcx when ready
-        tcx_data = session.get(self._urlRoot + "export/workouts/%s/tcx" %activity.ServiceData["ActivityID"], data=self._with_auth(serviceRecord))
-        # todo get notes!
-        return TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+        activity_id = activity.ServiceData["ActivityID"]
+
+        tcx_data = session.get("{}export/workouts/{}/tcx".format(self._urlRoot, activity_id), data=self._with_auth(serviceRecord))
+        activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+        # Obtain more information about activity
+        res = session.get(self._workoutUrl.format(id=activity_id), data=self._with_auth(serviceRecord))
+        activity_data = res.json()
+        activity_ex.Name = activity_data["name"]
+        # Notes comes as html. Hardly any other service will support this so needs to extract text data
+        if "body" in activity_data["post"]:
+            post_html = activity_data["post"]["body"]
+            soup = BeautifulSoup(post_html)
+            # Notes also contains styles, get rid of them
+            for style in soup("style"):
+                style.decompose()
+            activity_ex.Notes = soup.getText()
+
+        return activity_ex
 
     def UploadActivity(self, serviceRecord, activity):
         session = self._get_session(serviceRecord)
-        # todo use api to upload tcx when ready
+        # todo use correct mapping to upload activity correctly
+        #tcx_data = TCXIO.Dump(activity, self._activityMappings[activity.Type])
         tcx_data = TCXIO.Dump(activity)
-        files = {"workout_file[file][]": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + ".tcx", tcx_data)}
-        res = session.post(self._urlRoot + "import/files", data=self._with_auth(serviceRecord), files=files)
+        data = {"name": activity.Name,
+                "description": activity.Notes}
+        files = {"file": ("tap-sync-{}-{}.tcx".format(os.getpid(), activity.UID), tcx_data)}
+        res = session.post(self._uploadsUrl, data=self._with_auth(serviceRecord, data), files=files)
         res_obj = res.json()
-        # confirm file upload
-        session.get(self._urlRoot + res_obj['continue_path'], data=self._with_auth(serviceRecord))
-        # todo change training notes!
 
+        if "error" in res_obj:
+            raise APIException(res_obj["error"], user_exception=UserException(UserExceptionType.UploadError))
+        
         # return just uploaded activity id
-        return res_obj['id']
+        return res_obj["workouts"][0]["id"]
 
     def DeleteActivity(self, serviceRecord, uploadId):
         session = self._get_session(serviceRecord)
 
         delete_parameters = {"_method" : "delete"}
-        delete_parameters = self._with_auth(serviceRecord, delete_parameters)
-        session.post(self._urlRoot + "workouts/%d" %uploadId, data=delete_parameters)
+        session.post("{}workouts/{}".format(self._urlRoot, uploadId), data=self._with_auth(serviceRecord, delete_parameters))
 
     def DeleteCachedData(self, serviceRecord):
         pass  # No cached data...
