@@ -26,7 +26,9 @@ class AerobiaService(ServiceBase):
     DisplayAbbreviation = "ARB"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
-
+    UserProfileURL = "http://www.aerobia.ru/users/{0}"
+    UserActivityURL = "http://www.aerobia.ru/users/{0}/workouts/{1}"
+    
     # common -> aerobia
     _activityMappings = {
         ActivityType.Running : 2,
