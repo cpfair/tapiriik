@@ -234,10 +234,6 @@ class StravaService(ServiceBase):
         for stream in streamdata:
             ridedata[stream["type"]] = stream["data"]
 
-        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime) # Strava doesn't support laps, but we need somewhere to put the waypoints.
-        activity.Laps = [lap]
-        lap.Waypoints = []
-
         hasHR = "heartrate" in ridedata and len(ridedata["heartrate"]) > 0
         hasCadence = "cadence" in ridedata and len(ridedata["cadence"]) > 0
         hasTemp = "temp" in ridedata and len(ridedata["temp"]) > 0
@@ -250,53 +246,73 @@ class StravaService(ServiceBase):
             raise APIException("Strava error " + ridedata["error"])
 
         inPause = False
-
         waypointCt = len(ridedata["time"])
-        for idx in range(0, waypointCt - 1):
+        activity.Laps = []
 
-            waypoint = Waypoint(activity.StartTime + timedelta(0, ridedata["time"][idx]))
-            if "latlng" in ridedata:
-                latlng = ridedata["latlng"][idx]
-                waypoint.Location = Location(latlng[0], latlng[1], None)
-                if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
-                    waypoint.Location.Longitude = None
-                    waypoint.Location.Latitude = None
+        lapsdata = requests.get("https://www.strava.com/api/v3/activities/{}/laps".format(activityID), headers=self._apiHeaders(svcRecord))
 
-            if hasAltitude:
-                if not waypoint.Location:
-                    waypoint.Location = Location(None, None, None)
-                waypoint.Location.Altitude = float(ridedata["altitude"][idx])
+        for lapdata in lapsdata.json():
+            lapStart = pytz.utc.localize(datetime.strptime(lapdata["start_date"], "%Y-%m-%dT%H:%M:%SZ"))
+            lapEnd = lapStart + timedelta(0, lapdata["elapsed_time"])
+            lap = Lap(startTime=lapStart, endTime=lapEnd)
 
-            # When pausing, Strava sends this format:
-            # idx = 100 ; time = 1000; moving = true
-            # idx = 101 ; time = 1001; moving = true  => convert to Pause
-            # idx = 102 ; time = 2001; moving = false => convert to Resume: (2001-1001) seconds pause
-            # idx = 103 ; time = 2002; moving = true
+            lap.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=lapdata["distance"])
+            if "max_speed" in lapdata or "average_speed" in lapdata:
+                lap.Stats.Speed = ActivityStatistic(ActivityStatisticUnit.MetersPerSecond, avg=lapdata["average_speed"] if "average_speed" in lapdata else None, max=lapdata["max_speed"] if "max_speed" in lapdata else None)
+            lap.Stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=lapdata["moving_time"] if "moving_time" in lapdata and lapdata["moving_time"] > 0 else None)
+            if "average_cadence" in lapdata:
+                lap.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=lapdata["average_cadence"]))
 
-            if idx == 0:
-                waypoint.Type = WaypointType.Start
-            elif idx == waypointCt - 2:
-                waypoint.Type = WaypointType.End
-            elif idx < waypointCt - 2 and ridedata["moving"][idx+1] and inPause:
-                waypoint.Type = WaypointType.Resume
-                inPause = False
-            elif idx < waypointCt - 2 and not ridedata["moving"][idx+1] and not inPause:
-                waypoint.Type = WaypointType.Pause
-                inPause = True
+            lap.Waypoints = []
+            activity.Laps.append(lap)
 
-            if hasHR:
-                waypoint.HR = ridedata["heartrate"][idx]
-            if hasCadence:
-                waypoint.Cadence = ridedata["cadence"][idx]
-            if hasTemp:
-                waypoint.Temp = ridedata["temp"][idx]
-            if hasPower:
-                waypoint.Power = ridedata["watts"][idx]
-            if hasVelocity:
-                waypoint.Speed = ridedata["velocity_smooth"][idx]
-            if hasDistance:
-                waypoint.Distance = ridedata["distance"][idx]
-            lap.Waypoints.append(waypoint)
+            waypoinStartIndex = lapdata["start_index"]
+            waypoinEndIndex = lapdata["end_index"]
+            for idx in range(waypoinStartIndex, waypoinEndIndex):
+
+                waypoint = Waypoint(activity.StartTime + timedelta(0, ridedata["time"][idx]))
+                if "latlng" in ridedata:
+                    latlng = ridedata["latlng"][idx]
+                    waypoint.Location = Location(latlng[0], latlng[1], None)
+                    if waypoint.Location.Longitude == 0 and waypoint.Location.Latitude == 0:
+                        waypoint.Location.Longitude = None
+                        waypoint.Location.Latitude = None
+
+                if hasAltitude:
+                    if not waypoint.Location:
+                        waypoint.Location = Location(None, None, None)
+                    waypoint.Location.Altitude = float(ridedata["altitude"][idx])
+
+                # When pausing, Strava sends this format:
+                # idx = 100 ; time = 1000; moving = true
+                # idx = 101 ; time = 1001; moving = true  => convert to Pause
+                # idx = 102 ; time = 2001; moving = false => convert to Resume: (2001-1001) seconds pause
+                # idx = 103 ; time = 2002; moving = true
+
+                if idx == 0:
+                    waypoint.Type = WaypointType.Start
+                elif idx == waypointCt - 2:
+                    waypoint.Type = WaypointType.End
+                elif idx < waypointCt - 2 and ridedata["moving"][idx+1] and inPause:
+                    waypoint.Type = WaypointType.Resume
+                    inPause = False
+                elif idx < waypointCt - 2 and not ridedata["moving"][idx+1] and not inPause:
+                    waypoint.Type = WaypointType.Pause
+                    inPause = True
+
+                if hasHR:
+                    waypoint.HR = ridedata["heartrate"][idx]
+                if hasCadence:
+                    waypoint.Cadence = ridedata["cadence"][idx]
+                if hasTemp:
+                    waypoint.Temp = ridedata["temp"][idx]
+                if hasPower:
+                    waypoint.Power = ridedata["watts"][idx]
+                if hasVelocity:
+                    waypoint.Speed = ridedata["velocity_smooth"][idx]
+                if hasDistance:
+                    waypoint.Distance = ridedata["distance"][idx]
+                lap.Waypoints.append(waypoint)
 
         return activity
 
