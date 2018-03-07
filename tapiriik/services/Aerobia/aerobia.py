@@ -29,23 +29,24 @@ class AerobiaService(ServiceBase):
     UserProfileURL = "http://www.aerobia.ru/users/{0}"
     UserActivityURL = "http://www.aerobia.ru/users/{0}/workouts/{1}"
     
-    # common -> aerobia
+    # common -> aerobia (garmin tcx sport names)
+    # todo may better to include this into tcxio logic instead
     _activityMappings = {
-        ActivityType.Running : 2,
-        ActivityType.Cycling : 1,
-        ActivityType.MountainBiking : 56,
-        ActivityType.Walking : 19,
-        ActivityType.Hiking : 43,
-        ActivityType.DownhillSkiing : 9,
-        ActivityType.CrossCountrySkiing : 3,
-        ActivityType.Skating : 46,
-        ActivityType.Swimming : 21,
-        ActivityType.Rowing : 13,
-        ActivityType.Elliptical : 74,
-        ActivityType.Gym : 54,
-        ActivityType.Climbing : 63,
-        ActivityType.StrengthTraining : 72,
-        ActivityType.Other : 68
+        ActivityType.Running : "Running",
+        ActivityType.Cycling : "Biking",
+        ActivityType.MountainBiking : "Mountain biking",
+        ActivityType.Walking : "Walking",
+        ActivityType.Hiking : "Hiking",
+        ActivityType.DownhillSkiing : "Skiing downhill",
+        ActivityType.CrossCountrySkiing : "Cross country skiing",
+        ActivityType.Skating : "Skating",
+        ActivityType.Swimming : "Swimming",
+        ActivityType.Rowing : "Rowing",
+        ActivityType.Elliptical : "Ellips",
+        ActivityType.Gym : "Gym",
+        ActivityType.Climbing : "Rock climbing",
+        ActivityType.StrengthTraining : "Ofp",
+        ActivityType.Other : "Sport"
     }
 
     # aerobia -> common
@@ -286,8 +287,8 @@ class AerobiaService(ServiceBase):
     def UploadActivity(self, serviceRecord, activity):
         session = self._get_session(serviceRecord)
         # todo use correct mapping to upload activity correctly
-        #tcx_data = TCXIO.Dump(activity, self._activityMappings[activity.Type])
-        tcx_data = TCXIO.Dump(activity)
+        tcx_data = TCXIO.Dump(activity, self._activityMappings[activity.Type])
+        #tcx_data = TCXIO.Dump(activity)
         data = {"name": activity.Name,
                 "description": activity.Notes}
         files = {"file": ("tap-sync-{}-{}.tcx".format(os.getpid(), activity.UID), tcx_data)}
