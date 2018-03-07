@@ -148,7 +148,7 @@ class GarminConnectService(ServiceBase):
             wait_time = max(0, min_period - (time.time() - last_req_start))
             time.sleep(wait_time)
 
-            self._rate_lock.seek(0)
+            self._rate_lock.truncate()
             self._rate_lock.write(str(time.time()))
             self._rate_lock.flush()
         finally:
