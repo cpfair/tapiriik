@@ -44,6 +44,7 @@ class Service:
             BeginnerTriathlete,
             Setio,
             Singletracker,
+            PolarFlow,
             Aerobia
         ] + PRIVATE_SERVICES
 
@@ -70,6 +71,7 @@ class Service:
             Pulsstory,
             Setio,
             Singletracker,
+            PolarFlow,
             Aerobia
         ] + PRIVATE_SERVICES
 
