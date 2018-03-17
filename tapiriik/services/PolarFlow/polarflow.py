@@ -26,7 +26,7 @@ class PolarFlowService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True # otherwise looks ugly in the small frame
 
-    SupportsHR = SupportsCadence = SupportsPower = True
+    SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = True
 
     ReceivesActivities = False # polar accesslink does not support polar data change.
     
@@ -36,7 +36,7 @@ class PolarFlowService(ServiceBase):
     
     PartialSyncTriggerPollInterval = timedelta(minutes=1)
 
-    # For mapping common->Polar Flow
+    # For mapping common->Polar Flow (text has no meaning due to upload unsupported)
     _activity_type_mappings = {
         ActivityType.Cycling: "Ride",
         ActivityType.MountainBiking: "Ride",
@@ -50,10 +50,30 @@ class PolarFlowService(ServiceBase):
         ActivityType.Swimming: "Swim",
         ActivityType.Gym: "Workout",
         ActivityType.Rowing: "Rowing",
-        ActivityType.Elliptical: "Elliptical",
         ActivityType.RollerSkiing: "RollerSki",
         ActivityType.StrengthTraining: "WeightTraining",
         ActivityType.Climbing: "RockClimbing",
+        ActivityType.Wheelchair: "Wheelchair",
+        ActivityType.Other: "Other",
+    }
+
+    # Polar Flow -> common
+    _reverse_activity_type_mappings = {
+        "RUNNING": ActivityType.Running,
+        "CYCLING": ActivityType.Cycling,
+        "MOUNTAIN_BIKING": ActivityType.MountainBiking,
+        "WALKING": ActivityType.Walking,
+        "HIKING": ActivityType.Hiking,
+        "DOWNHILL_SKIING": ActivityType.DownhillSkiing,
+        "CROSS-COUNTRY_SKIING": ActivityType.CrossCountrySkiing,
+        "SNOWBOARDING": ActivityType.Snowboarding,
+        "SKATING": ActivityType.Skating,
+        "SWIMMING": ActivityType.Swimming,
+        "PARASPORTS_WHEELCHAIR": ActivityType.Wheelchair,
+        "ROWING": ActivityType.Rowing,
+        "STRENGTH_TRAINING": ActivityType.StrengthTraining,
+        "OTHER_INDOOR": ActivityType.Other,
+        "OTHER_OUTDOOR": ActivityType.Other,
     }
 
     SupportedActivities = list(_activity_type_mappings.keys())
@@ -80,13 +100,10 @@ class PolarFlowService(ServiceBase):
             "/v3/users/{userid}/exercise-transactions".format(userid=serviceRecord.ExternalID),
             headers=self._api_headers(serviceRecord))
         # No new training data status_code=204
-        return res.json()["transaction-id"] if res.status_code == 201 else None
+        return res.json()["resource-uri"] if res.status_code == 201 else None
 
-    def _commit_transaction(self, serviceRecord, id):
-        res = requests.put(self._api_endpoint + 
-            "/v3/users/{userid}/exercise-transactions/{transactionid}"
-            .format(userid=serviceRecord.ExternalID, transactionid=id),
-            headers=self._api_headers(serviceRecord))
+    def _commit_transaction(self, serviceRecord, transaction_url):
+        res = requests.put(transaction_url, headers=self._api_headers(serviceRecord))
         
         # todo : should handle responce code?
         # 200	OK	Transaction has been committed and data deleted	None
@@ -94,8 +111,9 @@ class PolarFlowService(ServiceBase):
         # 404	Not Found	No transaction was found with given transaction id	None
         return True
 
-    def _api_headers(self, serviceRecord):
-        return {"Authorization": "Bearer {}".format(serviceRecord.Authorization["OAuthToken"])}
+    def _api_headers(self, serviceRecord, headers={}):
+        headers.update({"Authorization": "Bearer {}".format(serviceRecord.Authorization["OAuthToken"])})
+        return headers
 
     def WebInit(self):
         params = {'response_type':'code',
@@ -154,27 +172,38 @@ class PolarFlowService(ServiceBase):
         activities = []
         exclusions = []
         
-        transaction_id = self._create_transaction(serviceRecord)
+        transaction_url = self._create_transaction(serviceRecord)
 
-        if transaction_id:
-            res = requests.get(self._api_endpoint +
-                "/v3/users/{userid}/exercise-transactions/{transactionid}"
-                .format(userid=serviceRecord.ExternalID, transactionid=transaction_id),
-                headers=self._api_headers(serviceRecord))
-            
-            if res.status_code == 200:
-                for activity_link in res.json()["exercises"]:
-                    activity = UploadedActivity()
-                    #data = requests.get(activity_link, headers=self._api_headers(serviceRecord))
-                    # tcx is gzipped
-                    tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
-                    tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
-                    activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
-                    activities.append(activity_ex)
-
-            self._commit_transaction(serviceRecord, transaction_id)
+        if transaction_url:
+            try:
+                res = requests.get(transaction_url, headers=self._api_headers(serviceRecord))
+                
+                if res.status_code == 200:
+                    for activity_url in res.json()["exercises"]:
+                        data = requests.get(activity_url, headers=self._api_headers(serviceRecord))
+                        activity = self._create_activity(data.json())
+                        # NOTE tcx have to be gzipped but it actually doesn't
+                        # https://www.polar.com/accesslink-api/?python#get-tcx
+                        #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
+                        #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
+                        tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
+                        activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+                        activities.append(activity_ex)
+            finally:
+                self._commit_transaction(serviceRecord, transaction_url)
 
         return activities, exclusions
+
+    def _create_activity(self, activity_data):
+        activity = UploadedActivity()
+
+        activity.Stationary = activity_data["has-route"]
+        if "detailed-sport-info" in activity_data and activity_data["detailed-sport-info"] in self._reverse_activity_type_mappings:
+            activity.Type = self._reverse_activity_type_mappings[activity_data["detailed-sport-info"]]
+        else:
+            activity.Type = ActivityType.Other
+
+        return activity
 
     def DownloadActivity(self, serviceRecord, activity):
         # Due to Polar Flow api specific (transactions + new-data-only)
@@ -183,4 +212,12 @@ class PolarFlowService(ServiceBase):
 
     def DeleteCachedData(self, serviceRecord):
         # Nothing to delete
+        pass
+
+    def DeleteActivity(self, serviceRecord, uploadId):
+        # Not supported
+        pass
+
+    def UploadActivity(self, serviceRecord, activity):
+        # Not supported
         pass
