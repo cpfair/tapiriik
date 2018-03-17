@@ -44,7 +44,8 @@ class Service:
             BeginnerTriathlete,
             Setio,
             Singletracker,
-            PolarFlow
+            PolarFlow,
+            Aerobia
         ] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():
@@ -70,7 +71,8 @@ class Service:
             Pulsstory,
             Setio,
             Singletracker,
-            PolarFlow
+            PolarFlow,
+            Aerobia
         ] + PRIVATE_SERVICES
 
     def WebInit():

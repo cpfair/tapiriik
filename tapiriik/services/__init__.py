@@ -38,6 +38,8 @@ from tapiriik.services.Singletracker import SingletrackerService
 Singletracker = SingletrackerService()
 from tapiriik.services.PolarFlow import PolarFlowService
 PolarFlow = PolarFlowService()
+from tapiriik.services.Aerobia import AerobiaService
+Aerobia = AerobiaService()
 
 PRIVATE_SERVICES = []
 try:
