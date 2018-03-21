@@ -26,6 +26,9 @@ class PolarFlowService(ServiceBase):
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True # otherwise looks ugly in the small frame
 
+    UserProfileURL = "https://flow.polar.com/training/profiles/{0}"
+    UserActivityURL = "https://flow.polar.com/training/analysis/{1}"
+
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = True
 
     ReceivesActivities = False # polar accesslink does not support polar data change.
