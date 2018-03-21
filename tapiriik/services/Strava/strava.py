@@ -312,7 +312,7 @@ class StravaService(ServiceBase):
 
             if hasHR:
                 waypoint.HR = ridedata["heartrate"][idx]
-                hrSum += waypoint.HR
+                hrSum += waypoint.HR if waypoint.HR else 0
                 hrMax = waypoint.HR if waypoint.HR > hrMax else hrMax
             if hasCadence:
                 waypoint.Cadence = ridedata["cadence"][idx]
@@ -320,7 +320,7 @@ class StravaService(ServiceBase):
                 waypoint.Temp = ridedata["temp"][idx]
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx]
-                powerSum += waypoint.Power
+                powerSum += waypoint.Power if waypoint.Power else 0
             if hasVelocity:
                 waypoint.Speed = ridedata["velocity_smooth"][idx]
             if hasDistance:
