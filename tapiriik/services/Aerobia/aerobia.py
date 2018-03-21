@@ -1,4 +1,4 @@
-# Synchronisation module for aerobia.ru
+# Synchronization module for aerobia.ru
 # (c) 2018 Anton Ashmarin, aashmarin@gmail.com
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
@@ -166,10 +166,15 @@ class AerobiaService(ServiceBase):
         if info.get("status") != "ok":
             raise APIException(info.get("description"), user_exception=UserException(UserExceptionType.Authorization))
 
-        user_id = res_xml.find("user/id").get("value")
+        user_id = int(res_xml.find("user/id").get("value"))
         user_token = res_xml.find("user/authentication_token").get("value")
 
         return user_id, user_token
+
+    def _refresh_token(self, record):
+        logger.info("refreshing auth token")
+        user_id, user_token = self._get_auth_data(record=record)
+        record.Authorization.update({"OAuthToken": user_token})
 
     def _with_auth(self, record, params={}):
         params.update({"authentication_token": record.Authorization["OAuthToken"]})
@@ -192,17 +197,17 @@ class AerobiaService(ServiceBase):
 
         activities = []
         exclusions = []
+        dairy_xml = None
 
         # use first query responce to detect pagination options as well
-        dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord))
-        dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
+        try:
+            dairy_xml = self._get_dairy_xml(serviceRecord)
+        except APIException:
+            # try to refresh token first
+            self._refresh_token(serviceRecord)
+            dairy_xml = self._get_dairy_xml(serviceRecord)
 
-        info = dairy_xml.find("info")
-        if info.get("status") != "ok":
-            raise APIException(info.get("description"), user_exception=UserException(UserExceptionType.DownloadError))
-        
         pagination = dairy_xml.find("pagination")
-        #workouts_per_page = int(pagination.get("per_page"))
         # New accounts have no data pages initially
         total_pages_str = pagination.get("total_pages")
         total_pages = int(total_pages_str) if total_pages_str else 1
@@ -215,11 +220,19 @@ class AerobiaService(ServiceBase):
             if not exhaustive or page > total_pages:
                 break
 
-            page_param = {"page": page}
-            dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord, page_param))
-            dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
+            dairy_xml = self._get_dairy_xml(serviceRecord, {"page": page})
 
         return activities, exclusions
+
+    def _get_dairy_xml(self, serviceRecord, params={}):
+        dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord, params))
+        dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
+
+        info = dairy_xml.find("info")
+        if info.get("status") != "ok":
+            raise APIException(info.get("description"), user_exception=UserException(UserExceptionType.DownloadError))
+
+        return dairy_xml
 
     def _create_activity(self, data):
         activity = UploadedActivity()
@@ -283,6 +296,11 @@ class AerobiaService(ServiceBase):
         
         # return just uploaded activity id
         return res_obj["workouts"][0]["id"]
+
+    def UserUploadedActivityURL(self, uploadId):
+        raise NotImplementedError
+        # TODO need to include user id
+        #return self.UserActivityURL.format(userId, uploadId)
 
     def DeleteActivity(self, serviceRecord, uploadId):
         self._patch_user_agent()
