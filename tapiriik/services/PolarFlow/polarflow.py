@@ -1,4 +1,4 @@
-# Synchronisation module for flow.polar.com
+# Synchronization module for flow.polar.com
 # (c) 2018 Anton Ashmarin, aashmarin@gmail.com
 from tapiriik.settings import WEB_ROOT, POLAR_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
@@ -25,6 +25,9 @@ class PolarFlowService(ServiceBase):
     DisplayAbbreviation = "PF"
     AuthenticationType = ServiceAuthenticationType.OAuth
     AuthenticationNoFrame = True # otherwise looks ugly in the small frame
+
+    UserProfileURL = "https://flow.polar.com/training/profiles/{0}"
+    UserActivityURL = "https://flow.polar.com/training/analysis/{1}"
 
     SupportsHR = SupportsCalories = SupportsCadence = SupportsTemp = SupportsPower = True
 
@@ -158,7 +161,7 @@ class PolarFlowService(ServiceBase):
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
     def PollPartialSyncTrigger(self, multiple_index):
-        response = requests.post(self._api_endpoint + "/v3/notifications", auth=HTTPBasicAuth(POLAR_CLIENT_ID, POLAR_CLIENT_SECRET))
+        response = requests.get(self._api_endpoint + "/v3/notifications", auth=HTTPBasicAuth(POLAR_CLIENT_ID, POLAR_CLIENT_SECRET))
 
         to_sync_ids = []
         if response.status_code == 200:
