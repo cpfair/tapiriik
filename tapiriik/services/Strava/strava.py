@@ -239,9 +239,14 @@ class StravaService(ServiceBase):
 
         activity.Laps = []
 
-        lapsdata = requests.get("https://www.strava.com/api/v3/activities/{}/laps".format(activityID), headers=self._apiHeaders(svcRecord))
+        res = requests.get("https://www.strava.com/api/v3/activities/{}".format(activityID), headers=self._apiHeaders(svcRecord))
+        activityDetails = res.json()
 
-        for lapdata in lapsdata.json():
+        activity.Notes = activityDetails["description"]
+
+        lapsdata = activityDetails["laps"]
+
+        for lapdata in lapsdata:
 
             lapWaypoints, lapStats = self._process_lap_waypoints(activity, ridedata, lapdata)
 
@@ -251,7 +256,7 @@ class StravaService(ServiceBase):
             lap.Waypoints = lapWaypoints
             
             # In single-lap case lap stats needs to match global stats
-            lap.Stats = activity.Stats if len(lapsdata.json()) == 1 else lapStats
+            lap.Stats = activity.Stats if len(lapsdata) == 1 else lapStats
 
             activity.Laps.append(lap)
 
@@ -312,7 +317,7 @@ class StravaService(ServiceBase):
 
             if hasHR:
                 waypoint.HR = ridedata["heartrate"][idx]
-                hrSum += waypoint.HR
+                hrSum += waypoint.HR if waypoint.HR else 0
                 hrMax = waypoint.HR if waypoint.HR > hrMax else hrMax
             if hasCadence:
                 waypoint.Cadence = ridedata["cadence"][idx]
@@ -320,7 +325,7 @@ class StravaService(ServiceBase):
                 waypoint.Temp = ridedata["temp"][idx]
             if hasPower:
                 waypoint.Power = ridedata["watts"][idx]
-                powerSum += waypoint.Power
+                powerSum += waypoint.Power if waypoint.Power else 0
             if hasVelocity:
                 waypoint.Speed = ridedata["velocity_smooth"][idx]
             if hasDistance:
