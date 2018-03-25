@@ -1,4 +1,4 @@
-# Synchronisation module for flow.polar.com
+# Synchronization module for flow.polar.com
 # (c) 2018 Anton Ashmarin, aashmarin@gmail.com
 from tapiriik.settings import WEB_ROOT, POLAR_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
@@ -103,6 +103,11 @@ class PolarFlowService(ServiceBase):
             "/v3/users/{userid}/exercise-transactions".format(userid=serviceRecord.ExternalID),
             headers=self._api_headers(serviceRecord))
         # No new training data status_code=204
+        if res.status_code == 401:
+            #TODO why it could happen
+            logger.debug("No authorization to create transaction")
+            raise APIException("No authorization to create transaction", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+
         return res.json()["resource-uri"] if res.status_code == 201 else None
 
     def _commit_transaction(self, serviceRecord, transaction_url):
@@ -161,7 +166,7 @@ class PolarFlowService(ServiceBase):
         serviceRecord.SetPartialSyncTriggerSubscriptionState(False)
 
     def PollPartialSyncTrigger(self, multiple_index):
-        response = requests.post(self._api_endpoint + "/v3/notifications", auth=HTTPBasicAuth(POLAR_CLIENT_ID, POLAR_CLIENT_SECRET))
+        response = requests.get(self._api_endpoint + "/v3/notifications", auth=HTTPBasicAuth(POLAR_CLIENT_ID, POLAR_CLIENT_SECRET))
 
         to_sync_ids = []
         if response.status_code == 200:
@@ -191,6 +196,7 @@ class PolarFlowService(ServiceBase):
                         #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
                         tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
                         activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+                        logger.debug("\tActivity s/t {}: {}".format(activity_ex.StartTime, activity_ex.Type))
                         activities.append(activity_ex)
             finally:
                 self._commit_transaction(serviceRecord, transaction_url)
