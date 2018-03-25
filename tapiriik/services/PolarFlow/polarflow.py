@@ -189,15 +189,18 @@ class PolarFlowService(ServiceBase):
                 if res.status_code == 200:
                     for activity_url in res.json()["exercises"]:
                         data = requests.get(activity_url, headers=self._api_headers(serviceRecord))
-                        activity = self._create_activity(data.json())
-                        # NOTE tcx have to be gzipped but it actually doesn't
-                        # https://www.polar.com/accesslink-api/?python#get-tcx
-                        #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
-                        #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
-                        tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
-                        activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
-                        logger.debug("\tActivity s/t {}: {}".format(activity_ex.StartTime, activity_ex.Type))
-                        activities.append(activity_ex)
+                        if data.status_code == 200:
+                            activity = self._create_activity(data.json())
+                            # NOTE tcx have to be gzipped but it actually doesn't
+                            # https://www.polar.com/accesslink-api/?python#get-tcx
+                            #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
+                            #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
+                            tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
+                            activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+                            logger.debug("\tActivity s/t {}: {}".format(activity_ex.StartTime, activity_ex.Type))
+                            activities.append(activity_ex)
+                        else:
+                            logger.debug("Cannot recieve training at url: {}".format(activity_url))
             finally:
                 self._commit_transaction(serviceRecord, transaction_url)
 
