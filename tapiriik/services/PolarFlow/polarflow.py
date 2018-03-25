@@ -3,7 +3,7 @@
 from tapiriik.settings import WEB_ROOT, POLAR_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, UserException, UserExceptionType
-from tapiriik.services.interchange import UploadedActivity, ActivityType
+from tapiriik.services.interchange import UploadedActivity, ActivityType, SourceFile, ActivityFileType
 from tapiriik.services.tcx import TCXIO
 
 from datetime import datetime, timedelta
@@ -196,7 +196,9 @@ class PolarFlowService(ServiceBase):
                             #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
                             #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
                             tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
-                            activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+                            tcx_text_content = tcx_data.text.encode('utf-8')
+                            activity_ex = TCXIO.Parse(tcx_text_content, activity)
+                            activity_ex.SourceFile = SourceFile(tcx_text_content, ActivityFileType.TCX)
                             logger.debug("\tActivity s/t {}: {}".format(activity_ex.StartTime, activity_ex.Type))
                             activities.append(activity_ex)
                         else:
