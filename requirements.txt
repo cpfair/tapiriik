@@ -13,3 +13,4 @@ redis
 django-ipware
 smashrun-client>=0.2.0
 beautifulsoup4
+isodate
