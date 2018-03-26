@@ -2,7 +2,7 @@
 # (c) 2018 Anton Ashmarin, aashmarin@gmail.com
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap, ActivityFileType
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
 
@@ -282,9 +282,15 @@ class AerobiaService(ServiceBase):
         return activity_ex
 
     def UploadActivity(self, serviceRecord, activity):
-        # todo use correct mapping to upload activity correctly
-        tcx_data = TCXIO.Dump(activity, self._activityMappings[activity.Type])
-        #tcx_data = TCXIO.Dump(activity)
+        tcx_data = None
+        # If some service provides ready-to-use tcx data why not to use it?
+        if activity.SourceFile:
+            tcx_data = activity.SourceFile.getContent(ActivityFileType.TCX)
+            # Set aerobia-understandable sport name
+            tcx_data = re.sub(r'(<Sport=\")\w+(\">)', r'\1{}\2'.format(self._activityMappings[activity.Type]), tcx_data) if tcx_data else None
+        if not tcx_data:
+            tcx_data =  TCXIO.Dump(activity, self._activityMappings[activity.Type])
+        
         data = {"name": activity.Name,
                 "description": activity.Notes}
         files = {"file": ("tap-sync-{}-{}.tcx".format(os.getpid(), activity.UID), tcx_data)}
