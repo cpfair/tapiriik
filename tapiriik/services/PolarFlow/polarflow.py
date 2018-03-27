@@ -186,30 +186,29 @@ class PolarFlowService(ServiceBase):
         transaction_url = self._create_transaction(serviceRecord)
 
         if transaction_url:
-            try:
-                res = requests.get(transaction_url, headers=self._api_headers(serviceRecord))
-                
-                if res.status_code == 200:
-                    for activity_url in res.json()["exercises"]:
-                        data = requests.get(activity_url, headers=self._api_headers(serviceRecord))
-                        if data.status_code == 200:
-                            activity = self._create_activity(data.json())
-                            # NOTE tcx have to be gzipped but it actually doesn't
-                            # https://www.polar.com/accesslink-api/?python#get-tcx
-                            #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
-                            #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
-                            tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
-                            try:
-                                activity = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
-                                activity.SourceFile = SourceFile(tcx_data.text, ActivityFileType.TCX)
-                            except lxml.etree.XMLSyntaxError:
-                                logger.debug("Cannot recieve training tcx at url: {}".format(activity_url + "/tcx"))
-                            finally:
-                                activities.append(activity)
-                        else:
-                            logger.debug("Cannot recieve training at url: {}".format(activity_url))
-            finally:
-                self._commit_transaction(serviceRecord, transaction_url)
+            res = requests.get(transaction_url, headers=self._api_headers(serviceRecord))
+            
+            if res.status_code == 200:
+                for activity_url in res.json()["exercises"]:
+                    data = requests.get(activity_url, headers=self._api_headers(serviceRecord))
+                    if data.status_code == 200:
+                        activity = self._create_activity(data.json())
+                        # NOTE tcx have to be gzipped but it actually doesn't
+                        # https://www.polar.com/accesslink-api/?python#get-tcx
+                        #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
+                        #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
+                        tcx_data = requests.get(activity_url + "/tcx", headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
+                        try:
+                            activity = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+                            activity.SourceFile = SourceFile(tcx_data.text, ActivityFileType.TCX)
+                        except lxml.etree.XMLSyntaxError:
+                            logger.debug("Cannot recieve training tcx at url: {}".format(activity_url + "/tcx"))
+                        finally:
+                            activities.append(activity)
+                    else:
+                        logger.debug("Cannot recieve training at url: {}".format(activity_url))
+            # Transaction should be commited in case no error to prevent training data loss
+            self._commit_transaction(serviceRecord, transaction_url)
 
         return activities, exclusions
 
