@@ -201,6 +201,8 @@ class AerobiaService(ServiceBase):
 
         # use first query responce to detect pagination options as well
         try:
+            # TODO Failed to establish a new connection: [WinError 10060] may happen while listing.
+            # may happen here. What to do then?
             dairy_xml = self._get_dairy_xml(serviceRecord)
         except APIException:
             # try to refresh token first
@@ -213,14 +215,21 @@ class AerobiaService(ServiceBase):
         total_pages = int(total_pages_str) if total_pages_str else 1
         
         for page in range(2, total_pages + 2):
-            for workout_info in dairy_xml.findall("workouts/r"):
-                activity = self._create_activity(workout_info)
-                activities.append(activity)
+            if dairy_xml:
+                for workout_info in dairy_xml.findall("workouts/r"):
+                    activity = self._create_activity(workout_info)
+                    activities.append(activity)
             
             if not exhaustive or page > total_pages:
                 break
-
-            dairy_xml = self._get_dairy_xml(serviceRecord, {"page": page})
+            # TODO Failed to establish a new connection: [WinError 10060] may happen while listing.
+            # Pass it by now to make sync possible
+            try:
+                dairy_xml = self._get_dairy_xml(serviceRecord, {"page": page})
+            except:
+                logger.debug("Unable to fetch dairy page")
+                dairy_xml = None
+                pass
 
         return activities, exclusions
 
