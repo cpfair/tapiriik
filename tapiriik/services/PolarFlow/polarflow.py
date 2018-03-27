@@ -225,7 +225,7 @@ class PolarFlowService(ServiceBase):
         activity.EndTime = activity.StartTime + isodate.parse_duration(activity_data["duration"])
 
         distance = activity_data["distance"] if "distance" in activity_data else None
-        activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(distance) if distance else None)
+        activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(distance) if distance else None)
         hr_data = activity_data["heart-rate"] if "heart-rate" in activity_data else None
         avg_hr = hr_data["average"] if "average" in hr_data else None
         max_hr = hr_data["maximum"] if "maximum" in hr_data else None
