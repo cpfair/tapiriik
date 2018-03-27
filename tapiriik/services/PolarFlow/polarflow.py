@@ -222,16 +222,16 @@ class PolarFlowService(ServiceBase):
         else:
             activity.Type = ActivityType.Other
 
-        activity.StartTime = pytz.utc.localize(datetime.strptime(activity_data["start-time"], "%Y-%m-%dT%H:%M:%SZ"))
+        activity.StartTime = pytz.utc.localize(isodate.parse_datetime(activity_data["start-time"]))
         activity.EndTime = activity.StartTime + isodate.parse_duration(activity_data["duration"])
 
-        distance = activity_data["distance"]
+        distance = activity_data["distance"] if "distance" in activity_data else None
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(distance) if distance else None)
-        hr_data = activity_data["heart-rate"]
+        hr_data = activity_data["heart-rate"] if "heart-rate" in activity_data else None
         avg_hr = hr_data["average"] if "average" in hr_data else None
         max_hr = hr_data["maximum"] if "maximum" in hr_data else None
         activity.Stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=float(avg_hr) if avg_hr else None, max=float(max_hr) if max_hr else None))
-        calories = activity_data["calories"]
+        calories = activity_data["calories"] if "calories" in activity_data else None
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=int(calories) if calories else None)
 
         activity.ServiceData = {"ActivityID": activity_data["id"]}
