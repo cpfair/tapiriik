@@ -182,7 +182,7 @@ class DecathlonCoachService(ServiceBase):
         return (id_resp.json()["ldid"], {"RefreshToken": refresh_token})
 
     def RevokeAuthorization(self, serviceRecord):
-        resp = requests.get(OauthEndpoint + "/logout?access_token="+serviceRecord.Authorization["RefreshToken"])
+        resp = requests.get(self.OauthEndpoint + "/logout?access_token="+serviceRecord.Authorization["RefreshToken"])
         if resp.status_code != 204 and resp.status_code != 200:
             raise APIException("Unable to deauthorize DecathlonCoach auth token, status " + str(resp.status_code) + " resp " + resp.text)
         pass
@@ -433,11 +433,11 @@ class DecathlonCoachService(ServiceBase):
                         measureSpeed.text = str(int(wp.Speed*3600))
                         measureSpeed.attrib["id"] = self._unitMap["speedcurrent"]
                     if wp.Calories is not None:
-                        measureKcaletree.SubElement(oneMeasureLocation, "VALUE")
+                        measureKcaletree = etree.SubElement(oneMeasureLocation, "VALUE")
                         measureKcaletree.text = str(int(wp.Calories))
                         measureKcal.attrib["id"] =  self._unitMap["kcal"] 
                     if wp.Distance is not None:
-                        measureDistance= etree.SubElement(oneMeasureLocation, "VALUE")
+                        measureDistance = etree.SubElement(oneMeasureLocation, "VALUE")
                         measureDistance.text = str(int(wp.Distance))
                         measureDistance.attrib["id"] =  self._unitMap["distance"] 
         
@@ -501,7 +501,7 @@ class DecathlonCoachService(ServiceBase):
     
 
     def DeleteActivity(self, serviceRecord, uploadId):
-        headers = self._getAuthHeaders(svcRecord)
+        headers = self._getAuthHeaders(serviceRecord)
         del_res = requests.delete(self.ApiEndpoint + "/activity/+d/summary.xml" % uploadId , headers=headers)
         del_res.raise_for_status()
 
