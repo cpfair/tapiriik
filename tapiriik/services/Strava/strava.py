@@ -341,10 +341,12 @@ class StravaService(ServiceBase):
         stats.MovingTime = ActivityStatistic(ActivityStatisticUnit.Seconds, value=lapdata["moving_time"] if "moving_time" in lapdata and lapdata["moving_time"] > 0 else None)
         if "average_cadence" in lapdata:
             stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=lapdata["average_cadence"]))
-        if hasHR:
-            stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=hrSum / pointsCount, max=hrMax))
-        if hasPower:
-            stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=powerSum / pointsCount)
+        # Activity could have laps with no trackpoints
+        if pointsCount > 0:
+            if hasHR:
+                stats.HR.update(ActivityStatistic(ActivityStatisticUnit.BeatsPerMinute, avg=hrSum / pointsCount, max=hrMax))
+            if hasPower:
+                stats.Power = ActivityStatistic(ActivityStatisticUnit.Watts, avg=powerSum / pointsCount)
         
         return lapWaypoints, stats
 
