@@ -14,6 +14,7 @@ import logging
 import re
 import os
 import pytz
+import time
 
 from datetime import datetime, timedelta
 
@@ -171,6 +172,25 @@ class AerobiaService(ServiceBase):
 
         return user_id, user_token
 
+    def _call(self, serviceRecord, request_call, *args):
+        retry_count = 3
+        resp = None
+        for i in range(0, retry_count):
+            try:
+                resp = request_call(args)
+                break
+            except APIException:
+                # try to refresh token first
+                self._refresh_token(serviceRecord)
+            except requests.exceptions.ConnectTimeout:
+                # Aerobia sometimes answer like
+                # Failed to establish a new connection: [WinError 10060] may happen while listing.
+                # wait a bit and retry
+                time.sleep(.2)
+        if resp is None:
+            raise APIException("Api call not succeed", user_exception=UserException(UserExceptionType.DownloadError))
+        return resp
+
     def _refresh_token(self, record):
         logger.info("refreshing auth token")
         user_id, user_token = self._get_auth_data(record=record)
@@ -197,17 +217,10 @@ class AerobiaService(ServiceBase):
 
         activities = []
         exclusions = []
-        dairy_xml = None
 
+        fetch_dairy = lambda page=1: self._get_dairy_xml(serviceRecord, page)
         # use first query responce to detect pagination options as well
-        try:
-            # TODO Failed to establish a new connection: [WinError 10060] may happen while listing.
-            # may happen here. What to do then?
-            dairy_xml = self._get_dairy_xml(serviceRecord)
-        except APIException:
-            # try to refresh token first
-            self._refresh_token(serviceRecord)
-            dairy_xml = self._get_dairy_xml(serviceRecord)
+        dairy_xml = self._call(serviceRecord, fetch_dairy)
 
         pagination = dairy_xml.find("pagination")
         # New accounts have no data pages initially
@@ -215,26 +228,18 @@ class AerobiaService(ServiceBase):
         total_pages = int(total_pages_str) if total_pages_str else 1
         
         for page in range(2, total_pages + 2):
-            if dairy_xml:
-                for workout_info in dairy_xml.findall("workouts/r"):
-                    activity = self._create_activity(workout_info)
-                    activities.append(activity)
+            for workout_info in dairy_xml.findall("workouts/r"):
+                activity = self._create_activity(workout_info)
+                activities.append(activity)
             
             if not exhaustive or page > total_pages:
                 break
-            # TODO Failed to establish a new connection: [WinError 10060] may happen while listing.
-            # Pass it by now to make sync possible
-            try:
-                dairy_xml = self._get_dairy_xml(serviceRecord, {"page": page})
-            except:
-                logger.debug("Unable to fetch dairy page")
-                dairy_xml = None
-                pass
+            dairy_xml = self._call(serviceRecord, fetch_dairy, page)
 
         return activities, exclusions
 
-    def _get_dairy_xml(self, serviceRecord, params={}):
-        dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord, params))
+    def _get_dairy_xml(self, serviceRecord, page=1):
+        dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord, {"page": page}))
         dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
 
         info = dairy_xml.find("info")
@@ -319,10 +324,9 @@ class AerobiaService(ServiceBase):
 
     def DeleteActivity(self, serviceRecord, uploadId):
         self._patch_user_agent()
-
         delete_parameters = {"_method" : "delete"}
-        requests.post("{}workouts/{}".format(self._urlRoot, uploadId), data=self._with_auth(serviceRecord, delete_parameters))
-        pass
+        delete_call = lambda: requests.post("{}workouts/{}".format(self._urlRoot, uploadId), data=self._with_auth(serviceRecord, delete_parameters))
+        self._call(serviceRecord, delete_call)
 
     def DeleteCachedData(self, serviceRecord):
         pass  # No cached data...
