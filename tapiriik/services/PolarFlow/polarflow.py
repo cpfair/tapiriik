@@ -183,9 +183,13 @@ class PolarFlowService(ServiceBase):
         activities = []
         exclusions = []
         
-        transaction_url = self._create_transaction(serviceRecord)
+        # In case account was not polled for a long pereod there could be more data than 
+        # can be downloaded in scope of single transaction (50) items
+        while True:
+            transaction_url = self._create_transaction(serviceRecord)
+            if not transaction_url:
+                break
 
-        if transaction_url:
             res = requests.get(transaction_url, headers=self._api_headers(serviceRecord))
             
             if res.status_code == 200:
