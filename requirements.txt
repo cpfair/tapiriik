@@ -5,10 +5,12 @@ lxml
 dropbox
 python-dateutil
 Django==1.8.2
-pycrypto
+pycryptodome
 celery
 django-pipeline==1.5.1
 requests_oauthlib==0.4.0
 redis
 django-ipware
 smashrun-client>=0.2.0
+beautifulsoup4
+isodate
