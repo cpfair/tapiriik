@@ -312,13 +312,13 @@ class GarminConnectService(ServiceBase):
                 activity_name = act["activityName"]
                 logger.debug("Name " + activity_name if activity_name is not None else "Untitled" + ":")
                 if activity_name is not None and len(activity_name.strip()) and activity_name != "Untitled": # This doesn't work for internationalized accounts, oh well.
-                    activity.Name = act["activityName"]
+                    activity.Name = activity_name
 
                 activity_description = act["description"]
                 if activity_description is not None and len(activity_description.strip()):
                     activity.Notes = activity_description
 
-                activity.StartTime = pytz.utc.localize(datetime.strptime(act["startTimeLocal"], "%Y-%m-%d %H:%M:%S"))
+                activity.StartTime = pytz.utc.localize(datetime.strptime(act["startTimeGMT"], "%Y-%m-%d %H:%M:%S"))
                 if act["elapsedDuration"] is not None:
                     activity.EndTime = activity.StartTime + timedelta(0, float(act["elapsedDuration"])/1000)
                 else:
@@ -328,19 +328,6 @@ class GarminConnectService(ServiceBase):
 
                 if "distance" in act and float(act["distance"]) != 0:
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["distance"]))
-
-                #TODO : deviceId 
-                logger.debug("Device id: {}".format(act["deviceId"] if act["deviceId"] is not None else "No device"))
-                # if "device" in act and act["device"]["key"] != "unknown":
-                # devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.GC, {"Key": act["device"]["key"]})
-                # ver_split = act["device"]["key"].split(".")
-                # ver_maj = None
-                # ver_min = None
-                # if len(ver_split) == 4:
-                #     # 2.90.0.0
-                #     ver_maj = int(ver_split[0])
-                #     ver_min = int(ver_split[1])
-                # activity.Device = Device(devId, verMaj=ver_maj, verMin=ver_min)
 
                 activity.Type = self._resolveActivityType(act["activityType"]["typeKey"])
 
