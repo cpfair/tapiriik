@@ -286,7 +286,7 @@ class GarminConnectService(ServiceBase):
         return self._activityMappings[act_type]
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        #http://connect.garmin.com/proxy/activity-search-service-1.0/json/activities?&start=0&limit=50
+        #https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities?limit=20&start=0
         page = 1
         pageSz = 100
         activities = []
@@ -294,71 +294,50 @@ class GarminConnectService(ServiceBase):
         while True:
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
 
-            res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-search-service-1.0/json/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}), serviceRecord)
+            res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}), serviceRecord)
 
             try:
-                res = res.json()["results"]
+                res = res.json()
             except ValueError:
                 res_txt = res.text # So it can capture in the log message
-                raise APIException("Parse failure in GC list resp: %s - %s" % (res.status_code, res.text))
-            if "activities" not in res:
-                break  # No activities on this page - empty account.
-            for act in res["activities"]:
-                act = act["activity"]
+                raise APIException("Parse failure in GC list resp: %s - %s" % (res.status_code, res_txt))
+            for act in res:
                 activity = UploadedActivity()
+                # stationary activities have movingDuration = None while non-gps static activities have 0.0
+                activity.Stationary = act["movingDuration"] is None
+                activity.GPS = act["hasPolyline"]
 
-                # Don't really know why sumSampleCountTimestamp doesn't appear in swim activities - they're definitely timestamped...
-                activity.Stationary = "sumSampleCountSpeed" not in act and "sumSampleCountTimestamp" not in act
-                activity.GPS = "endLatitude" in act
+                activity.Private = act["privacy"]["typeKey"] == "private"
 
-                activity.Private = act["privacy"]["key"] == "private"
+                activity_name = act["activityName"]
+                logger.debug("Name " + activity_name if activity_name is not None else "Untitled" + ":")
+                if activity_name is not None and len(activity_name.strip()) and activity_name != "Untitled": # This doesn't work for internationalized accounts, oh well.
+                    activity.Name = activity_name
 
-                try:
-                    activity.TZ = pytz.timezone(act["activityTimeZone"]["key"])
-                except pytz.exceptions.UnknownTimeZoneError:
-                    activity.TZ = pytz.FixedOffset(float(act["activityTimeZone"]["offset"]) * 60)
+                activity_description = act["description"]
+                if activity_description is not None and len(activity_description.strip()):
+                    activity.Notes = activity_description
 
-                logger.debug("Name " + act["activityName"]["value"] + ":")
-                if len(act["activityName"]["value"].strip()) and act["activityName"]["value"] != "Untitled": # This doesn't work for internationalized accounts, oh well.
-                    activity.Name = act["activityName"]["value"]
-
-                if len(act["activityDescription"]["value"].strip()):
-                    activity.Notes = act["activityDescription"]["value"]
-
-                # beginTimestamp/endTimestamp is in UTC
-                activity.StartTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["beginTimestamp"]["millis"])/1000))
-                if "sumElapsedDuration" in act:
-                    activity.EndTime = activity.StartTime + timedelta(0, round(float(act["sumElapsedDuration"]["value"])))
-                elif "sumDuration" in act:
-                    activity.EndTime = activity.StartTime + timedelta(minutes=float(act["sumDuration"]["minutesSeconds"].split(":")[0]), seconds=float(act["sumDuration"]["minutesSeconds"].split(":")[1]))
+                activity.StartTime = pytz.utc.localize(datetime.strptime(act["startTimeGMT"], "%Y-%m-%d %H:%M:%S"))
+                if act["elapsedDuration"] is not None:
+                    activity.EndTime = activity.StartTime + timedelta(0, float(act["elapsedDuration"])/1000)
                 else:
-                    activity.EndTime = pytz.utc.localize(datetime.utcfromtimestamp(float(act["endTimestamp"]["millis"])/1000))
+                    activity.EndTime = activity.StartTime + timedelta(0, float(act["duration"]))
+
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
-                activity.AdjustTZ()
 
-                if "sumDistance" in act and float(act["sumDistance"]["value"]) != 0:
-                    activity.Stats.Distance = ActivityStatistic(self._unitMap[act["sumDistance"]["uom"]], value=float(act["sumDistance"]["value"]))
+                if "distance" in act and float(act["distance"]) != 0:
+                    activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["distance"]))
 
-                if "device" in act and act["device"]["key"] != "unknown":
-                    devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.GC, {"Key": act["device"]["key"]})
-                    ver_split = act["device"]["key"].split(".")
-                    ver_maj = None
-                    ver_min = None
-                    if len(ver_split) == 4:
-                        # 2.90.0.0
-                        ver_maj = int(ver_split[0])
-                        ver_min = int(ver_split[1])
-                    activity.Device = Device(devId, verMaj=ver_maj, verMin=ver_min)
-
-                activity.Type = self._resolveActivityType(act["activityType"]["key"])
+                activity.Type = self._resolveActivityType(act["activityType"]["typeKey"])
 
                 activity.CalculateUID()
 
                 activity.ServiceData = {"ActivityID": int(act["activityId"])}
 
                 activities.append(activity)
-            logger.debug("Finished page " + str(page) + " of " + str(res["search"]["totalPages"]))
-            if not exhaustive or int(res["search"]["totalPages"]) == page:
+            logger.debug("Finished page " + str(page))
+            if not exhaustive or len(res) == 0:
                 break
             else:
                 page += 1
