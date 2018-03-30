@@ -319,7 +319,10 @@ class GarminConnectService(ServiceBase):
                     activity.Notes = activity_description
 
                 activity.StartTime = pytz.utc.localize(datetime.strptime(act["startTimeLocal"], "%Y-%m-%d %H:%M:%S"))
-                activity.EndTime = activity.StartTime + timedelta(0, float(act["elapsedDuration"])/1000)
+                if act["elapsedDuration"] is not None:
+                    activity.EndTime = activity.StartTime + timedelta(0, float(act["elapsedDuration"])/1000)
+                else:
+                    activity.EndTime = activity.StartTime + timedelta(0, float(act["duration"]))
 
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
 
@@ -327,6 +330,7 @@ class GarminConnectService(ServiceBase):
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["distance"]))
 
                 #TODO : deviceId 
+                logger.debug("Device id: {}".format(act["deviceId"] if act["deviceId"] is not None else "No device"))
                 # if "device" in act and act["device"]["key"] != "unknown":
                 # devId = DeviceIdentifier.FindMatchingIdentifierOfType(DeviceIdentifierType.GC, {"Key": act["device"]["key"]})
                 # ver_split = act["device"]["key"].split(".")
