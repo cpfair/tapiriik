@@ -1148,6 +1148,10 @@ class SynchronizationTask:
                     finally:
                         del activity
 
+                for conn in self._serviceConnections:
+                    srv = conn.Service
+                    srv.SynchronizationComplete(conn)
+
             except SynchronizationCompleteException:
                 # This gets thrown when there is obviously nothing left to do - but we still need to clean things up.
                 logger.info("SynchronizationCompleteException thrown")

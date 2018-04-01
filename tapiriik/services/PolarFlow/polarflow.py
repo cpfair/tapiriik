@@ -209,7 +209,7 @@ class PolarFlowService(ServiceBase):
     def _create_activity(self, activity_data):
         activity = UploadedActivity()
 
-        activity.Stationary = activity_data["has-route"]
+        activity.Stationary = not activity_data["has-route"]
         if "detailed-sport-info" in activity_data and activity_data["detailed-sport-info"] in self._reverse_activity_type_mappings:
             activity.Type = self._reverse_activity_type_mappings[activity_data["detailed-sport-info"]]
         else:
@@ -227,7 +227,7 @@ class PolarFlowService(ServiceBase):
         calories = activity_data["calories"] if "calories" in activity_data else None
         activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=int(calories) if calories else None)
 
-        activity.ServiceData.update({"ActivityID": activity_data["id"]})
+        activity.ServiceData = {"ActivityID": activity_data["id"]}
 
         logger.debug("\tActivity s/t {}: {}".format(activity.StartTime, activity.Type))
 
