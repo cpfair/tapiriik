@@ -240,11 +240,15 @@ class PolarFlowService(ServiceBase):
         #tcx_data_raw = requests.get(activity_link + "/tcx", headers=self._api_headers(serviceRecord))
         #tcx_data = gzip.GzipFile(fileobj=StringIO(tcx_data_raw)).read()
         tcx_url = serviceRecord.ServiceData["Transaction-uri"] + "/exercises/{}/tcx".format(activity.ServiceData["ActivityID"])
-        tcx_data = requests.get(tcx_url, headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
+        response = requests.get(tcx_url, headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
+        if response.status_code == 404:
+            # Transaction was disbanded, all data linked to it will be returned in next transaction
+            raise APIException("Transaction disbanded", block=True, user_exception=UserException(UserExceptionType.DownloadError))
         try:
-            activity = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
+            tcx_data = response.text
+            activity = TCXIO.Parse(tcx_data.encode('utf-8'), activity)
             #TODO: uncomment when interchange will be ready
-            #activity.SourceFile = SourceFile(tcx_data.text, ActivityFileType.TCX)
+            #activity.SourceFile = SourceFile(tcx_data, ActivityFileType.TCX)
         except lxml.etree.XMLSyntaxError:
             logger.debug("Cannot recieve training tcx at url: {}".format(tcx_url))
         return activity
