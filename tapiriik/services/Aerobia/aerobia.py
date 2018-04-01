@@ -39,12 +39,15 @@ class AerobiaService(ServiceBase):
         ActivityType.Hiking : "Hiking",
         ActivityType.DownhillSkiing : "Skiing downhill",
         ActivityType.CrossCountrySkiing : "Cross country skiing",
+        ActivityType.Snowboarding : "Snowboard",
         ActivityType.Skating : "Skating",
         ActivityType.Swimming : "Swimming",
+        #ActivityType.Wheelchair : "Wheelchair",
         ActivityType.Rowing : "Rowing",
         ActivityType.Elliptical : "Ellips",
         ActivityType.Gym : "Gym",
         ActivityType.Climbing : "Rock climbing",
+        ActivityType.RollerSkiing : "Roller skiing",
         ActivityType.StrengthTraining : "Ofp",
         ActivityType.Other : "Sport"
     }
@@ -224,7 +227,7 @@ class AerobiaService(ServiceBase):
 
         pagination = dairy_xml.find("pagination")
         # New accounts have no data pages initially
-        total_pages_str = pagination.get("total_pages")
+        total_pages_str = pagination.get("total_pages") if pagination else None
         total_pages = int(total_pages_str) if total_pages_str else 1
         
         for page in range(2, total_pages + 2):
