@@ -3,7 +3,7 @@
 from tapiriik.settings import WEB_ROOT, POLAR_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.api import APIException, UserException, UserExceptionType
-from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit #SourceFile, ActivityFileType
+from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, SourceFile, ActivityFileType
 from tapiriik.services.tcx import TCXIO
 
 from datetime import datetime, timedelta
@@ -247,8 +247,7 @@ class PolarFlowService(ServiceBase):
         try:
             tcx_data = response.text
             activity = TCXIO.Parse(tcx_data.encode('utf-8'), activity)
-            #TODO: uncomment when interchange will be ready
-            #activity.SourceFile = SourceFile(tcx_data, ActivityFileType.TCX)
+            activity.SourceFile = SourceFile(tcx_data, ActivityFileType.TCX)
         except lxml.etree.XMLSyntaxError:
             logger.debug("Cannot recieve training tcx at url: {}".format(tcx_url))
         return activity
