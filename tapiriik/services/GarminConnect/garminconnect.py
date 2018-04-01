@@ -326,7 +326,7 @@ class GarminConnectService(ServiceBase):
 
                 logger.debug("Activity s/t " + str(activity.StartTime) + " on page " + str(page))
 
-                if "distance" in act and float(act["distance"]) != 0:
+                if "distance" in act and act["distance"] and float(act["distance"]) != 0:
                     activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Meters, value=float(act["distance"]))
 
                 activity.Type = self._resolveActivityType(act["activityType"]["typeKey"])
