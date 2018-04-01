@@ -115,6 +115,9 @@ class ServiceBase:
     def DeleteCachedData(self, serviceRecord):
         raise NotImplementedError
 
+    def SynchronizationComplete(self, serviceRecord):
+        pass
+
     def SubscribeToPartialSyncTrigger(self, serviceRecord):
         if self.PartialSyncRequiresTrigger:
             raise NotImplementedError
