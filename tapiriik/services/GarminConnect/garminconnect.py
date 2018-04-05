@@ -188,7 +188,7 @@ class GarminConnectService(ServiceBase):
             # "displayNameRequired": "false"
         }
         params = {
-            "service": "https://connect.garmin.com/post-auth/login",
+            "service": "https://connect.garmin.com/modern",
             # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/post-auth/login",
             # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
             # "webhost": "olaxpw-connect00.garmin.com",
@@ -228,7 +228,7 @@ class GarminConnectService(ServiceBase):
         # ...AND WE'RE NOT DONE YET!
 
         self._rate_limit()
-        gcRedeemResp = session.get("https://connect.garmin.com/post-auth/login", allow_redirects=False)
+        gcRedeemResp = session.get("https://connect.garmin.com/modern", allow_redirects=False)
         if gcRedeemResp.status_code != 302:
             raise APIException("GC redeem-start error %s %s" % (gcRedeemResp.status_code, gcRedeemResp.text))
         url_prefix = "https://connect.garmin.com"
