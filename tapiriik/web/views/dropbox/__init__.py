@@ -24,4 +24,4 @@ def browse(req):
         else:
             break
 
-    return HttpResponse(json.dumps(folders), content_type='application/json')
+    return HttpResponse(json.dumps(sorted(folders)), content_type='application/json')
