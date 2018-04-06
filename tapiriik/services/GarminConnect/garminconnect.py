@@ -189,8 +189,8 @@ class GarminConnectService(ServiceBase):
         }
         params = {
             "service": "https://connect.garmin.com/modern",
-            # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/post-auth/login",
-            # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/post-auth/login",
+            # "redirectAfterAccountLoginUrl": "http://connect.garmin.com/modern",
+            # "redirectAfterAccountCreationUrl": "http://connect.garmin.com/modern",
             # "webhost": "olaxpw-connect00.garmin.com",
             "clientId": "GarminConnect",
             "gauthHost": "https://sso.garmin.com/sso",
@@ -265,11 +265,14 @@ class GarminConnectService(ServiceBase):
     def Authorize(self, email, password):
         from tapiriik.auth.credential_storage import CredentialStore
         session = self._get_session(email=email, password=password, skip_cache=True)
-        # TODO: http://connect.garmin.com/proxy/userprofile-service/socialProfile/ has the proper immutable user ID, not that anyone ever changes this one...
         self._rate_limit()
-        username = session.get("http://connect.garmin.com/user/username").json()["username"]
-        if not len(username):
-            raise APIException("Unable to retrieve username", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        try:
+            dashboard = session.get("http://connect.garmin.com/modern")
+            userdata_json_str = re.search(r"VIEWER_SOCIAL_PROFILE\s*=\s*JSON\.parse\((.+)\);$", dashboard.text, re.MULTILINE).group(1)
+            userdata = json.loads(json.loads(userdata_json_str))
+            username = userdata["displayName"]
+        except Exception as e:
+            raise APIException("Unable to retrieve username: %s" % e, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
         return (username, {}, {"Email": CredentialStore.Encrypt(email), "Password": CredentialStore.Encrypt(password)})
 
     def UserUploadedActivityURL(self, uploadId):

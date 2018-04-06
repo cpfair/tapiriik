@@ -590,7 +590,11 @@ tapiriik.PopulateDropboxBrowser = function(){
 	$("#folderList ul").animate({"margin-left":(tapiriik.DropboxNavigatingUp?1:-1)*$("#folderList").width()});
 
 	if (tapiriik.OutstandingDropboxNavigate !== undefined) tapiriik.OutstandingDropboxNavigate.abort();
-	tapiriik.OutstandingDropboxNavigate = $.ajax("/dropbox/browse-ajax/" + tapiriik.DropboxBrowserPath).success(tapiriik.PopulateDropboxBrowserCallback);
+	tapiriik.OutstandingDropboxNavigate = $.ajax({
+		url: "/dropbox/browse-ajax/",
+		data: {path: tapiriik.DropboxBrowserPath},
+		success: tapiriik.PopulateDropboxBrowserCallback
+	});
 	tapiriik.CurrentDropboxBrowserPath = tapiriik.DropboxBrowserPath;
 };
 

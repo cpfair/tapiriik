@@ -4,9 +4,10 @@ from tapiriik.services import Service
 from tapiriik.auth import User
 import json
 
-def browse(req, path="/"):
+def browse(req):
     if req.user is None:
         return HttpResponse(status=403)
+    path = req.GET.get("path", "")
     if path == "/":
         path = ""
     svcRec = User.GetConnectionRecord(req.user, "dropbox")
@@ -23,4 +24,4 @@ def browse(req, path="/"):
         else:
             break
 
-    return HttpResponse(json.dumps(folders), content_type='application/json')
+    return HttpResponse(json.dumps(sorted(folders)), content_type='application/json')
