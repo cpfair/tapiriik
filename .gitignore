@@ -2,6 +2,7 @@
 *.pot
 *.pyc
 local_settings.py
-*.sublime-workspace
+*.sublime-*
 private/
 .vscode/
+C:/

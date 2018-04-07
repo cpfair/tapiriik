@@ -1402,3 +1402,21 @@ body.staging .sub::before {
 	color: black;
 	font-size:48px;
 }
+
+
+/* Datepicker styles */
+
+.pika-button:hover, .pika-row.pick-whole-week:hover .pika-button {
+	background: #8ba9cb;
+}
+
+.has-event .pika-button, .is-selected .pika-button {
+	background: #749ac4;
+	box-shadow: none;
+}
+
+.pika-single {
+	border-radius: 8px;
+	border-width: 4px;
+	border-color: #749ac4;
+}
