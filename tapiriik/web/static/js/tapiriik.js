@@ -4,16 +4,16 @@
 var csrftoken = $.cookie('csrftoken');
 
 function csrfSafeMethod(method) {
-    // these HTTP methods do not require CSRF protection
-    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+	// these HTTP methods do not require CSRF protection
+	return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
 }
 $.ajaxSetup({
-    crossDomain: false, // obviates need for sameOrigin test
-    beforeSend: function(xhr, settings) {
-        if (!csrfSafeMethod(settings.type)) {
-            xhr.setRequestHeader("X-CSRFToken", csrftoken);
-        }
-    }
+	crossDomain: false, // obviates need for sameOrigin test
+	beforeSend: function(xhr, settings) {
+		if (!csrfSafeMethod(settings.type)) {
+			xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		}
+	}
 });
 
 tapiriik = typeof(tapiriik) == "undefined" ? {} : tapiriik;
@@ -707,6 +707,10 @@ tapiriik.OpenPaymentPromoClaimCompletedDialog = function(){
 
 tapiriik.OpenSyncSettingsDialog = function(){
 	$(".syncSettingsBlock").slideDown(250);
+
+	// Apply datepicker here,
+	// because it is associated with an HTML element.
+	tapiriik.ApplyDatepicker();
 };
 
 tapiriik.CloseSyncSettingsDialog = function(){
@@ -966,6 +970,98 @@ tapiriik.Logout = function(){
 
 tapiriik.AB_Begin = function(key){
 	$.post("/ab/begin/" + key);
+};
+
+tapiriik.LoadStyle = function(url) {
+	var first, head, link;
+
+	link = document.createElement("link");
+	link.href = url;
+	link.rel = "stylesheet";
+	link.type = "text/css";
+	head = document.head;
+	first = head.firstChild;
+
+	// Prepend styles in 'head' section
+	head.insertBefore(link, first);
+};
+
+tapiriik.LoadScript = function(url, callback, error) {
+	var script = document.createElement("script");
+
+	// If "fallback" url passed as second argument
+	var args = Array.prototype.slice.call(arguments);
+	if (typeof callback === "string") {
+		var fallbackUrl = callback;
+		callback = error;
+		var errorOri = args[3];
+		error = function() {
+			tapiriik.LoadScript(fallbackUrl, callback, errorOri);
+		};
+	}
+
+	var cb = function() {
+		if (typeof callback === "function") {
+			callback();
+		}
+	};
+
+	// IE
+	if (script.readyState) {
+		script.onreadystatechange = function() {
+			if (script.readyState === "loaded" || script.readyState === "complete") {
+				script.onreadystatechange = null;
+				cb();
+			}
+		};
+
+	// Normal browsers
+	} else {
+		if (typeof error === "function") {
+			script.onerror = error;
+		}
+		script.onload = cb;
+	}
+
+	script.src = url;
+	script.async = true;
+	(document.body || document.head).appendChild(script);
+};
+
+tapiriik.ApplyDatepicker = function() {
+	var element = document.querySelector(".js-datepicker");
+	if (!element || this.ApplyDatepicker._loaded === true) {
+		return;
+	}
+	this.ApplyDatepicker._loaded = true;
+
+	var doneFunc = function() {
+		if (typeof Pikaday === "undefined") {
+			return;
+		}
+
+		function dateFormat(date) {
+			var strArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			var d = date.getDate();
+			var m = strArray[date.getMonth()];
+			var y = date.getFullYear();
+			return [d, m, y].join(" ");
+		}
+
+		var picker = new Pikaday({
+			field: element,
+			firstDay: 1,
+			toString: dateFormat
+		});
+	};
+
+	var errorFunc = function() {
+		tapiriik.LoadStyle("/static/js/datepicker/pikaday-1.6.1.min.css");
+		tapiriik.LoadScript("/static/js/datepicker/pikaday-1.6.1.min.js", doneFunc);
+	};
+
+	tapiriik.LoadStyle("//cdnjs.cloudflare.com/ajax/libs/pikaday/1.6.1/css/pikaday.min.css");
+	tapiriik.LoadScript("//cdnjs.cloudflare.com/ajax/libs/pikaday/1.6.1/pikaday.min.js", doneFunc, errorFunc);
 };
 
 $(window).load(tapiriik.Init);
