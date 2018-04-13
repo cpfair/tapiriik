@@ -1,3 +1,5 @@
-tapiriik includes some components of Django, an open-source project under the BSD license, the text of which is available at https://github.com/django/django/blob/master/LICENSE
+exercisync based on tapiriik project under the Apache 2.0 license, https://github.com/cpfair/tapiriik
 
-tapiriik requires, but does not include, several other freely available software packages - please refer to requirements.txt
+exercisync includes some components of Django, an open-source project under the BSD license, the text of which is available at https://github.com/django/django/blob/master/LICENSE
+
+exercisync requires, but does not include, several other freely available software packages - please refer to requirements.txt
