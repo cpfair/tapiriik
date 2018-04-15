@@ -26,6 +26,7 @@ class Service:
 
     def List():
         return [
+            Aerobia,
             RunKeeper,
             Strava,
             GarminConnect,
@@ -44,8 +45,7 @@ class Service:
             Smashrun,
             BeginnerTriathlete,
             Setio,
-            Singletracker,
-            Aerobia
+            Singletracker
         ] + PRIVATE_SERVICES
 
     def PreferredDownloadPriorityList():

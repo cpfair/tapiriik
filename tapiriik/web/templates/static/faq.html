@@ -3,25 +3,20 @@
 {% block content %}
 <div style="text-align:left;" class="faqBlocks">
 <h1>Questions: Answered</h1>
+
 <div>
-	<h3>What do I have to do to use tapiriik?</h3>
+	<h3>What do I have to do to use exercisync?</h3>
 	Just connect to all the services you would like to sync between, click &quot;Synchronize now,&quot; then forget ever reading this sentence.
 </div>
 
 <div class="right">
 	<h3>Do I need to re-connect my accounts every time?</h3>
-	<strong>No!</strong> Just <strong>connect to any one of the services you have already connected</strong>, and you will be signed back into tapiriik and ready to start another synchronization.
+	<strong>No!</strong> Just <strong>connect to any one of the services you have already connected</strong>, and you will be signed back into exercisync and ready to start another synchronization.
 </div>
-
 
 <div>
-	<h3>Do I need to visit tapiriik.com to sync activities?</h3>
-	<b>For $2/year, synchronization is fully automatic.</b> If you can't manage that, you can visit <a href="https://tapiriik.com">tapiriik.com</a> as often as you want to manually trigger a synchronization.
-</div>
-
-<div class="right">
-	<h3>$2?! <a href="http://theoatmeal.com/blog/apps" target="_new">I should really call my accountant first&hellip;</a></h3>
-	Synchronizing activities once costs <em>almost</em> nothing. Doing it 24 times a day, 365 days a year: less so. You paying <b>$2 a year covers these costs so tapiriik will always run smoothly</b>.
+	<h3>Do I need to visit exercisync.com to sync activities?</h3>
+	<b>No. Synchronization is fully automatic.</b> You can also manually trigger a synchronization any time you want.
 </div>
 
 <div>
@@ -29,24 +24,29 @@
 	<b>All supported activities in your account are synchronized</b>, not just new ones. Manually entered activities are supported, but are not currently being synchronized <i>to</i> TrainingPeaks (still some bugs to work out there).
 </div>
 
+<div>
+	<h3>What's the difference from <a href="https://tapiriik.com">tapiriik.com</a>?</h3>
+	It is pretty the same site but with free synchronization and some sport trackers tapiriik doesn't support.
+</div>
+
 <div class="right">
-	<h3>Will tapiriik create duplicate activities?</h3>
-	Nope - <b>even if you tracked the same activity on multiple devices, or with multiple apps,</b> tapiriik will see that and <b>won't create any duplicate activities</b>.
+	<h3>Will exercisync create duplicate activities?</h3>
+	Nope - <b>even if you tracked the same activity on multiple devices, or with multiple apps,</b> exercisync will see that and <b>won't create any duplicate activities</b>.
 </div>
 
 <div class="right">
 	<h3>What about activities I've marked as private?</h3>
-	By default, <b>tapiriik will <u>not</u> sync private activities</b>. If you wish, you can opt to have private activities synchronized. <b>tapiriik tries to keep private activities private</b>, but <b>not all services support private activities,</b> so you should be cognizant of your privacy settings across all of your accounts.
+	By default, <b>exercisync will <u>not</u> sync private activities</b>. If you wish, you can opt to have private activities synchronized. <b>exercisync tries to keep private activities private</b>, but <b>not all services support private activities,</b> so you should be cognizant of your privacy settings across all of your accounts.
 </div>
 
 <div>
 	<h3>What data gets synchronized?</h3>
-	As much as possible: in addition to your path, tapiriik will also sync <b>distance, speed, heart rate, cadence, power, calories burned and even temperature</b> between all services which support them.
+	As much as possible: in addition to your path, exercisync will also sync <b>distance, speed, heart rate, cadence, power, calories burned and even temperature</b> between all services which support them.
 </div>
 
 <div class="right">
 	<h3>The activity statistics changed after a sync!</h3>
-	Discrepancies in activity statistics, like elevation gained/lost or calories burned, appear when <strong>services use different algorithms to calculate the same values</strong>. <strong>tapiriik does not calculate these</strong> during synchronization.
+	Discrepancies in activity statistics, like elevation gained/lost or calories burned, appear when <strong>services use different algorithms to calculate the same values</strong>. <strong>exercisync does not calculate these</strong> during synchronization.
 </div>
 
 <div>
@@ -65,12 +65,12 @@
 </div>
 
 <div class="right">
-	<h3>Who is "tapiriik sync" on Garmin Connect?</h3>
-	To enable efficient synchronization, <b>tapiriik adds a special user</b> to your Garmin Connect connections. You should <b>never accept a separate connection request</b> from a user like this; the process is fully automatic. <a href="{% url 'garmin_connect_users' %}">Read more</a>.
+	<h3>Who is "exercisync" on Garmin Connect?</h3>
+	To enable efficient synchronization, <b>exercisync adds a special user</b> to your Garmin Connect connections. You should <b>never accept a separate connection request</b> from a user like this; the process is fully automatic. <a href="{% url 'garmin_connect_users' %}">Read more</a>.
 </div>
 
 <div>
-	<h3>Does tapiriik ever modify or delete my activities?</h3>
+	<h3>Does exercisync ever modify or delete my activities?</h3>
 	<b>No.</b> Simple as that.
 </div>
 
@@ -85,23 +85,13 @@
 </div>
 
 <div>
-	<h3>Will tapiriik support <i>Activity Tracking Site X</i>?</h3>
+	<h3>Will exercisync support <i>Activity Tracking Site X</i>?</h3>
 	Possibly. I've had very little time to add additional services while at the same time maintaining those already available.
 </div>
 
-<div class="right">
-	<h3>What about the new Garmin/TrainingPeaks sync?</h3>
-	<b>Feel free to use it</b> - I haven't had any reports of duplicate activities from using both the official Garmin Connect/TrainingPeaks connection and tapiriik at the same time.
-</div>
-
 <div>
-	<h3>Can tapiriik and CopyMySports be used together?</h3>
-	<b>I wouldn't recommend it</b> - CopyMySports will often create duplicates of activities tapiriik has already synchronized.
-</div>
-
-<div>
-	<h3>The logo's another language - what's up?</h3>
-	The best journeys answer questions that, in the beginning, you didn't even think to ask <i>- Jeff Johnson</i>
+	<h3>Can exercisync and CopyMySports be used together?</h3>
+	<b>I wouldn't recommend it</b> - CopyMySports will often create duplicates of activities exercisync has already synchronized.
 </div>
 
 </div>

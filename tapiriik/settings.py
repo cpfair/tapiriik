@@ -242,7 +242,20 @@ SOFT_LAUNCH_SERVICES = []
 DISABLED_SERVICES = []
 
 # Services no longer available - will be removed across the site + excluded from sync.
-WITHDRAWN_SERVICES = []
+WITHDRAWN_SERVICES = [
+    "nikeplus"
+    , "endomondo"
+    , "motivato"
+    , "pulsstory"
+    , "runkeeper"
+    , "setio"
+    , "singletracker"
+    , "sporttracks"
+    , "trainasone"
+    , "trainerroad"
+    , "trainingpeaks"
+    , "velohero"
+]
 
 # Where to put per-user sync logs
 USER_SYNC_LOGS = "./"

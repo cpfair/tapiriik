@@ -92,7 +92,7 @@ tapiriik.Init = function(){
 		});
 	});
 
-	setInterval(tapiriik.CycleLogo, 60 * 1000);
+	//setInterval(tapiriik.CycleLogo, 60 * 1000);
 };
 
 tapiriik.AddressChanged=function(){
@@ -954,6 +954,7 @@ tapiriik.ShowDebugInfo = function(){
 	infoPane.slideDown();
 };
 
+/*
 var logo_variant;
 tapiriik.CycleLogo = function(){
 	var variants = ["arabic", "hebrew", "hindi", "inuktitut", "punjabi"];
@@ -966,7 +967,7 @@ tapiriik.CycleLogo = function(){
 		$(this).remove();
 		img.appendTo($("<a>").attr("href", "/").prependTo($(".logo")).hide().fadeIn());
 	});
-};
+};*/
 
 tapiriik.Logout = function(){
 	$().redirect("/auth/logout", {csrfmiddlewaretoken: csrftoken});

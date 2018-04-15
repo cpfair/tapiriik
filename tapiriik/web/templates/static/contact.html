@@ -4,17 +4,12 @@
 {% block content %}
 <div class="contactBlock">
 	<h1>For system status updates</h1>
-	<a href="https://twitter.com/tapiriik" target="_new" class="large">@tapiriik</a>
+	<a href="http://aerobia.ru/clubs/425" target="_new" class="large">exercisync group on aerobia.ru</a>
 </div>
 <div class="contactBlock">
 	<h1>For help with your account</h1>
-    <p>Unfortunately, nowadays too many people use tapiriik to promise 1-on-1 support for synchronization problems any more - there's only one of me and a whole lot more of you!</p>
-    <p>If you are having issues with your account, <b>please check <a href="{% url 'activities_dashboard' %}">the activity dashboard</a></b> - it'll do its best to tell you what went wrong.</p>
-    <p>If you can't resolve the issue and would like your money back, use the email below to request a refund. And, if you had emailed me previously regarding your account and never received a reply, please accept my apologies.</p>
-</div>
-<div class="contactBlock">
-	<h1>For billing support</h1>
-	<a href="mailto:contact@tapiriik.com{% if user %}?body=My tapiriik user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank" class="large">contact@tapiriik.com</a>
+	<p>If you are having issues with your account, <b>please check <a href="{% url 'activities_dashboard' %}">the activity dashboard</a></b> - it'll do its best to tell you what went wrong.</p>
+	<a href="mailto:help@exercisync.com{% if user %}?body=My exercisync user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank" class="large">help@exercisync.com</a>
 	<p>If you're dissatisfied with the service and want a refund, make sure to mention that in the subject line so I can respond quickly.</p>
 </div>
 {% endblock %}
