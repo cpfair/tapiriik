@@ -69,7 +69,7 @@ class DecathlonCoachService(ServiceBase):
     _reverseActivityTypeMappings = {
         "381": ActivityType.Cycling,
         "385": ActivityType.Cycling,
-        "401": ActivityType.Cycling,
+        "401": ActivityType.Cycling,#Home Trainer"
         "388": ActivityType.MountainBiking,
         "121": ActivityType.Running,
         "126": ActivityType.Running,#trail
@@ -129,7 +129,6 @@ class DecathlonCoachService(ServiceBase):
         "400" : ActivityType.Other,#Stand Up Paddle"
         "340" : ActivityType.Other,#Padel"
         "326" : ActivityType.Other,#Tir à l'arc"
-        "401" : ActivityType.Other,#Home Trainer"
         "366" : ActivityType.Other#Char à voile"
     }
     
@@ -169,7 +168,6 @@ class DecathlonCoachService(ServiceBase):
             raise APIException("Invalid code")
         data = response.json()
         refresh_token = data["access_token"]
-        authorizationData = {"OAuthToken": data["access_token"]}
         # Retrieve the user ID, meh.
         id_resp = requests.get( self.OauthEndpoint + "/api/me?access_token="+data["access_token"])
         return (id_resp.json()["ldid"], {"RefreshToken": refresh_token})
@@ -321,10 +319,6 @@ class DecathlonCoachService(ServiceBase):
         lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime) 
         activity.Laps = [lap]
         lap.Waypoints = []
-                
-
-        
-        hasHR = False if "0" == root.find('.//HEARTRATE').text else True
         
         activity.GPS = False
 
