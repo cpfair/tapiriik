@@ -48,6 +48,7 @@ class GarminConnectService(ServiceBase):
 
     _activityMappings = {
                                 "running": ActivityType.Running,
+                                "indoor_running": ActivityType.Running,
                                 "cycling": ActivityType.Cycling,
                                 "mountain_biking": ActivityType.MountainBiking,
                                 "walking": ActivityType.Walking,
