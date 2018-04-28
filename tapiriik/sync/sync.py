@@ -938,6 +938,11 @@ class SynchronizationTask:
                         self._deferredServices.append(conn._id)
                         continue
 
+                    if not conn.Service.SuppliesActivities:
+                        logger.info("Service %s does not supply activities - deferring listing till first upload" % conn.Service.ID)
+                        self._deferredServices.append(conn._id)
+                        continue
+
                     if heartbeat_callback:
                         heartbeat_callback(SyncStep.List)
 
