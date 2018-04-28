@@ -243,14 +243,14 @@ class PolarFlowService(ServiceBase):
         response = requests.get(tcx_url, headers=self._api_headers(serviceRecord, {"Accept": "application/vnd.garmin.tcx+xml"}))
         if response.status_code == 404:
             # Transaction was disbanded, all data linked to it will be returned in next transaction
-            raise APIException("Transaction disbanded", block=True, user_exception=UserException(UserExceptionType.DownloadError))
+            raise APIException("Transaction disbanded", user_exception=UserException(UserExceptionType.DownloadError))
         try:
             tcx_data = response.text
             activity = TCXIO.Parse(tcx_data.encode('utf-8'), activity)
             #TODO: uncomment when interchange will be ready
             #activity.SourceFile = SourceFile(tcx_data, ActivityFileType.TCX)
         except lxml.etree.XMLSyntaxError:
-            logger.debug("Cannot recieve training tcx at url: {}".format(tcx_url))
+            raise APIException("Cannot recieve training tcx at url: {}".format(tcx_url), user_exception=UserException(UserExceptionType.DownloadError))
         return activity
 
     def SynchronizationComplete(self, serviceRecord):
