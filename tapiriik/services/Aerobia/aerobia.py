@@ -1,5 +1,6 @@
 # Synchronization module for aerobia.ru
 # (c) 2018 Anton Ashmarin, aashmarin@gmail.com
+from tapiriik.database import db
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
@@ -210,7 +211,9 @@ class AerobiaService(ServiceBase):
     def _refresh_token(self, record):
         logger.info("refreshing auth token")
         user_id, user_token = self._get_auth_data(record=record)
-        record.Authorization.update({"OAuthToken": user_token})
+        auth_datails = {"OAuthToken": user_token}
+        record.Authorization.update(auth_datails)
+        db.connections.update({"_id": record._id}, {"$set": {"Authorization": auth_datails}})
 
     def _with_auth(self, record, params={}):
         params.update({"authentication_token": record.Authorization["OAuthToken"]})
@@ -272,7 +275,7 @@ class AerobiaService(ServiceBase):
         activity.StartTime = pytz.utc.localize(datetime.strptime(data.get("start_at"), "%Y-%m-%dT%H:%M:%SZ"))
         activity.EndTime = activity.StartTime + timedelta(0, float(data.get("duration")))
         sport_id = data.get("sport_id")
-        activity.Type = self._reverseActivityMappings[int(sport_id)] if sport_id else ActivityType.Other
+        activity.Type = self._reverseActivityMappings.get(int(sport_id), ActivityType.Other) if sport_id else ActivityType.Other
 
         distance = data.get("distance")
         activity.Stats.Distance = ActivityStatistic(ActivityStatisticUnit.Kilometers, value=float(distance) if distance else None)
