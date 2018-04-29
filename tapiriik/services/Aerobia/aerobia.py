@@ -5,6 +5,7 @@ from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
+from tapiriik.services.sessioncache import SessionCache
 
 from lxml import etree
 from bs4 import BeautifulSoup
@@ -137,6 +138,12 @@ class AerobiaService(ServiceBase):
 
     SupportsActivityDeletion = True
 
+    _sessionCache = SessionCache("aerobia", lifetime=timedelta(minutes=120), freshen_on_get=True)
+    _obligatory_headers = {
+        # Without user-agent patch aerobia requests doesn't work
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko"
+    }
+
     _urlRoot = "http://aerobia.ru/"
     _apiRoot = "http://aerobia.ru/api/"
     _loginUrlRoot = _apiRoot + "sign_in"
@@ -144,10 +151,15 @@ class AerobiaService(ServiceBase):
     _workoutUrl = _apiRoot + "workouts/{id}.json"
     _uploadsUrl = _apiRoot + "uploads.json"
 
-    def _patch_user_agent(self):
-        from tapiriik.requests_lib import patch_requests_user_agent
-        # Without user-agent patch aerobia requests doesn't work
-        patch_requests_user_agent('Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko')
+    def _get_session(self, record=None, username=None):
+        cached = self._sessionCache.Get(record.ExternalID if record else username)
+        if cached:
+            return cached
+
+        session = requests.Session()
+        session.headers.update(self._obligatory_headers)
+
+        return session
 
     def _get_auth_data(self, record=None, username=None, password=None):
         from tapiriik.auth.credential_storage import CredentialStore
@@ -157,9 +169,9 @@ class AerobiaService(ServiceBase):
             password = CredentialStore.Decrypt(record.ExtendedAuthorization["Password"])
             username = CredentialStore.Decrypt(record.ExtendedAuthorization["Email"])
 
-        self._patch_user_agent()
+        session = self._get_session(record, username)
         request_parameters = {"user[email]": username, "user[password]": password}
-        res = requests.post(self._loginUrlRoot, data=request_parameters)
+        res = session.post(self._loginUrlRoot, data=request_parameters)
 
         if res.status_code != 200:
             raise APIException("Login exception {} - {}".format(res.status_code, res.text), user_exception=UserException(UserExceptionType.Authorization))
@@ -178,20 +190,21 @@ class AerobiaService(ServiceBase):
     def _call(self, serviceRecord, request_call, *args):
         retry_count = 3
         resp = None
+        ex = Exception()
         for i in range(0, retry_count):
             try:
                 resp = request_call(args)
                 break
-            except APIException:
+            except APIException as ex:
                 # try to refresh token first
                 self._refresh_token(serviceRecord)
-            except requests.exceptions.ConnectTimeout:
+            except requests.exceptions.ConnectTimeout as ex:
                 # Aerobia sometimes answer like
                 # Failed to establish a new connection: [WinError 10060] may happen while listing.
                 # wait a bit and retry
                 time.sleep(.2)
         if resp is None:
-            raise APIException("Api call not succeed", user_exception=UserException(UserExceptionType.DownloadError))
+            raise ex
         return resp
 
     def _refresh_token(self, record):
@@ -216,40 +229,42 @@ class AerobiaService(ServiceBase):
         return (user_id, authorizationData, secret)
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        self._patch_user_agent()
-
         activities = []
         exclusions = []
 
-        fetch_dairy = lambda page=1: self._get_dairy_xml(serviceRecord, page)
-        # use first query responce to detect pagination options as well
-        dairy_xml = self._call(serviceRecord, fetch_dairy)
+        fetch_diary = lambda page=1: self._get_diary_xml(serviceRecord, page)
 
-        pagination = dairy_xml.find("pagination")
-        # New accounts have no data pages initially
-        total_pages_str = pagination.get("total_pages") if pagination else None
-        total_pages = int(total_pages_str) if total_pages_str else 1
-        
-        for page in range(2, total_pages + 2):
-            for workout_info in dairy_xml.findall("workouts/r"):
+        total_pages = None
+        page = 1
+        while True:
+            diary_xml = self._call(serviceRecord, fetch_diary, page)
+
+            for workout_info in diary_xml.findall("workouts/r"):
                 activity = self._create_activity(workout_info)
                 activities.append(activity)
-            
+
+            if total_pages is None:
+                pagination = diary_xml.find("pagination")
+                # New accounts have no data pages initially
+                total_pages_str = pagination.get("total_pages") if pagination else None
+                total_pages = int(total_pages_str) if total_pages_str else 1
+            page += 1
+
             if not exhaustive or page > total_pages:
                 break
-            dairy_xml = self._call(serviceRecord, fetch_dairy, page)
 
         return activities, exclusions
 
-    def _get_dairy_xml(self, serviceRecord, page=1):
-        dairy_data = requests.get(self._workoutsUrl, params=self._with_auth(serviceRecord, {"page": page}))
-        dairy_xml = etree.fromstring(dairy_data.text.encode('utf-8'))
+    def _get_diary_xml(self, serviceRecord, page=1):
+        session = self._get_session(serviceRecord)
+        diary_data = session.get(self._workoutsUrl, params=self._with_auth(serviceRecord, {"page": page}))
+        diary_xml = etree.fromstring(diary_data.text.encode('utf-8'))
 
-        info = dairy_xml.find("info")
+        info = diary_xml.find("info")
         if info.get("status") != "ok":
             raise APIException(info.get("description"), user_exception=UserException(UserExceptionType.DownloadError))
 
-        return dairy_xml
+        return diary_xml
 
     def _create_activity(self, data):
         activity = UploadedActivity()
@@ -278,13 +293,13 @@ class AerobiaService(ServiceBase):
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
-        self._patch_user_agent()
+        session = self._get_session(serviceRecord)
         activity_id = activity.ServiceData["ActivityID"]
 
-        tcx_data = requests.get("{}export/workouts/{}/tcx".format(self._urlRoot, activity_id), data=self._with_auth(serviceRecord))
+        tcx_data = session.get("{}export/workouts/{}/tcx".format(self._urlRoot, activity_id), data=self._with_auth(serviceRecord))
         activity_ex = TCXIO.Parse(tcx_data.text.encode('utf-8'), activity)
         # Obtain more information about activity
-        res = requests.get(self._workoutUrl.format(id=activity_id), data=self._with_auth(serviceRecord))
+        res = session.get(self._workoutUrl.format(id=activity_id), data=self._with_auth(serviceRecord))
         activity_data = res.json()
         activity_ex.Name = activity_data["name"]
         # Notes comes as html. Hardly any other service will support this so needs to extract text data
@@ -299,6 +314,7 @@ class AerobiaService(ServiceBase):
         return activity_ex
 
     def UploadActivity(self, serviceRecord, activity):
+        session = self._get_session(serviceRecord)
         tcx_data = None
         # If some service provides ready-to-use tcx data why not to use it?
         # TODO: please use this code when activity will have SourceFile property
@@ -312,7 +328,7 @@ class AerobiaService(ServiceBase):
         data = {"name": activity.Name,
                 "description": activity.Notes}
         files = {"file": ("tap-sync-{}-{}.tcx".format(os.getpid(), activity.UID), tcx_data)}
-        res = requests.post(self._uploadsUrl, data=self._with_auth(serviceRecord, data), files=files)
+        res = session.post(self._uploadsUrl, data=self._with_auth(serviceRecord, data), files=files)
         res_obj = res.json()
 
         if "error" in res_obj:
@@ -327,9 +343,9 @@ class AerobiaService(ServiceBase):
         #return self.UserActivityURL.format(userId, uploadId)
 
     def DeleteActivity(self, serviceRecord, uploadId):
-        self._patch_user_agent()
+        session = self._get_session(serviceRecord)
         delete_parameters = {"_method" : "delete"}
-        delete_call = lambda: requests.post("{}workouts/{}".format(self._urlRoot, uploadId), data=self._with_auth(serviceRecord, delete_parameters))
+        delete_call = lambda: session.post("{}workouts/{}".format(self._urlRoot, uploadId), data=self._with_auth(serviceRecord, delete_parameters))
         self._call(serviceRecord, delete_call)
 
     def DeleteCachedData(self, serviceRecord):
