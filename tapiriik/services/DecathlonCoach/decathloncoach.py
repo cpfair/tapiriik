@@ -22,7 +22,6 @@ import json
 from dateutil.parser import parse
 
 
-
 logger = logging.getLogger(__name__)
 
 class DecathlonCoachService(ServiceBase):
@@ -143,7 +142,6 @@ class DecathlonCoachService(ServiceBase):
 
     SupportedActivities = list(_activityTypeMappings.keys())
 
-    
 
     def UserUploadedActivityURL(self, uploadId):
         return "https://www.decathloncoach.com/fr-FR/portal/activities/%d" % uploadId
@@ -189,15 +187,9 @@ class DecathlonCoachService(ServiceBase):
         return {"Authorization": "Bearer %s" % requestKey, 'User-Agent': 'Python Tapiriik Hub' , 'X-Api-Key':DECATHLONCOACH_API_KEY}
         
         
-
-
     def _parseDate(self, date):
         #model '2017-12-01T12:00:00+00:00'
         return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S+%Z").replace(tzinfo=pytz.utc)
-        
-        
-    
-        
         
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
@@ -239,7 +231,6 @@ class DecathlonCoachService(ServiceBase):
       
             logger.info("\t\t nb activity : "+ str(len(root.findall('.//ID'))))
       
-    		#for activity_id in root.findall('.//ACTIVITY'):
             for ride in root.iter('ACTIVITY'):
     
                 activity = UploadedActivity()
@@ -247,10 +238,6 @@ class DecathlonCoachService(ServiceBase):
     
                 
                 startdate =  ride.find('.//STARTDATE').text
-                #timezone =  root.find('.//TIMEZONE').text
-                #2017-09-25 12:12:00
-                #+02:00
-                #2017-09-25T10:12:05Z
                 datebase = parse(startdate)
                 
     
@@ -285,8 +272,6 @@ class DecathlonCoachService(ServiceBase):
                     activity.Name = "Sport DecathlonCoach "+txtdate[0]
                 else:
                     activity.Name = ride.find('LIBELLE').text
-                    
-                    
                 
                 activity.Private = False
                 activity.Stationary = ride.find('MANUAL').text
@@ -303,7 +288,6 @@ class DecathlonCoachService(ServiceBase):
         activityID = activity.ServiceData["ActivityID"]
 
         logger.info("\t\t DC LOADING  : "+ str(activityID))
-
 
         headers = self._getAuthHeaders(svcRecord)
         resp = requests.get(self.ApiEndpoint + "/activity/"+activityID+"/fullactivity.xml", headers=headers)
@@ -326,9 +310,6 @@ class DecathlonCoachService(ServiceBase):
         #work on date
         startdate =  root.find('.//STARTDATE').text
         timezone =  root.find('.//TIMEZONE').text
-        #2017-09-25 12:12:00
-        #+02:00
-        #2017-09-25T10:12:05Z
         datebase = parse(startdate+timezone)
 
 
@@ -357,8 +338,6 @@ class DecathlonCoachService(ServiceBase):
                             break
                     break
             
-            
-            
             lap.Waypoints.append(wp)
         activity.Stationary = len(lap.Waypoints) == 0
 
@@ -375,8 +354,6 @@ class DecathlonCoachService(ServiceBase):
         etree.SubElement(header, "DATE").text = str(activity.StartTime).replace(" ","T") 
         duration = int((activity.EndTime - activity.StartTime).total_seconds())
         etree.SubElement(header, "DURATION").text =  str(duration)
-        
-        
         
         etree.SubElement(header, "SPORTID").text = self._activityTypeMappings[activity.Type]
         
@@ -403,7 +380,7 @@ class DecathlonCoachService(ServiceBase):
         if activity.Stats.Speed.Average is not None:
             dataSummarySpeedAvg = etree.SubElement(summary, "VALUE")
             speed_kmh = activity.Stats.Speed.asUnits(ActivityStatisticUnit.KilometersPerHour).Average
-            speed_mh = 1000 *speed_kmh
+            speed_mh = 1000 * speed_kmh
             
             dataSummarySpeedAvg.text = str((int(speed_mh)))       
             dataSummarySpeedAvg.attrib["id"] = self._unitMap["speedaverage"]
@@ -448,8 +425,7 @@ class DecathlonCoachService(ServiceBase):
                 etree.SubElement(tracksummary, "DURATION").text = str(int((activity.EndTime - activity.StartTime).total_seconds()))
                 etree.SubElement(tracksummary, "SPORTID").text = "121"
                 etree.SubElement(tracksummary, "LDID").text = str(svcRecord.ExternalID)
-                #track summary is added in first position, so we add it to track after the position, and sort position...
-        
+
                 
                 for wp in activity.GetFlatWaypoints():
                     if wp.Location is None or wp.Location.Latitude is None or wp.Location.Longitude is None:
@@ -464,11 +440,7 @@ class DecathlonCoachService(ServiceBase):
                     else:
                         etree.SubElement(oneLocation, "ELEVATION").text = "0"
     
-                
-                
-
         activityXML = etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8")
-        
 
         headers = self._getAuthHeaders(svcRecord)
         upload_resp = requests.post(self.ApiEndpoint + "/activity/import.xml", data=activityXML, headers=headers)
@@ -485,14 +457,13 @@ class DecathlonCoachService(ServiceBase):
 
         return upload_id
 
+
     def DeleteCachedData(self, serviceRecord):
         cachedb.decathloncoach_cache.remove({"Owner": serviceRecord.ExternalID})
         cachedb.decathloncoach_activity_cache.remove({"Owner": serviceRecord.ExternalID})
 
     
-
     def DeleteActivity(self, serviceRecord, uploadId):
         headers = self._getAuthHeaders(serviceRecord)
         del_res = requests.delete(self.ApiEndpoint + "/activity/+d/summary.xml" % uploadId , headers=headers)
         del_res.raise_for_status()
-
