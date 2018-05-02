@@ -36,6 +36,8 @@ from tapiriik.services.Setio import SetioService
 Setio = SetioService()
 from tapiriik.services.Singletracker import SingletrackerService
 Singletracker = SingletrackerService()
+from tapiriik.services.DecathlonCoach import DecathlonCoachService
+DecathlonCoach = DecathlonCoachService()
 
 PRIVATE_SERVICES = []
 try:
