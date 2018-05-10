@@ -44,7 +44,7 @@ class DropboxService(ServiceBase):
         ActivityType.RollerSkiing: "rollerskiing",
         ActivityType.Other: "(other|unknown)"
     }
-    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"tcx", "Filename":"%Y-%m-%d_#NAME_#TYPE"}
+    ConfigurationDefaults = {"SyncRoot": "/", "UploadUntagged": False, "Format":"tcx", "Filename":"%Y-%m-%d_%H-%M-%S_#NAME_#TYPE"}
 
     SupportsHR = SupportsCadence = True
 
