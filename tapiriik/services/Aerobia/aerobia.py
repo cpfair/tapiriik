@@ -6,7 +6,6 @@ from tapiriik.services.service_record import ServiceRecord
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.tcx import TCXIO
-from tapiriik.services.sessioncache import SessionCache
 
 from lxml import etree
 from bs4 import BeautifulSoup
@@ -30,7 +29,7 @@ class AerobiaService(ServiceBase):
     RequiresExtendedAuthorizationDetails = True
     UserProfileURL = "http://www.aerobia.ru/users/{0}"
     UserActivityURL = "http://www.aerobia.ru/users/{0}/workouts/{1}"
-    
+
     # common -> aerobia (garmin tcx sport names)
     # todo may better to include this into tcxio logic instead
     _activityMappings = {
@@ -139,7 +138,6 @@ class AerobiaService(ServiceBase):
 
     SupportsActivityDeletion = True
 
-    _sessionCache = SessionCache("aerobia", lifetime=timedelta(minutes=120), freshen_on_get=True)
     _obligatory_headers = {
         # Without user-agent patch aerobia requests doesn't work
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko"
@@ -153,10 +151,6 @@ class AerobiaService(ServiceBase):
     _uploadsUrl = _apiRoot + "uploads.json"
 
     def _get_session(self, record=None, username=None):
-        cached = self._sessionCache.Get(record.ExternalID if record else username)
-        if cached:
-            return cached
-
         session = requests.Session()
         session.headers.update(self._obligatory_headers)
 
@@ -211,12 +205,12 @@ class AerobiaService(ServiceBase):
     def _refresh_token(self, record):
         logger.info("refreshing auth token")
         user_id, user_token = self._get_auth_data(record=record)
-        auth_datails = {"OAuthToken": user_token}
+        auth_datails = {"Token": user_token}
         record.Authorization.update(auth_datails)
         db.connections.update({"_id": record._id}, {"$set": {"Authorization": auth_datails}})
 
     def _with_auth(self, record, params={}):
-        params.update({"authentication_token": record.Authorization["OAuthToken"]})
+        params.update({"authentication_token": record.Authorization["Token"]})
         return params
 
     def Authorize(self, username, password):
@@ -224,11 +218,11 @@ class AerobiaService(ServiceBase):
         user_id, user_token = self._get_auth_data(username=username, password=password)
 
         secret = {
-            "Email": CredentialStore.Encrypt(username), 
+            "Email": CredentialStore.Encrypt(username),
             "Password": CredentialStore.Encrypt(password)
-            }
-        authorizationData = {"OAuthToken": user_token}
-        
+        }
+        authorizationData = {"Token": user_token}
+
         return (user_id, authorizationData, secret)
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
@@ -326,17 +320,20 @@ class AerobiaService(ServiceBase):
         #    # Set aerobia-understandable sport name
         #    tcx_data = re.sub(r'(<Sport=\")\w+(\">)', r'\1{}\2'.format(self._activityMappings[activity.Type]), tcx_data) if tcx_data else None
         if not tcx_data:
-            tcx_data =  TCXIO.Dump(activity, self._activityMappings[activity.Type])
-        
-        data = {"name": activity.Name,
-                "description": activity.Notes}
+            # We pass an explicit activityType as the TCX schema doesn't define all the types this service supports.
+            tcx_data =  TCXIO.Dump(activity, activityType=self._activityMappings[activity.Type])
+
+        data = {
+            "name": activity.Name,
+            "description": activity.Notes
+        }
         files = {"file": ("tap-sync-{}-{}.tcx".format(os.getpid(), activity.UID), tcx_data)}
         res = session.post(self._uploadsUrl, data=self._with_auth(serviceRecord, data), files=files)
         res_obj = res.json()
 
         if "error" in res_obj:
             raise APIException(res_obj["error"], user_exception=UserException(UserExceptionType.UploadError))
-        
+
         # return just uploaded activity id
         return res_obj["workouts"][0]["id"]
 
