@@ -13,8 +13,9 @@
     <p>If you can't resolve the issue and would like your money back, use the email below to request a refund. And, if you had emailed me previously regarding your account and never received a reply, please accept my apologies.</p>
 </div>
 <div class="contactBlock">
-	<h1>For billing support</h1>
+	<h1>For billing &amp; GDPR support</h1>
 	<a href="mailto:contact@tapiriik.com{% if user %}?body=My tapiriik user ID is {{ user|dict_get:'_id' }}{% endif %}" target="_blank" class="large">contact@tapiriik.com</a>
 	<p>If you're dissatisfied with the service and want a refund, make sure to mention that in the subject line so I can respond quickly.</p>
+	<p>If you are making an enquiry regarding the European Union's General Data Protection Regulation, please mention "GDPR" in the subject line.</p>
 </div>
 {% endblock %}
