@@ -53,6 +53,7 @@ class StravaService(ServiceBase):
         ActivityType.RollerSkiing: "RollerSki",
         ActivityType.StrengthTraining: "WeightTraining",
         ActivityType.Climbing: "RockClimbing",
+        ActivityType.StandUpPaddling: "StandUpPaddling",
     }
 
     # For mapping Strava->common
@@ -75,7 +76,7 @@ class StravaService(ServiceBase):
         "Rowing": ActivityType.Rowing,
         "Kayaking": ActivityType.Rowing,
         "Canoeing": ActivityType.Rowing,
-        "StandUpPaddling": ActivityType.Rowing,
+        "StandUpPaddling": ActivityType.StandUpPaddling,
         "Elliptical": ActivityType.Elliptical,
         "RollerSki": ActivityType.RollerSkiing,
         "WeightTraining": ActivityType.StrengthTraining,
