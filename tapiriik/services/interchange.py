@@ -615,9 +615,10 @@ class WaypointType:
     End = 100   # End of activity
 
 class Waypoint:
-    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "RunCadence", "Type", "Distance", "Speed"]
-    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None, speed=None):
+    __slots__ = ["Timestamp", "Location", "HR", "Calories", "Power", "Temp", "Cadence", "RunCadence", "Type", "Distance", "Speed", "HasSensorData"]
+    def __init__(self, timestamp=None, ptType=WaypointType.Regular, location=None, hr=None, power=None, calories=None, cadence=None, runCadence=None, temp=None, distance=None, speed=None, hasSensorData=True):
         self.Timestamp = timestamp
+        self.HasSensorData = hasSensorData
         self.Location = location
         self.HR = hr # BPM
         self.Calories = calories # kcal

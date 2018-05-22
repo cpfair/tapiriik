@@ -157,56 +157,68 @@ class TCXIO:
                     stepsEl = lxEl.find("tpx:Steps", namespaces=ns)
                     if stepsEl is not None:
                         lap.Stats.Strides.update(ActivityStatistic(ActivityStatisticUnit.Strides, value=float(stepsEl.text)))
+            # Lap may contain multiple tracks. It means activity was paused
+            # Some TCX files have laps with no track - not sure if it's valid or not.
+            for xtrkseg in xlap.findall("tcx:Track", namespaces=ns):
+                resumed = len(lap.Waypoints) > 0
+                for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
+                    wp = Waypoint()
+                    # Resume don't need for the first segment in lap
+                    if resumed:
+                        lap.Waypoints[-1].Type = WaypointType.Pause
+                        wp.Type = WaypointType.Resume
+                        resumed = False
 
-            xtrkseg = xlap.find("tcx:Track", namespaces=ns)
-            if xtrkseg is None:
-                # Some TCX files have laps with no track - not sure if it's valid or not.
-                continue
-            for xtrkpt in xtrkseg.findall("tcx:Trackpoint", namespaces=ns):
-                wp = Waypoint()
-                tsEl = xtrkpt.find("tcx:Time", namespaces=ns)
-                if tsEl is None:
-                    raise ValueError("Trackpoint without timestamp")
-                wp.Timestamp = dateutil.parser.parse(tsEl.text)
-                wp.Timestamp.replace(tzinfo=UTC)
-                if startTime is None or wp.Timestamp < startTime:
-                    startTime = wp.Timestamp
-                if endTime is None or wp.Timestamp > endTime:
-                    endTime = wp.Timestamp
-                xpos = xtrkpt.find("tcx:Position", namespaces=ns)
-                if xpos is not None:
-                    act.GPS = True
-                    wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
-                eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
-                if eleEl is not None:
-                    wp.Location = wp.Location if wp.Location else Location(None, None, None)
-                    wp.Location.Altitude = float(eleEl.text)
-                distEl = xtrkpt.find("tcx:DistanceMeters", namespaces=ns)
-                if distEl is not None:
-                    wp.Distance = float(distEl.text)
+                    tsEl = xtrkpt.find("tcx:Time", namespaces=ns)
+                    if tsEl is None:
+                        raise ValueError("Trackpoint without timestamp")
+                    wp.Timestamp = dateutil.parser.parse(tsEl.text)
+                    wp.Timestamp.replace(tzinfo=UTC)
+                    if startTime is None or wp.Timestamp < startTime:
+                        startTime = wp.Timestamp
+                    if endTime is None or wp.Timestamp > endTime:
+                        endTime = wp.Timestamp
 
-                hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
-                if hrEl is not None:
-                    wp.HR = float(hrEl.find("tcx:Value", namespaces=ns).text)
-                cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
-                if cadEl is not None:
-                    wp.Cadence = float(cadEl.text)
-                extsEl = xtrkpt.find("tcx:Extensions", namespaces=ns)
-                if extsEl is not None:
-                    tpxEl = extsEl.find("tpx:TPX", namespaces=ns)
-                    if tpxEl is not None:
-                        powerEl = tpxEl.find("tpx:Watts", namespaces=ns)
-                        if powerEl is not None:
-                            wp.Power = float(powerEl.text)
-                        speedEl = tpxEl.find("tpx:Speed", namespaces=ns)
-                        if speedEl is not None:
-                            wp.Speed = float(speedEl.text)
-                        runCadEl = tpxEl.find("tpx:RunCadence", namespaces=ns)
-                        if runCadEl is not None:
-                            wp.RunCadence = float(runCadEl.text)
-                lap.Waypoints.append(wp)
-                xtrkpt.clear()
-                del xtrkpt
+                    sensorState = xtrkpt.find("tcx:SensorState", namespaces=ns)
+                    if sensorState is not None:
+                        wp.HasSensorData = sensorState.text == "Present"
+
+                    xpos = xtrkpt.find("tcx:Position", namespaces=ns)
+                    if xpos is not None:
+                        act.GPS = True
+                        wp.Location = Location(float(xpos.find("tcx:LatitudeDegrees", namespaces=ns).text), float(xpos.find("tcx:LongitudeDegrees", namespaces=ns).text), None)
+                    eleEl = xtrkpt.find("tcx:AltitudeMeters", namespaces=ns)
+                    if eleEl is not None:
+                        wp.Location = wp.Location if wp.Location else Location(None, None, None)
+                        wp.Location.Altitude = float(eleEl.text)
+                    distEl = xtrkpt.find("tcx:DistanceMeters", namespaces=ns)
+                    if distEl is not None:
+                        wp.Distance = float(distEl.text)
+
+                    hrEl = xtrkpt.find("tcx:HeartRateBpm", namespaces=ns)
+                    if hrEl is not None:
+                        wp.HR = float(hrEl.find("tcx:Value", namespaces=ns).text)
+                    cadEl = xtrkpt.find("tcx:Cadence", namespaces=ns)
+                    if cadEl is not None:
+                        wp.Cadence = float(cadEl.text)
+                    extsEl = xtrkpt.find("tcx:Extensions", namespaces=ns)
+                    if extsEl is not None:
+                        tpxEl = extsEl.find("tpx:TPX", namespaces=ns)
+                        if tpxEl is not None:
+                            powerEl = tpxEl.find("tpx:Watts", namespaces=ns)
+                            if powerEl is not None:
+                                wp.Power = float(powerEl.text)
+                            speedEl = tpxEl.find("tpx:Speed", namespaces=ns)
+                            if speedEl is not None:
+                                wp.Speed = float(speedEl.text)
+                            runCadEl = tpxEl.find("tpx:RunCadence", namespaces=ns)
+                            if runCadEl is not None:
+                                wp.RunCadence = float(runCadEl.text)
+                    lap.Waypoints.append(wp)
+                    xtrkpt.clear()
+                    del xtrkpt
+                xtrkseg.clear()
+                del xtrkseg
             if len(lap.Waypoints):
                 lap.EndTime = lap.Waypoints[-1].Timestamp
 
@@ -251,7 +263,7 @@ class TCXIO:
         etree.SubElement(author, "LangID").text = "en"
         etree.SubElement(author, "PartNumber").text = "000-00000-00"
 
-        dateFormat = "%Y-%m-%dT%H:%M:%S.000Z"
+        dateFormat = "%Y-%m-%dT%H:%M:%S.%fZ"
 
         if activityType:
             act.attrib["Sport"] = activityType
@@ -326,8 +338,10 @@ class TCXIO:
                     inPause = True
                 if inPause and wp.Type != WaypointType.Pause:
                     inPause = False
+                    # Resume should create new tracks
+                    track = etree.SubElement(xlap, "Track")
                 if track is None:  # Defer creating the track until there are points
-                    track = etree.SubElement(xlap, "Track") # TODO - pauses should create new tracks instead of new laps?
+                    track = etree.SubElement(xlap, "Track")
                 trkpt = etree.SubElement(track, "Trackpoint")
                 if wp.Timestamp.tzinfo is None:
                     raise ValueError("TCX export requires TZ info")

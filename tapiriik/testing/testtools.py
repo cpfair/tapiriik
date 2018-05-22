@@ -45,18 +45,19 @@ class TapiriikTestCase(TestCase):
         self.assertEqual(len(la.Waypoints), len(lb.Waypoints))
         for idx in range(len(la.Waypoints)):
             wpa = la.Waypoints[idx]
-            wpb = lb.Waypoints[idx]
+            wpb = lb.Waypoints[idx]         
             self.assertEqual(wpa.Timestamp.astimezone(pytz.utc), wpb.Timestamp.astimezone(pytz.utc))
-            self.assertEqual(wpa.Location.Latitude, wpb.Location.Latitude)
-            self.assertEqual(wpa.Location.Longitude, wpb.Location.Longitude)
-            self.assertEqual(wpa.Location.Altitude, wpb.Location.Altitude)
-            self.assertEqual(wpa.Type, wpb.Type)
-            self.assertEqual(wpa.HR, wpb.HR)
-            self.assertEqual(wpa.Calories, wpb.Calories)
-            self.assertEqual(wpa.Power, wpb.Power)
-            self.assertEqual(wpa.Cadence, wpb.Cadence)
-            self.assertEqual(wpa.Temp, wpb.Temp)
-            self.assertEqual(wpa.Location, wpb.Location)
+            if wpa.HasSensorData and wpb.HasSensorData:
+                self.assertEqual(wpa.Location.Latitude, wpb.Location.Latitude)
+                self.assertEqual(wpa.Location.Longitude, wpb.Location.Longitude)
+                self.assertEqual(wpa.Location.Altitude, wpb.Location.Altitude)
+                self.assertEqual(wpa.Type, wpb.Type)
+                self.assertEqual(wpa.HR, wpb.HR)
+                self.assertEqual(wpa.Calories, wpb.Calories)
+                self.assertEqual(wpa.Power, wpb.Power)
+                self.assertEqual(wpa.Cadence, wpb.Cadence)
+                self.assertEqual(wpa.Temp, wpb.Temp)
+                self.assertEqual(wpa.Location, wpb.Location)
             self.assertEqual(wpa, wpb)
 
 
