@@ -55,7 +55,8 @@ class EndomondoService(ServiceBase):
         "wheelchair": ActivityType.Wheelchair,
         "climbing": ActivityType.Climbing,
         "roller skiing": ActivityType.RollerSkiing,
-        "treadmill walking": ActivityType.Walking
+        "treadmill walking": ActivityType.Walking,
+        "stand up paddling": ActivityType.StandUpPaddling,
     }
 
     _reverseActivityMappings = {
@@ -73,7 +74,8 @@ class EndomondoService(ServiceBase):
         "other": ActivityType.Other,
         "wheelchair": ActivityType.Wheelchair,
         "climbing" : ActivityType.Climbing,
-        "roller skiing": ActivityType.RollerSkiing
+        "roller skiing": ActivityType.RollerSkiing,
+        "stand up paddling": ActivityType.StandUpPaddling,
     }
     
     _activitiesThatDontRoundTrip = {
