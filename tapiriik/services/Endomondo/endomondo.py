@@ -56,7 +56,7 @@ class EndomondoService(ServiceBase):
         "climbing": ActivityType.Climbing,
         "roller skiing": ActivityType.RollerSkiing,
         "treadmill walking": ActivityType.Walking,
-        "stand up paddling": ActivityType.StandUpPaddling,
+        "stand up paddling": ActivityType.StandUpPaddling
     }
 
     _reverseActivityMappings = {
