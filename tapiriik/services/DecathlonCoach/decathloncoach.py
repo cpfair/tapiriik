@@ -142,6 +142,8 @@ class DecathlonCoachService(ServiceBase):
 
     SupportedActivities = list(_activityTypeMappings.keys())
 
+    def __init__(self):
+        return None
 
     def UserUploadedActivityURL(self, uploadId):
         return "https://www.decathloncoach.com/fr-FR/portal/activities/%d" % uploadId
@@ -161,13 +163,13 @@ class DecathlonCoachService(ServiceBase):
         code = req.GET.get("code")
         params = {"grant_type": "authorization_code", "code": code, "client_id": DECATHLONCOACH_CLIENT_ID, "client_secret": DECATHLONCOACH_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "decathloncoach"})}
  
-        response = requests.get(self.accountOauth+"/accessToken", params=params)
+        response = requests.get(self.accountOauth + "/accessToken", params=params)
         if response.status_code != 200:
             raise APIException("Invalid code")
         data = response.json()
         refresh_token = data["access_token"]
         # Retrieve the user ID, meh.
-        id_resp = requests.get( self.OauthEndpoint + "/api/me?access_token="+data["access_token"])
+        id_resp = requests.get( self.OauthEndpoint + "/api/me?access_token=" + data["access_token"])
         return (id_resp.json()["ldid"], {"RefreshToken": refresh_token})
 
     def RevokeAuthorization(self, serviceRecord):
@@ -208,28 +210,28 @@ class DecathlonCoachService(ServiceBase):
             for _ in range(20):
                 now = prev
                 prev = now - timedelta(6*365/12)
-                aperiod = "%s%02d-%s%02d"% ( prev.year , prev.month, now.year , now.month)
+                aperiod = "%s%02d-%s%02d"% (prev.year, prev.month, now.year, now.month)
                 period.append(aperiod)
         
         for dateInterval in period:
             headers = self._getAuthHeaders(svcRecord)
-            resp = requests.get(self.ApiEndpoint + "/users/"+ str(svcRecord.ExternalID) +"/activities.xml?date="+dateInterval, headers=headers)
+            resp = requests.get(self.ApiEndpoint + "/users/" + str(svcRecord.ExternalID) + "/activities.xml?date=" + dateInterval, headers=headers)
             if resp.status_code == 400:
                 logger.info(resp.content)
-                raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                raise APIException("No authorization to retrieve activity list", block = True, user_exception = UserException(UserExceptionType.Authorization, intervention_required = True))
             if resp.status_code == 401:
                     logger.info(resp.content)
-                    raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                    raise APIException("No authorization to retrieve activity list", block = True, user_exception = UserException(UserExceptionType.Authorization, intervention_required = True))
             if resp.status_code == 403:
                     logger.info(resp.content)
-                    raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+                    raise APIException("No authorization to retrieve activity list", block = True, user_exception = UserException(UserExceptionType.Authorization, intervention_required = True))
     
     
     
     
             root = xml.fromstring(resp.content)
       
-            logger.info("\t\t nb activity : "+ str(len(root.findall('.//ID'))))
+            logger.info("\t\t nb activity : " + str(len(root.findall('.//ID'))))
       
             for ride in root.iter('ACTIVITY'):
     
@@ -245,12 +247,12 @@ class DecathlonCoachService(ServiceBase):
                 
                 activity.ServiceData = {"ActivityID": ride.find('ID').text, "Manual": ride.find('MANUAL').text}
                 
-                logger.info("\t\t DecathlonCoach Activity ID : "+ ride.find('ID').text)
+                logger.info("\t\t DecathlonCoach Activity ID : " + ride.find('ID').text)
     
     
                 if ride.find('SPORTID').text not in self._reverseActivityTypeMappings:
                     exclusions.append(APIExcludeActivity("Unsupported activity type %s" % ride.find('SPORTID').text, activity_id=ride.find('ID').text, user_exception=UserException(UserExceptionType.Other)))
-                    logger.info("\t\tDecathlonCoach Unknown activity, sport id "+ride.find('SPORTID').text+" is not mapped")
+                    logger.info("\t\tDecathlonCoach Unknown activity, sport id " + ride.find('SPORTID').text+" is not mapped")
                     continue
     
                 activity.Type = self._reverseActivityTypeMappings[ride.find('SPORTID').text]
@@ -269,7 +271,7 @@ class DecathlonCoachService(ServiceBase):
     
                 if ride.find('LIBELLE').text == "" or ride.find('LIBELLE').text is None:
                     txtdate = startdate.split(' ')
-                    activity.Name = "Sport DecathlonCoach "+txtdate[0]
+                    activity.Name = "Sport DecathlonCoach " + txtdate[0]
                 else:
                     activity.Name = ride.find('LIBELLE').text
                 
@@ -287,12 +289,12 @@ class DecathlonCoachService(ServiceBase):
     def DownloadActivity(self, svcRecord, activity):
         activityID = activity.ServiceData["ActivityID"]
 
-        logger.info("\t\t DC LOADING  : "+ str(activityID))
+        logger.info("\t\t DC LOADING  : " + str(activityID))
 
         headers = self._getAuthHeaders(svcRecord)
-        resp = requests.get(self.ApiEndpoint + "/activity/"+activityID+"/fullactivity.xml", headers=headers)
+        resp = requests.get(self.ApiEndpoint + "/activity/"+activityID+"/fullactivity.xml", headers = headers)
         if resp.status_code == 401:
-            raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            raise APIException("No authorization to download activity", block = True, user_exception = UserException(UserExceptionType.Authorization, intervention_required = True))
 
         try:
             root = xml.fromstring(resp.content)
@@ -300,7 +302,7 @@ class DecathlonCoachService(ServiceBase):
             raise APIException("Stream data returned from DecathlonCoach is not XML")
 
 
-        lap = Lap(stats=activity.Stats, startTime=activity.StartTime, endTime=activity.EndTime) 
+        lap = Lap(stats = activity.Stats, startTime = activity.StartTime, endTime = activity.EndTime) 
         activity.Laps = [lap]
         lap.Waypoints = []
         
