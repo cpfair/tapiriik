@@ -66,20 +66,50 @@ class PolarFlowService(ServiceBase):
     # Polar Flow -> common
     _reverse_activity_type_mappings = {
         "RUNNING": ActivityType.Running,
+        "JOGGING": ActivityType.Running,
+        "ROAD_RUNNING": ActivityType.Running,
+        "TRACK_AND_FIELD_RUNNING": ActivityType.Running,
+        "TRAIL_RUNNING": ActivityType.Running,
+        "TREADMILL_RUNNING": ActivityType.Running,
+
         "CYCLING": ActivityType.Cycling,
+        "ROAD_BIKING": ActivityType.Cycling,
+        "INDOOR_CYCLING": ActivityType.Cycling,
+
         "MOUNTAIN_BIKING": ActivityType.MountainBiking,
+
         "WALKING": ActivityType.Walking,
         "HIKING": ActivityType.Hiking,
         "DOWNHILL_SKIING": ActivityType.DownhillSkiing,
         "CROSS-COUNTRY_SKIING": ActivityType.CrossCountrySkiing,
         "SNOWBOARDING": ActivityType.Snowboarding,
         "SKATING": ActivityType.Skating,
+
         "SWIMMING": ActivityType.Swimming,
+        "OPEN_WATER_SWIMMING": ActivityType.Swimming,
+        "POOL_SWIMMING": ActivityType.Swimming,
+
         "PARASPORTS_WHEELCHAIR": ActivityType.Wheelchair,
         "ROWING": ActivityType.Rowing,
+        "INDOOR_ROWING": ActivityType.Rowing,
         "STRENGTH_TRAINING": ActivityType.StrengthTraining,
+
         "OTHER_INDOOR": ActivityType.Other,
         "OTHER_OUTDOOR": ActivityType.Other,
+
+        "ROLLER_SKIING_CLASSIC": ActivityType.RollerSkiing,
+        "ROLLER_SKIING_FREESTYLE": ActivityType.RollerSkiing,
+
+        # not supported somehow
+        #"": ActivityType.Elliptical,
+
+        "FUNCTIONAL_TRAINING": ActivityType.Gym,
+        "CORE": ActivityType.Gym,
+        "GROUP_EXERCISE": ActivityType.Gym,
+        "PILATES": ActivityType.Gym,
+        "YOGA": ActivityType.Gym,
+
+        "VERTICALSPORTS_WALLCLIMBING": ActivityType.Climbing,
     }
 
     SupportedActivities = list(_activity_type_mappings.keys())
@@ -209,7 +239,7 @@ class PolarFlowService(ServiceBase):
     def _create_activity(self, activity_data):
         activity = UploadedActivity()
 
-        activity.Stationary = not activity_data["has-route"]
+        activity.GPS = not activity_data["has-route"]
         if "detailed-sport-info" in activity_data and activity_data["detailed-sport-info"] in self._reverse_activity_type_mappings:
             activity.Type = self._reverse_activity_type_mappings[activity_data["detailed-sport-info"]]
         else:
