@@ -115,6 +115,7 @@ class SportTracksService(ServiceBase):
         "rowing": ActivityType.Rowing,
         "elliptical": ActivityType.Elliptical,
         "gym": ActivityType.Gym,
+        "standup paddling": ActivityType.StandUpPaddling,
         "other": ActivityType.Other
     }
 
@@ -132,6 +133,7 @@ class SportTracksService(ServiceBase):
         ActivityType.Rowing: "rowing",
         ActivityType.Elliptical: "gym: elliptical",
         ActivityType.Gym: "gym",
+        ActivityType.StandUpPaddling: "rowing: standup paddling",
         ActivityType.Other: "other"
     }
 

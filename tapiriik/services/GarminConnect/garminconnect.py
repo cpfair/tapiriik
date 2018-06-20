@@ -64,6 +64,7 @@ class GarminConnectService(ServiceBase):
                                 "rock_climbing": ActivityType.Climbing,
                                 "mountaineering": ActivityType.Climbing,
                                 "strength_training": ActivityType.StrengthTraining,
+                                "stand_up_paddleboarding": ActivityType.StandUpPaddling,
                                 "all": ActivityType.Other,  # everything will eventually resolve to this
                                 "multi_sport": ActivityType.Other # Most useless type? You decide!
     }
@@ -83,6 +84,7 @@ class GarminConnectService(ServiceBase):
                                 "fitness_equipment": ActivityType.Gym,
                                 "rock_climbing": ActivityType.Climbing,
                                 "strength_training": ActivityType.StrengthTraining,
+                                "stand_up_paddleboarding": ActivityType.StandUpPaddling,
                                 "other": ActivityType.Other  # I guess? (vs. "all" that is)
     }
 

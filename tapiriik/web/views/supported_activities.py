@@ -19,6 +19,10 @@ def supported_activities(req):
     activities["Wheelchair"] = ["wheelchair"]
     activities["Rowing"] = ["rowing", "row"]
     activities["Elliptical"] = ["elliptical"]
+    activities["Climbing"] = ["climb", "climbing"]
+    activities["Strength Training"] = ["strength", "strength training"]
+    activities["Gym"] = ["gym", "workout"]
+    activities["Stand-up paddling"] = ["sup", "stand-up paddling", "standup paddling", "standuppaddling"]
     activities["Other"] = ["other", "unknown"]
     activityList = []
     for act, synonyms in activities.items():
