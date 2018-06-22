@@ -249,7 +249,7 @@ class AerobiaService(ServiceBase):
             if total_pages is None:
                 pagination = diary_xml.find("pagination")
                 # New accounts have no data pages initially
-                total_pages_str = pagination.get("total_pages") if pagination else None
+                total_pages_str = pagination.get("total_pages") if pagination is not None else None
                 total_pages = int(total_pages_str) if total_pages_str else 1
             page += 1
 
