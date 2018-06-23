@@ -77,9 +77,9 @@ class DecathlonCoachService(ServiceBase):
         "114": ActivityType.Walking,#nordic walking
         "320": ActivityType.Walking,
         "176": ActivityType.DownhillSkiing,
-        "177": ActivityType.CrossCountrySkiing,#Ski de randonnée"
-        "183": ActivityType.CrossCountrySkiing,#Ski nordique alternatif"
-        "184": ActivityType.CrossCountrySkiing,#Ski nordique skating
+        "177": ActivityType.CrossCountrySkiing,#Nordic skiing
+        "183": ActivityType.CrossCountrySkiing,#Nordic skiing alternatif
+        "184": ActivityType.CrossCountrySkiing,#Nordic skiing skating
         "185": ActivityType.Snowboarding,
         "274": ActivityType.Swimming,
         "91": ActivityType.Gym,
@@ -96,39 +96,39 @@ class DecathlonCoachService(ServiceBase):
         "264" : ActivityType.Other, #bodyboard
         "296" : ActivityType.Other, #Surf
         "301" : ActivityType.Other, #sailling
-        "173": ActivityType.Walking, #raquette ski
+        "173": ActivityType.Walking, #ski racket
         "110": ActivityType.Cycling,#bike room
         "395": ActivityType.Running,
         "79" : ActivityType.Other, #dansing
-        "265" : ActivityType.Other,#Canoë kayak"
-        "77" : ActivityType.Other,#Triathlon"
-        "200" : ActivityType.Other,#Equitation"
-        "273" : ActivityType.Other,#Kite surf"
-        "280" : ActivityType.Other,#Planche à voile"
+        "265" : ActivityType.Other,#Canoë kayak
+        "77" : ActivityType.Other,#Triathlon
+        "200" : ActivityType.Other,#horse riding
+        "273" : ActivityType.Other,#Kite surf
+        "280" : ActivityType.Other,#sailbard
         "360" : ActivityType.Other,#BMX"
-        "374" : ActivityType.Other,#Skate board"
-        "260" : ActivityType.Other,#Aquagym"
-        "45" : ActivityType.Other,#Arts martiaux"
-        "335" : ActivityType.Other,#Badminton"
-        "10" : ActivityType.Other,#Basketball"
-        "35" : ActivityType.Other,#Boxe"
-        "13" : ActivityType.Other,#Football"
-        "18" : ActivityType.Other,#Handball"
-        "20" : ActivityType.Other,#Hockey"
-        "284" : ActivityType.Other,#Plongée"
-        "398" : ActivityType.Other,#Rameur"
-        "27" : ActivityType.Other,#Rugby"
-        "357" : ActivityType.Other,#Tennis"
-        "32" : ActivityType.Other,#Volleyball"
-        "399" : ActivityType.Other,#Run & Bike"
-        "105" : ActivityType.Other,#Yoga"
-        "354" : ActivityType.Other,#Squash"
-        "358" : ActivityType.Other,#Tennis de table"
-        "7" : ActivityType.Other,#Parapente"
-        "400" : ActivityType.Other,#Stand Up Paddle"
-        "340" : ActivityType.Other,#Padel"
-        "326" : ActivityType.Other,#Tir à l'arc"
-        "366" : ActivityType.Other#Char à voile"
+        "374" : ActivityType.Other,#Skate board
+        "260" : ActivityType.Other,#Aquagym
+        "45" : ActivityType.Other,#Martial arts
+        "335" : ActivityType.Other,#Badminton
+        "10" : ActivityType.Other,#Basketball
+        "35" : ActivityType.Other,#Boxe
+        "13" : ActivityType.Other,#Football
+        "18" : ActivityType.Other,#Handball
+        "20" : ActivityType.Other,#Hockey
+        "284" : ActivityType.Other,#diving
+        "398" : ActivityType.Other,#rower machine
+        "27" : ActivityType.Other,#Rugby
+        "357" : ActivityType.Other,#Tennis
+        "32" : ActivityType.Other,#Volleyball
+        "399" : ActivityType.Other,#Run & Bike
+        "105" : ActivityType.Other,#Yoga
+        "354" : ActivityType.Other,#Squash
+        "358" : ActivityType.Other,#Table tennis
+        "7" : ActivityType.Other,#paragliding
+        "400" : ActivityType.Other,#Stand Up Paddle
+        "340" : ActivityType.Other,#Padel
+        "326" : ActivityType.Other,#archery
+        "366" : ActivityType.Other#Yatching
     }
     
     _unitMap = {
@@ -236,14 +236,13 @@ class DecathlonCoachService(ServiceBase):
             for ride in root.iter('ACTIVITY'):
     
                 activity = UploadedActivity()
-                activity.TZ = pytz.timezone('UTC')  
-    
-                
-                startdate =  ride.find('.//STARTDATE').text
+                activity.TZ = pytz.timezone("UTC")  
+
+                startdate =  ride.find('.//STARTDATE').text + ride.find('.//TIMEZONE').text
                 datebase = parse(startdate)
                 
     
-                activity.StartTime = pytz.utc.localize(datebase)
+                activity.StartTime = datebase#pytz.utc.localize(datebase)
                 
                 activity.ServiceData = {"ActivityID": ride.find('ID').text, "Manual": ride.find('MANUAL').text}
                 
@@ -412,7 +411,7 @@ class DecathlonCoachService(ServiceBase):
                         measureDistance.attrib["id"] =  self._unitMap["distance"] 
         
         
-        if activity.GetFlatWaypoints()[0] is not None:
+        if len(activity.GetFlatWaypoints()) > 0:
             if activity.GetFlatWaypoints()[0].Location.Latitude is not None:
                 track = etree.SubElement(root, "TRACK")
                 tracksummary = etree.SubElement(track, "SUMMARY")
