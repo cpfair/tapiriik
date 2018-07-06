@@ -180,6 +180,7 @@ class User:
             for user in activeUsers:
                 if len(user["ConnectedServices"]) - 1 == 0:
                     # I guess we're done here?
+                    db.activity_records.remove({"UserID": user["_id"]})
                     db.users.remove({"_id": user["_id"]})
 
     def AuthByService(serviceRecord):
