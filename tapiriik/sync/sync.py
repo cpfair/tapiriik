@@ -618,6 +618,8 @@ class SynchronizationTask:
             try:
                 conn.Service.SubscribeToPartialSyncTrigger(conn)
             except ServiceException as e:
+                # Force sync as exhaustive until we're sure we're properly subscribed.
+                self._sync_result.ForceExhaustive = True
                 logger.exception("Failure while subscribing to partial sync trigger")
 
     def _primeExtendedAuthDetails(self, conn):
