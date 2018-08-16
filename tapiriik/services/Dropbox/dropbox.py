@@ -287,7 +287,8 @@ class DropboxService(ServiceBase):
 
     def _clean_activity_name(self, name):
         # https://www.dropbox.com/help/145/en
-        return re.sub("[><:\"|?*]", "", re.sub("[/\\\]", "-", name))
+        # Nothing outside BMP is allowed, either, apparently.
+        return re.sub("[@><:\"|?*]|[^\U00000000-\U0000d7ff\U0000e000-\U0000ffff]", "", re.sub("[/\\\]", "-", name))
 
     def _format_file_name(self, format, activity):
         name_pattern = re.compile("#NAME", re.IGNORECASE)
