@@ -251,7 +251,13 @@ tapiriik.OpenDeauthDialog = function(svcId){
 					window.location.reload();
 				},
 				error: function(data){
-					alert("Error in disconnection: " + $.parseJSON(data.responseText).error+"\n Please contact me ASAP");
+					var errorMessage;
+					try {
+						errorMessage = $.parseJSON(data.responseText).error
+					} catch (e) {
+						errorMessage = data.responseText;
+					}
+					alert("Error in disconnection: " + errorMessage+"\n Please contact me ASAP");
 					tapiriik.DeauthPending = undefined;
 					$("#disconnect", form).removeClass("disabled");
 				}});
