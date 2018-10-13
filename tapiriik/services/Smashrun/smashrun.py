@@ -19,6 +19,10 @@ from tapiriik.services.sessioncache import SessionCache
 
 logger = logging.getLogger(__name__)
 
+# The number of activities to fetch per 'page' when iterating through the
+# Smashrun API.
+PAGE_COUNT = 20
+
 
 def handleExpiredToken(f):
     """Handle token expiry during execution of `f`.
@@ -135,12 +139,9 @@ class SmashrunService(ServiceBase):
     @handleExpiredToken
     def _getActivities(self, serviceRecord, exhaustive=False):
         client = self._getClient(serviceRec=serviceRecord)
-        activities = []
-        for i, act in enumerate(client.get_activities()):
-            if not exhaustive and i > 20:
-                return activities
-            activities.append(act)
-        return activities
+        return list(client.get_activities(
+                        count=None if exhaustive else PAGE_COUNT,
+                        limit=None if exhaustive else PAGE_COUNT))
 
     @handleExpiredToken
     def _getActivity(self, serviceRecord, activity):
