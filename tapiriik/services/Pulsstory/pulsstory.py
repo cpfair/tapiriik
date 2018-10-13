@@ -261,6 +261,10 @@ class PulsstoryService(ServiceBase):
             lap.Waypoints[-1].Type = WaypointType.End
 
     def UploadActivity(self, serviceRecord, activity):
+        duration = self._getDuration(activity)
+        if duration is None or duration <= 0:
+            raise APIException("Pulsstory does not support trainings without duration.")
+        
         #  assembly dict to post to pulsstory
         uploadData = self._createUploadData(activity, False)
         uris = self._getAPIUris(serviceRecord)
