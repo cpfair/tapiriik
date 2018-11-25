@@ -115,7 +115,8 @@ class GarminConnectService(ServiceBase):
         "rpm": ActivityStatisticUnit.RevolutionsPerMinute,
         "watt": ActivityStatisticUnit.Watts,
         "second": ActivityStatisticUnit.Seconds,
-        "ms": ActivityStatisticUnit.Milliseconds
+        "ms": ActivityStatisticUnit.Milliseconds,
+        "mps": ActivityStatisticUnit.MetersPerSecond
     }
 
     _obligatory_headers = {
@@ -477,7 +478,7 @@ class GarminConnectService(ServiceBase):
             key = measurement["key"]
             if key in attrs_map:
                 if attrs_map[key]["to_units"]:
-                    attrs_map[key]["from_units"] = self._unitMap[measurement["unit"]]
+                    attrs_map[key]["from_units"] = self._unitMap[measurement["unit"]["key"]]
                     if attrs_map[key]["to_units"] == attrs_map[key]["from_units"]:
                         attrs_map[key]["to_units"] = attrs_map[key]["from_units"] = None
                 attrs_indexed[measurement["metricsIndex"]] = attrs_map[key]
