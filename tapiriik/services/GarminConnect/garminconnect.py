@@ -436,15 +436,15 @@ class GarminConnectService(ServiceBase):
             # Nothing else to download
             return activity
 
-        # https://connect.garmin.com/proxy/activity-service-1.3/json/activityDetails/####
+        # https://connect.garmin.com/modern/proxy/activity-service/activity/###/details
         activityID = activity.ServiceData["ActivityID"]
-        res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service-1.3/json/activityDetails/" + str(activityID) + "?maxSize=999999999"), serviceRecord)
+        res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activity-service/activity/{}/details?maxSize=999999999".format(activityID)), serviceRecord)
         try:
-            raw_data = res.json()["com.garmin.activity.details.json.ActivityDetails"]
+            raw_data = res.json()
         except ValueError:
             raise APIException("Activity data parse error for %s: %s" % (res.status_code, res.text))
 
-        if "measurements" not in raw_data:
+        if "metricDescriptors" not in raw_data:
             activity.Stationary = True # We were wrong, oh well
             return activity
 
@@ -471,7 +471,7 @@ class GarminConnectService(ServiceBase):
 
         # Figure out which metrics we'll be seeing in this activity
         attrs_indexed = {}
-        for measurement in raw_data["measurements"]:
+        for measurement in raw_data["metricDescriptors"]:
             key = measurement["key"]
             if key in attrs_map:
                 if attrs_map[key]["to_units"]:
@@ -483,7 +483,7 @@ class GarminConnectService(ServiceBase):
         # Process the data frames
         frame_idx = 0
         active_lap_idx = 0
-        for frame in raw_data["metrics"]:
+        for frame in raw_data["activityDetailMetrics"]:
             wp = Waypoint()
             for idx, attr in attrs_indexed.items():
                 value = frame["metrics"][idx]
