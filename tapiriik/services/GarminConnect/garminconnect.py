@@ -126,11 +126,11 @@ class GarminConnectService(ServiceBase):
     def __init__(self):
         cachedHierarchy = cachedb.gc_type_hierarchy.find_one()
         if not cachedHierarchy:
-            rawHierarchy = requests.get("https://connect.garmin.com/proxy/activity-service-1.2/json/activity_types", headers=self._obligatory_headers).text
-            self._activityHierarchy = json.loads(rawHierarchy)["dictionary"]
+            rawHierarchy = requests.get("https://connect.garmin.com/modern/proxy/activity-service/activity/activityTypes", headers=self._obligatory_headers).text
+            self._activityHierarchy = json.loads(rawHierarchy)
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
-            self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])["dictionary"]
+            self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])
         rate_lock_path = tempfile.gettempdir() + "/gc_rate.%s.lock" % HTTP_SOURCE_ADDR
         # Ensure the rate lock file exists (...the easy way)
         open(rate_lock_path, "a").close()
@@ -286,7 +286,7 @@ class GarminConnectService(ServiceBase):
         # But maybe they'll change that some day?
         while act_type not in self._activityMappings:
             try:
-                act_type = [x["parent"]["key"] for x in self._activityHierarchy if x["key"] == act_type][0]
+                act_type = [x["parentTypeId"]["typeKey"] for x in self._activityHierarchy if x["typeKey"] == act_type][0]
             except IndexError:
                 raise ValueError("Activity type not found in activity hierarchy")
         return self._activityMappings[act_type]
