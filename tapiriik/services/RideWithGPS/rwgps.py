@@ -83,7 +83,7 @@ class RideWithGPSService(ServiceBase):
         """
         Converts a duration in form HH:MM:SS to number of seconds for use in timedelta construction.
         """
-        hours, minutes, seconds = (["0", "0"] + s.split(":"))[-3:]
+        hours, minutes, seconds = (["0", "0"] + str(s).split(":"))[-3:]
         hours = int(hours)
         minutes = int(minutes)
         seconds = float(seconds)
