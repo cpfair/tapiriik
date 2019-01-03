@@ -131,6 +131,14 @@ class GarminConnectService(ServiceBase):
             cachedb.gc_type_hierarchy.insert({"Hierarchy": rawHierarchy})
         else:
             self._activityHierarchy = json.loads(cachedHierarchy["Hierarchy"])
+            
+        # hashmaps for determining parent type key
+        self._typeKeyParentMap = {}
+        self._typeIdKeyMap = {}        
+        for x in self._activityHierarchy:
+            self._typeKeyParentMap[x["typeKey"]] = x["parentTypeId"]
+            self._typeIdKeyMap[x["typeId"]] = x["typeKey"] 
+            
         rate_lock_path = tempfile.gettempdir() + "/gc_rate.%s.lock" % HTTP_SOURCE_ADDR
         # Ensure the rate lock file exists (...the easy way)
         open(rate_lock_path, "a").close()
@@ -286,7 +294,7 @@ class GarminConnectService(ServiceBase):
         # But maybe they'll change that some day?
         while act_type not in self._activityMappings:
             try:
-                act_type = [x["parentTypeId"]["typeKey"] for x in self._activityHierarchy if x["typeKey"] == act_type][0]
+                act_type = self._typeIdKeyMap[self._typeKeyParentMap[act_type]]
             except IndexError:
                 raise ValueError("Activity type not found in activity hierarchy")
         return self._activityMappings[act_type]
