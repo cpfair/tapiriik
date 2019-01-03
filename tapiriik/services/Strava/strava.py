@@ -62,6 +62,7 @@ class StravaService(ServiceBase):
         "VirtualRide": ActivityType.Cycling,
         "EBikeRide": ActivityType.Cycling,
         "MountainBiking": ActivityType.MountainBiking,
+        "VirtualRun": ActivityType.Running,
         "Run": ActivityType.Running,
         "Hike": ActivityType.Hiking,
         "Walk": ActivityType.Walking,
