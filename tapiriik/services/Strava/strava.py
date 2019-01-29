@@ -178,8 +178,6 @@ class StravaService(ServiceBase):
                     activity.Stats.Cadence.update(ActivityStatistic(ActivityStatisticUnit.RevolutionsPerMinute, avg=ride["average_cadence"]))
                 if "average_temp" in ride:
                     activity.Stats.Temperature.update(ActivityStatistic(ActivityStatisticUnit.DegreesCelcius, avg=ride["average_temp"]))
-                if "calories" in ride:
-                    activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=ride["calories"])
                 activity.Name = ride["name"]
                 activity.Private = ride["private"]
                 activity.Stationary = ride["manual"]
@@ -219,6 +217,18 @@ class StravaService(ServiceBase):
             activity.Laps = [Lap(startTime=activity.StartTime, endTime=activity.EndTime, stats=activity.Stats)]
             return activity
         activityID = activity.ServiceData["ActivityID"]
+
+        #Note (smelikyan): request activity details in order to extract calories stat
+        details = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID), headers=self._apiHeaders(svcRecord))
+        if details.status_code == 401:
+            raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+        try:
+            details = details.json()
+        except ValueError:
+            raise APIException("Activity details data returned is not JSON")
+
+        if "calories" in details:
+            activity.Stats.Energy = ActivityStatistic(ActivityStatisticUnit.Kilocalories, value=details["calories"])
 
         streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng,distance,velocity_smooth", headers=self._apiHeaders(svcRecord))
         if streamdata.status_code == 401:
