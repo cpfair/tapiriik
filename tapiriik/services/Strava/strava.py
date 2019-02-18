@@ -1,7 +1,7 @@
 from tapiriik.settings import WEB_ROOT, STRAVA_CLIENT_SECRET, STRAVA_CLIENT_ID, STRAVA_RATE_LIMITS
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.service_record import ServiceRecord
-from tapiriik.database import cachedb
+from tapiriik.database import cachedb, db
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
 from tapiriik.services.fit import FITIO
@@ -92,15 +92,41 @@ class StravaService(ServiceBase):
         return "https://www.strava.com/activities/%d" % uploadId
 
     def WebInit(self):
-        params = {'scope':'write,view_private',
+        params = {'scope':'activity:write,activity:read_all',
                   'client_id':STRAVA_CLIENT_ID,
                   'response_type':'code',
-                  'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"})}
+                  'redirect_uri':WEB_ROOT + reverse("oauth_return", kwargs={"service": "strava"}),
+                  "approval_prompt": "auto"
+        }
         self.UserAuthorizationURL = \
            "https://www.strava.com/oauth/authorize?" + urlencode(params)
 
-    def _apiHeaders(self, serviceRecord):
-        return {"Authorization": "access_token " + serviceRecord.Authorization["OAuthToken"]}
+    def _requestWithAuth(self, reqLambda, serviceRecord):
+        session = requests.Session()
+
+        if time.time() > serviceRecord.Authorization.get("AccessTokenExpiresAt", 0) - 60:
+            # Expired access token, or still running (now-deprecated) indefinite access token.
+            refreshToken = serviceRecord.Authorization.get("RefreshToken",
+                                                           serviceRecord.Authorization.get("OAuthToken"))
+            response = requests.post("https://www.strava.com/oauth/token", data={
+                "grant_type": "refresh_token",
+                "refresh_token": refreshToken,
+                "client_id": STRAVA_CLIENT_ID,
+                "client_secret": STRAVA_CLIENT_SECRET,
+            })
+            if response.status_code != 200:
+                raise APIException("No authorization to refresh token", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
+            data = response.json()
+            authorizationData = {
+                "AccessToken": data["access_token"],
+                "AccessTokenExpiresAt": data["expires_at"],
+                "RefreshToken": data["refresh_token"]
+            }
+            serviceRecord.Authorization.update(authorizationData)
+            db.connections.update({"_id": serviceRecord._id}, {"$set": {"Authorization": authorizationData}})
+
+        session.headers.update({"Authorization": "access_token %s" % serviceRecord.Authorization["AccessToken"]})
+        return reqLambda(session)
 
     def RetrieveAuthorizationToken(self, req, level):
         code = req.GET.get("code")
@@ -111,16 +137,17 @@ class StravaService(ServiceBase):
             raise APIException("Invalid code")
         data = response.json()
 
-        authorizationData = {"OAuthToken": data["access_token"]}
-        # Retrieve the user ID, meh.
-        id_resp = requests.get("https://www.strava.com/api/v3/athlete", headers=self._apiHeaders(ServiceRecord({"Authorization": authorizationData})))
-        return (id_resp.json()["id"], authorizationData)
+        authorizationData = {
+            "AccessToken": data["access_token"],
+            "AccessTokenExpiresAt": data["expires_at"],
+            "RefreshToken": data["refresh_token"]
+        }
+        return (data["athlete"]["id"], authorizationData)
 
     def RevokeAuthorization(self, serviceRecord):
-        resp = requests.post("https://www.strava.com/oauth/deauthorize", headers=self._apiHeaders(serviceRecord))
+        resp = self._requestWithAuth(lambda session: session.post("https://www.strava.com/oauth/deauthorize"), serviceRecord)
         if resp.status_code != 204 and resp.status_code != 200:
             raise APIException("Unable to deauthorize Strava auth token, status " + str(resp.status_code) + " resp " + resp.text)
-        pass
 
     def DownloadActivityList(self, svcRecord, exhaustive=False):
         activities = []
@@ -131,7 +158,7 @@ class StravaService(ServiceBase):
             if before is not None and before < 0:
                 break # Caused by activities that "happened" before the epoch. We generally don't care about those activities...
             logger.debug("Req with before=" + str(before) + "/" + str(earliestDate))
-            resp = requests.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", headers=self._apiHeaders(svcRecord), params={"before": before})
+            resp = self._requestWithAuth(lambda session: session.get("https://www.strava.com/api/v3/athletes/" + str(svcRecord.ExternalID) + "/activities", params={"before": before}), svcRecord)
             if resp.status_code == 401:
                 raise APIException("No authorization to retrieve activity list", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
@@ -220,7 +247,7 @@ class StravaService(ServiceBase):
             return activity
         activityID = activity.ServiceData["ActivityID"]
 
-        streamdata = requests.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng,distance,velocity_smooth", headers=self._apiHeaders(svcRecord))
+        streamdata = self._requestWithAuth(lambda session: session.get("https://www.strava.com/api/v3/activities/" + str(activityID) + "/streams/time,altitude,heartrate,cadence,watts,temp,moving,latlng,distance,velocity_smooth"), svcRecord)
         if streamdata.status_code == 401:
             raise APIException("No authorization to download activity", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
 
@@ -330,7 +357,7 @@ class StravaService(ServiceBase):
                 fitData = FITIO.Dump(activity, drop_pauses=True)
             files = {"file":("tap-sync-" + activity.UID + "-" + str(os.getpid()) + ("-" + source_svc if source_svc else "") + ".fit", fitData)}
 
-            response = requests.post("https://www.strava.com/api/v3/uploads", data=req, files=files, headers=self._apiHeaders(serviceRecord))
+            response = self._requestWithAuth(lambda session: session.post("https://www.strava.com/api/v3/uploads", data=req, files=files), serviceRecord)
             if response.status_code != 201:
                 if response.status_code == 401:
                     raise APIException("No authorization to upload activity " + activity.UID + " response " + response.text + " status " + str(response.status_code), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -344,7 +371,7 @@ class StravaService(ServiceBase):
             upload_poll_wait = 8 # The mode of processing times
             while not response.json()["activity_id"]:
                 time.sleep(upload_poll_wait)
-                response = requests.get("https://www.strava.com/api/v3/uploads/%s" % upload_id, headers=self._apiHeaders(serviceRecord))
+                response = self._requestWithAuth(lambda session: session.get("https://www.strava.com/api/v3/uploads/%s" % upload_id), serviceRecord)
                 logger.debug("Waiting for upload - status %s id %s" % (response.json()["status"], response.json()["activity_id"]))
                 if response.json()["error"]:
                     error = response.json()["error"]
@@ -365,8 +392,7 @@ class StravaService(ServiceBase):
                     "distance": activity.Stats.Distance.asUnits(ActivityStatisticUnit.Meters).Value,
                     "elapsed_time": round((activity.EndTime - activity.StartTime).total_seconds())
                 }
-            headers = self._apiHeaders(serviceRecord)
-            response = requests.post("https://www.strava.com/api/v3/activities", data=req, headers=headers)
+            response = self._requestWithAuth(lambda session: session.post("https://www.strava.com/api/v3/activities", data=req), serviceRecord)
             # FFR this method returns the same dict as the activity listing, as REST services are wont to do.
             if response.status_code != 201:
                 if response.status_code == 401:
@@ -382,6 +408,5 @@ class StravaService(ServiceBase):
         cachedb.strava_activity_cache.remove({"Owner": serviceRecord.ExternalID})
 
     def DeleteActivity(self, serviceRecord, uploadId):
-        headers = self._apiHeaders(serviceRecord)
-        del_res = requests.delete("https://www.strava.com/api/v3/activities/%d" % uploadId, headers=headers)
+        del_res = self._requestWithAuth(lambda session: session.delete("https://www.strava.com/api/v3/activities/%d" % uploadId), serviceRecord)
         del_res.raise_for_status()
