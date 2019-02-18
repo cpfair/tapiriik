@@ -118,9 +118,11 @@ class DropboxService(ServiceBase):
             cachedb.dropbox_cache.update({"ExternalID": svcRec.ExternalID}, {"$unset": {"Structure": None}})
 
     def _raiseDbException(self, e):
-        if type(e) is dropbox.exceptions.AuthError:
+        if isinstance(e, dropbox.exceptions.AuthError):
             raise APIException("Authorization error - %s" % e, block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-        if hasattr(e, "error") and getattr(e.error, "insufficient_space", None):
+        if isinstance(e, dropbox.exceptions.ApiError) and \
+           e.error.is_path() and \
+           e.error.get_path().reason.is_insufficient_space():
             raise APIException("Dropbox quota error", block=True, user_exception=UserException(UserExceptionType.AccountFull, intervention_required=True))
         raise APIException("API failure - %s" % e)
 
