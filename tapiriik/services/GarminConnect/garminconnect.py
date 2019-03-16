@@ -453,7 +453,6 @@ class GarminConnectService(ServiceBase):
         try:
             tcx_data = res.text
             activity = TCXIO.Parse(tcx_data.encode('utf-8'), activity)
-            activity.SourceFile = SourceFile(tcx_data, ActivityFileType.TCX)
         except ValueError:
             raise APIException("Activity data parse error for %s: %s" % (res.status_code, res.text))
 
