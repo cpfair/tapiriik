@@ -229,7 +229,10 @@ class TCXIO:
             sum_stats.update(act.Stats)
             act.Stats = sum_stats
 
-        act.PrerenderedFormats["tcx"] = tcxData
+        try:
+            act.PrerenderedFormats["tcx"] = tcxData.decode('utf-8')
+        except:
+            act.PrerenderedFormats["tcx"] = tcxData
 
         act.CalculateUID()
         return act
