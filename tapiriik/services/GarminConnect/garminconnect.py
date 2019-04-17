@@ -122,6 +122,9 @@ class GarminConnectService(ServiceBase):
     _obligatory_headers = {
         "Referer": "https://sync.tapiriik.com"
     }
+    _garmin_signin_headers={
+        "origin": "https://sso.garmin.com"
+    }
 
     def __init__(self):
         cachedHierarchy = cachedb.gc_type_hierarchy.find_one()
@@ -224,8 +227,7 @@ class GarminConnectService(ServiceBase):
         if preResp.status_code != 200:
             raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
 
-        headers={'origin': 'https://sso.garmin.com'}
-        ssoResp = session.post("https://sso.garmin.com/sso/signin", headers=headers, params=params, data=data, allow_redirects=False)
+        ssoResp = session.post("https://sso.garmin.com/sso/signin", headers=self._garmin_signin_headers, params=params, data=data, allow_redirects=False)
         if ssoResp.status_code != 200 or "temporarily unavailable" in ssoResp.text:
             raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
