@@ -220,11 +220,12 @@ class GarminConnectService(ServiceBase):
             # "locale": "en"
         }
         # I may never understand what motivates people to mangle a perfectly good protocol like HTTP in the ways they do...
-        preResp = session.get("https://sso.garmin.com/sso/login", params=params)
+        preResp = session.get("https://sso.garmin.com/sso/signin", params=params)
         if preResp.status_code != 200:
             raise APIException("SSO prestart error %s %s" % (preResp.status_code, preResp.text))
 
-        ssoResp = session.post("https://sso.garmin.com/sso/login", params=params, data=data, allow_redirects=False)
+        headers={'origin': 'https://sso.garmin.com'}
+        ssoResp = session.post("https://sso.garmin.com/sso/signin", headers=headers, params=params, data=data, allow_redirects=False)
         if ssoResp.status_code != 200 or "temporarily unavailable" in ssoResp.text:
             raise APIException("SSO error %s %s" % (ssoResp.status_code, ssoResp.text))
 
