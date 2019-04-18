@@ -122,7 +122,7 @@ class GarminConnectService(ServiceBase):
     _obligatory_headers = {
         "Referer": "https://sync.tapiriik.com"
     }
-    _garmin_signin_headers={
+    _garmin_signin_headers = {
         "origin": "https://sso.garmin.com"
     }
 
