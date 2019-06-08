@@ -9,7 +9,7 @@ pycryptodome
 celery
 django-pipeline==1.5.1
 requests_oauthlib==0.4.0
-redis
+redis==2.10.6
 django-ipware
 smashrun-client>=0.6.0
 beautifulsoup4
