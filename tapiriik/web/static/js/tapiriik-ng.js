@@ -161,9 +161,15 @@ function RollbackDashboardController($scope, $http) {
   };
 };
 
-angular.module('tapiriik', []).config(function($interpolateProvider) {
+var app = angular.module('tapiriik', [])
+
+app.config(function($interpolateProvider) {
   $interpolateProvider.startSymbol('{[').endSymbol(']}');
-}).run(function($rootScope, $http) {
+})
+
+app.filter('unsafe', function($sce) { return $sce.trustAsHtml; });
+
+app.run(function($rootScope, $http) {
   window.$rootScope = $rootScope; // So the old stuff can call apply
   $rootScope.tapiriik = window.tapiriik;
   $http.defaults.headers.post["X-CSRFToken"] = $.cookie('csrftoken'); // ALERT ALERT JQUERY ALERT ALERT
