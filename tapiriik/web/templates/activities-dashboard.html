@@ -27,7 +27,7 @@
 					<p>This activity was not synchronized to the following services:</p>
 					<ul>
 						<li ng-repeat="absence in activity.Prescence|filter:{Present:false}">
-							<b>{[ DisplayNameByService(absence.Service) ]}</b>: {[ ExceptionExplanation(absence) ]}
+							<b>{[ DisplayNameByService(absence.Service) ]}</b>: <span ng-bind-html="ExceptionExplanation(absence)"></span>
 						</li>
 					</ul>
 				</span>

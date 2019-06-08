@@ -15,6 +15,7 @@ function ActivitiesController($scope, $http) {
       "full": "Your %(service) account is full. Make some space available then visit the dashboard to re-synchronize.",
       "expired": "Your %(service) account has expired. Once it's back in action, visit the dashboard to re-synchronize.",
       "unpaid": "You must have a paid account with %(service) in order to synchronize activities.",
+      "gc_upload_consent": "You must <a href=\"https://support.garmin.com/en-CA/?faq=mUgmC0vfYD77WwCiPmR6H8\" target=\"_blank\">grant consent for Garmin Connect to accept data uploads</div>",
       "flow": "You've excluded this activity from synchronizing to %(service).",
       "private": "This activity is private and will not synchronize to %(service).",
       "nosupplier": "This activity is uploaded to a service which does not support downloading activities.",

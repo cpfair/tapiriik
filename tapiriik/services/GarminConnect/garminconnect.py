@@ -548,9 +548,12 @@ class GarminConnectService(ServiceBase):
             raise APIException("Bad response during GC upload: %s %s" % (res.status_code, res.text))
 
         if len(res["successes"]) == 0:
-            if len(res["failures"]) and len(res["failures"][0]["messages"]) and res["failures"][0]["messages"][0]["content"] == "Duplicate activity":
-                logger.debug("Duplicate")
-                return # ...cool?
+            if len(res["failures"]) and len(res["failures"][0]["messages"]):
+                if res["failures"][0]["messages"][0]["content"] == "Duplicate activity":
+                    logger.debug("Duplicate")
+                    return # ...cool?
+                if res["failures"][0]["messages"][0]["content"] == "The user is from EU location, but upload consent is not yet granted or revoked":
+                    raise APIException("EU user with no upload consent", block=True, user_exception=UserException(UserExceptionType.GCUploadConsent, intervention_required=True))
             raise APIException("Unable to upload activity %s" % res)
         if len(res["successes"]) > 1:
             raise APIException("Uploaded succeeded, resulting in too many activities")

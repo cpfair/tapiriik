@@ -50,6 +50,7 @@ class UserExceptionType:
     AccountExpired = "expired"
     AccountUnpaid = "unpaid" # vs. expired, which implies it was at some point function, via payment or trial or otherwise.
     NonAthleteAccount = "non_athlete_account" # trainingpeaks
+    GCUploadConsent = "gc_upload_consent" # EU User must grant upload consent on GC
 
     # Activity-level exceptions
     FlowException = "flow"

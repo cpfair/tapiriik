@@ -11,6 +11,8 @@
 			There was a problem signing into your {{ provider.DisplayName }} account. You may have changed your password on {{ provider.DisplayName }} recently, or you need to sign into your {{ provider.DisplayName }} account directly and reset your password to meet {{ provider.DisplayName }}'s new security requirements. Once you've done so, use the button below to update your password and resume synchronization.
 		{% elif exception.UserException.Type == "expired" %}
 			It looks like <strong>your {{ provider.DisplayName }} account has expired</strong>. Once it's back in action, use the button below to re-synchronize your {{ provider.DisplayName }} account.
+		{% elif exception.UserException.Type == "gc_upload_consent" %}
+			You must <a href="https://support.garmin.com/en-CA/?faq=mUgmC0vfYD77WwCiPmR6H8" target="_blank">grant Garmin Connect permission to accept data uploads.</a> Once you've done so, use the button below to re-synchronize your {{ provider.DisplayName }} account.
 		{% endif %}
 	</p>
 	<div class="footer">
