@@ -168,9 +168,9 @@ class GarminConnectService(ServiceBase):
         finally:
             fcntl.flock(self._rate_lock,fcntl.LOCK_UN)
 
-    def _request_with_reauth(self, req_lambda, serviceRecord=None, email=None, password=None):
+    def _request_with_reauth(self, req_lambda, serviceRecord=None, email=None, password=None, force_skip_cache=False):
         for i in range(self._reauthAttempts + 1):
-            session = self._get_session(record=serviceRecord, email=email, password=password, skip_cache=i > 0)
+            session = self._get_session(record=serviceRecord, email=email, password=password, skip_cache=(force_skip_cache or i > 0))
             self._rate_limit()
             result = req_lambda(session)
             if result.status_code not in (403, 500):
@@ -308,10 +308,12 @@ class GarminConnectService(ServiceBase):
         pageSz = 100
         activities = []
         exclusions = []
+        force_reauth = False
         while True:
             logger.debug("Req with " + str({"start": (page - 1) * pageSz, "limit": pageSz}))
 
-            res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}), serviceRecord)
+            res = self._request_with_reauth(lambda session: session.get("https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities", params={"start": (page - 1) * pageSz, "limit": pageSz}), serviceRecord, force_skip_cache=force_reauth)
+            force_reauth = False
 
             try:
                 res = res.json()
@@ -319,6 +321,11 @@ class GarminConnectService(ServiceBase):
                 res_txt = res.text # So it can capture in the log message
                 raise APIException("Parse failure in GC list resp: %s - %s" % (res.status_code, res_txt))
             for act in res:
+                if "ROLE_SYSTEM" in act["userRoles"]:
+                    # GC for some reason return test data set instead of 401 for unauthorized call
+                    force_reauth = True
+                    continue
+
                 activity = UploadedActivity()
                 # stationary activities have movingDuration = None while non-gps static activities have 0.0
                 activity.Stationary = act["movingDuration"] is None
