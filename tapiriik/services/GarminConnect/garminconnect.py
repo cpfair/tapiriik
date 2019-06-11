@@ -324,7 +324,7 @@ class GarminConnectService(ServiceBase):
                 if "ROLE_SYSTEM" in act["userRoles"]:
                     # GC for some reason return test data set instead of 401 for unauthorized call
                     force_reauth = True
-                    continue
+                    break
 
                 activity = UploadedActivity()
                 # stationary activities have movingDuration = None while non-gps static activities have 0.0
@@ -360,6 +360,11 @@ class GarminConnectService(ServiceBase):
                 activity.ServiceData = {"ActivityID": int(act["activityId"])}
 
                 activities.append(activity)
+
+            if force_reauth:
+                # Re-run activity listing
+                continue
+
             logger.debug("Finished page " + str(page))
             if not exhaustive or len(res) == 0:
                 break
