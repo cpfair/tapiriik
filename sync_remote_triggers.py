@@ -19,13 +19,25 @@ def celery_shutdown(**kwargs):
     close_connections()
 
 @celery_app.task(acks_late=True)
-def trigger_remote(service_id, affected_connection_external_ids):
+def trigger_remote(service_id, affected_connection_external_ids_with_payloads):
     from tapiriik.auth import User
     from tapiriik.services import Service
     svc = Service.FromID(service_id)
-    db.connections.update({"Service": svc.ID, "ExternalID": {"$in": affected_connection_external_ids}}, {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}, multi=True, w=MONGO_FULL_WRITE_CONCERN)
-    affected_connection_ids = db.connections.find({"Service": svc.ID, "ExternalID": {"$in": affected_connection_external_ids}}, {"_id": 1})
-    affected_connection_ids = [x["_id"] for x in affected_connection_ids]
+    affected_connection_ids = list()
+
+    for item in affected_connection_external_ids_with_payloads:
+        if isinstance(item, list):
+            external_id, payload = item
+        else:
+            external_id = item
+            payload = None
+        update_connection_query = {"$set":{"TriggerPartialSync": True, "TriggerPartialSyncTimestamp": datetime.utcnow()}}
+        if payload is not None:
+            update_connection_query.update({"$push": {"TriggerPartialSyncPayloads": payload, "$slice": -90}})
+        record = db.connections.find_and_modify({"Service": svc.ID, "ExternalID": external_id}, update_connection_query, w=MONGO_FULL_WRITE_CONCERN)
+        if record is not None:
+            affected_connection_ids.append(record["_id"])
+
     trigger_users_query = User.PaidUserMongoQuery()
     trigger_users_query.update({"ConnectedServices.ID": {"$in": affected_connection_ids}})
     trigger_users_query.update({"Config.suppress_auto_sync": {"$ne": True}})

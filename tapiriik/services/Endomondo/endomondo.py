@@ -244,7 +244,7 @@ class EndomondoService(ServiceBase):
 
     def ExternalIDsForPartialSyncTrigger(self, req):
         data = json.loads(req.body.decode("UTF-8"))
-        delta_external_ids = [int(x["id"]) for x in data["data"]]
+        delta_external_ids = [(int(x["id"]), None) for x in data["data"]]
         return delta_external_ids
 
     def DownloadActivity(self, serviceRecord, activity):

@@ -230,7 +230,7 @@ class StravaService(ServiceBase):
 
     def ExternalIDsForPartialSyncTrigger(self, req):
         data = json.loads(req.body.decode("UTF-8"))
-        return [data["owner_id"]]
+        return [(data["owner_id"], None)]
 
     def PartialSyncTriggerGET(self, req):
         # Strava requires this endpoint to echo back a challenge.
