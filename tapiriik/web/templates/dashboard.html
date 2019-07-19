@@ -11,6 +11,7 @@
 		<a href="{% url 'diagnostics_unsu' %}">Return</a>
 		<hr/>
 		{% endif %}
+		<p><b>Seeing strange activities in your accounts uploaded by tapiriik?</b> These resulted from a bug in Garmin Connect - <a href="/garmin_connect_bad_data">read more about the incident here.</a></p>
 		{% if user.ConnectedServices|length > 1 %}
 			{% infotip connectedWillSync %}Connected services will be synchronized {% if user|has_active_payment %}automatically{% else %}when you click Synchronize now{% endif %}{% endinfotip %}
 		{% else %}
@@ -63,8 +64,12 @@
 	{% endfor %}
 
 {% else %}
-<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, Runkeeper, Strava, TrainingPeaks, SportTracks.mobi, Endomondo, RideWithGPS, TrainAsONE, TrainerRoad, Motivato, Velo Hero, Epson RUNSENSE, Dropbox, Smashrun, BeginnerTriathlete, Pulsstory, Singletracker, Aerobia, and SETIO<br/>
+<p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, Runkeeper, Strava, TrainingPeaks, SportTracks.mobi, Endomondo, RideWithGPS, TrainAsONE, TrainerRoad, Motivato, Velo Hero, Epson RUNSENSE, Dropbox, Smashrun, BeginnerTriathlete, Pulsstory, Singletracker,  and SETIO<br/>
 (your heart rate, cadence, power, and temperature data syncs too)</p>
+
+<p><b>Seeing strange activities in your accounts uploaded by tapiriik?</b> These resulted from a bug in Garmin Connect - <a href="/garmin_connect_bad_data">read more about the incident here.</a></p>
+
+
 	{% for provider in service_providers %}
 		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
 			{% include "service-button.html" with provider=provider %}

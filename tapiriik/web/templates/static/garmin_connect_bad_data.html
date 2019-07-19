@@ -1,0 +1,31 @@
+{% extends "site.html" %}
+{% block title %}tapiriik uploaded strange activities to my accounts{% endblock %}
+{% block content %}
+<h1>tapiriik uploaded strange activities to my accounts!</h1>
+<h2>...what's going on?</h2>
+
+<div style="border: 3px solid black; border-radius: 3px; padding: 30px;">
+<h3 style="margin: 0;">Summary: A bug in Garmin Connect exposed test activity data used internally at Garmin. tapiriik couldn't tell these test activities weren't your own activities, so it synchronized them to your other accounts. <u>Please delete these bad activities from all your accounts to avoid future issues.</u></h3>
+</div>
+
+<div style="text-align: left">
+<h3>Where did these activities come from?</h3>
+<p>On June 11, 2019, the interface which tapiriik used to download activities from Garmin Connect started to return incorrect data to tapiriik. Instead of providing a list of your own activities, it began to return test activities from an account used internally at Garmin. As tapiriik could not tell the difference between the test activities and your own, the test activities were uploaded to your other connected accounts as if they were your own.</p>
+
+<h3>Whose activities are they? Were my activities sent to someone else's account?</h3>
+
+<p>Everyone affected by this issue received the same set of test activities from the Garmin-internal test account. These test activities were were already publicly available on Garmin Connect, without any log-in required. Your activities were not sent to anyone else's accounts, nor were anyone else's activities sent to your account.</p>
+
+<p>For the technically inclined, you can see a slice of the incorrect data that was being returned <a href="http://archive.is/wWGiL" target="_blank">here (activity list)</a> and <a href="http://archive.is/yqybr" target="_blank">here (details of a single activity)</a>.</p>
+
+<h3>Is the issue fixed?</h3>
+
+<p>Yes and no. The original issue with the Garmin Connect interface has been fixed by Garmin, and additional checks have been added to tapiriik's code to prevent this situation occurring again.</p>
+
+<p><b>However, these bad activities must now be manually deleted from your accounts</b> so that they can not be synchronized any further. Unfortunately, tapiriik can't safely delete the bad activities for you without risking your real data, so this process must be done by hand. Sorry for the inconvenience!</p>
+
+<h3>Is this a problem with Strava? RunKeeper? Endomondo? etc.?</h3>
+
+<p>No. The issue originated with Garmin Connect and was propagated to your other accounts via tapiriik. Strava &amp; co. were innocent bystanders to this incident.</p>
+</div>
+{% endblock %}
