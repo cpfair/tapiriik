@@ -2,6 +2,7 @@ import json
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import redirect
 from tapiriik.auth import User
 from tapiriik.sync import Sync, SynchronizationTask
 from tapiriik.database import db
@@ -90,6 +91,14 @@ def sync_clear_errorgroup(req, service, group):
             return HttpResponse()
 
     return HttpResponse(status=404)
+
+@require_POST
+def sync_clear_badactivitiesacknowledgement(req):
+    if not req.user:
+        return HttpResponse(status=401)
+
+    db.users.update({"_id": req.user["_id"]}, {'$unset':{"BlockedOnBadActivitiesAcknowledgement": None}})
+    return redirect("dashboard")
 
 @csrf_exempt
 def sync_trigger_partial_sync_callback(req, service):

@@ -12,6 +12,13 @@
 		<hr/>
 		{% endif %}
 		<p><b>Seeing strange activities in your accounts uploaded by tapiriik?</b> These resulted from a bug in Garmin Connect - <a href="/garmin_connect_bad_data">read more about the incident here.</a></p>
+
+		{% if user.BlockedOnBadActivitiesAcknowledgement %}
+		<form method="POST" action="/sync/bad_activities_acknowledgement_clear" style="text-align: center;">{% csrf_token %}
+		<p>To prevent these bad activities from spreading further, your account is currently paused. Once you have read the above page and cleared any bad activities from your account, please click the button below:<br/>
+			<button type="submit">I've checked my accounts and deleted any incorrect activities from this incident</button></p>
+		</form>
+		{% endif %}
 		{% if user.ConnectedServices|length > 1 %}
 			{% infotip connectedWillSync %}Connected services will be synchronized {% if user|has_active_payment %}automatically{% else %}when you click Synchronize now{% endif %}{% endinfotip %}
 		{% else %}

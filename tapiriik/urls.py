@@ -40,6 +40,7 @@ urlpatterns = patterns('',
     url(r'^sync/activity$', 'tapiriik.web.views.sync_recent_activity', {}, name='sync_recent_activity'),
     url(r'^sync/schedule/now$', 'tapiriik.web.views.sync_schedule_immediate', {}, name='sync_schedule_immediate'),
     url(r'^sync/errors/(?P<service>[^/]+)/clear/(?P<group>.+)$', 'tapiriik.web.views.sync_clear_errorgroup', {}, name='sync_clear_errorgroup'),
+    url(r'^sync/bad_activities_acknowledgement_clear$', 'tapiriik.web.views.sync_clear_badactivitiesacknowledgement', {}, name='sync_clear_errorgroup'),
 
     url(r'^activities$', 'tapiriik.web.views.activities_dashboard', {}, name='activities_dashboard'),
     url(r'^activities/fetch$', 'tapiriik.web.views.activities_fetch_json', {}, name='activities_fetch_json'),

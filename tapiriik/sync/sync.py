@@ -167,7 +167,8 @@ class Sync:
 
         result = None
         try:
-            result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
+            if not user.get("BlockedOnBadActivitiesAcknowledgement", False):
+                result = Sync.PerformUserSync(user, exhaustive, heartbeat_callback=heartbeat_callback)
         finally:
             nextSync = None
             if User.HasActivePayment(user):
