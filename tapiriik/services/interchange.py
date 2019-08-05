@@ -442,6 +442,7 @@ class ActivityStatisticUnit:
     DegreesCelcius = "ºC"
     DegreesFahrenheit = "ºF"
     KilometersPerHour = "km/h"
+    MinutesPerKilometer = "m/km"
     HectometersPerHour = "hm/h" # Silly Garmin Connect!
     KilometersPerSecond = "km/s" # Silly (unnamed service)!
     MetersPerSecond = "m/s"
@@ -461,6 +462,7 @@ class ActivityStatistic:
     __slots__ = ("Value", "Average", "Min", "Max", "Gain", "Loss", "Units", "_samples")
     _typeKeys = ("Value", "Average", "Min", "Max", "Gain", "Loss")
     _conversions = {
+        (ActivityStatisticUnit.MinutesPerKilometer, ActivityStatisticUnit.KilometersPerHour): (lambda mpk: 1/mpk * 60, lambda kph: 1/kph / 60),
         (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.HectometersPerHour): 10,
         (ActivityStatisticUnit.KilometersPerHour, ActivityStatisticUnit.MilesPerHour): 0.621371,
         (ActivityStatisticUnit.KilometersPerSecond, ActivityStatisticUnit.KilometersPerHour): 60 * 60,
