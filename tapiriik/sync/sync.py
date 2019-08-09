@@ -612,7 +612,7 @@ class SynchronizationTask:
             self._syncExclusions[serviceRecord._id][identifier] = {"Message": exclusion.Message, "Activity": str(exclusion.Activity) if exclusion.Activity else None, "ExternalActivityID": exclusion.ExternalActivityID, "Permanent": exclusion.Permanent, "Effective": datetime.utcnow(), "UserException": _packUserException(exclusion.UserException)}
 
     def _ensurePartialSyncPollingSubscription(self, conn):
-        if conn.Service.PartialSyncRequiresTrigger and not conn.PartialSyncTriggerSubscribed:
+        if conn.Service.PartialSyncRequiresTrigger and conn.Service.PartialSyncTriggerRequiresSubscription and not conn.PartialSyncTriggerSubscribed:
             if conn.Service.RequiresExtendedAuthorizationDetails and not conn.ExtendedAuthorization:
                 logger.info("No ext auth details, cannot subscribe")
                 return # We (probably) can't subscribe unless we have their credentials. May need to change this down the road.

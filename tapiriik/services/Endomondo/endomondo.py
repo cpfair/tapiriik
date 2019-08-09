@@ -26,6 +26,7 @@ class EndomondoService(ServiceBase):
     UserActivityURL = "https://www.endomondo.com/users/{0}/workouts/{1}"
 
     PartialSyncRequiresTrigger = True
+    PartialSyncTriggerRequiresSubscription = True
     AuthenticationNoFrame = True
 
     ConfigurationDefaults = {
