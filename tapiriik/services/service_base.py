@@ -55,6 +55,7 @@ class ServiceBase:
     #  - One is necessitated (non-partial sync, possibility of uploading new activities, etc)
     PartialSyncRequiresTrigger = False
     PartialSyncTriggerRequiresSubscription = False
+    PartialSyncTriggerStatusCode = 204
     # Timedelta for polling to happen at (or None for no polling)
     PartialSyncTriggerPollInterval = None
     # How many times to call the polling method per interval (this is for the multiple_index kwarg)

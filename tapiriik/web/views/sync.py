@@ -107,7 +107,7 @@ def sync_trigger_partial_sync_callback(req, service):
         from sync_remote_triggers import trigger_remote
         affected_connection_external_ids = svc.ExternalIDsForPartialSyncTrigger(req)
         trigger_remote.apply_async(args=[service, affected_connection_external_ids])
-        return HttpResponse(status=204)
+        return HttpResponse(status=svc.PartialSyncTriggerStatusCode)
     elif req.method == "GET":
         return svc.PartialSyncTriggerGET(req)
     else:
