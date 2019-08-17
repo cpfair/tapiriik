@@ -25,7 +25,9 @@ class Service:
         raise ValueError
 
     def List():
-        return [
+        private_svc_map = {svc.ID: svc for svc in PRIVATE_SERVICES}
+        svc_list = (
+            private_svc_map.get("garminconnect2"),
             RunKeeper,
             Strava,
             GarminConnect,
@@ -44,8 +46,10 @@ class Service:
             BeginnerTriathlete,
             Setio,
             Singletracker,
-            Aerobia
-        ] + PRIVATE_SERVICES
+            Aerobia,
+            private_svc_map.get("runsense")
+        )
+        return tuple(x for x in svc_list if x is not None)
 
     def PreferredDownloadPriorityList():
         # Ideally, we'd make an informed decision based on whatever features the activity had
