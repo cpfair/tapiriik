@@ -24,6 +24,12 @@
 		{% else %}
 			{% infotip connectOneMore %}Connect a second service to synchronize your activities to &amp; from{% endinfotip %}
 		{% endif %}
+		{% if "garminconnect" in user.ConnectedServices|svc_ids %}
+		{% infotip gc_old %}In order to continue synchronizing activities from your Garmin Connect account, please connect it again.{% endinfotip %}
+		{% endif %}
+		{% if "garminconnect2" in user.ConnectedServices|svc_ids %}
+		{% infotip gc_new_oneway %}Due to new limitations in Garmin Connect's API, tapiriik can no longer upload activities to your Garmin Connect account, or download historical activities from before you connected to tapiriik.{% endinfotip %}
+		{% endif %}
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
 			{% for connection in user.ConnectedServices|svc_populate_conns %}
@@ -74,9 +80,6 @@
 <p class="splashPreamble">tapiriik synchronizes your fitness activities between Garmin Connect, Runkeeper, Strava, TrainingPeaks, SportTracks.mobi, Endomondo, RideWithGPS, TrainAsONE, TrainerRoad, Motivato, Velo Hero, Epson RUNSENSE, Dropbox, Smashrun, BeginnerTriathlete, Pulsstory, Singletracker,  and SETIO<br/>
 (your heart rate, cadence, power, and temperature data syncs too)</p>
 
-<p><b>Seeing strange activities in your accounts uploaded by tapiriik?</b> These resulted from a bug in Garmin Connect - <a href="/garmin_connect_bad_data">read more about the incident here.</a></p>
-
-
 	{% for provider in service_providers %}
 		{% if provider.ID not in config.soft_launch and provider.ID not in config.withdrawn_services %}
 			{% include "service-button.html" with provider=provider %}
@@ -84,53 +87,4 @@
 	{% endfor %}
 <p class="splashPreamble">Your email, password, and fitness data are kept safe - full details on the <a href="{% url "privacy" %}">privacy page</a>.</p>
 {% endif %}
-
-<p><b>Status Update:</b> Unfortunately, Garmin Connect integration is currently offline. Enter your email below to receive status updates about when you can synchronize your Garmin Connect activities once again</p>
-<!-- Begin Mailchimp Signup Form -->
-<link href="//cdn-images.mailchimp.com/embedcode/classic-10_7.css" rel="stylesheet" type="text/css">
-<style type="text/css">
-	#mc_embed_signup{clear:left; width:300px; left:50%; position: relative;margin-left: -150px;}
-	#mc_embed_signup input[type="email"] {font-family: inherit;}
-	#mc_embed_signup input[type="submit"] {
-		font-family: Economica;
-		font-weight:bold;
-		font-size:150%;
-		text-align: center;
-		display:inline-block;
-		border:0;
-		padding:10px;
-		border-radius:5px;
-		background-color:#a2b8d0;
-		color:white;
-		margin:10px;
-		margin-bottom:0;
-		cursor:pointer;
-	}
-
-	#mc_embed_signup input[type="submit"]:focus {
-		outline:none;
-	}
-
-	#mc_embed_signup input[type="submit"]::-moz-focus-inner {
-	  border: 0;
-	}
-	/* Add your own Mailchimp form style overrides in your site stylesheet or in this style block.
-	   We recommend moving this block and the preceding CSS link to the HEAD of your HTML file. */
-</style>
-<div id="mc_embed_signup">
-<form action="https://tapiriik.us3.list-manage.com/subscribe/post?u=d0b23d66ca485cacc28db227d&amp;id=e3937503ec" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate>
-    <div id="mc_embed_signup_scroll">
-<div class="mc-field-group">
-	<input type="email" value="" name="EMAIL" class="required email" id="mce-EMAIL" placeholder="Email Address">
-</div>
-	<div id="mce-responses" class="clear">
-		<div class="response" id="mce-error-response" style="display:none"></div>
-		<div class="response" id="mce-success-response" style="display:none"></div>
-	</div>    <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
-    <div style="position: absolute; left: -5000px;" aria-hidden="true"><input type="text" name="b_d0b23d66ca485cacc28db227d_e3937503ec" tabindex="-1" value=""></div>
-    <div class="clear"><input type="submit" value="Subscribe" name="subscribe"></div>
-    </div>
-</form>
-</div>
-<!--End mc_embed_signup-->
 {% endblock %}

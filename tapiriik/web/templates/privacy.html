@@ -10,6 +10,7 @@
 		<th>Your <b>password</b><sup>1</sup></th>
 		<th>Access <b>tokens</b></th>
 		<th>Activity <b>metadata</b></th>
+		<th>Activity <b>data</b></th>
 	</tr>
 	{% for service in services %}
 	<tr class="{% cycle 'odd' '' %}">
@@ -18,12 +19,13 @@
 		<td>{{ service.password|safe }}</td>
 		<td>{{ service.tokens|safe }}</td>
 		<td>{{ service.metadata|safe }}</td>
+		<td>{{ service.data|safe }}</td>
 	</tr>
 	{% endfor %}
 	<tr class="{% if services|length|divisibleby:2 %}odd{% endif %}">
 		<td class="serviceCol" style="font-size:140%">Automatic Sync</td>
 		<td><span class="policy yes">Yes</span><sup>2</sup></td>
-		<td colspan="3">N/A</td>
+		<td colspan="4">N/A</td>
 	</tr>
 </table>
 
@@ -37,7 +39,13 @@
 
 	<div class="explanation">
 	<div class="header"><span>What is</span>Activity metadata?</div>
-	<p>Activity Medatada are the basic details of any activity: <b>start time, time zone, duration, distance, and type</b>. tapiriik needs to store this information to determine which activities should be synchronized to each of your accounts. tapiriik does not store a complete copy of your activities.</p>
+	<p>Activity Medatada are the basic details of any activity: <b>start time, time zone, duration, distance, and type</b>. tapiriik needs to store this information to determine which activities should be synchronized to each of your accounts.</p>
+	</div>
+</div>
+
+	<div class="explanation">
+	<div class="header"><span>What constitutes</span>Activity data?</div>
+	<p>Activity data is the complete record of an activity: <b>the GPS track, sensor data, and all metadata</b>. Certain services require tapiriik to temporarily store (&quot;cache&quot;) this data as part of synchronization.</p>
 	</div>
 </div>
 
@@ -49,13 +57,13 @@
 
 <h1>All the juicy details</h1>
 
-<p style="text-align:left;">tapiriik moves your activities between the services you connect - period. Other than the basic metadata mentioned above, your activity data is not stored on tapiriik servers. No activity data or metdata is ever shared with third parties beyond the accounts you connect.</p>
+<p style="text-align:left;">tapiriik moves your activities between the services you connect - period. No activity data or metdata is ever shared with third parties beyond the accounts you connect.</p>
 
 <p style="text-align:left;">However, the services you connect may, of their own accord, share your activity data with third parties. For instance, at the time I write this, Strava reserves the right to <i>"collect certain use data and information related to [tapiriik's] use of the Strava API Materials, and Strava Platform in connection with [tapiriik's] Developer Application ("Usage Data"), and that Strava may use such Usage Data for any business purpose, internal or external, including, without limitation, providing enhancements to the Strava API Materials or Strava Platform, providing developer of user support, or otherwise."</i> Please consult the privacy policy for the services you connect in order to determine how they handle your data.</p>
 
 <p style="text-align:left;">Limited data regarding your interaction with tapiriik.com is recorded in order to monitor the performance of the website itself. <a href="https://www.google.com/analytics/" target="_new">Google Analytics</a> is used to track website performance, while <a href="https://sentry.io" target="_new">Sentry</a> records internal server errors.</p>
 
 <h1>Exporting &amp; erasing your personal data</h1>
-<p style="text-align:left;">Most of the data tapiriik stores regarding your accounts and activities is automatically deleted once you disconnect your last service from tapiriik.com. Only diagnostic logs regarding your account will remain for a limited period afterwards - but are not stored permanently. During this process, any activities that tapiriik synchronized to the services you connected will remain untouched. If you wish to receive a copy of all the data tapiriik has stored regarding your user account, or request the deletion of this data, please <a href="/contact">contact me</a> and mention GDPR in the subject line.</p>
+<p style="text-align:left;">Most of the data tapiriik stores regarding your accounts and activities is automatically deleted once you disconnect your last service from tapiriik.com. Only diagnostic logs regarding your account will remain for a limited period afterwards - but are not stored permanently. When you disconnect a service from tapiriik, any activities that tapiriik synchronized to that service will remain untouched. If you wish to receive a copy of all the data tapiriik has stored regarding your user account, or request the deletion of this data, please <a href="/contact">contact me</a> and mention GDPR in the subject line.</p>
 </div>
 {% endblock %}

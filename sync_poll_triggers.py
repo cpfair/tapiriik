@@ -52,7 +52,7 @@ def schedule_trigger_poll():
     schedule_data = list(db.trigger_poll_scheduling.find())
     print("Scheduler run at %s" % datetime.now())
     for svc in Service.List():
-        if svc.PartialSyncTriggerRequiresPolling:
+        if svc.PartialSyncTriggerRequiresPolling and svc.ID not in DISABLED_SERVICES:
             print("Checking %s's %d poll indexes" % (svc.ID, svc.PartialSyncTriggerPollMultiple))
             for idx in range(svc.PartialSyncTriggerPollMultiple):
                 svc_schedule = [x for x in schedule_data if x["Service"] == svc.ID and x["Index"] == idx]
