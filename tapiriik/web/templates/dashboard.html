@@ -28,7 +28,7 @@
 		{% infotip gc_old %}In order to continue synchronizing activities from your Garmin Connect account, please connect it again.{% endinfotip %}
 		{% endif %}
 		{% if "garminconnect2" in user.ConnectedServices|svc_ids %}
-		{% infotip gc_new_oneway %}Due to new limitations in Garmin Connect's API, tapiriik can no longer upload activities to your Garmin Connect account, or download historical activities from before you connected to tapiriik.{% endinfotip %}
+		{% infotip gc_new_oneway_2 %}Due to new limitations in Garmin Connect's API, tapiriik can no longer upload activities to your Garmin Connect account, download historical activities from before you connected to tapiriik, or detect private acitivites (all activities uploaded to your Garmin Connect account will be synchronized).{% endinfotip %}
 		{% endif %}
 		<div class="serviceButtonOuter">
 			<div class="serviceButtonWrap">
