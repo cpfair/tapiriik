@@ -178,7 +178,10 @@ class DropboxService(ServiceBase):
                 cachedb.dropbox_cache.save(cache)
             else:
                 insert_result = cachedb.dropbox_cache.insert(cache)
-                cache["_id"] = insert_result.inserted_id
+                if hasattr(insert_result, 'inserted_id'):
+                    cache["_id"] = insert_result.inserted_id
+                else:
+                    cache["_id"] = insert_result
 
 
         activities = []
