@@ -104,6 +104,8 @@ class StravaService(ServiceBase):
            "https://www.strava.com/oauth/authorize?" + urlencode(params)
 
     def _requestWithAuth(self, reqLambda, serviceRecord):
+        self._globalRateLimit()
+
         session = requests.Session()
 
         if time.time() > serviceRecord.Authorization.get("AccessTokenExpiresAt", 0) - 60:
