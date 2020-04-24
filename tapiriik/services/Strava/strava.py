@@ -89,6 +89,7 @@ class StravaService(ServiceBase):
     SupportedActivities = list(_activityTypeMappings.keys())
 
     GlobalRateLimits = STRAVA_RATE_LIMITS
+    GlobalRateLimitsPreemptiveSleep = True
 
     def UserUploadedActivityURL(self, uploadId):
         return "https://www.strava.com/activities/%d" % uploadId

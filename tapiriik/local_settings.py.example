@@ -9,6 +9,9 @@ WEB_ROOT = "http://localhost:8000"
 # It is the only directory that needs to be writable by the webapp user
 USER_SYNC_LOGS = "./"
 
+# How many total sync workers are expected to be running
+TOTAL_SYNC_WORKERS = #
+
 # These settings are used to communicate with each respective service
 # Register your installation with each service to get these values
 

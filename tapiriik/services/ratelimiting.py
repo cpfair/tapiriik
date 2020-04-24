@@ -1,13 +1,21 @@
 from tapiriik.database import ratelimit as rl_db
+from tapiriik.settings import TOTAL_SYNC_WORKERS
 from pymongo.read_preferences import ReadPreference
 from datetime import datetime, timedelta
 import math
+import time
 
 class RateLimitExceededException(Exception):
 	pass
 
 class RateLimit:
-	def Limit(key):
+	def Limit(key, preemptive_sleep_limits=()):
+		preemptive_sleep = 0
+		for timespan, count in preemptive_sleep_limits:
+			preemptive_sleep = max(preemptive_sleep, timespan.total_seconds() / (count / TOTAL_SYNC_WORKERS))
+
+		time.sleep(preemptive_sleep)
+
 		current_limits = rl_db.limits.find({"Key": key}, {"Max": 1, "Count": 1})
 		for limit in current_limits:
 			if limit["Max"] < limit["Count"]:

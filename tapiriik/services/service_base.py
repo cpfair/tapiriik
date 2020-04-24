@@ -69,6 +69,8 @@ class ServiceBase:
     # Global rate limiting options
     # For when there's a limit on the API key itself
     GlobalRateLimits = []
+    # Preemptively sleep to avoid hitting the limits
+    GlobalRateLimitsPreemptiveSleep = False
 
     @property
     def PartialSyncTriggerRequiresPolling(self):
@@ -153,7 +155,7 @@ class ServiceBase:
 
     def _globalRateLimit(self):
         try:
-            RateLimit.Limit(self.ID)
+            RateLimit.Limit(self.ID, self.GlobalRateLimits if self.GlobalRateLimitsPreemptiveSleep else ())
         except RateLimitExceededException:
             raise ServiceException("Global rate limit reached", user_exception=UserException(UserExceptionType.RateLimited))
 
