@@ -1,5 +1,8 @@
 FROM ubuntu:latest
 
+ENV TZ=Europe/Riga
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # install python
 RUN apt-get update \
   && apt-get install -y python3-pip python3-dev \
@@ -17,7 +20,7 @@ COPY . /
 RUN pip3 install -r requirements.txt
 
 # rename settings example com
-RUN cp tapiriik/local_settings.py.example tapiriik/local_settings.py 
+RUN cp tapiriik/local_settings.py.local tapiriik/local_settings.py 
 
 # generate keys
 RUN python3 credentialstore_keygen.py >> tapiriik/local_settings.py
