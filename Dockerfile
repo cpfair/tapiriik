@@ -7,11 +7,11 @@ RUN apt-get update \
   && ln -s /usr/bin/python3 python \
   && pip3 install --upgrade pip
 
-# copy project
-COPY . /
-
 # install  libs
 RUN apt-get -y install git libxslt-dev libxml2-dev python3-lxml python3-crypto
+
+# copy project
+COPY . /
 
 # install requirements 
 RUN pip3 install -r requirements.txt
