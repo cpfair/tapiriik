@@ -93,7 +93,7 @@ class EndomondoService(ServiceBase):
 
     SupportedActivities = list(_activityMappings.values())
 
-    ReceivesNonGPSActivitiesWithOtherSensorData = False
+    ReceivesNonGPSActivitiesWithOtherSensorData = True
 
     def WebInit(self):
         self.UserAuthorizationURL = reverse("oauth_redirect", kwargs={"service": "endomondo"})
