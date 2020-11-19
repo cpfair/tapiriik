@@ -229,10 +229,18 @@ class TCXIO:
             sum_stats.update(act.Stats)
             act.Stats = sum_stats
 
+        try:
+            act.PrerenderedFormats["tcx"] = tcxData.decode('utf-8')
+        except:
+            act.PrerenderedFormats["tcx"] = tcxData
+
         act.CalculateUID()
         return act
     
     def Dump(activity, activityType=None):
+
+        if "tcx" in activity.PrerenderedFormats:
+            return activity.PrerenderedFormats["tcx"]
 
         root = etree.Element("TrainingCenterDatabase", nsmap=TCXIO.Namespaces)
         activities = etree.SubElement(root, "Activities")
@@ -384,6 +392,5 @@ class TCXIO:
                 etree.SubElement(xver, "VersionMinor").text = str(activity.Device.VersionMinor) if activity.Device.VersionMinor else "0"
                 etree.SubElement(xver, "BuildMajor").text = "0"
                 etree.SubElement(xver, "BuildMinor").text = "0"
-
 
         return etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode("UTF-8")
