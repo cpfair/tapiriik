@@ -2,7 +2,7 @@ requests
 pymongo==3.0.1
 pytz
 lxml
-dropbox
+dropbox==9.4.0
 python-dateutil
 Django==1.8.2
 pycryptodome
