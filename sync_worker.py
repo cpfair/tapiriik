@@ -18,7 +18,11 @@ import socket
 RecycleInterval = 2 # Time spent rebooting workers < time spent wrangling Python memory management.
 
 oldCwd = os.getcwd()
-WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
+WorkerVersion = "local"
+try:
+	WorkerVersion = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, cwd=os.path.dirname(__file__)).communicate()[0].strip()
+except:
+	pass
 os.chdir(oldCwd)
 
 def sync_heartbeat(state, user=None):
