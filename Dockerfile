@@ -3,27 +3,27 @@ FROM ubuntu:latest
 ENV TZ=Europe/Riga
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# install python
+# Install python
 RUN apt-get update \
-  && apt-get install -y python3-pip python3-dev \
+  && apt-get install -y python3-pip python3-dev git \
   && cd /usr/local/bin \
   && ln -s /usr/bin/python3 python \
   && pip3 install --upgrade pip
 
-# install  libs
+# Install  libs
 RUN apt-get -y install git libxslt-dev libxml2-dev python3-lxml python3-crypto
 
-# copy project
-COPY . /
+WORKDIR /tapiriik
 
-# install requirements 
+# Copy requirements for build and only rebuild if requirements have changed
+COPY requirements.txt /tapiriik
 RUN pip3 install -r requirements.txt
 
-# rename settings example com
-RUN cp tapiriik/local_settings.py.local tapiriik/local_settings.py 
+# Copy code
+COPY . /tapiriik
 
-# generate keys
-RUN python3 credentialstore_keygen.py >> tapiriik/local_settings.py
+# Rename settings
+RUN cp tapiriik/local_settings.py.local tapiriik/local_settings.py && python3 credentialstore_keygen.py >> tapiriik/local_settings.py
 
-# run server, worker and scheduler
-ENTRYPOINT python3 manage.py runserver 0.0.0.0:8000 && python3 sync_worker.py && python3 sync_scheduler.py
+# Run server, worker and scheduler
+ENTRYPOINT python3 manage.py runserver 0.0.0.0:8000

@@ -9,15 +9,45 @@ services:
     ports:
     - "8000:8000"
     links:
-    - tapiriik_redis
-    - tapiriik_mongo
-    - tapiriik_rabbitmq
+      - tapiriik_redis
+      - tapiriik_mongo
+      - tapiriik_rabbitmq
+    entrypoint: ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
+
+  tapiriik_worker:
+    build: .
+    environment:
+      - RABBITMQ_BROKER_URL=amqp://guest@tapiriik_rabbitmq//
+      - MONGO_HOST=mongodb://root:example@tapiriik_mongo:27017/admin
+      - REDIS_HOST=tapiriik_redis
+    links:
+      - tapiriik_redis
+      - tapiriik_mongo
+      - tapiriik_rabbitmq
+    entrypoint: ["python3", "sync_worker.py", ";", "sleep", "10"]
+    restart: unless-stopped
+
+  tapiriik_scheduler:
+    build: .
+    environment:
+      - RABBITMQ_BROKER_URL=amqp://guest@tapiriik_rabbitmq//
+      - MONGO_HOST=mongodb://root:example@tapiriik_mongo:27017/admin
+      - REDIS_HOST=tapiriik_redis
+    links:
+      - tapiriik_redis
+      - tapiriik_mongo
+      - tapiriik_rabbitmq
+    entrypoint: ["python3", "sync_scheduler.py", ";", "sleep", "10"]
+    restart: unless-stopped
+
   tapiriik_redis:
     image: redis
+
   tapiriik_mongo:
     image: mongo 
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+  
   tapiriik_rabbitmq:
     image: rabbitmq:3-management
