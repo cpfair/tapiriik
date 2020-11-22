@@ -186,7 +186,7 @@ class VeloHeroService(ServiceBase):
             if workoutId in discoveredWorkoutIds:
                continue # There's the possibility of query overlap
             discoveredWorkoutIds.append(workoutId)
-            if workout["file"] is not "1":
+            if workout["file"] != "1":
                logger.debug("Skip workout with ID: " + str(workoutId) + " (no file)")
                continue # Skip activity without samples (no PWX export)
 
