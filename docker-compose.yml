@@ -3,41 +3,47 @@ services:
   tapiriik:
     build: .
     environment:
-      - RABBITMQ_BROKER_URL=amqp://guest@tapiriik_rabbitmq//
-      - MONGO_HOST=mongodb://root:example@tapiriik_mongo:27017/admin
-      - REDIS_HOST=tapiriik_redis
+      RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
+      MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
+      REDIS_HOST: "tapiriik_redis"
     ports:
     - "8000:8000"
+    volumes:
+      - ./persistent:/tapiriik/persistent 
     links:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
-    entrypoint: ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
+    entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 manage.py runserver 0.0.0.0:8000'"
 
   tapiriik_worker:
     build: .
     environment:
-      - RABBITMQ_BROKER_URL=amqp://guest@tapiriik_rabbitmq//
-      - MONGO_HOST=mongodb://root:example@tapiriik_mongo:27017/admin
-      - REDIS_HOST=tapiriik_redis
+      RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
+      MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
+      REDIS_HOST: "tapiriik_redis"
+    volumes:
+      - ./persistent:/tapiriik/persistent 
     links:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
-    entrypoint: ["python3", "sync_worker.py", ";", "sleep", "10"]
+    entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 sync_worker.py ; sleep 10'"
     restart: unless-stopped
 
   tapiriik_scheduler:
     build: .
     environment:
-      - RABBITMQ_BROKER_URL=amqp://guest@tapiriik_rabbitmq//
-      - MONGO_HOST=mongodb://root:example@tapiriik_mongo:27017/admin
-      - REDIS_HOST=tapiriik_redis
+      RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
+      MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
+      REDIS_HOST: "tapiriik_redis"
+    volumes:
+      - ./persistent:/tapiriik/persistent 
     links:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
-    entrypoint: ["python3", "sync_scheduler.py", ";", "sleep", "10"]
+    entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 sync_scheduler.py ; sleep 10'"
     restart: unless-stopped
 
   tapiriik_redis:

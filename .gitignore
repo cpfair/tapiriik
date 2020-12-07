@@ -6,3 +6,4 @@ local_settings.py.local
 *.sublime-workspace
 private/
 .vscode/
+persistent/

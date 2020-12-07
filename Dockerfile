@@ -22,8 +22,4 @@ RUN pip3 install -r requirements.txt
 # Copy code
 COPY . /tapiriik
 
-# Rename settings
-RUN cp tapiriik/local_settings.py.local tapiriik/local_settings.py && python3 credentialstore_keygen.py >> tapiriik/local_settings.py
-
-# Run server, worker and scheduler
-ENTRYPOINT python3 manage.py runserver 0.0.0.0:8000
+ENTRYPOINT "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 manage.py runserver 0.0.0.0:8000'"
