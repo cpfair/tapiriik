@@ -1,0 +1,15 @@
+{
+  "name": "endomondo_api_proxy",
+  "version": "1.0.0",
+  "description": "Proxy for unofficial endomondo api",
+  "author": "Janis Bebritis <jancis@iists.it>",
+  "main": "server.js",
+  "scripts": {
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "cross-fetch": "^3.0.6",
+    "endomondo-api-handler": "^7.3.38",
+    "express": "^4.17.1"
+  }
+}

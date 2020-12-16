@@ -218,6 +218,7 @@ PAYMENT_AMOUNT = 2
 PAYMENT_SYNC_DAYS = 365.25
 PAYMENT_CURRENCY = "USD"
 
+ENDOALT_PROXY_URL = os.getenv("ENDOALT_PROXY_URL", "http://localhost:8001")
 
 # Celebration mode config
 # Because why not, I'm waiting for my account to get to the front of the sync queue.

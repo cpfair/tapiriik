@@ -6,6 +6,7 @@ services:
       RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
       MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
       REDIS_HOST: "tapiriik_redis"
+      ENDOALT_PROXY_URL: "http://endoalt_proxy:8001"
     ports:
     - "8000:8000"
     volumes:
@@ -14,6 +15,7 @@ services:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
+      - endoalt_proxy
     entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 manage.py runserver 0.0.0.0:8000'"
 
   tapiriik_worker:
@@ -22,12 +24,14 @@ services:
       RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
       MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
       REDIS_HOST: "tapiriik_redis"
+      ENDOALT_PROXY_URL: "http://endoalt_proxy:8001"
     volumes:
       - ./persistent:/tapiriik/persistent 
     links:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
+      - endoalt_proxy
     entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 sync_worker.py ; sleep 10'"
     restart: unless-stopped
 
@@ -37,12 +41,14 @@ services:
       RABBITMQ_BROKER_URL: "amqp://guest@tapiriik_rabbitmq//"
       MONGO_HOST: "mongodb://root:example@tapiriik_mongo:27017/admin"
       REDIS_HOST: "tapiriik_redis"
+      ENDOALT_PROXY_URL: "http://endoalt_proxy:8001"
     volumes:
       - ./persistent:/tapiriik/persistent 
     links:
       - tapiriik_redis
       - tapiriik_mongo
       - tapiriik_rabbitmq
+      - endoalt_proxy
     entrypoint: "/bin/bash -c '/tapiriik/bootstrap-docker-compose.sh && python3 sync_scheduler.py ; sleep 10'"
     restart: unless-stopped
 
@@ -57,3 +63,7 @@ services:
   
   tapiriik_rabbitmq:
     image: rabbitmq:3-management
+
+  endoalt_proxy:
+    build: tapiriik/services/EndoAlt/proxy/
+    restart: unless-stopped
