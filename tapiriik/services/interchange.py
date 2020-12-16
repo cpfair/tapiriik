@@ -239,19 +239,19 @@ class Activity:
     def CheckTimestampSanity(self):
         out_of_bounds_leeway = timedelta(minutes=10)
 
-        if self.StartTime.tzinfo != self.TZ:
+        if str(self.StartTime.tzinfo) != str(self.TZ):
             raise ValueError("Activity StartTime TZ mismatch - %s master vs %s instance" % (self.TZ, self.StartTime.tzinfo))
-        if self.EndTime.tzinfo != self.TZ:
+        if str(self.EndTime.tzinfo) != str(self.TZ):
             raise ValueError("Activity EndTime TZ mismatch - %s master vs %s instance" % (self.TZ, self.EndTime.tzinfo))
 
         for lap in self.Laps:
-            if lap.StartTime.tzinfo != self.TZ:
+            if str(lap.StartTime.tzinfo) != str(self.TZ):
                 raise ValueError("Lap StartTime TZ mismatch - %s master vs %s instance" % (self.TZ, lap.StartTime.tzinfo))
-            if lap.EndTime.tzinfo != self.TZ:
+            if str(lap.EndTime.tzinfo) != str(self.TZ):
                 raise ValueError("Lap EndTime TZ mismatch - %s master vs %s instance" % (self.TZ, lap.EndTime.tzinfo))
 
             for wp in lap.Waypoints:
-                if wp.Timestamp.tzinfo != self.TZ:
+                if str(wp.Timestamp.tzinfo) != str(self.TZ):
                     raise ValueError("Waypoint TZ mismatch - %s master vs %s instance" % (self.TZ, wp.Timestamp.tzinfo))
 
                 if lap.StartTime - wp.Timestamp > out_of_bounds_leeway:
