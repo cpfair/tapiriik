@@ -47,6 +47,7 @@ class Service:
             Setio,
             Singletracker,
             Aerobia,
+            MapMyFitness,
             private_svc_map.get("runsense")
         )
         return tuple(x for x in svc_list if x is not None)
