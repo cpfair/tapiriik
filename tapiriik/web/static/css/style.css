@@ -121,6 +121,11 @@ body {
 	height:475px;
 }
 
+.popover iframe#mapmyfitness {
+	width:400px;
+	height:680px;
+}
+
 .logo {
 	width:100%;
 	position:absolute;
@@ -602,6 +607,14 @@ p.infotip .close:hover {
 	height:38px;
 	display: inline-block;
 	vertical-align: middle;
+}
+
+.service .button .newOverlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 64px;
+    height: 64px;
 }
 
 .service .status {

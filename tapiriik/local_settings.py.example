@@ -68,3 +68,6 @@ TRAININGPEAKS_CLIENT_SECRET = "####"
 TRAININGPEAKS_CLIENT_SCOPE = "cats:cuddle dogs:throw-frisbee"
 TRAININGPEAKS_API_BASE_URL = "https://api.trainingpeaks.com"
 TRAININGPEAKS_OAUTH_BASE_URL = "https://oauth.trainingpeaks.com"
+
+MAPMYFITNESS_CLIENT_KEY = "####"
+MAPMYFITNESS_CLIENT_SECRET = "####"
