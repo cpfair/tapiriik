@@ -68,6 +68,8 @@ class VeloHeroService(ServiceBase):
     }
     SupportedActivities = list(_activityMappings.keys())
 
+    _obligatory_headers = {'user-agent': 'tapiriik.com/1.0'}
+
     def _add_auth_params(self, params=None, record=None):
         """
         Adds username and password to the passed-in params,
@@ -107,7 +109,8 @@ class VeloHeroService(ServiceBase):
         from tapiriik.auth.credential_storage import CredentialStore
 
         res = requests.post(self._urlRoot + "/sso",
-                           params={'user': email, 'pass': password, 'view': 'json'})
+                            headers=self._obligatory_headers,
+                            params={'user': email, 'pass': password, 'view': 'json'})
 
         if res.status_code != 200:
             raise APIException("Invalid login", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
@@ -167,7 +170,9 @@ class VeloHeroService(ServiceBase):
 
         params.update({"date_from": listStart.strftime(limitDateFormat), "date_to": listEnd.strftime(limitDateFormat)})
         logger.debug("Requesting %s to %s" % (listStart, listEnd))
-        res = requests.get(self._urlRoot + "/export/workouts/json", params=params)
+        res = requests.get(self._urlRoot + "/export/workouts/json",
+                           headers=self._obligatory_headers,
+                           params=params)
 
         if res.status_code != 200:
           if res.status_code == 403:
@@ -233,7 +238,9 @@ class VeloHeroService(ServiceBase):
         workoutId = activity.ServiceData["workoutId"]
         logger.debug("Download PWX export with ID: " + str(workoutId))
         params = self._add_auth_params({}, record=serviceRecord)
-        res = requests.get(self._urlRoot + "/export/activity/pwx/{}".format(workoutId), params=params)
+        res = requests.get(self._urlRoot + "/export/activity/pwx/{}".format(workoutId),
+                           headers=self._obligatory_headers,
+                           params=params)
 
         if res.status_code != 200:
           if res.status_code == 403:
@@ -286,7 +293,10 @@ class VeloHeroService(ServiceBase):
         # Upload
         files = {"file": ("tap-sync-" + str(os.getpid()) + "-" + activity.UID + "." + format, data)}
         params = self._add_auth_params({"view":"json"}, record=serviceRecord)
-        res = requests.post(self._urlRoot + "/upload/file", files=files, params=params)
+        res = requests.post(self._urlRoot + "/upload/file",
+                            headers=self._obligatory_headers,
+                            files=files,
+                            params=params)
 
         if res.status_code != 200:
             if res.status_code == 403:
@@ -312,7 +322,9 @@ class VeloHeroService(ServiceBase):
                 "sport_id" : self._activityMappings[activity.Type],
                 "workout_hide": "yes" if activity.Private else "no"
             }, record=serviceRecord)
-            res = requests.get(self._urlRoot + "/workouts/change/{}".format(workoutId), params=params)
+            res = requests.get(self._urlRoot + "/workouts/change/{}".format(workoutId),
+                               headers=self._obligatory_headers,
+                               params=params)
             if res.status_code != 200:
                 if res.status_code == 403:
                     raise APIException("No authorization to change activity with workout ID: {}".format(workoutId), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
