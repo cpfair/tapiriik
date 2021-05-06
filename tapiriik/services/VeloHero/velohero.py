@@ -23,14 +23,14 @@ class VeloHeroService(ServiceBase):
     ID = "velohero"
     DisplayName = "Velo Hero"
     DisplayAbbreviation = "VH"
-    _urlRoot = "http://app.velohero.com"
+    _urlRoot = "https://app.velohero.com"
     AuthenticationType = ServiceAuthenticationType.UsernamePassword
     RequiresExtendedAuthorizationDetails = True
     ReceivesStationaryActivities = False
 
     SupportsHR = SupportsCadence = SupportsTemp = SupportsPower = True
 
-    # http://app.velohero.com/sports/list?view=json
+    # https://app.velohero.com/sports/list?view=json
     # For mapping common -> Velo Hero
     _activityMappings = {
         ActivityType.Cycling: "1",
@@ -96,7 +96,7 @@ class VeloHeroService(ServiceBase):
         """
         POST Username and Password
 
-        URL: http://app.velohero.com/sso
+        URL: https://app.velohero.com/sso
         Parameters:
         user = username
         pass = password
@@ -146,7 +146,7 @@ class VeloHeroService(ServiceBase):
         """
         GET List of Activities as JSON File
 
-        URL: http://app.velohero.com/export/workouts/json
+        URL: https://app.velohero.com/export/workouts/json
         Parameters:
         user      = username
         pass      = password
@@ -227,7 +227,7 @@ class VeloHeroService(ServiceBase):
         """
         GET Activity as a PWX File
 
-        URL: http://app.velohero.com/export/activity/pwx/<WORKOUT-ID>
+        URL: https://app.velohero.com/export/activity/pwx/<WORKOUT-ID>
         Parameters:
         user = username
         pass = password
@@ -256,7 +256,7 @@ class VeloHeroService(ServiceBase):
         """
         POST a Multipart-Encoded File
         
-        URL: http://app.velohero.com/upload/file
+        URL: https://app.velohero.com/upload/file
         Parameters:
         user = username
         pass = password
