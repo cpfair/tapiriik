@@ -241,6 +241,9 @@ SOFT_LAUNCH_SERVICES = []
 # Visibly disabled + excluded from synchronization
 DISABLED_SERVICES = []
 
+# Rejected by synchronization worker
+REJECTED_SERVICES = []
+
 # Services no longer available - will be removed across the site + excluded from sync.
 WITHDRAWN_SERVICES = []
 

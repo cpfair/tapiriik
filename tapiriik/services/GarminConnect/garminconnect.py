@@ -146,6 +146,7 @@ class GarminConnectService(ServiceBase):
         # Ensure the rate lock file exists (...the easy way)
         open(rate_lock_path, "a").close()
         self._rate_lock = open(rate_lock_path, "r+")
+        
 
     def _rate_limit(self):
         import fcntl, struct, time

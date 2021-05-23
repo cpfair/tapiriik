@@ -227,7 +227,7 @@ class User:
             sparseConfig = copy.deepcopy(User.GetConfiguration(user))
         sparseConfig.update(config)
 
-        keys_to_delete = []
+        keys_to_Rrem = []
         for k, v in sparseConfig.items():
             if (k in User.ConfigurationDefaults and User.ConfigurationDefaults[k] == v):
                 keys_to_delete.append(k)  # it's the default, we can not store it
