@@ -38,6 +38,8 @@ from tapiriik.services.Singletracker import SingletrackerService
 Singletracker = SingletrackerService()
 from tapiriik.services.Aerobia import AerobiaService
 Aerobia = AerobiaService()
+from tapiriik.services.GoogleFit import GoogleFitService
+GoogleFit = GoogleFitService()
 
 PRIVATE_SERVICES = []
 try:
