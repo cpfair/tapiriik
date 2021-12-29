@@ -8,6 +8,8 @@ from tapiriik.services.Endomondo import EndomondoService
 Endomondo = EndomondoService()
 from tapiriik.services.Dropbox import DropboxService
 Dropbox = DropboxService()
+from tapiriik.services.GoogleDrive import GoogleDriveService
+GoogleDrive = GoogleDriveService()
 from tapiriik.services.GarminConnect import GarminConnectService
 GarminConnect = GarminConnectService()
 from tapiriik.services.SportTracks import SportTracksService
