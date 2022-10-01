@@ -14,6 +14,7 @@ from io import BytesIO
 import gzip
 import base64
 import json
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +205,17 @@ class TrainingPeaksService(ServiceBase):
             "Data": base64.b64encode(pwxdata_gz.getvalue()).decode("ascii")
         }
 
-        resp = requests.post(TRAININGPEAKS_API_BASE_URL + "/v1/file", data=json.dumps(data), headers=headers)
-        if resp.status_code != 200:
-            raise APIException("Unable to upload activity response " + resp.text + " status " + str(resp.status_code))
-        return resp.json()[0]["Id"]
+        initiate_resp = requests.post(TRAININGPEAKS_API_BASE_URL + "/v3/file", data=json.dumps(data), headers=headers, allow_redirects=False)
+        if initiate_resp.status_code != 202:
+            raise APIException("Unable to initiate activity upload, response " + initiate_resp.text + " status " + str(initiate_resp.status_code))
+        while True:
+            time.sleep(5)
+            check_resp = requests.get(initiate_resp.headers["Location"], headers=headers)
+            if check_resp.status_code != 200:
+                raise APIException("Unable to check activity upload, response " + check_resp.text + " status " + str(check_resp.status_code))
+            check_result = check_resp.json()
+            if check_result["Completed"]:
+                break
+        if not len(check_result["WorkoutIds"]):
+            raise APIException("Unable to upload activity, response " + str(check_result))
+        return check_result["WorkoutIds"][0]
