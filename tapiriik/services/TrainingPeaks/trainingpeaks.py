@@ -134,7 +134,7 @@ class TrainingPeaksService(ServiceBase):
         while True:
             logger.debug("Requesting %s to %s" % (listStart, listEnd))
             resp = requests.get(
-                TRAININGPEAKS_API_BASE_URL + "/v1/workouts/%s/%s" % (
+                TRAININGPEAKS_API_BASE_URL + "/v2/workouts/%s/%s" % (
                     listStart.strftime(limitDateFormat),
                     listEnd.strftime(limitDateFormat)),
                 headers=headers)
