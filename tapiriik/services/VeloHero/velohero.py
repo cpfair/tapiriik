@@ -33,22 +33,22 @@ class VeloHeroService(ServiceBase):
     # https://app.velohero.com/sports/list?view=json
     # For mapping common -> Velo Hero
     _activityMappings = {
-        ActivityType.Cycling: "1",
-        ActivityType.Running: "2",
-        ActivityType.Swimming: "3",
-        ActivityType.Gym: "4",
-        ActivityType.Elliptical: "4",
-        ActivityType.Skating: "4",
-        ActivityType.Rowing: "11",
-        ActivityType.MountainBiking: "6",
-        ActivityType.Hiking: "7",
-        ActivityType.Walking: "7",
-        ActivityType.Snowboarding: "8",
-        ActivityType.CrossCountrySkiing: "8",
-        ActivityType.DownhillSkiing: "8",
         ActivityType.Climbing: "7",
-        ActivityType.Wheelchair: "0",
+        ActivityType.CrossCountrySkiing: "8",
+        ActivityType.Cycling: "1",
+        ActivityType.DownhillSkiing: "8",
+        ActivityType.Elliptical: "4",
+        ActivityType.Gym: "4",
+        ActivityType.Hiking: "7",
+        ActivityType.MountainBiking: "6",
         ActivityType.Other: "0"
+        ActivityType.Rowing: "11",
+        ActivityType.Running: "2",
+        ActivityType.Skating: "4",
+        ActivityType.Snowboarding: "8",
+        ActivityType.Swimming: "3",
+        ActivityType.Walking: "7",
+        ActivityType.Wheelchair: "0",
     }
     # For mapping Velo Hero -> common
     _reverseActivityMappings={
