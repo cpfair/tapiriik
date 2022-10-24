@@ -41,14 +41,17 @@ class VeloHeroService(ServiceBase):
         ActivityType.Gym: "4",
         ActivityType.Hiking: "7",
         ActivityType.MountainBiking: "6",
-        ActivityType.Other: "0"
+        ActivityType.RollerSkiing: "4",
         ActivityType.Rowing: "11",
         ActivityType.Running: "2",
         ActivityType.Skating: "4",
         ActivityType.Snowboarding: "8",
+        ActivityType.StandUpPaddling: "11",
+        ActivityType.StrengthTraining: "5",
         ActivityType.Swimming: "3",
         ActivityType.Walking: "7",
         ActivityType.Wheelchair: "0",
+        ActivityType.Other: "0"
     }
     # For mapping Velo Hero -> common
     _reverseActivityMappings={
@@ -64,7 +67,7 @@ class VeloHeroService(ServiceBase):
         "9":  ActivityType.Cycling, # Velomobil (HPV)
         "10": ActivityType.Other, # Ball Games
         "11": ActivityType.Rowing, # Water Sports
-        "12":  ActivityType.Cycling # Pedelec
+        "12": ActivityType.Cycling # Pedelec
     }
     SupportedActivities = list(_activityMappings.keys())
 
