@@ -211,6 +211,8 @@ class TrainingPeaksService(ServiceBase):
         while True:
             time.sleep(5)
             check_resp = requests.get(initiate_resp.headers["Location"], headers=headers)
+            if check_resp.status_code == 422:
+                return None # Duplicate - didn't upload anything and don't need to retry    
             if check_resp.status_code != 200:
                 raise APIException("Unable to check activity upload, response " + check_resp.text + " status " + str(check_resp.status_code))
             check_result = check_resp.json()
