@@ -206,13 +206,15 @@ class TrainingPeaksService(ServiceBase):
         }
 
         initiate_resp = requests.post(TRAININGPEAKS_API_BASE_URL + "/v3/file", data=json.dumps(data), headers=headers, allow_redirects=False)
+        if initiate_resp.status_code == 422:
+            return None # Duplicate - didn't upload anything and don't need to retry
         if initiate_resp.status_code != 202:
             raise APIException("Unable to initiate activity upload, response " + initiate_resp.text + " status " + str(initiate_resp.status_code))
         while True:
             time.sleep(5)
             check_resp = requests.get(initiate_resp.headers["Location"], headers=headers)
             if check_resp.status_code == 422:
-                return None # Duplicate - didn't upload anything and don't need to retry    
+                return None # Duplicate - didn't upload anything and don't need to retry
             if check_resp.status_code != 200:
                 raise APIException("Unable to check activity upload, response " + check_resp.text + " status " + str(check_resp.status_code))
             check_result = check_resp.json()
