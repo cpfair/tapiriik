@@ -140,7 +140,7 @@ class TrainingPeaksService(ServiceBase):
                 headers=headers)
 
             for act in resp.json():
-                if not act.get("completed", True):
+                if not act.get("completed", True) or act.get("StartTime", None) is None:
                     continue
                 activity = UploadedActivity()
                 activity.StartTime = dateutil.parser.parse(act["StartTime"]).replace(tzinfo=None)
