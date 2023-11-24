@@ -439,6 +439,19 @@ p.infotip .close:hover {
 	overflow:hidden;
 }
 
+.service#strava .button {
+	background: none;
+	overflow: visible;
+}
+
+.service#strava .icon img {
+	position: relative;
+	height: 48px;
+	width: auto;
+	left: -14px;
+	top: -4px;
+}
+
 .service .controls {
 	position:relative;
 	z-index:2;
