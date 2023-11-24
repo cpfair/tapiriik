@@ -439,12 +439,15 @@ p.infotip .close:hover {
 	overflow:hidden;
 }
 
-.service#strava .button {
+.service#strava:not(.connected) .button {
 	background: none;
 	overflow: visible;
 }
+.service#strava:not(.connected) .controls {
+	display: none;
+}
 
-.service#strava .icon img {
+.service#strava:not(.connected) .icon img {
 	position: relative;
 	height: 48px;
 	width: auto;
