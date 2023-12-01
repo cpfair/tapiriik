@@ -34,6 +34,7 @@ class Service:
             Endomondo,
             SportTracks,
             Dropbox,
+            GoogleDrive,
             TrainingPeaks,
             RideWithGPS,
             TrainAsONE,
@@ -62,6 +63,7 @@ class Service:
             SportTracks, # Pretty much equivalent to GC, no temperature (not that GC temperature works all thar well now, but I digress)
             TrainingPeaks, # No seperate run cadence, but has temperature
             Dropbox, # Equivalent to any of the above
+            GoogleDrive,
             RideWithGPS, # Uses TCX for everything, so same as Dropbox
             TrainAsONE,
             VeloHero, # PWX export, no temperature
