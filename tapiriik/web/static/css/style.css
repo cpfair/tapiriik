@@ -169,6 +169,10 @@ body {
 	right:0;
 	top:0;
 	bottom:0;
+
+	/*To smooth UI -- big background SVG cause big painting issues (see performance tab)*/
+	pointer-events: none;
+	transform: translateZ(0);
 }
 
 .environs {
