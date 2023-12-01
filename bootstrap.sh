@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
 
 # Install system requirements
-
-# mongodb multipolygon geojson support needs at least mongodb 2.6. trusty has 2.4 by default
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
-
-
 sudo apt-get update
-sudo apt-get install -y python3-pip libxml2-dev libxslt-dev zlib1g-dev git redis-server rabbitmq-server mongodb-org=2.6.9
+sudo apt-get install -y python3-pip libxml2-dev libxslt-dev zlib1g-dev git redis-server rabbitmq-server mongodb-server
 
-# Fix pip
+# upgrade pip
 pip3 install --upgrade pip
+
+# Fix the default python and pip instance
+update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
+update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3 1
+update-alternatives --force --install /usr/bin/pip3 pip3 /usr/local/bin/pip3 1
 
 # Install app requirements
 pip install --upgrade -r /vagrant/requirements.txt
-
-# Fix the default python instance
-update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
-update-alternatives --install /usr/bin/python python /usr/bin/python3.4 2
 
 # Put in a default local_settings.py (if one doesn't exist)
 if [ ! -f /vagrant/tapiriik/local_settings.py ]; then
