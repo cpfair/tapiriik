@@ -33,20 +33,23 @@ class VeloHeroService(ServiceBase):
     # https://app.velohero.com/sports/list?view=json
     # For mapping common -> Velo Hero
     _activityMappings = {
-        ActivityType.Cycling: "1",
-        ActivityType.Running: "2",
-        ActivityType.Swimming: "3",
-        ActivityType.Gym: "4",
-        ActivityType.Elliptical: "4",
-        ActivityType.Skating: "4",
-        ActivityType.Rowing: "11",
-        ActivityType.MountainBiking: "6",
-        ActivityType.Hiking: "7",
-        ActivityType.Walking: "7",
-        ActivityType.Snowboarding: "8",
-        ActivityType.CrossCountrySkiing: "8",
-        ActivityType.DownhillSkiing: "8",
         ActivityType.Climbing: "7",
+        ActivityType.CrossCountrySkiing: "8",
+        ActivityType.Cycling: "1",
+        ActivityType.DownhillSkiing: "8",
+        ActivityType.Elliptical: "4",
+        ActivityType.Gym: "4",
+        ActivityType.Hiking: "7",
+        ActivityType.MountainBiking: "6",
+        ActivityType.RollerSkiing: "4",
+        ActivityType.Rowing: "11",
+        ActivityType.Running: "2",
+        ActivityType.Skating: "4",
+        ActivityType.Snowboarding: "8",
+        ActivityType.StandUpPaddling: "11",
+        ActivityType.StrengthTraining: "5",
+        ActivityType.Swimming: "3",
+        ActivityType.Walking: "7",
         ActivityType.Wheelchair: "0",
         ActivityType.Other: "0"
     }
@@ -64,7 +67,7 @@ class VeloHeroService(ServiceBase):
         "9":  ActivityType.Cycling, # Velomobil (HPV)
         "10": ActivityType.Other, # Ball Games
         "11": ActivityType.Rowing, # Water Sports
-        "12":  ActivityType.Cycling # Pedelec
+        "12": ActivityType.Cycling # Pedelec
     }
     SupportedActivities = list(_activityMappings.keys())
 
