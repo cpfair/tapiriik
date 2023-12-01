@@ -201,12 +201,12 @@ LOGGING = {
 
 TEST_RUNNER = 'tapiriik.testing.MongoDBTestRunner'
 
-MONGO_HOST = "localhost"
+MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_REPLICA_SET = None
 MONGO_CLIENT_OPTIONS = {}
 MONGO_FULL_WRITE_CONCERN = 1
 
-REDIS_HOST = "localhost"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_CLIENT_OPTIONS = {}
 
 WEB_ROOT = 'http://localhost:8000'
@@ -270,7 +270,7 @@ WORKER_INDEX = int(os.environ.get("TAPIRIIK_WORKER_INDEX", 0))
 
 HTTP_SOURCE_ADDR = "0.0.0.0"
 
-RABBITMQ_BROKER_URL = "amqp://guest@localhost//"
+RABBITMQ_BROKER_URL = os.getenv("RABBITMQ_BROKER_URL", "amqp://guest@localhost//")
 
 RABBITMQ_USER_QUEUE_STATS_URL = "http://guest:guest@localhost:15672/api/queues/%2F/tapiriik-users?lengths_age=3600&lengths_incr=60&msg_rates_age=3600&msg_rates_incr=60"
 
