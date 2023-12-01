@@ -71,7 +71,7 @@ class StravaService(ServiceBase):
         "AlpineSki": ActivityType.DownhillSkiing,
         "CrossCountrySkiing": ActivityType.CrossCountrySkiing,
         "NordicSki": ActivityType.CrossCountrySkiing,
-        "BackcountrySki": ActivityType.DownhillSkiing,
+        "BackcountrySki": ActivityType.CrossCountrySkiing,
         "Snowboard": ActivityType.Snowboarding,
         "Swim": ActivityType.Swimming,
         "IceSkate": ActivityType.Skating,
