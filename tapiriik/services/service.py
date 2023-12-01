@@ -33,6 +33,7 @@ class Service:
             GarminConnect,
             Endomondo,
             SportTracks,
+            GoogleFit,
             Dropbox,
             TrainingPeaks,
             RideWithGPS,
@@ -60,6 +61,7 @@ class Service:
             GarminConnect, # The reference
             Smashrun,  # TODO: not sure if this is the right place, but it seems to have a lot of data
             SportTracks, # Pretty much equivalent to GC, no temperature (not that GC temperature works all thar well now, but I digress)
+            GoogleFit, # No temperature data, supports everything else
             TrainingPeaks, # No seperate run cadence, but has temperature
             Dropbox, # Equivalent to any of the above
             RideWithGPS, # Uses TCX for everything, so same as Dropbox

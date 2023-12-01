@@ -2,17 +2,15 @@ from tapiriik.settings import WEB_ROOT, SPORTTRACKS_OPENFIT_ENDPOINT, SPORTTRACK
 from tapiriik.services.service_base import ServiceAuthenticationType, ServiceBase
 from tapiriik.services.interchange import UploadedActivity, ActivityType, ActivityStatistic, ActivityStatisticUnit, Waypoint, WaypointType, Location, LapIntensity, Lap
 from tapiriik.services.api import APIException, UserException, UserExceptionType, APIExcludeActivity
-from tapiriik.services.sessioncache import SessionCache
+from tapiriik.services.oauth2 import OAuth2Client
 from tapiriik.database import cachedb
 from django.core.urlresolvers import reverse
 import pytz
 from datetime import timedelta
 import dateutil.parser
 from dateutil.tz import tzutc
-import requests
 import json
 import re
-import urllib.parse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -139,48 +137,18 @@ class SportTracksService(ServiceBase):
 
     SupportedActivities = list(_reverseActivityMappings.keys())
 
-    _tokenCache = SessionCache("sporttracks", lifetime=timedelta(minutes=115), freshen_on_get=False)
+    _oaClient = OAuth2Client(SPORTTRACKS_CLIENT_ID, SPORTTRACKS_CLIENT_SECRET, "https://api.sporttracks.mobi/oauth2/token", tokenTimeoutMin=115, cacheName="sporttracks")
 
     def WebInit(self):
         self.UserAuthorizationURL = "https://api.sporttracks.mobi/oauth2/authorize?response_type=code&client_id=%s&state=mobi_api" % SPORTTRACKS_CLIENT_ID
 
-    def _getAuthHeaders(self, serviceRecord=None):
-        token = self._tokenCache.Get(serviceRecord.ExternalID)
-        if not token:
-            if not serviceRecord.Authorization or "RefreshToken" not in serviceRecord.Authorization:
-                # When I convert the existing users, people who didn't check the remember-credentials box will be stuck in limbo
-                raise APIException("User not upgraded to OAuth", block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-
-            # Use refresh token to get access token
-            # Hardcoded return URI to get around the lack of URL reversing without loading up all the Django stuff
-            params = {"grant_type": "refresh_token", "refresh_token": serviceRecord.Authorization["RefreshToken"], "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": "https://tapiriik.com/auth/return/sporttracks"}
-            response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
-            if response.status_code != 200:
-                if response.status_code >= 400 and response.status_code < 500:
-                    raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text), block=True, user_exception=UserException(UserExceptionType.Authorization, intervention_required=True))
-                raise APIException("Could not retrieve refreshed token %s %s" % (response.status_code, response.text))
-            token = response.json()["access_token"]
-            self._tokenCache.Set(serviceRecord.ExternalID, token)
-
-        return {"Authorization": "Bearer %s" % token}
-
     def RetrieveAuthorizationToken(self, req, level):
-        from tapiriik.services import Service
-        #  might consider a real OAuth client
-        code = req.GET.get("code")
-        params = {"grant_type": "authorization_code", "code": code, "client_id": SPORTTRACKS_CLIENT_ID, "client_secret": SPORTTRACKS_CLIENT_SECRET, "redirect_uri": WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"})}
+         def fetchUid(tokenData):
+             access_token = tokenData["access_token"]
+             uid_res = self._oaClient.post(None, "https://api.sporttracks.mobi/api/v2/system/connect", access_token=access_token)
+             return uid_res.json()["user"]["uid"]
 
-        response = requests.post("https://api.sporttracks.mobi/oauth2/token", data=urllib.parse.urlencode(params), headers={"Content-Type": "application/x-www-form-urlencoded"})
-        if response.status_code != 200:
-            print(response.text)
-            raise APIException("Invalid code")
-        access_token = response.json()["access_token"]
-        refresh_token = response.json()["refresh_token"]
-
-        uid_res = requests.post("https://api.sporttracks.mobi/api/v2/system/connect", headers={"Authorization": "Bearer %s" % access_token})
-        uid = uid_res.json()["user"]["uid"]
-
-        return (uid, {"RefreshToken": refresh_token})
+         return self._oaClient.retrieveAuthorizationToken(self, req, WEB_ROOT + reverse("oauth_return", kwargs={"service": "sporttracks"}), fetchUid)
 
     def RevokeAuthorization(self, serviceRecord):
         pass  # Can't revoke these tokens :(
@@ -189,10 +157,11 @@ class SportTracksService(ServiceBase):
         cachedb.sporttracks_meta_cache.remove({"ExternalID": serviceRecord.ExternalID})
 
     def DownloadActivityList(self, serviceRecord, exhaustive=False):
-        headers = self._getAuthHeaders(serviceRecord)
         activities = []
         exclusions = []
         pageUri = self.OpenFitEndpoint + "/fitnessActivities.json"
+
+        session = self._oaClient.session(serviceRecord)
 
         activity_tz_cache_raw = cachedb.sporttracks_meta_cache.find_one({"ExternalID": serviceRecord.ExternalID})
         activity_tz_cache_raw = activity_tz_cache_raw if activity_tz_cache_raw else {"Activities":[]}
@@ -200,7 +169,7 @@ class SportTracksService(ServiceBase):
 
         while True:
             logger.debug("Req against " + pageUri)
-            res = requests.get(pageUri, headers=headers)
+            res = session.get(pageUri)
             try:
                 res = res.json()
             except ValueError:
@@ -230,7 +199,7 @@ class SportTracksService(ServiceBase):
                     else:
                         # So, we get the first location in the activity and calculate the TZ from that.
                         try:
-                            firstLocation = self._downloadActivity(serviceRecord, activity, returnFirstLocation=True)
+                            firstLocation = self._downloadActivity(session, activity, returnFirstLocation=True)
                         except APIExcludeActivity:
                             pass
                         else:
@@ -268,10 +237,9 @@ class SportTracksService(ServiceBase):
         cachedb.sporttracks_meta_cache.update({"ExternalID": serviceRecord.ExternalID}, {"ExternalID": serviceRecord.ExternalID, "Activities": [{"ActivityURI": k, "TZ": v} for k, v in activity_tz_cache.items()]}, upsert=True)
         return activities, exclusions
 
-    def _downloadActivity(self, serviceRecord, activity, returnFirstLocation=False):
+    def _downloadActivity(self, session, activity, returnFirstLocation=False):
         activityURI = activity.ServiceData["ActivityURI"]
-        headers = self._getAuthHeaders(serviceRecord)
-        activityData = requests.get(activityURI, headers=headers)
+        activityData = session.get(activityURI)
         activityData = activityData.json()
 
         if "clock_duration" in activityData:
@@ -455,7 +423,8 @@ class SportTracksService(ServiceBase):
         return activity
 
     def DownloadActivity(self, serviceRecord, activity):
-        return self._downloadActivity(serviceRecord, activity)
+        session = self._oaClient.session(serviceRecord)
+        return self._downloadActivity(session, activity)
 
     def UploadActivity(self, serviceRecord, activity):
         activityData = {}
@@ -555,9 +524,8 @@ class SportTracksService(ServiceBase):
             activityData["location"] = location_stream
             activityData["timer_stops"] = [[y.isoformat() for y in x] for x in timer_stops]
 
-        headers = self._getAuthHeaders(serviceRecord)
-        headers.update({"Content-Type": "application/json"})
-        upload_resp = requests.post(self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), headers=headers)
+        headers = {"Content-Type": "application/json"}
+        upload_resp = self._oaClient.post(serviceRecord, self.OpenFitEndpoint + "/fitnessActivities.json", data=json.dumps(activityData), headers=headers)
         if upload_resp.status_code != 200:
             if upload_resp.status_code == 401:
                 raise APIException("ST.mobi trial expired", block=True, user_exception=UserException(UserExceptionType.AccountExpired, intervention_required=True))
